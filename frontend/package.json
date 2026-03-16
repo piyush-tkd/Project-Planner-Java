@@ -1,0 +1,47 @@
+{
+  "name": "portfolio-planner-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@mantine/core": "^7.15.0",
+    "@mantine/dates": "^7.17.8",
+    "@mantine/hooks": "^7.15.0",
+    "@mantine/notifications": "^7.15.0",
+    "@tabler/icons-react": "^3.26.0",
+    "@tanstack/react-query": "^5.62.0",
+    "ag-grid-community": "^32.3.0",
+    "ag-grid-react": "^32.3.0",
+    "axios": "^1.7.9",
+    "dayjs": "^1.11.20",
+    "html-to-image": "^1.11.13",
+    "papaparse": "^5.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.14.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "jsdom": "^25.0.1",
+    "msw": "^2.7.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}

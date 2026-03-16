@@ -1,0 +1,188 @@
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Title, Stack, Text, Card, SimpleGrid, Table, Badge } from '@mantine/core';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { IconAlertTriangle, IconFlame, IconCircleCheck } from '@tabler/icons-react';
+import { useProjects } from '../../api/projects';
+import { useCapacityGap } from '../../api/reports';
+import { useMonthLabels } from '../../hooks/useMonthLabels';
+import { useTableSort } from '../../hooks/useTableSort';
+import { formatHours, formatProjectDate } from '../../utils/formatting';
+import SortableHeader from '../../components/common/SortableHeader';
+import SummaryCard from '../../components/charts/SummaryCard';
+import PriorityBadge from '../../components/common/PriorityBadge';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ExportableChart from '../../components/common/ExportableChart';
+
+interface ProjectHealth {
+  id: number;
+  name: string;
+  priority: string;
+  owner: string;
+  startMonth: number;
+  endMonth: number;
+  durationMonths: number;
+  totalDemand: number;
+  podCapacity: number;
+  loadPct: number;
+  risk: string;
+  launch: string;
+  startDate: string | null;
+  targetDate: string | null;
+}
+
+export default function DeadlineGapPage() {
+  const { data: projects, isLoading: projLoading } = useProjects();
+  const { data: gapData, isLoading: gapLoading } = useCapacityGap('hours');
+  const { monthLabels } = useMonthLabels();
+  const navigate = useNavigate();
+
+  const projectHealth = useMemo(() => {
+    if (!projects || !gapData?.gaps) return [];
+    const activeProjects = projects.filter(p => p.status === 'ACTIVE');
+
+    return activeProjects.map(project => {
+      const startM = project.startMonth;
+      const endM = startM + project.durationMonths - 1;
+
+      // Sum demand and capacity across the project's active months (all PODs)
+      let totalDemand = 0;
+      let podCapacity = 0;
+      for (let m = startM; m <= Math.min(endM, 12); m++) {
+        const monthGaps = gapData.gaps.filter(g => g.monthIndex === m);
+        totalDemand += monthGaps.reduce((s, g) => s + g.demandHours, 0);
+        podCapacity += monthGaps.reduce((s, g) => s + g.capacityHours, 0);
+      }
+
+      const loadPct = podCapacity > 0 ? Math.round((totalDemand / podCapacity) * 100) : 0;
+      const risk = loadPct > 150 ? 'High' : loadPct > 100 ? 'Medium' : 'Low';
+      const launch = monthLabels[endM] ?? `M${endM}`;
+
+      return {
+        id: project.id,
+        name: project.name,
+        priority: project.priority,
+        owner: project.owner,
+        startMonth: startM,
+        endMonth: endM,
+        durationMonths: project.durationMonths,
+        totalDemand: Math.round(totalDemand),
+        podCapacity: Math.round(podCapacity),
+        loadPct,
+        risk,
+        launch,
+        startDate: project.startDate ?? null,
+        targetDate: project.targetDate ?? null,
+      } as ProjectHealth;
+    }).sort((a, b) => b.loadPct - a.loadPct);
+  }, [projects, gapData, monthLabels]);
+
+  const stats = useMemo(() => {
+    const high = projectHealth.filter(p => p.risk === 'High').length;
+    const medium = projectHealth.filter(p => p.risk === 'Medium').length;
+    const low = projectHealth.filter(p => p.risk === 'Low').length;
+    return { high, medium, low };
+  }, [projectHealth]);
+
+  const chartData = useMemo(() => {
+    return projectHealth.slice(0, 20).map(p => ({
+      name: p.name.length > 25 ? p.name.slice(0, 22) + '...' : p.name,
+      totalDemand: p.totalDemand,
+      podCapacity: p.podCapacity,
+    }));
+  }, [projectHealth]);
+
+  const { sorted, sortKey, sortDir, onSort } = useTableSort(projectHealth);
+
+  if (projLoading || gapLoading) return <LoadingSpinner />;
+
+  return (
+    <Stack>
+      <Title order={2}>Deadline Gap</Title>
+      <Text size="sm" c="dimmed">
+        How much of each project's demand can be served by available capacity during its window — lower load % = more headroom
+      </Text>
+
+      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+        <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red" />
+        <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color="#fd7e14" />} color="orange" />
+        <SummaryCard title="Low Load" value={stats.low} icon={<IconCircleCheck size={20} color="#40c057" />} color="green" />
+      </SimpleGrid>
+
+      {chartData.length > 0 && (
+        <Card withBorder padding="md">
+          <ExportableChart title="Project Demand Load Ranking">
+            <Title order={4} mb={4}>Project Demand Load Ranking</Title>
+            <Text size="xs" c="dimmed" mb="sm">Demand / available POD capacity during project window — higher % = more impact on POD</Text>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" fontSize={8} angle={-35} textAnchor="end" interval={0} />
+                <YAxis fontSize={10} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                <Tooltip formatter={(value: number) => formatHours(value)} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Bar dataKey="totalDemand" fill="rgba(124,58,237,0.7)" name="Total Demand" />
+                <Bar dataKey="podCapacity" fill="rgba(30,64,175,0.25)" name="POD Capacity Available" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ExportableChart>
+        </Card>
+      )}
+
+      <Card withBorder padding="md">
+        <Title order={4} mb={4}>Project Health Detail</Title>
+        <Text size="xs" c="dimmed" mb="sm">Total demand hours vs POD capacity available during project duration — sorted by load</Text>
+        <Table.ScrollContainer minWidth={1000}>
+          <Table withTableBorder withColumnBorders striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <SortableHeader sortKey="name" currentKey={sortKey} dir={sortDir} onSort={onSort}>Project</SortableHeader>
+                <SortableHeader sortKey="priority" currentKey={sortKey} dir={sortDir} onSort={onSort}>Pri</SortableHeader>
+                <SortableHeader sortKey="owner" currentKey={sortKey} dir={sortDir} onSort={onSort}>Owner</SortableHeader>
+                <SortableHeader sortKey="startMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>Start</SortableHeader>
+                <SortableHeader sortKey="endMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End</SortableHeader>
+                <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Dur</SortableHeader>
+                <SortableHeader sortKey="totalDemand" currentKey={sortKey} dir={sortDir} onSort={onSort}>Total Demand</SortableHeader>
+                <SortableHeader sortKey="podCapacity" currentKey={sortKey} dir={sortDir} onSort={onSort}>POD Capacity</SortableHeader>
+                <SortableHeader sortKey="loadPct" currentKey={sortKey} dir={sortDir} onSort={onSort}>Load %</SortableHeader>
+                <SortableHeader sortKey="risk" currentKey={sortKey} dir={sortDir} onSort={onSort}>Risk</SortableHeader>
+                <SortableHeader sortKey="launch" currentKey={sortKey} dir={sortDir} onSort={onSort}>Launch</SortableHeader>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sorted.map(p => (
+                <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${p.id}`)}>
+                  <Table.Td fw={600} style={{ maxWidth: 180 }}>{p.name}</Table.Td>
+                  <Table.Td><PriorityBadge priority={p.priority} /></Table.Td>
+                  <Table.Td style={{ fontSize: 12 }}>{p.owner}</Table.Td>
+                  <Table.Td style={{ fontSize: 12 }}>{formatProjectDate(p.startDate, p.startMonth, monthLabels)}</Table.Td>
+                  <Table.Td style={{ fontSize: 12 }}>{formatProjectDate(p.targetDate, p.endMonth, monthLabels)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'center' }}>{p.durationMonths}m</Table.Td>
+                  <Table.Td style={{ textAlign: 'right', color: '#7c3aed', fontWeight: 600 }}>{formatHours(p.totalDemand)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right', color: '#1e40af' }}>{formatHours(p.podCapacity)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right', fontWeight: 700 }}>{p.loadPct}%</Table.Td>
+                  <Table.Td>
+                    <Badge
+                      color={p.risk === 'High' ? 'red' : p.risk === 'Medium' ? 'orange' : 'green'}
+                      variant="light"
+                    >
+                      {p.risk === 'High' ? 'High' : p.risk === 'Medium' ? 'Medium' : 'Low'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td style={{ fontSize: 12 }}>{p.launch}</Table.Td>
+                </Table.Tr>
+              ))}
+              {sorted.length === 0 && (
+                <Table.Tr>
+                  <Table.Td colSpan={11}>
+                    <Text ta="center" c="dimmed" py="md">No active projects</Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Card>
+    </Stack>
+  );
+}

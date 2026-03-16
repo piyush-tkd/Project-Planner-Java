@@ -1,0 +1,2 @@
+ALTER TABLE project DROP COLUMN IF EXISTS required_skills;
+ALTER TABLE resource DROP COLUMN IF EXISTS skills;

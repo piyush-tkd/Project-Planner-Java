@@ -1,0 +1,182 @@
+import { useMemo } from 'react';
+import { Title, Stack, Text, Card, Table, Badge, SimpleGrid } from '@mantine/core';
+import { IconUsers, IconArrowsShuffle, IconAlertTriangle, IconHexagons } from '@tabler/icons-react';
+import { useOverrides } from '../../api/overrides';
+import { useResources } from '../../api/resources';
+import { useMonthLabels } from '../../hooks/useMonthLabels';
+import { useTableSort } from '../../hooks/useTableSort';
+import SortableHeader from '../../components/common/SortableHeader';
+import SummaryCard from '../../components/charts/SummaryCard';
+import { formatRole } from '../../types';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+
+interface SplitRow {
+  person: string;
+  homePod: string;
+  role: string;
+  splitTo: string;
+  allocationPct: number;
+  homePct: number;
+  months: string;
+  notes: string | null;
+}
+
+const roleBadgeColor: Record<string, string> = {
+  DEVELOPER: 'blue',
+  QA: 'orange',
+  BSA: 'pink',
+  TECH_LEAD: 'yellow',
+};
+
+export default function PodSplitsPage() {
+  const { data: overrides, isLoading: overridesLoading } = useOverrides();
+  const { data: resources, isLoading: resourcesLoading } = useResources();
+  const { monthLabels } = useMonthLabels();
+
+  const { permanent, temporary, stats } = useMemo(() => {
+    if (!overrides || !resources) return { permanent: [], temporary: [], stats: { permanentCount: 0, temporaryCount: 0, peopleAffected: 0, podsReceiving: 0 } };
+
+    const resourceMap = new Map(resources.map(r => [r.id, r]));
+    const perm: SplitRow[] = [];
+    const temp: SplitRow[] = [];
+    const uniquePeople = new Set<number>();
+    const uniquePods = new Set<number>();
+
+    overrides.forEach(o => {
+      const resource = resourceMap.get(o.resourceId);
+      if (!resource) return;
+
+      uniquePeople.add(o.resourceId);
+      uniquePods.add(o.toPodId);
+
+      const isFullYear = o.startMonth === 1 && o.endMonth === 12;
+      const duration = o.endMonth - o.startMonth + 1;
+      const monthRange = isFullYear
+        ? `M1–M12 (full year)`
+        : `M${o.startMonth}–M${o.endMonth} (${duration} mo)`;
+
+      const row: SplitRow = {
+        person: resource.name,
+        homePod: resource.podAssignment?.podName ?? '-',
+        role: resource.role,
+        splitTo: o.toPodName,
+        allocationPct: o.allocationPct,
+        homePct: 100 - o.allocationPct,
+        months: monthRange,
+        notes: o.notes,
+      };
+
+      if (isFullYear) {
+        perm.push(row);
+      } else {
+        temp.push(row);
+      }
+    });
+
+    return {
+      permanent: perm,
+      temporary: temp,
+      stats: {
+        permanentCount: perm.length,
+        temporaryCount: temp.length,
+        peopleAffected: uniquePeople.size,
+        podsReceiving: uniquePods.size,
+      },
+    };
+  }, [overrides, resources]);
+
+  const { sorted: sortedPerm, sortKey: permSortKey, sortDir: permSortDir, onSort: onPermSort } = useTableSort(permanent);
+  const { sorted: sortedTemp, sortKey: tempSortKey, sortDir: tempSortDir, onSort: onTempSort } = useTableSort(temporary);
+
+  if (overridesLoading || resourcesLoading) return <LoadingSpinner />;
+
+  return (
+    <Stack>
+      <Title order={2}>POD Splits</Title>
+      <Text size="sm" c="dimmed">Permanent splits = always allocated across two PODs. Temporary = short-term loan.</Text>
+
+      <SimpleGrid cols={{ base: 2, sm: 4 }}>
+        <SummaryCard title="Permanent Splits" value={stats.permanentCount} icon={<IconArrowsShuffle size={20} color="#339af0" />} />
+        <SummaryCard title="Temporary Loans" value={stats.temporaryCount} icon={<IconArrowsShuffle size={20} color="#fd7e14" />} />
+        <SummaryCard title="People Affected" value={stats.peopleAffected} icon={<IconUsers size={20} color="#fa5252" />} />
+        <SummaryCard title="PODs Receiving" value={stats.podsReceiving} icon={<IconHexagons size={20} color="#40c057" />} />
+      </SimpleGrid>
+
+      <Card withBorder padding="md">
+        <Title order={4} mb={4}>Permanent Splits</Title>
+        <Text size="sm" c="dimmed" mb="sm">These people are always shared between two PODs — full year allocation</Text>
+        <Table.ScrollContainer minWidth={900}>
+          <Table withTableBorder withColumnBorders striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <SortableHeader sortKey="person" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Person</SortableHeader>
+                <SortableHeader sortKey="homePod" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Home POD</SortableHeader>
+                <SortableHeader sortKey="role" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Role</SortableHeader>
+                <SortableHeader sortKey="splitTo" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Split To</SortableHeader>
+                <SortableHeader sortKey="allocationPct" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Allocation %</SortableHeader>
+                <SortableHeader sortKey="homePct" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Home %</SortableHeader>
+                <Table.Th>Months</Table.Th>
+                <SortableHeader sortKey="notes" currentKey={permSortKey} dir={permSortDir} onSort={onPermSort}>Notes</SortableHeader>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sortedPerm.map((row, i) => (
+                <Table.Tr key={i}>
+                  <Table.Td fw={500}>{row.person}</Table.Td>
+                  <Table.Td>{row.homePod}</Table.Td>
+                  <Table.Td><Badge variant="filled" color={roleBadgeColor[row.role] ?? 'gray'} size="sm">{formatRole(row.role)}</Badge></Table.Td>
+                  <Table.Td><Text c="blue" fw={500} size="sm">{row.splitTo}</Text></Table.Td>
+                  <Table.Td fw={600} c="blue">{row.allocationPct}%</Table.Td>
+                  <Table.Td>{row.homePct}%</Table.Td>
+                  <Table.Td>{row.months}</Table.Td>
+                  <Table.Td>{row.notes ?? '-'}</Table.Td>
+                </Table.Tr>
+              ))}
+              {sortedPerm.length === 0 && (
+                <Table.Tr><Table.Td colSpan={8}><Text ta="center" c="dimmed" py="md">No permanent splits</Text></Table.Td></Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Card>
+
+      <Card withBorder padding="md">
+        <Title order={4} mb={4}>Temporary Loans</Title>
+        <Text size="sm" c="dimmed" mb="sm">Time-bounded cross-POD assignments</Text>
+        <Table.ScrollContainer minWidth={900}>
+          <Table withTableBorder withColumnBorders striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <SortableHeader sortKey="person" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Person</SortableHeader>
+                <SortableHeader sortKey="homePod" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Home POD</SortableHeader>
+                <SortableHeader sortKey="role" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Role</SortableHeader>
+                <SortableHeader sortKey="splitTo" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Split To</SortableHeader>
+                <SortableHeader sortKey="allocationPct" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Allocation %</SortableHeader>
+                <SortableHeader sortKey="homePct" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Home %</SortableHeader>
+                <Table.Th>Months</Table.Th>
+                <SortableHeader sortKey="notes" currentKey={tempSortKey} dir={tempSortDir} onSort={onTempSort}>Notes</SortableHeader>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sortedTemp.map((row, i) => (
+                <Table.Tr key={i}>
+                  <Table.Td fw={500}>{row.person}</Table.Td>
+                  <Table.Td>{row.homePod}</Table.Td>
+                  <Table.Td><Badge variant="filled" color={roleBadgeColor[row.role] ?? 'gray'} size="sm">{formatRole(row.role)}</Badge></Table.Td>
+                  <Table.Td><Text c="blue" fw={500} size="sm">{row.splitTo}</Text></Table.Td>
+                  <Table.Td fw={600} c="blue">{row.allocationPct}%</Table.Td>
+                  <Table.Td>{row.homePct}%</Table.Td>
+                  <Table.Td>{row.months}</Table.Td>
+                  <Table.Td>{row.notes ?? '-'}</Table.Td>
+                </Table.Tr>
+              ))}
+              {sortedTemp.length === 0 && (
+                <Table.Tr><Table.Td colSpan={8}><Text ta="center" c="dimmed" py="md">No temporary loans</Text></Table.Td></Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Card>
+    </Stack>
+  );
+}
