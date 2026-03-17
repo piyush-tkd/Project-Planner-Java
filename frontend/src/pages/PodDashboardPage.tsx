@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  useJiraStatus, useJiraPods,
+  useJiraStatus, useJiraPods, useClearJiraCache,
   usePodWatchConfig, usePodVelocity,
   PodMetrics,
 } from '../api/jira';
@@ -42,6 +42,12 @@ export default function PodDashboardPage() {
   const { data: status, isLoading: statusLoading } = useJiraStatus();
   const { data: pods = [], isLoading, refetch, error } = useJiraPods();
   const { data: watchConfig = [] } = usePodWatchConfig();
+  const clearCache = useClearJiraCache();
+
+  // Refresh = clear backend Caffeine cache first, then re-fetch live data
+  const handleRefresh = () => {
+    clearCache.mutate(undefined, { onSettled: () => refetch() });
+  };
 
   if (statusLoading) return <Loader />;
 
@@ -106,10 +112,10 @@ export default function PodDashboardPage() {
           <Button
             size="xs" variant="light"
             leftSection={<IconRefresh size={14} />}
-            loading={isLoading}
-            onClick={() => refetch()}
+            loading={clearCache.isPending || isLoading}
+            onClick={handleRefresh}
           >
-            Refresh
+            {clearCache.isPending ? 'Clearing cache…' : 'Refresh'}
           </Button>
         </Group>
       </Group>
