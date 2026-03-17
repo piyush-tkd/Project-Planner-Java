@@ -304,8 +304,9 @@ public class JiraClient {
                     .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/sprint/" + sprintId + "/issue")
                     .queryParam("fields",
                             "summary,status,assignee,timespent,timeoriginalestimate,timeestimate," +
-                            "customfield_10016,customfield_10028,story_points," +
-                            "issuetype,priority,labels,created,resolutiondate," +
+                            // SP fields: 10016=classic, 10028=next-gen, 10024/10025/10004=other variants
+                            "customfield_10016,customfield_10028,customfield_10024,customfield_10025,customfield_10004," +
+                            "story_points,issuetype,priority,labels,created,resolutiondate," +
                             "customfield_10014,parent," +
                             "fixVersions,components,worklog")
                     .queryParam("maxResults", pageSize)
@@ -323,6 +324,34 @@ public class JiraClient {
             if (startAt >= total || batch.isEmpty()) break;
         }
         return all;
+    }
+
+    /**
+     * Returns the board configuration, including the estimation field (story points field ID).
+     * The path {@code estimation.field.fieldId} holds the custom field Jira uses for SP on this board.
+     * Example: "customfield_10016" for classic boards, "customfield_10028" for next-gen.
+     */
+    @Cacheable(value = "jira-board-config", key = "#boardId")
+    public Map<String, Object> getBoardConfiguration(long boardId) {
+        String url = props.getBaseUrl() + "/rest/agile/1.0/board/" + boardId + "/configuration";
+        try {
+            Map<String, Object> config = get(url, Map.class);
+            if (config != null) {
+                // Extract and log the estimation field for visibility
+                Object est = config.get("estimation");
+                if (est instanceof Map) {
+                    Object field = ((Map<?,?>) est).get("field");
+                    if (field instanceof Map) {
+                        Object fieldId = ((Map<?,?>) field).get("fieldId");
+                        log.info("Board {} estimation field: {}", boardId, fieldId);
+                    }
+                }
+            }
+            return config != null ? config : Map.of();
+        } catch (Exception e) {
+            log.debug("Could not fetch board configuration for boardId={}: {}", boardId, e.getMessage());
+            return Map.of();
+        }
     }
 
     /**
@@ -358,6 +387,7 @@ public class JiraClient {
         @CacheEvict(value = "jira-closed-sprints",   allEntries = true),
         @CacheEvict(value = "jira-sprint-issues",    allEntries = true),
         @CacheEvict(value = "jira-backlog",          allEntries = true),
+        @CacheEvict(value = "jira-board-config",     allEntries = true),
     })
     public void evictAllCaches() {
         log.info("All Jira caches evicted");

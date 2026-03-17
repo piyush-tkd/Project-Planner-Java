@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  *  jira-closed-sprints    30 min  — historical, immutable once closed
  *  jira-sprint-issues      5 min  — issue status changes during a sprint
  *  jira-backlog            5 min  — backlog changes frequently
+ *  jira-board-config      30 min  — board estimation field config (rarely changes)
  *
  * Users can bust all jira caches via POST /api/jira/cache/clear.
  */
@@ -52,7 +53,8 @@ public class CacheConfig {
             jiraCache("jira-active-sprints",    3, 200),
             jiraCache("jira-closed-sprints",   30, 200),
             jiraCache("jira-sprint-issues",     5, 500),
-            jiraCache("jira-backlog",           5, 200)
+            jiraCache("jira-backlog",            5, 200),
+            jiraCache("jira-board-config",      30, 100)  // board estimation field config — rarely changes
         ));
         return manager;
     }

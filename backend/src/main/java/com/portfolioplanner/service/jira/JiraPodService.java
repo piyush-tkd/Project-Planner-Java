@@ -130,6 +130,22 @@ public class JiraPodService {
                 if (bName != null) boardNames.add(bName);
                 long boardId = ((Number) board.get("id")).longValue();
 
+                // ── Determine the SP field this board uses ─────────────────
+                // /rest/agile/1.0/board/{id}/configuration → estimation.field.fieldId
+                String spFieldId = null;
+                try {
+                    Map<String, Object> boardConfig = jiraClient.getBoardConfiguration(boardId);
+                    Map<String, Object> estimation  = asMap(boardConfig.get("estimation"));
+                    if (estimation != null) {
+                        Map<String, Object> fieldObj = asMap(estimation.get("field"));
+                        if (fieldObj != null) spFieldId = str(fieldObj, "fieldId");
+                    }
+                } catch (Exception e) {
+                    log.debug("Could not get board config for boardId={}: {}", boardId, e.getMessage());
+                }
+                if (spFieldId == null) spFieldId = "customfield_10016"; // safe default
+                log.debug("Board {} ({}) SP field: {}", boardId, projectKey, spFieldId);
+
                 try { backlogSize += jiraClient.getBacklogIssues(boardId).size(); }
                 catch (Exception e) { log.debug("Backlog unavailable for {}: {}", projectKey, e.getMessage()); }
 
@@ -148,6 +164,7 @@ public class JiraPodService {
                 if (sName != null && !sprintNames.contains(sName)) sprintNames.add(sName);
 
                 List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId);
+                final String boardSpField = spFieldId; // effectively final for lambda
 
                 for (Map<String, Object> issue : issues) {
                     try {
@@ -166,19 +183,20 @@ public class JiraPodService {
                         else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
                         else                                                   todoIssues++;
 
-                        // ── Story points (classic=10016, next-gen=10028) ────
-                        Object sp = fields.get("customfield_10016");
+                        // ── Story points — use board-configured field first, then fallbacks ──
+                        Object sp = fields.get(boardSpField);
+                        if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                         double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
-                        // Warn on issues with 0 SP so we can identify the correct SP field
                         if (issueSP == 0) {
                             String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
                             List<String> spCandidates = fields.entrySet().stream()
                                     .filter(e -> e.getKey().startsWith("customfield_") && e.getValue() instanceof Number)
                                     .map(e -> e.getKey() + "=" + e.getValue())
                                     .collect(Collectors.toList());
-                            log.warn("SP=0 for {} [status={}] — numeric customfields: {}",
-                                    issueKey, statusName, spCandidates.isEmpty() ? "none" : spCandidates);
+                            log.warn("SP=0 for {} [status={}, spField={}] — numeric customfields: {}",
+                                    issueKey, statusName, boardSpField,
+                                    spCandidates.isEmpty() ? "none" : spCandidates);
                         }
                         totalSP += issueSP;
                         if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;

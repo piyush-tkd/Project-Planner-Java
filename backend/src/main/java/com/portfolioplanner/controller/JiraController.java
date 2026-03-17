@@ -158,6 +158,79 @@ public class JiraController {
         return ResponseEntity.ok(Map.of("cleared", true, "message", "All Jira caches cleared"));
     }
 
+    /**
+     * Debug endpoint — given a board ID, returns:
+     *  - boardConfig: the raw board configuration (including estimation.field.fieldId)
+     *  - spField: the field Jira says this board uses for story points
+     *  - sampleIssues: first 5 sprint issues with their numeric customfield_ values
+     *
+     * Call this to diagnose why SP numbers look wrong.
+     * Example: GET /api/jira/debug/board/123
+     */
+    @GetMapping("/debug/board/{boardId}")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> debugBoard(@PathVariable long boardId) {
+        if (!props.isConfigured()) {
+            return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+        }
+        try {
+            // 1. Board configuration
+            Map<String, Object> boardConfig = jiraClient.getBoardConfiguration(boardId);
+            String spField = null;
+            Object est = boardConfig.get("estimation");
+            if (est instanceof Map) {
+                Object fieldObj = ((Map<?,?>) est).get("field");
+                if (fieldObj instanceof Map) spField = (String) ((Map<?,?>) fieldObj).get("fieldId");
+            }
+
+            // 2. Active sprint issues — dump numeric customfields
+            List<Map<String, Object>> activeSprints = jiraClient.getActiveSprints(boardId);
+            List<Map<String, Object>> sampleIssues  = List.of();
+            if (!activeSprints.isEmpty()) {
+                long sprintId = ((Number) activeSprints.get(0).get("id")).longValue();
+                List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId);
+                sampleIssues = issues.stream().limit(10).map(issue -> {
+                    Map<String, Object> out = new java.util.LinkedHashMap<>();
+                    out.put("key", issue.get("key"));
+                    Object fields = issue.get("fields");
+                    if (fields instanceof Map) {
+                        Map<String, Object> f = (Map<String, Object>) fields;
+                        // Status
+                        Object statusObj = f.get("status");
+                        if (statusObj instanceof Map) out.put("status", ((Map<?,?>) statusObj).get("name"));
+                        // All numeric customfields (SP candidates)
+                        Map<String, Object> numericCustomFields = new java.util.LinkedHashMap<>();
+                        for (Map.Entry<String,Object> e : f.entrySet()) {
+                            if (e.getKey().startsWith("customfield_") && e.getValue() instanceof Number) {
+                                numericCustomFields.put(e.getKey(), e.getValue());
+                            }
+                        }
+                        out.put("numericCustomFields", numericCustomFields);
+                        // Also show null customfields (fields that were requested but came back null)
+                        List<String> nullSpFields = List.of(
+                                "customfield_10004","customfield_10016","customfield_10024",
+                                "customfield_10025","customfield_10028");
+                        Map<String, Object> spFieldValues = new java.util.LinkedHashMap<>();
+                        for (String cf : nullSpFields) {
+                            spFieldValues.put(cf, f.getOrDefault(cf, "<not returned>"));
+                        }
+                        out.put("spFieldValues", spFieldValues);
+                    }
+                    return out;
+                }).collect(java.util.stream.Collectors.toList());
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "boardId",      boardId,
+                    "spField",      spField != null ? spField : "not found in board config",
+                    "boardConfig",  boardConfig,
+                    "sampleIssues", sampleIssues
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── DTOs ──────────────────────────────────────────────────────────
 
     public record SaveMappingRequest(
