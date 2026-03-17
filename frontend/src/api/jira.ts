@@ -88,8 +88,9 @@ export interface SprintVelocity {
 }
 
 export interface PodMetrics {
-  jiraProjectKey: string;
-  jiraProjectName: string;
+  podId: number | null;
+  podDisplayName: string;
+  boardKeys: string[];
   boardName: string | null;
   activeSprint: SprintInfo | null;
   velocity: SprintVelocity[];
@@ -210,26 +211,27 @@ export function useSaveMappingsBulk() {
   });
 }
 
-// ── POD Watchlist config types ─────────────────────────────────────────
+// ── POD config types ───────────────────────────────────────────────────
 
-export interface PodWatchResponse {
+/** A configured POD with one or more Jira board keys. */
+export interface PodConfigResponse {
   id: number;
-  jiraProjectKey: string;
   podDisplayName: string;
   enabled: boolean;
   sortOrder: number;
+  boardKeys: string[];
 }
 
-export interface PodWatchRequest {
-  jiraProjectKey: string;
+export interface PodConfigRequest {
   podDisplayName: string;
   enabled: boolean;
+  boardKeys: string[];
 }
 
-// ── POD Watchlist hooks ────────────────────────────────────────────────
+// ── POD config hooks ───────────────────────────────────────────────────
 
 export function usePodWatchConfig() {
-  return useQuery<PodWatchResponse[]>({
+  return useQuery<PodConfigResponse[]>({
     queryKey: ['jira', 'pods', 'config'],
     queryFn: () => apiClient.get('/jira/pods/config').then(r => r.data),
     ...JIRA_CHEAP_OPTS,
@@ -239,7 +241,7 @@ export function usePodWatchConfig() {
 export function useSavePodWatchConfig() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (reqs: PodWatchRequest[]) =>
+    mutationFn: (reqs: PodConfigRequest[]) =>
       apiClient.post('/jira/pods/config', reqs).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jira', 'pods', 'config'] });
@@ -248,11 +250,12 @@ export function useSavePodWatchConfig() {
   });
 }
 
-export function usePodVelocity(projectKey: string, enabled: boolean) {
+/** Velocity for a single POD — fires only when `fetchEnabled` is true. */
+export function usePodVelocity(podId: number | null, fetchEnabled: boolean) {
   return useQuery<SprintVelocity[]>({
-    queryKey: ['jira', 'pods', projectKey, 'velocity'],
-    queryFn: () => apiClient.get(`/jira/pods/${projectKey}/velocity`).then(r => r.data),
-    enabled,
+    queryKey: ['jira', 'pods', podId, 'velocity'],
+    queryFn: () => apiClient.get(`/jira/pods/${podId}/velocity`).then(r => r.data),
+    enabled: fetchEnabled && podId != null,
     ...JIRA_LIVE_OPTS,
   });
 }

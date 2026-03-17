@@ -1,8 +1,9 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.config.JiraProperties;
-import com.portfolioplanner.domain.model.JiraPodWatch;
-import com.portfolioplanner.domain.repository.JiraPodWatchRepository;
+import com.portfolioplanner.domain.model.JiraPod;
+import com.portfolioplanner.domain.model.JiraPodBoard;
+import com.portfolioplanner.domain.repository.JiraPodRepository;
 import com.portfolioplanner.service.jira.JiraPodService;
 import com.portfolioplanner.service.jira.JiraPodService.PodMetrics;
 import com.portfolioplanner.service.jira.JiraPodService.SprintVelocity;
@@ -18,88 +19,104 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JiraPodController {
 
-    private final JiraPodService podService;
-    private final JiraPodWatchRepository watchRepo;
-    private final JiraProperties props;
+    private final JiraPodService    podService;
+    private final JiraPodRepository podRepo;
+    private final JiraProperties    props;
 
     // ── Metrics ────────────────────────────────────────────────────────
 
-    /**
-     * Fast path: active sprint + backlog for watched PODs, in parallel.
-     * Falls back to all Jira projects if watchlist is empty.
-     */
     @GetMapping
     public ResponseEntity<List<PodMetrics>> getAllPods() {
         return ResponseEntity.ok(podService.getAllPodMetrics());
     }
 
-    /** On-demand velocity for a single POD (last 6 sprints). */
-    @GetMapping("/{projectKey}/velocity")
-    public ResponseEntity<List<SprintVelocity>> getVelocity(@PathVariable String projectKey) {
-        return ResponseEntity.ok(podService.getVelocityForPod(projectKey));
+    /** On-demand velocity for a single POD (aggregated across all its boards). */
+    @GetMapping("/{podId}/velocity")
+    public ResponseEntity<List<SprintVelocity>> getVelocity(@PathVariable Long podId) {
+        return ResponseEntity.ok(podService.getVelocityForPod(podId));
     }
 
-    // ── Watchlist config ───────────────────────────────────────────────
+    // ── Config ────────────────────────────────────────────────────────
 
-    /** List all watchlist entries (enabled + disabled). */
+    /** List all PODs (enabled + disabled) with their board keys. */
     @GetMapping("/config")
     @Transactional(readOnly = true)
-    public ResponseEntity<List<WatchResponse>> getConfig() {
+    public ResponseEntity<List<PodConfigResponse>> getConfig() {
         return ResponseEntity.ok(
-            watchRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()
-                .map(WatchResponse::from)
-                .toList()
+            podRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()
+                .map(PodConfigResponse::from).toList()
         );
     }
 
-    /** Bulk replace the entire watchlist (frontend sends the full desired state). */
+    /** Bulk replace the entire POD config. */
     @PostMapping("/config")
     @Transactional
-    public ResponseEntity<List<WatchResponse>> saveConfig(@RequestBody List<WatchRequest> requests) {
+    public ResponseEntity<List<PodConfigResponse>> saveConfig(@RequestBody List<PodConfigRequest> requests) {
+        // Delete all existing PODs (cascade deletes boards)
+        podRepo.deleteAll();
+
         for (int i = 0; i < requests.size(); i++) {
-            WatchRequest req = requests.get(i);
-            JiraPodWatch watch = watchRepo.findByJiraProjectKey(req.jiraProjectKey())
-                    .orElseGet(JiraPodWatch::new);
-            watch.setJiraProjectKey(req.jiraProjectKey());
-            watch.setPodDisplayName(req.podDisplayName() != null && !req.podDisplayName().isBlank()
-                    ? req.podDisplayName() : req.jiraProjectKey());
-            watch.setEnabled(Boolean.TRUE.equals(req.enabled()));
-            watch.setSortOrder(i);
-            watchRepo.save(watch);
+            PodConfigRequest req = requests.get(i);
+            JiraPod pod = new JiraPod();
+            pod.setPodDisplayName(req.podDisplayName() != null && !req.podDisplayName().isBlank()
+                    ? req.podDisplayName() : "POD " + (i + 1));
+            pod.setEnabled(Boolean.TRUE.equals(req.enabled()));
+            pod.setSortOrder(i);
+
+            // Add boards
+            if (req.boardKeys() != null) {
+                for (String key : req.boardKeys()) {
+                    if (key != null && !key.isBlank()) {
+                        pod.getBoards().add(new JiraPodBoard(pod, key.trim().toUpperCase()));
+                    }
+                }
+            }
+            podRepo.save(pod);
         }
-        // Remove any entries not in the new list
-        List<String> newKeys = requests.stream().map(WatchRequest::jiraProjectKey).toList();
-        watchRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()
-                .filter(w -> !newKeys.contains(w.getJiraProjectKey()))
-                .forEach(watchRepo::delete);
 
         return ResponseEntity.ok(
-            watchRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()
-                .map(WatchResponse::from).toList()
+            podRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()
+                .map(PodConfigResponse::from).toList()
         );
     }
 
-    /** Toggle enabled flag for a single entry. */
+    /** Toggle or rename a single POD. */
     @PatchMapping("/config/{id}")
     @Transactional
-    public ResponseEntity<WatchResponse> toggleWatch(@PathVariable Long id,
-                                                      @RequestBody ToggleRequest req) {
-        return watchRepo.findById(id).map(w -> {
-            if (req.enabled() != null) w.setEnabled(req.enabled());
-            if (req.podDisplayName() != null) w.setPodDisplayName(req.podDisplayName());
-            return ResponseEntity.ok(WatchResponse.from(watchRepo.save(w)));
+    public ResponseEntity<PodConfigResponse> patchPod(@PathVariable Long id,
+                                                       @RequestBody PodPatchRequest req) {
+        return podRepo.findById(id).map(pod -> {
+            if (req.enabled() != null)        pod.setEnabled(req.enabled());
+            if (req.podDisplayName() != null) pod.setPodDisplayName(req.podDisplayName());
+            return ResponseEntity.ok(PodConfigResponse.from(podRepo.save(pod)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     // ── DTOs ──────────────────────────────────────────────────────────
 
-    public record WatchRequest(String jiraProjectKey, String podDisplayName, Boolean enabled) {}
-    public record ToggleRequest(Boolean enabled, String podDisplayName) {}
-    public record WatchResponse(Long id, String jiraProjectKey, String podDisplayName,
-                                Boolean enabled, Integer sortOrder) {
-        static WatchResponse from(JiraPodWatch w) {
-            return new WatchResponse(w.getId(), w.getJiraProjectKey(),
-                    w.getPodDisplayName(), w.getEnabled(), w.getSortOrder());
+    public record PodConfigRequest(
+            String podDisplayName,
+            Boolean enabled,
+            List<String> boardKeys) {}
+
+    public record PodPatchRequest(Boolean enabled, String podDisplayName) {}
+
+    public record PodConfigResponse(
+            Long id,
+            String podDisplayName,
+            Boolean enabled,
+            Integer sortOrder,
+            List<String> boardKeys) {
+
+        static PodConfigResponse from(JiraPod pod) {
+            return new PodConfigResponse(
+                    pod.getId(),
+                    pod.getPodDisplayName(),
+                    pod.getEnabled(),
+                    pod.getSortOrder(),
+                    pod.getBoards().stream()
+                            .map(JiraPodBoard::getJiraProjectKey)
+                            .toList());
         }
     }
 }

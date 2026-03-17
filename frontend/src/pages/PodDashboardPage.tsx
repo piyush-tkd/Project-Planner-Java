@@ -58,8 +58,8 @@ export default function PodDashboardPage() {
   }
 
   const filtered = pods.filter(p =>
-    p.jiraProjectName.toLowerCase().includes(search.toLowerCase()) ||
-    p.jiraProjectKey.toLowerCase().includes(search.toLowerCase())
+    p.podDisplayName.toLowerCase().includes(search.toLowerCase()) ||
+    p.boardKeys.some(k => k.toLowerCase().includes(search.toLowerCase()))
   );
 
   const totalActiveSprints = pods.filter(p => p.activeSprint).length;
@@ -85,7 +85,7 @@ export default function PodDashboardPage() {
             <Text size="sm" c="dimmed">
               Live sprint health &amp; team activity
               {isConfigured
-                ? ` · ${watchConfig.filter(w => w.enabled).length} watched PODs`
+                ? ` · ${watchConfig.filter(w => w.enabled && w.boardKeys.length > 0).length} PODs`
                 : ' · showing all Jira projects'}
             </Text>
           </div>
@@ -201,7 +201,7 @@ export default function PodDashboardPage() {
 function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
   const [expanded, setExpanded] = useState(false);
   const { data: velocity = [], isLoading: loadingVelocity } =
-    usePodVelocity(pod.jiraProjectKey, expanded);
+    usePodVelocity(pod.podId, expanded);
 
   const sprint = pod.activeSprint;
 
@@ -231,9 +231,16 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
             </ThemeIcon>
             <div>
               <Text fw={700} size="sm" style={{ color: DEEP_BLUE, lineHeight: 1.2 }}>
-                {pod.jiraProjectName}
+                {pod.podDisplayName}
               </Text>
-              <Badge size="xs" variant="outline" color="gray">{pod.jiraProjectKey}</Badge>
+              <Group gap={4}>
+                {pod.boardKeys.slice(0, 3).map(k => (
+                  <Badge key={k} size="xs" variant="outline" color="gray">{k}</Badge>
+                ))}
+                {pod.boardKeys.length > 3 && (
+                  <Badge size="xs" variant="outline" color="gray">+{pod.boardKeys.length - 3}</Badge>
+                )}
+              </Group>
             </div>
           </Group>
           {pod.errorMessage
@@ -377,11 +384,18 @@ function PodTable({ pods }: { pods: PodMetrics[] }) {
           {pods.map((pod, idx) => {
             const sprint = pod.activeSprint;
             return (
-              <tr key={pod.jiraProjectKey} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafb' }}>
+              <tr key={pod.podDisplayName + idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafb' }}>
                 <td style={{ padding: '10px 12px' }}>
                   <div>
-                    <Text size="sm" fw={600}>{pod.jiraProjectName}</Text>
-                    <Badge size="xs" variant="outline">{pod.jiraProjectKey}</Badge>
+                    <Text size="sm" fw={600}>{pod.podDisplayName}</Text>
+                    <Group gap={4} mt={2}>
+                      {pod.boardKeys.slice(0, 4).map(k => (
+                        <Badge key={k} size="xs" variant="outline">{k}</Badge>
+                      ))}
+                      {pod.boardKeys.length > 4 && (
+                        <Badge size="xs" variant="outline">+{pod.boardKeys.length - 4}</Badge>
+                      )}
+                    </Group>
                   </div>
                 </td>
                 <td style={{ padding: '10px 12px' }}>
