@@ -44,12 +44,72 @@ public class JiraClient {
 
     /**
      * Returns all epics in a Jira project.
-     * Uses issue search with issuetype=Epic.
+     * Tries the Agile board /epic endpoint first (most reliable for Cloud),
+     * then falls back to REST API v3 JQL search.
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getEpics(String projectKey) {
-        String jql = "project = \"" + projectKey + "\" AND issuetype = Epic ORDER BY created DESC";
-        return searchIssues(jql, "summary,status,labels,assignee", 200);
+        // 1. Try Agile board epic endpoint
+        try {
+            List<Map<String, Object>> boards = getBoards(projectKey);
+            if (!boards.isEmpty()) {
+                long boardId = ((Number) boards.get(0).get("id")).longValue();
+                List<Map<String, Object>> agileEpics = getEpicsFromBoard(boardId);
+                if (!agileEpics.isEmpty()) {
+                    log.info("  {} epics via Agile board {}", agileEpics.size(), boardId);
+                    return agileEpics;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Agile epic endpoint failed for {}, falling back to JQL: {}", projectKey, e.getMessage());
+        }
+
+        // 2. Fallback: JQL search with quoted type name (works on all Jira Cloud versions)
+        String jql = "project = \"" + projectKey + "\" AND issuetype = \"Epic\" ORDER BY created DESC";
+        try {
+            List<Map<String, Object>> issues = searchIssues(jql, "summary,status,labels,assignee,customfield_10014", 200);
+            // Wrap in Agile-compatible shape so callers can use same field names
+            return issues.stream().map(issue -> {
+                Map<String, Object> copy = new LinkedHashMap<>(issue);
+                // Expose "name" at top level = summary field for convenience
+                Object fields = issue.get("fields");
+                if (fields instanceof Map) {
+                    Object summary = ((Map<?, ?>) fields).get("summary");
+                    if (summary instanceof String) copy.put("name", summary);
+                }
+                return copy;
+            }).collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            log.warn("JQL epic search failed for {}: {}", projectKey, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Uses the Agile board's dedicated /epic endpoint which is the most reliable
+     * way to list epics on Jira Cloud.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getEpicsFromBoard(long boardId) {
+        List<Map<String, Object>> all = new ArrayList<>();
+        int startAt = 0;
+        while (true) {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/board/" + boardId + "/epic")
+                    .queryParam("maxResults", 100)
+                    .queryParam("startAt", startAt)
+                    .toUriString();
+            Map<String, Object> resp = get(url, Map.class);
+            if (resp == null) break;
+            Object values = resp.get("values");
+            if (!(values instanceof List)) break;
+            List<Map<String, Object>> batch = (List<Map<String, Object>>) values;
+            all.addAll(batch);
+            boolean isLast = Boolean.TRUE.equals(resp.get("isLast"));
+            startAt += batch.size();
+            if (isLast || batch.isEmpty()) break;
+        }
+        return all;
     }
 
     // ── Labels ────────────────────────────────────────────────────────

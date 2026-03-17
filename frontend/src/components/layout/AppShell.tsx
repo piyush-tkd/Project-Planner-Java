@@ -41,7 +41,6 @@ import {
   IconFileSpreadsheet,
   IconTableExport,
   IconTicket,
-  IconUsers,
   IconLogout,
   IconChevronDown,
 } from '@tabler/icons-react';
