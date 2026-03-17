@@ -164,7 +164,8 @@ public class JiraPodService {
                 if (sName != null && !sprintNames.contains(sName)) sprintNames.add(sName);
 
                 final String boardSpField = spFieldId; // effectively final for lambda
-                List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId, boardSpField);
+                final long   finalBoardId = boardId;
+                List<Map<String, Object>> issues = jiraClient.getSprintIssues(finalBoardId, sprintId, boardSpField);
 
                 for (Map<String, Object> issue : issues) {
                     try {
@@ -417,7 +418,7 @@ public class JiraPodService {
                     long sprintId = ((Number) sprint.get("id")).longValue();
                     double committed = 0, completed = 0;
 
-                    for (Map<String, Object> issue : jiraClient.getSprintIssues(sprintId, velSpField)) {
+                    for (Map<String, Object> issue : jiraClient.getSprintIssues(boardId, sprintId, velSpField)) {
                         Map<String, Object> fields = asMap(issue.getOrDefault("fields", Map.of()));
                         if (fields == null) fields = Map.of();
                         // Skip sub-tasks — their SP duplicates the parent's

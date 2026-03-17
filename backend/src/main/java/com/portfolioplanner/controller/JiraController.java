@@ -188,7 +188,7 @@ public class JiraController {
             List<Map<String, Object>> sampleIssues  = List.of();
             if (!activeSprints.isEmpty()) {
                 long sprintId = ((Number) activeSprints.get(0).get("id")).longValue();
-                List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId, spField);
+                List<Map<String, Object>> issues = jiraClient.getSprintIssues(boardId, sprintId, spField);
                 sampleIssues = issues.stream().limit(10).map(issue -> {
                     Map<String, Object> out = new java.util.LinkedHashMap<>();
                     out.put("key", issue.get("key"));

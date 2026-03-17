@@ -290,17 +290,19 @@ public class JiraClient {
     }
 
     /**
-     * Returns all issues in a sprint with fields needed for POD metrics.
-     * Uses the Agile sprint issues endpoint.
+     * Returns all issues in a sprint that match the board's filter — using the board-scoped
+     * endpoint so results exactly match what Jira's own sprint statistics show.
      *
+     * Uses: GET /rest/agile/1.0/board/{boardId}/sprint/{sprintId}/issue
+     * (not /sprint/{sprintId}/issue — that returns ALL issues regardless of board filter)
+     *
+     * @param boardId       the board whose filter should be applied
      * @param sprintId      the Jira sprint ID
-     * @param boardSpField  the board's configured estimation field (from getBoardConfiguration),
-     *                      e.g. "customfield_10062". Included in the fields request so SP values
-     *                      are returned. Pass null or empty to skip.
+     * @param boardSpField  the board's configured estimation field (e.g. "customfield_10062")
      */
     @SuppressWarnings("unchecked")
-    @Cacheable(value = "jira-sprint-issues", key = "#sprintId + '_' + #boardSpField")
-    public List<Map<String, Object>> getSprintIssues(long sprintId, String boardSpField) {
+    @Cacheable(value = "jira-sprint-issues", key = "#boardId + '_' + #sprintId + '_' + #boardSpField")
+    public List<Map<String, Object>> getSprintIssues(long boardId, long sprintId, String boardSpField) {
         // Always include the board-specific SP field plus common fallback variants
         String spFields = "customfield_10016,customfield_10028";
         if (boardSpField != null && !boardSpField.isBlank()
@@ -312,8 +314,10 @@ public class JiraClient {
         int startAt = 0;
         int pageSize = 100;
         while (true) {
+            // Board-scoped endpoint applies the board's saved filter automatically
             String url = UriComponentsBuilder
-                    .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/sprint/" + sprintId + "/issue")
+                    .fromHttpUrl(props.getBaseUrl()
+                            + "/rest/agile/1.0/board/" + boardId + "/sprint/" + sprintId + "/issue")
                     .queryParam("fields",
                             "summary,status,assignee,timespent,timeoriginalestimate,timeestimate," +
                             spFields + "," +
