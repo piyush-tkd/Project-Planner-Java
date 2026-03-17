@@ -231,6 +231,83 @@ public class JiraController {
         }
     }
 
+    /**
+     * SP audit — returns every issue in the active sprint with its key, type,
+     * subtask flag, status, SP value, and assignee.
+     * Use this to find exactly where inflated SP totals are coming from.
+     * Example: GET /api/jira/debug/board/15/sp-audit
+     */
+    @GetMapping("/debug/board/{boardId}/sp-audit")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> spAudit(@PathVariable long boardId) {
+        if (!props.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+        try {
+            Map<String, Object> boardConfig = jiraClient.getBoardConfiguration(boardId);
+            String spField = null;
+            Object est = boardConfig.get("estimation");
+            if (est instanceof Map) {
+                Object fieldObj = ((Map<?,?>) est).get("field");
+                if (fieldObj instanceof Map) spField = (String) ((Map<?,?>) fieldObj).get("fieldId");
+            }
+            if (spField == null) spField = "customfield_10016";
+
+            List<Map<String, Object>> activeSprints = jiraClient.getActiveSprints(boardId);
+            if (activeSprints.isEmpty()) return ResponseEntity.ok(Map.of("error", "No active sprint"));
+            long sprintId = ((Number) activeSprints.get(0).get("id")).longValue();
+
+            // Evict cache so we get fresh data
+            jiraClient.evictAllCaches();
+            List<Map<String, Object>> issues = jiraClient.getSprintIssues(boardId, sprintId, spField);
+
+            double totalSP = 0, subtaskSP = 0;
+            Map<String, Double> spByType = new java.util.LinkedHashMap<>();
+            List<Map<String, Object>> allIssues = new java.util.ArrayList<>();
+
+            for (Map<String, Object> issue : issues) {
+                Object fields = issue.get("fields");
+                if (!(fields instanceof Map)) continue;
+                Map<String, Object> f = (Map<String, Object>) fields;
+
+                Map<String, Object> it = f.get("issuetype") instanceof Map ? (Map<String,Object>)f.get("issuetype") : null;
+                String type = it != null ? String.valueOf(it.getOrDefault("name","?")) : "?";
+                boolean isSubtask = it != null && Boolean.TRUE.equals(it.get("subtask"));
+
+                Object spVal = f.get(spField);
+                double sp = spVal instanceof Number ? ((Number)spVal).doubleValue() : 0;
+
+                Map<String, Object> statusObj = f.get("status") instanceof Map ? (Map<String,Object>)f.get("status") : null;
+                String status = statusObj != null ? String.valueOf(statusObj.getOrDefault("name","?")) : "?";
+
+                Map<String, Object> assigneeObj = f.get("assignee") instanceof Map ? (Map<String,Object>)f.get("assignee") : null;
+                String assignee = assigneeObj != null ? String.valueOf(assigneeObj.getOrDefault("displayName","Unassigned")) : "Unassigned";
+
+                totalSP += sp;
+                if (isSubtask) subtaskSP += sp;
+                spByType.merge(type, sp, Double::sum);
+
+                Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("key", issue.get("key"));
+                row.put("type", type);
+                row.put("subtask", isSubtask);
+                row.put("sp", sp);
+                row.put("status", status);
+                row.put("assignee", assignee);
+                allIssues.add(row);
+            }
+
+            // Sort: issues with SP first
+            allIssues.sort((a, b) -> Double.compare((double)b.get("sp"), (double)a.get("sp")));
+
+            return ResponseEntity.ok(Map.of(
+                    "boardId", boardId, "sprintId", sprintId, "spField", spField,
+                    "totalIssues", issues.size(), "totalSP", totalSP, "subtaskSP", subtaskSP,
+                    "spByType", spByType, "issues", allIssues
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── DTOs ──────────────────────────────────────────────────────────
 
     public record SaveMappingRequest(
