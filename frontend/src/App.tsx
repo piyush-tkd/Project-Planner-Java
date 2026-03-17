@@ -22,6 +22,7 @@ import PodDetailPage from './pages/PodDetailPage';
 import ProjectPodMatrixPage from './pages/reports/ProjectPodMatrixPage';
 import ProjectGanttPage from './pages/reports/ProjectGanttPage';
 import PodCapacityPage from './pages/reports/PodCapacityPage';
+import JiraActualsPage from './pages/JiraActualsPage';
 import TimelineSimulatorPage from './pages/simulators/TimelineSimulatorPage';
 import ScenarioSimulatorPage from './pages/simulators/ScenarioSimulatorPage';
 import TimelineSettingsPage from './pages/settings/TimelineSettingsPage';
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/reports/project-pod-matrix" element={<ProjectPodMatrixPage />} />
           <Route path="/reports/gantt" element={<ProjectGanttPage />} />
           <Route path="/reports/pod-capacity" element={<PodCapacityPage />} />
+          <Route path="/jira-actuals" element={<JiraActualsPage />} />
           <Route path="/simulator/timeline" element={<TimelineSimulatorPage />} />
           <Route path="/simulator/scenario" element={<ScenarioSimulatorPage />} />
           <Route path="/settings/timeline" element={<TimelineSettingsPage />} />

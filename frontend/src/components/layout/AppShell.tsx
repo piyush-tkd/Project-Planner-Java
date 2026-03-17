@@ -40,6 +40,7 @@ import {
   IconMoon,
   IconFileSpreadsheet,
   IconTableExport,
+  IconTicket,
   IconLogout,
   IconChevronDown,
 } from '@tabler/icons-react';
@@ -87,6 +88,12 @@ const navGroups: NavGroup[] = [
       { label: 'Project-POD Matrix', path: '/reports/project-pod-matrix', icon: <IconHexagons size={17} /> },
       { label: 'Project Gantt',      path: '/reports/gantt',              icon: <IconCalendar size={17} /> },
       { label: 'POD Capacity',       path: '/reports/pod-capacity',       icon: <IconBuildingFactory size={17} /> },
+    ],
+  },
+  {
+    label: 'Integrations',
+    items: [
+      { label: 'Jira Actuals', path: '/jira-actuals', icon: <IconTicket size={17} /> },
     ],
   },
   {

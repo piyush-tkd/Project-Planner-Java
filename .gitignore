@@ -12,6 +12,8 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.properties
 
 # Build artefacts
 backend/target/
