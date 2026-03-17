@@ -148,138 +148,137 @@ public class JiraPodService {
                 if (sName != null && !sprintNames.contains(sName)) sprintNames.add(sName);
 
                 List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId);
-                totalIssues += issues.size();
 
                 for (Map<String, Object> issue : issues) {
-                    Map<String, Object> fields = (Map<String, Object>) issue.getOrDefault("fields", Map.of());
+                    try {
+                        Map<String, Object> fields = asMap(issue.get("fields"));
+                        if (fields == null) fields = Map.of();
 
-                    // ── Status ──────────────────────────────────────────
-                    Map<String, Object> statusObj = (Map<String, Object>) fields.get("status");
-                    Map<String, Object> statusCat = statusObj != null
-                            ? (Map<String, Object>) statusObj.get("statusCategory") : null;
-                    String statusKey  = statusCat != null ? nvl(str(statusCat, "key"), "") : "";
-                    String statusName = statusObj  != null ? nvl(str(statusObj,  "name"), "Unknown") : "Unknown";
-                    statusBreakdown.merge(statusName, 1, Integer::sum);
+                        // ── Status ──────────────────────────────────────────
+                        Map<String, Object> statusObj = asMap(fields.get("status"));
+                        Map<String, Object> statusCat = asMap(statusObj != null ? statusObj.get("statusCategory") : null);
+                        String statusKey  = statusCat != null ? nvl(str(statusCat, "key"), "") : "";
+                        String statusName = statusObj  != null ? nvl(str(statusObj,  "name"), "Unknown") : "Unknown";
+                        statusBreakdown.merge(statusName, 1, Integer::sum);
+                        totalIssues++;
 
-                    if      ("done".equalsIgnoreCase(statusKey))          doneIssues++;
-                    else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
-                    else                                                   todoIssues++;
+                        if      ("done".equalsIgnoreCase(statusKey))          doneIssues++;
+                        else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
+                        else                                                   todoIssues++;
 
-                    // ── Story points (classic=10016, next-gen=10028) ────
-                    Object sp = fields.get("customfield_10016");
-                    if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
-                    double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
-                    // Warn on issues with 0 SP — helps identify the correct SP custom field
-                    if (issueSP == 0) {
-                        String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
-                        List<String> spCandidates = fields.entrySet().stream()
-                                .filter(e -> e.getKey().startsWith("customfield_") && e.getValue() instanceof Number)
-                                .map(e -> e.getKey() + "=" + e.getValue())
-                                .collect(Collectors.toList());
-                        log.warn("SP=0 for {} [status={}] — numeric customfields: {}",
-                                issueKey, statusName, spCandidates.isEmpty() ? "none" : spCandidates);
-                    }
-                    totalSP += issueSP;
-                    if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
-
-                    // ── Time tracking ────────────────────────────────────
-                    Object ts      = fields.get("timespent");
-                    Object origEst = fields.get("timeoriginalestimate");
-                    Object remEst  = fields.get("timeestimate");
-                    double hrs  = ts      instanceof Number ? ((Number) ts).doubleValue()      / SECONDS_PER_HOUR : 0;
-                    double est  = origEst instanceof Number ? ((Number) origEst).doubleValue() / SECONDS_PER_HOUR : 0;
-                    double rem  = remEst  instanceof Number ? ((Number) remEst).doubleValue()  / SECONDS_PER_HOUR : 0;
-                    hoursLogged    += hrs;
-                    estimatedHours += est;
-                    if (!"done".equalsIgnoreCase(statusKey)) remainingHours += rem;
-
-                    // ── Assignee ─────────────────────────────────────────
-                    Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
-                    String member = assignee != null
-                            ? nvl((String) assignee.get("displayName"), "Unassigned") : "Unassigned";
-                    if (hrs     > 0)  hoursByMember.merge(member, hrs,           Double::sum);
-                    if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
-                    memberIssueCount.merge(member, 1, Integer::sum);
-
-                    // ── Issue type ────────────────────────────────────────
-                    Map<String, Object> issueType = (Map<String, Object>) fields.get("issuetype");
-                    String typeName = issueType != null ? nvl(str(issueType, "name"), "Unknown") : "Unknown";
-                    issueTypeBreakdown.merge(typeName, 1, Integer::sum);
-
-                    // ── Priority ──────────────────────────────────────────
-                    Map<String, Object> priorityObj = (Map<String, Object>) fields.get("priority");
-                    String priorityName = priorityObj != null ? nvl(str(priorityObj, "name"), "None") : "None";
-                    priorityBreakdown.merge(priorityName, 1, Integer::sum);
-
-                    // ── Labels ────────────────────────────────────────────
-                    Object labelsObj = fields.get("labels");
-                    if (labelsObj instanceof List) {
-                        for (Object lbl : (List<?>) labelsObj) {
-                            if (lbl instanceof String && !((String) lbl).isBlank())
-                                labelBreakdown.merge((String) lbl, 1, Integer::sum);
+                        // ── Story points (classic=10016, next-gen=10028) ────
+                        Object sp = fields.get("customfield_10016");
+                        if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
+                        double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
+                        // Warn on issues with 0 SP so we can identify the correct SP field
+                        if (issueSP == 0) {
+                            String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
+                            List<String> spCandidates = fields.entrySet().stream()
+                                    .filter(e -> e.getKey().startsWith("customfield_") && e.getValue() instanceof Number)
+                                    .map(e -> e.getKey() + "=" + e.getValue())
+                                    .collect(Collectors.toList());
+                            log.warn("SP=0 for {} [status={}] — numeric customfields: {}",
+                                    issueKey, statusName, spCandidates.isEmpty() ? "none" : spCandidates);
                         }
-                    }
+                        totalSP += issueSP;
+                        if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
 
-                    // ── Fix Versions / Releases ───────────────────────────
-                    Object fixVersionsObj = fields.get("fixVersions");
-                    if (fixVersionsObj instanceof List) {
-                        for (Object fv : (List<?>) fixVersionsObj) {
-                            if (fv instanceof Map) {
-                                String vName = str((Map<String, Object>) fv, "name");
-                                if (vName != null && !vName.isBlank())
-                                    releaseBreakdown.merge(vName, 1, Integer::sum);
+                        // ── Time tracking ────────────────────────────────────
+                        Object ts      = fields.get("timespent");
+                        Object origEst = fields.get("timeoriginalestimate");
+                        Object remEst  = fields.get("timeestimate");
+                        double hrs = ts      instanceof Number ? ((Number) ts).doubleValue()      / SECONDS_PER_HOUR : 0;
+                        double est = origEst instanceof Number ? ((Number) origEst).doubleValue() / SECONDS_PER_HOUR : 0;
+                        double rem = remEst  instanceof Number ? ((Number) remEst).doubleValue()  / SECONDS_PER_HOUR : 0;
+                        hoursLogged    += hrs;
+                        estimatedHours += est;
+                        if (!"done".equalsIgnoreCase(statusKey)) remainingHours += rem;
+
+                        // ── Assignee ─────────────────────────────────────────
+                        Map<String, Object> assignee = asMap(fields.get("assignee"));
+                        String member = assignee != null
+                                ? nvl(str(assignee, "displayName"), "Unassigned") : "Unassigned";
+                        if (hrs     > 0)  hoursByMember.merge(member, hrs,           Double::sum);
+                        if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
+                        memberIssueCount.merge(member, 1, Integer::sum);
+
+                        // ── Issue type ────────────────────────────────────────
+                        Map<String, Object> issueType = asMap(fields.get("issuetype"));
+                        String typeName = issueType != null ? nvl(str(issueType, "name"), "Unknown") : "Unknown";
+                        issueTypeBreakdown.merge(typeName, 1, Integer::sum);
+
+                        // ── Priority ──────────────────────────────────────────
+                        Map<String, Object> priorityObj = asMap(fields.get("priority"));
+                        String priorityName = priorityObj != null ? nvl(str(priorityObj, "name"), "None") : "None";
+                        priorityBreakdown.merge(priorityName, 1, Integer::sum);
+
+                        // ── Labels ────────────────────────────────────────────
+                        if (fields.get("labels") instanceof List) {
+                            for (Object lbl : (List<?>) fields.get("labels")) {
+                                if (lbl instanceof String && !((String) lbl).isBlank())
+                                    labelBreakdown.merge((String) lbl, 1, Integer::sum);
                             }
                         }
-                    }
 
-                    // ── Components ───────────────────────────────────────
-                    Object componentsObj = fields.get("components");
-                    if (componentsObj instanceof List) {
-                        for (Object comp : (List<?>) componentsObj) {
-                            if (comp instanceof Map) {
-                                String cName = str((Map<String, Object>) comp, "name");
-                                if (cName != null && !cName.isBlank())
-                                    componentBreakdown.merge(cName, 1, Integer::sum);
+                        // ── Fix Versions / Releases ───────────────────────────
+                        if (fields.get("fixVersions") instanceof List) {
+                            for (Object fv : (List<?>) fields.get("fixVersions")) {
+                                Map<String, Object> fvMap = asMap(fv);
+                                if (fvMap != null) {
+                                    String vName = str(fvMap, "name");
+                                    if (vName != null && !vName.isBlank())
+                                        releaseBreakdown.merge(vName, 1, Integer::sum);
+                                }
                             }
                         }
-                    }
 
-                    // ── Epic ──────────────────────────────────────────────
-                    // classic: customfield_10014 = epic key; next-gen: parent.fields.summary
-                    String epicName = null;
-                    Object epicLink = fields.get("customfield_10014");
-                    if (epicLink instanceof String && !((String) epicLink).isBlank()) {
-                        epicName = (String) epicLink;
-                    } else {
-                        Map<String, Object> parent = (Map<String, Object>) fields.get("parent");
-                        if (parent != null) {
-                            Map<String, Object> pf = (Map<String, Object>) parent.get("fields");
-                            if (pf != null) {
-                                Map<String, Object> pIssueType = (Map<String, Object>) pf.get("issuetype");
-                                String pType = pIssueType != null ? str(pIssueType, "name") : null;
-                                if ("Epic".equalsIgnoreCase(pType))
-                                    epicName = nvl(str(pf, "summary"), str(parent, "key"));
+                        // ── Components ────────────────────────────────────────
+                        if (fields.get("components") instanceof List) {
+                            for (Object comp : (List<?>) fields.get("components")) {
+                                Map<String, Object> compMap = asMap(comp);
+                                if (compMap != null) {
+                                    String cName = str(compMap, "name");
+                                    if (cName != null && !cName.isBlank())
+                                        componentBreakdown.merge(cName, 1, Integer::sum);
+                                }
                             }
                         }
-                    }
-                    if (epicName != null) epicBreakdown.merge(epicName, 1, Integer::sum);
 
-                    // ── Worklogs (inline, up to 20 per issue) ────────────
-                    // Powers per-day burndown and per-member daily charts.
-                    Map<String, Object> worklogWrapper = (Map<String, Object>) fields.get("worklog");
-                    if (worklogWrapper != null) {
-                        Object wlList = worklogWrapper.get("worklogs");
-                        if (wlList instanceof List) {
-                            for (Object wl : (List<?>) wlList) {
-                                if (!(wl instanceof Map)) continue;
-                                Map<String, Object> wlMap = (Map<String, Object>) wl;
-                                Map<String, Object> wlAuthor = (Map<String, Object>) wlMap.get("author");
+                        // ── Epic ──────────────────────────────────────────────
+                        // classic: customfield_10014 = epic key; next-gen: parent → issuetype=Epic
+                        String epicName = null;
+                        Object epicLink = fields.get("customfield_10014");
+                        if (epicLink instanceof String && !((String) epicLink).isBlank()) {
+                            epicName = (String) epicLink;
+                        } else {
+                            Map<String, Object> parent = asMap(fields.get("parent"));
+                            if (parent != null) {
+                                Map<String, Object> pf = asMap(parent.get("fields"));
+                                if (pf != null) {
+                                    Map<String, Object> pIssueType = asMap(pf.get("issuetype"));
+                                    String pType = pIssueType != null ? str(pIssueType, "name") : null;
+                                    if ("Epic".equalsIgnoreCase(pType))
+                                        epicName = nvl(str(pf, "summary"), str(parent, "key"));
+                                }
+                            }
+                        }
+                        if (epicName != null) epicBreakdown.merge(epicName, 1, Integer::sum);
+
+                        // ── Worklogs (inline, up to 20 per issue) ────────────
+                        Map<String, Object> worklogWrapper = asMap(fields.get("worklog"));
+                        if (worklogWrapper != null && worklogWrapper.get("worklogs") instanceof List) {
+                            for (Object wl : (List<?>) worklogWrapper.get("worklogs")) {
+                                Map<String, Object> wlMap = asMap(wl);
+                                if (wlMap == null) continue;
+                                Map<String, Object> wlAuthor = asMap(wlMap.get("author"));
                                 String wlMember = wlAuthor != null
-                                        ? nvl((String) wlAuthor.get("displayName"), "Unknown") : "Unknown";
+                                        ? nvl(str(wlAuthor, "displayName"), "Unknown") : "Unknown";
                                 Object wlSecs = wlMap.get("timeSpentSeconds");
                                 double wlHrs  = wlSecs instanceof Number
                                         ? ((Number) wlSecs).doubleValue() / SECONDS_PER_HOUR : 0;
-                                String started = (String) wlMap.get("started");
+                                // started may be a String like "2024-03-11T10:00:00.000+0000"
+                                Object startedObj = wlMap.get("started");
+                                String started = startedObj instanceof String ? (String) startedObj : null;
                                 if (started != null && started.length() >= 10 && wlHrs > 0) {
                                     String date = started.substring(0, 10); // yyyy-MM-dd
                                     dailyHoursLogged.merge(date, wlHrs, Double::sum);
@@ -289,21 +288,25 @@ public class JiraPodService {
                                 }
                             }
                         }
-                    }
 
-                    // ── Cycle time (done issues with resolution date) ─────
-                    if ("done".equalsIgnoreCase(statusKey)) {
-                        String created  = str(fields, "created");
-                        String resolved = str(fields, "resolutiondate");
-                        if (created != null && resolved != null) {
-                            try {
-                                long days = ChronoUnit.DAYS.between(
-                                        OffsetDateTime.parse(created),
-                                        OffsetDateTime.parse(resolved));
-                                cycleTimeSum += Math.max(0, days);
-                                cycleTimeCount++;
-                            } catch (Exception ignored) {}
+                        // ── Cycle time (done issues with resolution date) ─────
+                        if ("done".equalsIgnoreCase(statusKey)) {
+                            String created  = str(fields, "created");
+                            String resolved = str(fields, "resolutiondate");
+                            if (created != null && resolved != null) {
+                                try {
+                                    long days = ChronoUnit.DAYS.between(
+                                            OffsetDateTime.parse(created),
+                                            OffsetDateTime.parse(resolved));
+                                    cycleTimeSum += Math.max(0, days);
+                                    cycleTimeCount++;
+                                } catch (Exception ignored) {}
+                            }
                         }
+
+                    } catch (Exception e) {
+                        String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
+                        log.warn("Skipping issue {} due to parse error: {}", issueKey, e.getMessage());
                     }
                 }
 
@@ -419,10 +422,18 @@ public class JiraPodService {
     // ── Helpers ───────────────────────────────────────────────────────
 
     private static double round(double v) { return Math.round(v * 10.0) / 10.0; }
+
     private static String str(Map<String, Object> m, String key) {
         if (m == null) return null;
         Object v = m.get(key); return v instanceof String ? (String) v : null;
     }
+
+    /** Safe cast to Map — returns null instead of throwing ClassCastException. */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object o) {
+        return o instanceof Map ? (Map<String, Object>) o : null;
+    }
+
     private static String nvl(String s, String def) {
         return (s != null && !s.isBlank()) ? s : def;
     }
