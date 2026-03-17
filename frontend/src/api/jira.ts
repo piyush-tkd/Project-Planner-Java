@@ -210,6 +210,53 @@ export function useSaveMappingsBulk() {
   });
 }
 
+// ── POD Watchlist config types ─────────────────────────────────────────
+
+export interface PodWatchResponse {
+  id: number;
+  jiraProjectKey: string;
+  podDisplayName: string;
+  enabled: boolean;
+  sortOrder: number;
+}
+
+export interface PodWatchRequest {
+  jiraProjectKey: string;
+  podDisplayName: string;
+  enabled: boolean;
+}
+
+// ── POD Watchlist hooks ────────────────────────────────────────────────
+
+export function usePodWatchConfig() {
+  return useQuery<PodWatchResponse[]>({
+    queryKey: ['jira', 'pods', 'config'],
+    queryFn: () => apiClient.get('/jira/pods/config').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+export function useSavePodWatchConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reqs: PodWatchRequest[]) =>
+      apiClient.post('/jira/pods/config', reqs).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jira', 'pods', 'config'] });
+      qc.removeQueries({ queryKey: ['jira', 'pods'] });
+    },
+  });
+}
+
+export function usePodVelocity(projectKey: string, enabled: boolean) {
+  return useQuery<SprintVelocity[]>({
+    queryKey: ['jira', 'pods', projectKey, 'velocity'],
+    queryFn: () => apiClient.get(`/jira/pods/${projectKey}/velocity`).then(r => r.data),
+    enabled,
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
 export function useDeleteMapping() {
   const qc = useQueryClient();
   return useMutation({
