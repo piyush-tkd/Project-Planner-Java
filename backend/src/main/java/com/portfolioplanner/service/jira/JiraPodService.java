@@ -169,6 +169,16 @@ public class JiraPodService {
                     Object sp = fields.get("customfield_10016");
                     if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                     double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
+                    // Warn on issues with 0 SP — helps identify the correct SP custom field
+                    if (issueSP == 0) {
+                        String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
+                        List<String> spCandidates = fields.entrySet().stream()
+                                .filter(e -> e.getKey().startsWith("customfield_") && e.getValue() instanceof Number)
+                                .map(e -> e.getKey() + "=" + e.getValue())
+                                .collect(Collectors.toList());
+                        log.warn("SP=0 for {} [status={}] — numeric customfields: {}",
+                                issueKey, statusName, spCandidates.isEmpty() ? "none" : spCandidates);
+                    }
                     totalSP += issueSP;
                     if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
 
