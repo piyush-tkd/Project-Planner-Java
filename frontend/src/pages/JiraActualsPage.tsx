@@ -17,7 +17,8 @@ import {
 import {
   useJiraStatus, useJiraProjects, useJiraMappings, useJiraActuals,
   useSaveMapping, useSaveMappingsBulk, useDeleteMapping,
-  JiraProjectInfo, MappingResponse, ActualsRow,
+  usePodWatchConfig,
+  JiraProjectInfo, MappingResponse, ActualsRow, PodConfigResponse,
 } from '../api/jira';
 import { useProjects } from '../api/projects';
 import { ProjectResponse } from '../types/project';
@@ -37,6 +38,7 @@ export default function JiraActualsPage() {
   const { data: jiraProjects = [], isLoading: jiraLoading, refetch: refetchJira, error: jiraError } = useJiraProjects();
   const { data: mappings = [], refetch: refetchMappings } = useJiraMappings();
   const { data: actuals = [], isLoading: actualsLoading, refetch: refetchActuals } = useJiraActuals();
+  const { data: watchConfig = [] } = usePodWatchConfig();
 
   const saveMapping = useSaveMapping();
   const saveBulk = useSaveMappingsBulk();
@@ -140,6 +142,7 @@ export default function JiraActualsPage() {
             jiraError={jiraError}
             ppProjects={projects}
             mappings={mappings}
+            watchConfig={watchConfig}
             onSave={async (req) => {
               await saveMapping.mutateAsync(req);
               notifications.show({ message: 'Mapping saved', color: 'teal', icon: <IconCheck size={16} /> });
@@ -400,6 +403,7 @@ function MapperView({
   jiraError,
   ppProjects,
   mappings,
+  watchConfig,
   onSave,
   onDelete,
   onBulkSave,
@@ -410,6 +414,7 @@ function MapperView({
   jiraError: unknown;
   ppProjects: ProjectResponse[];
   mappings: MappingResponse[];
+  watchConfig: PodConfigResponse[];
   onSave: (req: any) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onBulkSave: (reqs: any[]) => Promise<void>;
@@ -422,6 +427,20 @@ function MapperView({
     matchType: 'EPIC_NAME',
     matchValue: '',
   });
+
+  // Board keys that belong to any configured POD — used to filter the Jira Space picker
+  const podBoardKeys = useMemo(() =>
+    new Set(watchConfig.flatMap(p => p.boardKeys)),
+    [watchConfig]
+  );
+
+  // Only show boards that are assigned to a POD; fall back to all if none configured
+  const pickerProjects = useMemo(() =>
+    podBoardKeys.size > 0
+      ? jiraProjects.filter(p => podBoardKeys.has(p.key))
+      : jiraProjects,
+    [jiraProjects, podBoardKeys]
+  );
 
   const selectedJiraProject = jiraProjects.find(p => p.key === form.jiraProjectKey);
   const matchOptions = useMemo(() => {
@@ -437,24 +456,38 @@ function MapperView({
     p => p.status === 'ACTIVE' && !mappings.some(m => m.ppProjectId === p.id)
   );
 
+  const enabledPods = watchConfig.filter(p => p.enabled && p.boardKeys.length > 0);
+
   return (
     <Stack gap="sm">
       {/* ── Toolbar ── */}
       <Group justify="space-between">
         <Group gap="xs" wrap="wrap">
-          {/* Jira spaces inline */}
-          {jiraLoading ? (
-            <Loader size="xs" />
-          ) : jiraError ? (
+          {/* POD badges — show configured PODs instead of raw Jira spaces */}
+          {jiraError ? (
             <Tooltip label={`${(jiraError as any)?.message} — test: /api/jira/test`}>
               <Badge color="red" leftSection={<IconAlertTriangle size={10} />}>
                 Jira unreachable
               </Badge>
             </Tooltip>
+          ) : enabledPods.length > 0 ? (
+            <>
+              <Text size="xs" c="dimmed" fw={600}>PODs:</Text>
+              {enabledPods.map(pod => (
+                <Tooltip
+                  key={pod.id}
+                  label={`Boards: ${pod.boardKeys.join(', ')}`}
+                >
+                  <Badge size="sm" variant="dot" color="blue">{pod.podDisplayName}</Badge>
+                </Tooltip>
+              ))}
+            </>
           ) : (
             <>
               <Text size="xs" c="dimmed" fw={600}>Jira spaces:</Text>
-              {jiraProjects.length === 0 ? (
+              {jiraLoading ? (
+                <Loader size="xs" />
+              ) : jiraProjects.length === 0 ? (
                 <Badge color="orange" size="sm">0 projects</Badge>
               ) : (
                 jiraProjects.map(jp => (
@@ -562,13 +595,23 @@ function MapperView({
             onChange={v => setForm(f => ({ ...f, ppProjectId: v ?? '' }))}
           />
           <Select
-            label="Jira Space"
-            placeholder="Pick a Jira project"
+            label={podBoardKeys.size > 0 ? 'Jira Board (from configured PODs)' : 'Jira Space'}
+            placeholder={
+              jiraLoading ? 'Loading boards…' :
+              pickerProjects.length === 0 ? 'No boards available — configure PODs in Settings' :
+              'Pick a board'
+            }
             required
             searchable
-            data={jiraProjects.map(p => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
+            data={pickerProjects.map(p => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
             value={form.jiraProjectKey}
             onChange={v => setForm(f => ({ ...f, jiraProjectKey: v ?? '', matchValue: '' }))}
+            disabled={jiraLoading && pickerProjects.length === 0}
+            description={
+              podBoardKeys.size > 0
+                ? `Showing ${pickerProjects.length} board(s) from your configured PODs`
+                : undefined
+            }
           />
           <SegmentedControl
             fullWidth

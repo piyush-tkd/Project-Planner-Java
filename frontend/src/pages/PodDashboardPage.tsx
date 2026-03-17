@@ -184,7 +184,7 @@ export default function PodDashboardPage() {
       {!isLoading && view === 'cards' && (
         <Grid gutter="md">
           {filtered.map((pod, idx) => (
-            <Grid.Col key={pod.jiraProjectKey} span={{ base: 12, sm: 6, lg: 4 }}>
+            <Grid.Col key={pod.podId ?? pod.podDisplayName} span={{ base: 12, sm: 6, lg: 4 }}>
               <PodCard pod={pod} color={POD_COLORS[idx % POD_COLORS.length]} />
             </Grid.Col>
           ))}

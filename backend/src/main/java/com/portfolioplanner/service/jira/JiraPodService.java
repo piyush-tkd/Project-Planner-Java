@@ -159,7 +159,7 @@ public class JiraPodService {
             String combinedName = sprintNames.isEmpty() ? "Active Sprint"
                     : sprintNames.size() == 1           ? sprintNames.get(0)
                     : sprintNames.get(0) + " (+" + (sprintNames.size() - 1) + " more)";
-            activeSprint = new SprintInfo(firstSprintId, combinedName, "active",
+            activeSprint = SprintInfo.of(firstSprintId, combinedName, "active",
                     startDate, endDate,
                     totalIssues, doneIssues, inProgress,
                     round(totalSP), round(doneSP), round(hoursLogged));
@@ -274,10 +274,21 @@ public class JiraPodService {
             int id, String name, String state,
             String startDate, String endDate,
             int totalIssues, int doneIssues, int inProgressIssues,
-            double totalSP, double doneSP, double hoursLogged) {
+            double totalSP, double doneSP, double hoursLogged,
+            // Pre-computed so Jackson serializes them as JSON fields
+            double progressPct, double spProgressPct) {
 
-        public double progressPct()   { return totalIssues == 0 ? 0 : round(doneIssues * 100.0 / totalIssues); }
-        public double spProgressPct() { return totalSP     == 0 ? 0 : round(doneSP     * 100.0 / totalSP); }
+        /** Factory — computes the two percentage fields automatically. */
+        static SprintInfo of(int id, String name, String state,
+                             String startDate, String endDate,
+                             int totalIssues, int doneIssues, int inProgressIssues,
+                             double totalSP, double doneSP, double hoursLogged) {
+            double pct   = totalIssues == 0 ? 0 : round(doneIssues  * 100.0 / totalIssues);
+            double spPct = totalSP     == 0 ? 0 : round(doneSP      * 100.0 / totalSP);
+            return new SprintInfo(id, name, state, startDate, endDate,
+                    totalIssues, doneIssues, inProgressIssues,
+                    totalSP, doneSP, hoursLogged, pct, spPct);
+        }
     }
 
     public record SprintVelocity(String sprintName, double committedSP, double completedSP) {}
