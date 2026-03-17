@@ -66,8 +66,9 @@ public class JiraActualsService {
                 epics = jiraClient.getEpics(key).stream()
                         .map(e -> new EpicInfo(
                                 str(e, "key"),
-                                fieldStr(e, "summary"),
-                                fieldStr(e, "status", "name")))
+                                epicName(e),   // handles Agile vs REST format
+                                epicStatus(e)))
+                        .filter(ei -> ei.name() != null && !ei.name().isBlank())
                         .collect(Collectors.toList());
                 log.info("  Project {}: {} epics", key, epics.size());
             } catch (Exception e) {
@@ -279,6 +280,37 @@ public class JiraActualsService {
         if (name == null || name.isBlank()) return 0.0;
         // Penalise very short or very generic names
         return Math.min(1.0, name.length() / 30.0);
+    }
+
+    // ── Epic field helpers ────────────────────────────────────────────
+
+    /**
+     * Extracts the epic display name from either:
+     *  - Agile board /epic response: top-level "name" or "summary"
+     *  - REST API v3 search: fields.summary
+     * The Agile endpoint's "name" is the short epic colour name; "summary" is the
+     * full issue title. We prefer "summary" as it matches what users type in Jira.
+     */
+    private static String epicName(Map<String, Object> epic) {
+        // 1. Agile board response: try top-level "summary" first, then "name"
+        String summary = str(epic, "summary");
+        if (summary != null && !summary.isBlank()) return summary;
+
+        String name = str(epic, "name");
+        if (name != null && !name.isBlank()) return name;
+
+        // 2. REST API v3 response: fields.summary
+        return fieldStr(epic, "summary");
+    }
+
+    private static String epicStatus(Map<String, Object> epic) {
+        // Agile board response: "done" boolean → synthesise a status string
+        Object done = epic.get("done");
+        if (done instanceof Boolean) {
+            return Boolean.TRUE.equals(done) ? "Done" : "In Progress";
+        }
+        // REST API v3: fields.status.name
+        return fieldStr(epic, "status", "name");
     }
 
     // ── Value helpers ─────────────────────────────────────────────────

@@ -423,42 +423,70 @@ function MapperView({
     matchValue: '',
   });
 
-  // Derived: epics/labels for selected Jira project
   const selectedJiraProject = jiraProjects.find(p => p.key === form.jiraProjectKey);
   const matchOptions = useMemo(() => {
     if (!selectedJiraProject) return [];
-    if (form.matchType === 'EPIC_NAME') {
+    if (form.matchType === 'EPIC_NAME')
       return selectedJiraProject.epics.map(e => ({ value: e.name, label: `${e.name} (${e.key})` }));
-    }
-    if (form.matchType === 'LABEL') {
+    if (form.matchType === 'LABEL')
       return selectedJiraProject.labels.map(l => ({ value: l, label: l }));
-    }
     return [];
   }, [selectedJiraProject, form.matchType]);
 
-  const mappingIds = new Set(mappings.map(m => `${m.ppProjectId}:${m.jiraProjectKey}`));
+  const unmappedProjects = ppProjects.filter(
+    p => p.status === 'ACTIVE' && !mappings.some(m => m.ppProjectId === p.id)
+  );
 
   return (
-    <Stack gap="md">
-      {/* Header row */}
+    <Stack gap="sm">
+      {/* ── Toolbar ── */}
       <Group justify="space-between">
-        <Text size="sm" c="dimmed">
-          Link each Portfolio Planner project to a Jira project + epic or label.
-          Issues under that epic/label will count as actuals for that project.
-        </Text>
+        <Group gap="xs" wrap="wrap">
+          {/* Jira spaces inline */}
+          {jiraLoading ? (
+            <Loader size="xs" />
+          ) : jiraError ? (
+            <Tooltip label={`${(jiraError as any)?.message} — test: /api/jira/test`}>
+              <Badge color="red" leftSection={<IconAlertTriangle size={10} />}>
+                Jira unreachable
+              </Badge>
+            </Tooltip>
+          ) : (
+            <>
+              <Text size="xs" c="dimmed" fw={600}>Jira spaces:</Text>
+              {jiraProjects.length === 0 ? (
+                <Badge color="orange" size="sm">0 projects</Badge>
+              ) : (
+                jiraProjects.map(jp => (
+                  <Tooltip key={jp.key} label={`${jp.name} · ${jp.epics.length} epics`}>
+                    <Badge size="sm" variant="dot" color="blue">{jp.key}</Badge>
+                  </Tooltip>
+                ))
+              )}
+            </>
+          )}
+        </Group>
         <Group gap="xs">
-          <Button
-            size="xs"
-            variant="light"
-            leftSection={<IconRefresh size={14} />}
+          {unmappedProjects.length > 0 && (
+            <Tooltip label={`Unmapped: ${unmappedProjects.map(p => p.name).join(', ')}`}>
+              <Badge color="orange" size="sm" variant="light"
+                leftSection={<IconInfoCircle size={11} />}>
+                {unmappedProjects.length} unmapped
+              </Badge>
+            </Tooltip>
+          )}
+          <ActionIcon
+            variant="subtle"
+            size="sm"
             loading={jiraLoading}
             onClick={onRefreshJira}
+            title="Refresh Jira projects & epics"
           >
-            Refresh Jira
-          </Button>
+            <IconRefresh size={15} />
+          </ActionIcon>
           <Button
             size="xs"
-            leftSection={<IconPlus size={14} />}
+            leftSection={<IconPlus size={13} />}
             style={{ backgroundColor: DEEP_BLUE }}
             onClick={() => setAddModal(true)}
           >
@@ -467,87 +495,45 @@ function MapperView({
         </Group>
       </Group>
 
-      {/* Jira projects overview */}
-      {jiraLoading ? (
-        <Loader size="sm" />
-      ) : jiraError ? (
-        <Alert icon={<IconAlertTriangle />} color="red" title="Failed to load Jira projects">
-          <Text size="sm">{(jiraError as any)?.message ?? String(jiraError)}</Text>
-          <Text size="xs" c="dimmed" mt={4}>
-            Check backend logs, or open{' '}
-            <code>http://localhost:8080/api/jira/test</code> in your browser to diagnose.
-          </Text>
-        </Alert>
-      ) : jiraProjects.length === 0 ? (
-        <Alert icon={<IconInfoCircle />} color="orange" title="No Jira projects returned">
-          <Text size="sm">
-            The API returned 0 projects. Possible causes:
-            <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
-              <li>API token doesn't have project access</li>
-              <li>Wrong <code>base-url</code> in <code>application-local.yml</code></li>
-              <li>Authentication is failing — check backend logs or hit{' '}
-                <code>http://localhost:8080/api/jira/test</code></li>
-            </ul>
-          </Text>
-        </Alert>
-      ) : (
-        <Group gap="xs" mb="xs">
-          {jiraProjects.map(jp => (
-            <Badge
-              key={jp.key}
-              variant="outline"
-              leftSection={<IconTicket size={11} />}
-            >
-              {jp.key} — {jp.name} ({jp.epics.length} epics)
-            </Badge>
-          ))}
-        </Group>
-      )}
-
-      <Divider />
-
-      {/* Mappings table */}
-      <Paper withBorder radius="md">
-        <Table>
-          <Table.Thead style={{ backgroundColor: '#f8fafb' }}>
+      {/* ── Mappings table ── */}
+      <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        <Table striped highlightOnHover verticalSpacing={6}>
+          <Table.Thead style={{ backgroundColor: DEEP_BLUE }}>
             <Table.Tr>
-              <Table.Th>Portfolio Planner Project</Table.Th>
-              <Table.Th>Jira Project</Table.Th>
-              <Table.Th>Match Type</Table.Th>
-              <Table.Th>Match Value</Table.Th>
-              <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
+              <Table.Th style={{ color: 'white', fontSize: 12 }}>PP Project</Table.Th>
+              <Table.Th style={{ color: 'white', fontSize: 12 }}>Jira Space</Table.Th>
+              <Table.Th style={{ color: 'white', fontSize: 12 }}>Type</Table.Th>
+              <Table.Th style={{ color: 'white', fontSize: 12 }}>Match Value</Table.Th>
+              <Table.Th style={{ color: 'white', fontSize: 12, width: 40 }} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {mappings.length === 0 && (
+            {mappings.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={5} style={{ textAlign: 'center', color: '#999', padding: 24 }}>
-                  No mappings yet — click "Add Mapping" to get started
+                <Table.Td colSpan={5}
+                  style={{ textAlign: 'center', color: '#aaa', padding: '20px', fontSize: 13 }}>
+                  No mappings yet — click <strong>Add Mapping</strong> to link a project
                 </Table.Td>
               </Table.Tr>
-            )}
-            {mappings.map(m => (
+            ) : mappings.map(m => (
               <Table.Tr key={m.id}>
-                <Table.Td fw={500}>{m.ppProjectName}</Table.Td>
                 <Table.Td>
-                  <Badge size="sm" variant="outline" color="blue">{m.jiraProjectKey}</Badge>
+                  <Text size="sm" fw={500}>{m.ppProjectName}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Badge size="sm" color={m.matchType === 'EPIC_NAME' ? 'indigo' : 'violet'}>
-                    {m.matchType?.replace('_', ' ')}
+                  <Badge size="xs" variant="outline" color="blue">{m.jiraProjectKey}</Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Badge size="xs" color={m.matchType === 'EPIC_NAME' ? 'indigo' : m.matchType === 'LABEL' ? 'violet' : 'gray'}>
+                    {m.matchType?.replace(/_/g, ' ')}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm" truncate maw={200}>{m.matchValue}</Text>
+                  <Text size="xs" c="dimmed" truncate maw={220}>{m.matchValue}</Text>
                 </Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>
-                  <ActionIcon
-                    color="red"
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => onDelete(m.id)}
-                  >
-                    <IconTrash size={14} />
+                <Table.Td>
+                  <ActionIcon color="red" variant="subtle" size="xs" onClick={() => onDelete(m.id)}>
+                    <IconTrash size={13} />
                   </ActionIcon>
                 </Table.Td>
               </Table.Tr>
@@ -556,33 +542,19 @@ function MapperView({
         </Table>
       </Paper>
 
-      {/* PP projects with no mapping */}
-      {ppProjects.filter(p =>
-        p.status === 'ACTIVE' &&
-        !mappings.some(m => m.ppProjectId === p.id)
-      ).length > 0 && (
-        <Alert icon={<IconInfoCircle />} color="blue" title="Projects without Jira mappings">
-          <Text size="sm">
-            {ppProjects
-              .filter(p => p.status === 'ACTIVE' && !mappings.some(m => m.ppProjectId === p.id))
-              .map(p => p.name)
-              .join(', ')}
-          </Text>
-        </Alert>
-      )}
-
-      {/* Add mapping modal */}
+      {/* ── Add Mapping Modal ── */}
       <Modal
         opened={addModal}
         onClose={() => setAddModal(false)}
-        title="Add Jira Mapping"
+        title={<Text fw={700} style={{ color: DEEP_BLUE }}>Add Jira Mapping</Text>}
         size="md"
       >
         <Stack gap="sm">
           <Select
             label="Portfolio Planner Project"
-            placeholder="Select project"
+            placeholder="Pick a project"
             required
+            searchable
             data={ppProjects
               .filter(p => p.status === 'ACTIVE')
               .map(p => ({ value: String(p.id), label: p.name }))}
@@ -590,9 +562,10 @@ function MapperView({
             onChange={v => setForm(f => ({ ...f, ppProjectId: v ?? '' }))}
           />
           <Select
-            label="Jira Project"
-            placeholder="Select Jira project"
+            label="Jira Space"
+            placeholder="Pick a Jira project"
             required
+            searchable
             data={jiraProjects.map(p => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
             value={form.jiraProjectKey}
             onChange={v => setForm(f => ({ ...f, jiraProjectKey: v ?? '', matchValue: '' }))}
@@ -605,29 +578,38 @@ function MapperView({
             data={[
               { label: 'Epic Name', value: 'EPIC_NAME' },
               { label: 'Label', value: 'LABEL' },
-              { label: 'Project Name', value: 'PROJECT_NAME' },
+              { label: 'Whole Project', value: 'PROJECT_NAME' },
             ]}
           />
-          {form.matchType !== 'PROJECT_NAME' ? (
+          {form.matchType === 'PROJECT_NAME' ? (
+            <Text size="xs" c="dimmed" ta="center">
+              All issues in the Jira project will count for this PP project.
+            </Text>
+          ) : (
             <Select
               label={form.matchType === 'EPIC_NAME' ? 'Epic' : 'Label'}
-              placeholder={`Select ${form.matchType === 'EPIC_NAME' ? 'epic' : 'label'}`}
+              placeholder={
+                !form.jiraProjectKey ? 'Select a Jira space first' :
+                matchOptions.length === 0 ? `No ${form.matchType === 'EPIC_NAME' ? 'epics' : 'labels'} found` :
+                `Select ${form.matchType === 'EPIC_NAME' ? 'epic' : 'label'}`
+              }
               required
+              searchable
+              nothingFoundMessage={
+                jiraLoading ? 'Loading…' :
+                !form.jiraProjectKey ? 'Select a Jira space first' :
+                `No ${form.matchType === 'EPIC_NAME' ? 'epics' : 'labels'} found — try "Whole Project"`
+              }
               data={matchOptions}
               value={form.matchValue}
               onChange={v => setForm(f => ({ ...f, matchValue: v ?? '' }))}
               disabled={!form.jiraProjectKey}
-              searchable
             />
-          ) : (
-            <Alert color="gray" icon={<IconInfoCircle />}>
-              All issues in the Jira project will be counted for this PP project.
-            </Alert>
           )}
           <Button
             fullWidth
             style={{ backgroundColor: DEEP_BLUE }}
-            mt="sm"
+            mt={4}
             disabled={!form.ppProjectId || !form.jiraProjectKey ||
               (form.matchType !== 'PROJECT_NAME' && !form.matchValue)}
             onClick={async () => {
@@ -635,9 +617,7 @@ function MapperView({
                 ppProjectId: Number(form.ppProjectId),
                 jiraProjectKey: form.jiraProjectKey,
                 matchType: form.matchType,
-                matchValue: form.matchType === 'PROJECT_NAME'
-                  ? form.jiraProjectKey
-                  : form.matchValue,
+                matchValue: form.matchType === 'PROJECT_NAME' ? form.jiraProjectKey : form.matchValue,
               });
               setAddModal(false);
               setForm({ ppProjectId: '', jiraProjectKey: '', matchType: 'EPIC_NAME', matchValue: '' });

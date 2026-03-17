@@ -99,20 +99,48 @@ export interface PodMetrics {
   errorMessage: string | null;
 }
 
+// ── Shared query options for expensive Jira calls ──────────────────────
+//
+// These calls hit the live Jira API and can be slow.
+// - staleTime: 30 min  → cached data is considered fresh for 30 min
+// - refetchOnMount: false   → don't re-fetch when re-navigating to the page
+// - refetchOnWindowFocus: false  → don't re-fetch when switching tabs
+// - refetchOnReconnect: false    → don't re-fetch on network reconnect
+// Users trigger a refresh explicitly via the "Sync" / "Refresh" button.
+
+const JIRA_LIVE_OPTS = {
+  staleTime: 30 * 60 * 1000,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+} as const;
+
+// Lighter option for cheap DB-backed endpoints (mappings list, status)
+const JIRA_CHEAP_OPTS = {
+  staleTime: 2 * 60 * 1000,
+  refetchOnWindowFocus: false,
+} as const;
+
 // ── Hooks ──────────────────────────────────────────────────────────────
 
 export function useJiraStatus() {
   return useQuery<JiraStatus>({
     queryKey: ['jira', 'status'],
     queryFn: () => apiClient.get('/jira/status').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
   });
 }
 
+/**
+ * Loads Jira projects + epics/labels for the mapper.
+ * Expensive: makes N API calls for N projects. Cached for 30 min.
+ * Only refreshes when user clicks "Refresh Jira".
+ */
 export function useJiraProjects() {
   return useQuery<JiraProjectInfo[]>({
     queryKey: ['jira', 'projects'],
     queryFn: () => apiClient.get('/jira/projects').then(r => r.data),
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    ...JIRA_LIVE_OPTS,
   });
 }
 
@@ -120,22 +148,40 @@ export function useJiraSuggestions() {
   return useQuery<MappingSuggestion[]>({
     queryKey: ['jira', 'suggestions'],
     queryFn: () => apiClient.get('/jira/suggestions').then(r => r.data),
-    staleTime: 5 * 60 * 1000,
+    ...JIRA_LIVE_OPTS,
   });
 }
 
+/** Cheap — just reads the DB mapping table. */
 export function useJiraMappings() {
   return useQuery<MappingResponse[]>({
     queryKey: ['jira', 'mappings'],
     queryFn: () => apiClient.get('/jira/mappings').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
   });
 }
 
+/**
+ * Fetches actuals from Jira for each mapped project.
+ * Expensive. Only refreshes when user clicks "Sync".
+ */
 export function useJiraActuals() {
   return useQuery<ActualsRow[]>({
     queryKey: ['jira', 'actuals'],
     queryFn: () => apiClient.get('/jira/actuals').then(r => r.data),
-    staleTime: 2 * 60 * 1000,
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+/**
+ * Fetches sprint/velocity metrics for every Jira project (POD dashboard).
+ * Very expensive — hits Agile API for all projects. Cached 30 min.
+ */
+export function useJiraPods() {
+  return useQuery<PodMetrics[]>({
+    queryKey: ['jira', 'pods'],
+    queryFn: () => apiClient.get('/jira/pods').then(r => r.data),
+    ...JIRA_LIVE_OPTS,
   });
 }
 
@@ -146,7 +192,8 @@ export function useSaveMapping() {
       apiClient.post('/jira/mappings', req).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jira', 'mappings'] });
-      qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
+      // Actuals are now stale after a mapping change — clear so next Sync re-fetches
+      qc.removeQueries({ queryKey: ['jira', 'actuals'] });
     },
   });
 }
@@ -158,16 +205,8 @@ export function useSaveMappingsBulk() {
       apiClient.post('/jira/mappings/bulk', reqs).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jira', 'mappings'] });
-      qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
+      qc.removeQueries({ queryKey: ['jira', 'actuals'] });
     },
-  });
-}
-
-export function useJiraPods() {
-  return useQuery<PodMetrics[]>({
-    queryKey: ['jira', 'pods'],
-    queryFn: () => apiClient.get('/jira/pods').then(r => r.data),
-    staleTime: 3 * 60 * 1000,
   });
 }
 
@@ -178,7 +217,7 @@ export function useDeleteMapping() {
       apiClient.delete(`/jira/mappings/${id}`).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jira', 'mappings'] });
-      qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
+      qc.removeQueries({ queryKey: ['jira', 'actuals'] });
     },
   });
 }
