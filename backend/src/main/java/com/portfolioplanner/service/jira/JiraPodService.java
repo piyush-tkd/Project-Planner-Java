@@ -183,21 +183,20 @@ public class JiraPodService {
                         else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
                         else                                                   todoIssues++;
 
-                        // ── Story points — use board-configured field first, then fallbacks ──
+                        // ── Issue type — track breakdown and detect sub-tasks ─
+                        Map<String, Object> issueType = asMap(fields.get("issuetype"));
+                        String typeName  = issueType != null ? nvl(str(issueType, "name"), "Unknown") : "Unknown";
+                        boolean isSubTask = issueType != null && Boolean.TRUE.equals(issueType.get("subtask"));
+                        issueTypeBreakdown.merge(typeName, 1, Integer::sum);
+
+                        // ── Story points ──────────────────────────────────────
+                        // Exclude sub-tasks: their SP is already counted on the parent story.
+                        // This matches Jira's own board sprint statistics behaviour.
                         Object sp = fields.get(boardSpField);
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
-                        double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
-                        if (issueSP == 0) {
-                            String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : "?";
-                            List<String> spCandidates = fields.entrySet().stream()
-                                    .filter(e -> e.getKey().startsWith("customfield_") && e.getValue() instanceof Number)
-                                    .map(e -> e.getKey() + "=" + e.getValue())
-                                    .collect(Collectors.toList());
-                            log.warn("SP=0 for {} [status={}, spField={}] — numeric customfields: {}",
-                                    issueKey, statusName, boardSpField,
-                                    spCandidates.isEmpty() ? "none" : spCandidates);
-                        }
+                        double issueSP = (!isSubTask && sp instanceof Number)
+                                ? ((Number) sp).doubleValue() : 0;
                         totalSP += issueSP;
                         if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
 
@@ -219,11 +218,6 @@ public class JiraPodService {
                         if (hrs     > 0)  hoursByMember.merge(member, hrs,           Double::sum);
                         if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
                         memberIssueCount.merge(member, 1, Integer::sum);
-
-                        // ── Issue type ────────────────────────────────────────
-                        Map<String, Object> issueType = asMap(fields.get("issuetype"));
-                        String typeName = issueType != null ? nvl(str(issueType, "name"), "Unknown") : "Unknown";
-                        issueTypeBreakdown.merge(typeName, 1, Integer::sum);
 
                         // ── Priority ──────────────────────────────────────────
                         Map<String, Object> priorityObj = asMap(fields.get("priority"));
@@ -426,6 +420,9 @@ public class JiraPodService {
                     for (Map<String, Object> issue : jiraClient.getSprintIssues(sprintId, velSpField)) {
                         Map<String, Object> fields = asMap(issue.getOrDefault("fields", Map.of()));
                         if (fields == null) fields = Map.of();
+                        // Skip sub-tasks — their SP duplicates the parent's
+                        Map<String, Object> vIssueType = asMap(fields.get("issuetype"));
+                        if (vIssueType != null && Boolean.TRUE.equals(vIssueType.get("subtask"))) continue;
                         Object sp = fields.get(velSpField);
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
