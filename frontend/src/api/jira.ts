@@ -79,9 +79,10 @@ export interface SprintInfo {
   // Story points
   totalSP: number;
   doneSP: number;
-  // Time
+  // Time (hours)
   hoursLogged: number;
   estimatedHours: number;
+  remainingHours: number;
   // Pre-computed percentages
   progressPct: number;
   spProgressPct: number;
@@ -111,10 +112,16 @@ export interface PodMetrics {
   issueTypeBreakdown: Record<string, number>;   // e.g. { Bug: 5, Story: 10, Task: 3 }
   priorityBreakdown: Record<string, number>;    // e.g. { High: 4, Medium: 8, Low: 2 }
   statusBreakdown: Record<string, number>;      // e.g. { "To Do": 2, "In Progress": 8, Done: 10 }
-  labelBreakdown: Record<string, number>;       // e.g. { "frontend": 5, "api": 3 }
+  labelBreakdown: Record<string, number>;       // e.g. { frontend: 5, api: 3 }
   epicBreakdown: Record<string, number>;        // e.g. { "Auth Epic": 4, "Dashboard": 6 }
+  releaseBreakdown: Record<string, number>;     // e.g. { "v2.1.0": 8, "v2.2.0": 3 }
+  componentBreakdown: Record<string, number>;   // e.g. { Frontend: 6, Backend: 5, API: 4 }
+  // Time-series for burndown / activity charts
+  dailyHoursLogged: Record<string, number>;                  // date (yyyy-MM-dd) → hours
+  memberDailyHours: Record<string, Record<string, number>>;  // member → date → hours
   // Estimates & cycle time
   totalEstimatedHours: number;
+  totalRemainingHours: number;
   avgCycleTimeDays: number;
   errorMessage: string | null;
 }

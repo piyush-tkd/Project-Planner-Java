@@ -303,10 +303,11 @@ public class JiraClient {
             String url = UriComponentsBuilder
                     .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/sprint/" + sprintId + "/issue")
                     .queryParam("fields",
-                            "summary,status,assignee,timespent,timeoriginalestimate," +
+                            "summary,status,assignee,timespent,timeoriginalestimate,timeestimate," +
                             "customfield_10016,customfield_10028,story_points," +
                             "issuetype,priority,labels,created,resolutiondate," +
-                            "customfield_10014,parent")
+                            "customfield_10014,parent," +
+                            "fixVersions,components,worklog")
                     .queryParam("maxResults", pageSize)
                     .queryParam("startAt", startAt)
                     .toUriString();

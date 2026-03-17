@@ -81,22 +81,32 @@ public class JiraPodService {
 
         if (boardKeys.isEmpty()) return PodMetrics.noBoards(pod.getId(), pod.getPodDisplayName());
 
-        // ── Sprint aggregates ─────────────────────────────────────────
+        // ── Sprint-level aggregates ───────────────────────────────────
         int    totalIssues = 0, doneIssues = 0, inProgress = 0, todoIssues = 0;
-        double totalSP = 0, doneSP = 0, hoursLogged = 0, estimatedHours = 0;
+        double totalSP = 0, doneSP = 0, hoursLogged = 0, estimatedHours = 0, remainingHours = 0;
 
-        // ── Breakdowns ────────────────────────────────────────────────
+        // ── Team breakdowns ───────────────────────────────────────────
         Map<String, Double>  hoursByMember    = new LinkedHashMap<>();
         Map<String, Integer> spByMember       = new LinkedHashMap<>();
         Map<String, Integer> memberIssueCount = new LinkedHashMap<>();
+
+        // ── Issue breakdowns ──────────────────────────────────────────
         Map<String, Integer> issueTypeBreakdown  = new LinkedHashMap<>();
         Map<String, Integer> priorityBreakdown   = new LinkedHashMap<>();
         Map<String, Integer> statusBreakdown     = new LinkedHashMap<>();
         Map<String, Integer> labelBreakdown      = new LinkedHashMap<>();
         Map<String, Integer> epicBreakdown       = new LinkedHashMap<>();
+        Map<String, Integer> releaseBreakdown    = new LinkedHashMap<>();
+        Map<String, Integer> componentBreakdown  = new LinkedHashMap<>();
 
-        // ── Cycle time (done issues only) ─────────────────────────────
-        long cycleTimeSum = 0;
+        // ── Worklog time-series (for burndown charts) ─────────────────
+        // date (yyyy-MM-dd) → total hours logged that day
+        Map<String, Double>              dailyHoursLogged = new TreeMap<>();
+        // member → date → hours (per-person burndown)
+        Map<String, Map<String, Double>> memberDailyHours = new LinkedHashMap<>();
+
+        // ── Cycle time ────────────────────────────────────────────────
+        long cycleTimeSum   = 0;
         int  cycleTimeCount = 0;
 
         // ── Board / sprint metadata ───────────────────────────────────
@@ -165,16 +175,19 @@ public class JiraPodService {
                     // ── Time tracking ────────────────────────────────────
                     Object ts      = fields.get("timespent");
                     Object origEst = fields.get("timeoriginalestimate");
+                    Object remEst  = fields.get("timeestimate");
                     double hrs  = ts      instanceof Number ? ((Number) ts).doubleValue()      / SECONDS_PER_HOUR : 0;
                     double est  = origEst instanceof Number ? ((Number) origEst).doubleValue() / SECONDS_PER_HOUR : 0;
+                    double rem  = remEst  instanceof Number ? ((Number) remEst).doubleValue()  / SECONDS_PER_HOUR : 0;
                     hoursLogged    += hrs;
                     estimatedHours += est;
+                    if (!"done".equalsIgnoreCase(statusKey)) remainingHours += rem;
 
                     // ── Assignee ─────────────────────────────────────────
                     Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
                     String member = assignee != null
                             ? nvl((String) assignee.get("displayName"), "Unassigned") : "Unassigned";
-                    if (hrs     > 0)  hoursByMember.merge(member, hrs,         Double::sum);
+                    if (hrs     > 0)  hoursByMember.merge(member, hrs,           Double::sum);
                     if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
                     memberIssueCount.merge(member, 1, Integer::sum);
 
@@ -197,6 +210,30 @@ public class JiraPodService {
                         }
                     }
 
+                    // ── Fix Versions / Releases ───────────────────────────
+                    Object fixVersionsObj = fields.get("fixVersions");
+                    if (fixVersionsObj instanceof List) {
+                        for (Object fv : (List<?>) fixVersionsObj) {
+                            if (fv instanceof Map) {
+                                String vName = str((Map<String, Object>) fv, "name");
+                                if (vName != null && !vName.isBlank())
+                                    releaseBreakdown.merge(vName, 1, Integer::sum);
+                            }
+                        }
+                    }
+
+                    // ── Components ───────────────────────────────────────
+                    Object componentsObj = fields.get("components");
+                    if (componentsObj instanceof List) {
+                        for (Object comp : (List<?>) componentsObj) {
+                            if (comp instanceof Map) {
+                                String cName = str((Map<String, Object>) comp, "name");
+                                if (cName != null && !cName.isBlank())
+                                    componentBreakdown.merge(cName, 1, Integer::sum);
+                            }
+                        }
+                    }
+
                     // ── Epic ──────────────────────────────────────────────
                     // classic: customfield_10014 = epic key; next-gen: parent.fields.summary
                     String epicName = null;
@@ -208,18 +245,43 @@ public class JiraPodService {
                         if (parent != null) {
                             Map<String, Object> pf = (Map<String, Object>) parent.get("fields");
                             if (pf != null) {
-                                String pType = null;
                                 Map<String, Object> pIssueType = (Map<String, Object>) pf.get("issuetype");
-                                if (pIssueType != null) pType = str(pIssueType, "name");
-                                if ("Epic".equalsIgnoreCase(pType)) {
+                                String pType = pIssueType != null ? str(pIssueType, "name") : null;
+                                if ("Epic".equalsIgnoreCase(pType))
                                     epicName = nvl(str(pf, "summary"), str(parent, "key"));
-                                }
                             }
                         }
                     }
                     if (epicName != null) epicBreakdown.merge(epicName, 1, Integer::sum);
 
-                    // ── Cycle time (for done issues with resolution date) ─
+                    // ── Worklogs (inline, up to 20 per issue) ────────────
+                    // Powers per-day burndown and per-member daily charts.
+                    Map<String, Object> worklogWrapper = (Map<String, Object>) fields.get("worklog");
+                    if (worklogWrapper != null) {
+                        Object wlList = worklogWrapper.get("worklogs");
+                        if (wlList instanceof List) {
+                            for (Object wl : (List<?>) wlList) {
+                                if (!(wl instanceof Map)) continue;
+                                Map<String, Object> wlMap = (Map<String, Object>) wl;
+                                Map<String, Object> wlAuthor = (Map<String, Object>) wlMap.get("author");
+                                String wlMember = wlAuthor != null
+                                        ? nvl((String) wlAuthor.get("displayName"), "Unknown") : "Unknown";
+                                Object wlSecs = wlMap.get("timeSpentSeconds");
+                                double wlHrs  = wlSecs instanceof Number
+                                        ? ((Number) wlSecs).doubleValue() / SECONDS_PER_HOUR : 0;
+                                String started = (String) wlMap.get("started");
+                                if (started != null && started.length() >= 10 && wlHrs > 0) {
+                                    String date = started.substring(0, 10); // yyyy-MM-dd
+                                    dailyHoursLogged.merge(date, wlHrs, Double::sum);
+                                    memberDailyHours
+                                            .computeIfAbsent(wlMember, k -> new TreeMap<>())
+                                            .merge(date, wlHrs, Double::sum);
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Cycle time (done issues with resolution date) ─────
                     if ("done".equalsIgnoreCase(statusKey)) {
                         String created  = str(fields, "created");
                         String resolved = str(fields, "resolutiondate");
@@ -243,6 +305,10 @@ public class JiraPodService {
 
         double avgCycleTimeDays = cycleTimeCount > 0 ? round((double) cycleTimeSum / cycleTimeCount) : 0;
 
+        // Round daily hours map values
+        dailyHoursLogged.replaceAll((d, v) -> round(v));
+        memberDailyHours.values().forEach(m -> m.replaceAll((d, v) -> round(v)));
+
         SprintInfo activeSprint = null;
         if (hasActiveSprint) {
             String combinedName = sprintNames.isEmpty() ? "Active Sprint"
@@ -252,7 +318,8 @@ public class JiraPodService {
                     firstSprintId, combinedName, "active",
                     startDate, endDate,
                     totalIssues, doneIssues, inProgress, todoIssues,
-                    round(totalSP), round(doneSP), round(hoursLogged), round(estimatedHours),
+                    round(totalSP), round(doneSP),
+                    round(hoursLogged), round(estimatedHours), round(remainingHours),
                     avgCycleTimeDays);
         }
 
@@ -265,10 +332,15 @@ public class JiraPodService {
                 pod.getId(), pod.getPodDisplayName(), boardKeys, boardDisplay,
                 activeSprint, List.of(),
                 backlogSize,
+                // Team
                 hoursByMember, spByMember, memberIssueCount,
+                // Issue breakdowns
                 issueTypeBreakdown, priorityBreakdown, statusBreakdown,
-                labelBreakdown, epicBreakdown,
-                round(estimatedHours), avgCycleTimeDays,
+                labelBreakdown, epicBreakdown, releaseBreakdown, componentBreakdown,
+                // Time-series
+                dailyHoursLogged, memberDailyHours,
+                // Estimates & cycle time
+                round(estimatedHours), round(remainingHours), avgCycleTimeDays,
                 null);
     }
 
@@ -365,25 +437,27 @@ public class JiraPodService {
             Map<String, Integer> statusBreakdown,
             Map<String, Integer> labelBreakdown,
             Map<String, Integer> epicBreakdown,
+            Map<String, Integer> releaseBreakdown,
+            Map<String, Integer> componentBreakdown,
+            // Time-series for burndown / activity charts
+            Map<String, Double>              dailyHoursLogged,   // date → hours
+            Map<String, Map<String, Double>> memberDailyHours,   // member → date → hours
             // Estimates & cycle time
             double totalEstimatedHours,
+            double totalRemainingHours,
             double avgCycleTimeDays,
             String errorMessage) {
 
-        static PodMetrics error(Long podId, String name, String msg) {
+        private static PodMetrics empty(Long podId, String name, String err) {
             return new PodMetrics(podId, name, List.of(), null, null,
                     List.of(), 0,
                     Map.of(), Map.of(), Map.of(),
-                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
-                    0, 0, msg);
+                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                    Map.of(), Map.of(),
+                    0, 0, 0, err);
         }
-        static PodMetrics noBoards(Long podId, String name) {
-            return new PodMetrics(podId, name, List.of(), null, null,
-                    List.of(), 0,
-                    Map.of(), Map.of(), Map.of(),
-                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
-                    0, 0, null);
-        }
+        static PodMetrics error(Long podId, String name, String msg) { return empty(podId, name, msg); }
+        static PodMetrics noBoards(Long podId, String name)           { return empty(podId, name, null); }
     }
 
     public record SprintInfo(
@@ -393,25 +467,24 @@ public class JiraPodService {
             int totalIssues, int doneIssues, int inProgressIssues, int todoIssues,
             // Story points
             double totalSP, double doneSP,
-            // Time
-            double hoursLogged, double estimatedHours,
-            // Pre-computed percentages (stored as fields so Jackson serialises them)
+            // Time (hours)
+            double hoursLogged, double estimatedHours, double remainingHours,
+            // Pre-computed percentages (record components → Jackson serialises them)
             double progressPct, double spProgressPct,
             // Cycle time
             double avgCycleTimeDays) {
 
-        /** Factory — computes percentage fields automatically. */
         static SprintInfo of(int id, String name, String state,
                              String startDate, String endDate,
                              int totalIssues, int doneIssues, int inProgressIssues, int todoIssues,
                              double totalSP, double doneSP,
-                             double hoursLogged, double estimatedHours,
+                             double hoursLogged, double estimatedHours, double remainingHours,
                              double avgCycleTimeDays) {
             double pct   = totalIssues == 0 ? 0 : Math.round(doneIssues * 100.0 / totalIssues * 10) / 10.0;
             double spPct = totalSP     == 0 ? 0 : Math.round(doneSP     * 100.0 / totalSP     * 10) / 10.0;
             return new SprintInfo(id, name, state, startDate, endDate,
                     totalIssues, doneIssues, inProgressIssues, todoIssues,
-                    totalSP, doneSP, hoursLogged, estimatedHours,
+                    totalSP, doneSP, hoursLogged, estimatedHours, remainingHours,
                     pct, spPct, avgCycleTimeDays);
         }
     }
