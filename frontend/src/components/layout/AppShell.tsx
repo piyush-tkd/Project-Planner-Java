@@ -41,6 +41,7 @@ import {
   IconFileSpreadsheet,
   IconTableExport,
   IconTicket,
+  IconUsers,
   IconLogout,
   IconChevronDown,
 } from '@tabler/icons-react';
@@ -93,6 +94,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Integrations',
     items: [
+      { label: 'POD Dashboard', path: '/jira-pods', icon: <IconUsers size={17} /> },
       { label: 'Jira Actuals', path: '/jira-actuals', icon: <IconTicket size={17} /> },
     ],
   },

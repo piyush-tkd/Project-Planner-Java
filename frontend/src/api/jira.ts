@@ -63,6 +63,42 @@ export interface JiraStatus {
   baseUrl: string;
 }
 
+// ── POD Metrics types ──────────────────────────────────────────────────
+
+export interface SprintInfo {
+  id: number;
+  name: string;
+  state: string;
+  startDate: string | null;
+  endDate: string | null;
+  totalIssues: number;
+  doneIssues: number;
+  inProgressIssues: number;
+  totalSP: number;
+  doneSP: number;
+  hoursLogged: number;
+  progressPct: number;
+  spProgressPct: number;
+}
+
+export interface SprintVelocity {
+  sprintName: string;
+  committedSP: number;
+  completedSP: number;
+}
+
+export interface PodMetrics {
+  jiraProjectKey: string;
+  jiraProjectName: string;
+  boardName: string | null;
+  activeSprint: SprintInfo | null;
+  velocity: SprintVelocity[];
+  backlogSize: number;
+  hoursByMember: Record<string, number>;
+  spByMember: Record<string, number>;
+  errorMessage: string | null;
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────
 
 export function useJiraStatus() {
@@ -124,6 +160,14 @@ export function useSaveMappingsBulk() {
       qc.invalidateQueries({ queryKey: ['jira', 'mappings'] });
       qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
     },
+  });
+}
+
+export function useJiraPods() {
+  return useQuery<PodMetrics[]>({
+    queryKey: ['jira', 'pods'],
+    queryFn: () => apiClient.get('/jira/pods').then(r => r.data),
+    staleTime: 3 * 60 * 1000,
   });
 }
 
