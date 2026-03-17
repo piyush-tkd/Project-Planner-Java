@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Title, Stack, Text, Group, Button, TextInput, Badge,
@@ -51,9 +51,9 @@ export default function JiraSettingsPage() {
   const [dirty, setDirty] = useState(false);
 
   // Sync rows from server whenever base changes, but only if user hasn't started editing
-  useMemo(() => {
+  useEffect(() => {
     if (!dirty) setRows(baseRows);
-  }, [baseRows]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [baseRows]); // dirty intentionally excluded — only sync on data load, not on every edit
 
   const toggle = (key: string) => {
     setRows(r => r.map(row => row.jiraProjectKey === key ? { ...row, enabled: !row.enabled } : row));
