@@ -4,7 +4,10 @@ import {
   Badge, Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconUsers, IconCode, IconTestPipe, IconUserStar, IconMapPin, IconAlertTriangle } from '@tabler/icons-react';
+import {
+  IconPlus, IconTrash, IconUsers, IconCode, IconTestPipe, IconUserStar, IconMapPin,
+  IconAlertTriangle, IconSearch, IconUserOff, IconClock, IconBuildingSkyscraper,
+} from '@tabler/icons-react';
 import { useResources, useCreateResource, useDeleteResource, useUpdateResource, useSetAssignment, useAllAvailability } from '../api/resources';
 import { usePods } from '../api/pods';
 import { Role, Location, formatRole } from '../types';
@@ -39,12 +42,20 @@ export default function ResourcesPage() {
   const deleteMutation = useDeleteResource();
   const updateMutation = useUpdateResource();
   const assignMutation = useSetAssignment();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<ResourceRequest>(emptyForm);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [modalOpen, setModalOpen]         = useState(false);
+  const [form, setForm]                   = useState<ResourceRequest>(emptyForm);
+  const [editId, setEditId]               = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
+  // Filters
+  const [activeCard, setActiveCard]       = useState<string | null>(null);
+  const [search, setSearch]               = useState('');
+  const [podFilter, setPodFilter]         = useState<string | null>(null);
+  const [roleFilter, setRoleFilter]       = useState<string | null>(null);
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+
   const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
+  const podFilterOptions = [{ value: '__none__', label: 'No POD assigned' }, ...podOptions];
 
   /* ── Over-allocation check per resource ──── */
   const overAllocMap = useMemo(() => {
@@ -65,17 +76,83 @@ export default function ResourcesPage() {
 
   const stats = useMemo(() => {
     const all = resources ?? [];
-    const active = all.filter(r => r.active).length;
-    const devs = all.filter(r => r.role === Role.DEVELOPER).length;
-    const qa = all.filter(r => r.role === Role.QA).length;
-    const bsa = all.filter(r => r.role === Role.BSA).length;
+    const active   = all.filter(r => r.active).length;
+    const inactive = all.filter(r => !r.active).length;
+    const devs     = all.filter(r => r.role === Role.DEVELOPER).length;
+    const qa       = all.filter(r => r.role === Role.QA).length;
+    const bsa      = all.filter(r => r.role === Role.BSA).length;
     const techLead = all.filter(r => r.role === Role.TECH_LEAD).length;
-    const us = all.filter(r => r.location === Location.US).length;
-    const india = all.filter(r => r.location === Location.INDIA).length;
-    return { total: all.length, active, devs, qa, bsa, techLead, us, india };
-  }, [resources]);
+    const us       = all.filter(r => r.location === Location.US).length;
+    const india    = all.filter(r => r.location === Location.INDIA).length;
+    const partTime = all.filter(r => (r.podAssignment?.capacityFte ?? 1) < 1).length;
+    const overAlloc = overAllocMap.size;
+    return { total: all.length, active, inactive, devs, qa, bsa, techLead, us, india, partTime, overAlloc };
+  }, [resources, overAllocMap]);
 
-  const { sorted: sortedResources, sortKey, sortDir, onSort } = useTableSort(resources ?? []);
+  // Compose all active filters
+  const filteredResources = useMemo(() => {
+    let list = resources ?? [];
+
+    // Card quick-filter
+    switch (activeCard) {
+      case 'ACTIVE':     list = list.filter(r => r.active); break;
+      case 'INACTIVE':   list = list.filter(r => !r.active); break;
+      case 'DEVELOPER':  list = list.filter(r => r.role === Role.DEVELOPER); break;
+      case 'QA':         list = list.filter(r => r.role === Role.QA); break;
+      case 'BSA':        list = list.filter(r => r.role === Role.BSA); break;
+      case 'TECH_LEAD':  list = list.filter(r => r.role === Role.TECH_LEAD); break;
+      case 'US':         list = list.filter(r => r.location === Location.US); break;
+      case 'INDIA':      list = list.filter(r => r.location === Location.INDIA); break;
+      case 'PART_TIME':  list = list.filter(r => (r.podAssignment?.capacityFte ?? 1) < 1); break;
+      case 'OVER_ALLOC': list = list.filter(r => overAllocMap.has(r.id)); break;
+    }
+
+    // Text search (name)
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(r => r.name.toLowerCase().includes(q));
+    }
+
+    // POD filter
+    if (podFilter) {
+      if (podFilter === '__none__') {
+        list = list.filter(r => !r.podAssignment?.podId);
+      } else {
+        list = list.filter(r => String(r.podAssignment?.podId) === podFilter);
+      }
+    }
+
+    // Role filter (dropdown, stacks on top of card filter)
+    if (roleFilter) {
+      list = list.filter(r => r.role === roleFilter);
+    }
+
+    // Location filter
+    if (locationFilter) {
+      list = list.filter(r => r.location === locationFilter);
+    }
+
+    return list;
+  }, [resources, activeCard, search, podFilter, roleFilter, locationFilter, overAllocMap]);
+
+  function toggleCard(key: string) {
+    setActiveCard(prev => (prev === key ? null : key));
+    // Clear dropdown filters when a card is clicked so they don't double-filter by role/location
+    if (key === 'DEVELOPER' || key === 'QA' || key === 'BSA' || key === 'TECH_LEAD') setRoleFilter(null);
+    if (key === 'US' || key === 'INDIA') setLocationFilter(null);
+  }
+
+  function clearAllFilters() {
+    setActiveCard(null);
+    setSearch('');
+    setPodFilter(null);
+    setRoleFilter(null);
+    setLocationFilter(null);
+  }
+
+  const hasActiveFilters = activeCard !== null || search.trim() !== '' || podFilter !== null || roleFilter !== null || locationFilter !== null;
+
+  const { sorted: sortedResources, sortKey, sortDir, onSort } = useTableSort(filteredResources);
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -178,17 +255,137 @@ export default function ResourcesPage() {
         </Group>
       </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }}>
-        <SummaryCard title="Total" value={stats.total} icon={<IconUsers size={20} color="#339af0" />} />
-        <SummaryCard title="Active" value={stats.active} icon={<IconUsers size={20} color="#40c057" />} />
-        <SummaryCard title="Developers" value={stats.devs} icon={<IconCode size={20} color="#845ef7" />} />
-        <SummaryCard title="QA" value={stats.qa} icon={<IconTestPipe size={20} color="#fd7e14" />} />
-        <SummaryCard title="BSA" value={stats.bsa} icon={<IconUserStar size={20} color="#e64980" />} />
-        <SummaryCard title="Tech Lead" value={stats.techLead} icon={<IconUserStar size={20} color="#fab005" />} />
-        <SummaryCard title="US" value={stats.us} icon={<IconMapPin size={20} color="#339af0" />} />
-        <SummaryCard title="India" value={stats.india} icon={<IconMapPin size={20} color="#20c997" />} />
+      {/* ── Stat Cards ─────────────────────────────────────── */}
+      <SimpleGrid cols={{ base: 2, sm: 4, lg: 6 }}>
+        <SummaryCard
+          title="Total"
+          value={stats.total}
+          icon={<IconUsers size={20} color="#339af0" />}
+          onClick={clearAllFilters}
+          active={!hasActiveFilters}
+        />
+        <SummaryCard
+          title="Active"
+          value={stats.active}
+          icon={<IconUsers size={20} color="#40c057" />}
+          onClick={() => toggleCard('ACTIVE')}
+          active={activeCard === 'ACTIVE'}
+        />
+        <SummaryCard
+          title="Inactive"
+          value={stats.inactive}
+          icon={<IconUserOff size={20} color="#868e96" />}
+          onClick={() => toggleCard('INACTIVE')}
+          active={activeCard === 'INACTIVE'}
+        />
+        <SummaryCard
+          title="Part-Time"
+          value={stats.partTime}
+          icon={<IconClock size={20} color="#fd7e14" />}
+          onClick={() => toggleCard('PART_TIME')}
+          active={activeCard === 'PART_TIME'}
+        />
+        <SummaryCard
+          title="Over-Allocated"
+          value={stats.overAlloc}
+          icon={<IconAlertTriangle size={20} color="#fa5252" />}
+          onClick={() => toggleCard('OVER_ALLOC')}
+          active={activeCard === 'OVER_ALLOC'}
+        />
+        <SummaryCard
+          title="Developers"
+          value={stats.devs}
+          icon={<IconCode size={20} color="#845ef7" />}
+          onClick={() => toggleCard('DEVELOPER')}
+          active={activeCard === 'DEVELOPER'}
+        />
+        <SummaryCard
+          title="QA"
+          value={stats.qa}
+          icon={<IconTestPipe size={20} color="#fd7e14" />}
+          onClick={() => toggleCard('QA')}
+          active={activeCard === 'QA'}
+        />
+        <SummaryCard
+          title="BSA"
+          value={stats.bsa}
+          icon={<IconUserStar size={20} color="#e64980" />}
+          onClick={() => toggleCard('BSA')}
+          active={activeCard === 'BSA'}
+        />
+        <SummaryCard
+          title="Tech Lead"
+          value={stats.techLead}
+          icon={<IconUserStar size={20} color="#fab005" />}
+          onClick={() => toggleCard('TECH_LEAD')}
+          active={activeCard === 'TECH_LEAD'}
+        />
+        <SummaryCard
+          title="US"
+          value={stats.us}
+          icon={<IconMapPin size={20} color="#339af0" />}
+          onClick={() => toggleCard('US')}
+          active={activeCard === 'US'}
+        />
+        <SummaryCard
+          title="India"
+          value={stats.india}
+          icon={<IconMapPin size={20} color="#20c997" />}
+          onClick={() => toggleCard('INDIA')}
+          active={activeCard === 'INDIA'}
+        />
       </SimpleGrid>
 
+      {/* ── Filter Bar ──────────────────────────────────────── */}
+      <Group gap="sm" align="flex-end" wrap="wrap">
+        <TextInput
+          placeholder="Search by name…"
+          leftSection={<IconSearch size={15} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          style={{ flex: '1 1 200px', maxWidth: 300 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All PODs"
+          leftSection={<IconBuildingSkyscraper size={15} />}
+          data={podFilterOptions}
+          value={podFilter}
+          onChange={setPodFilter}
+          clearable
+          searchable
+          style={{ flex: '1 1 180px', maxWidth: 240 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Roles"
+          data={roleOptions}
+          value={roleFilter}
+          onChange={v => { setRoleFilter(v); setActiveCard(null); }}
+          clearable
+          style={{ flex: '1 1 150px', maxWidth: 200 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Locations"
+          data={locationOptions}
+          value={locationFilter}
+          onChange={v => { setLocationFilter(v); setActiveCard(null); }}
+          clearable
+          style={{ flex: '1 1 150px', maxWidth: 180 }}
+          size="sm"
+        />
+        {hasActiveFilters && (
+          <Button variant="subtle" color="gray" size="sm" onClick={clearAllFilters}>
+            Clear filters
+          </Button>
+        )}
+        <Text size="sm" c="dimmed" ml="auto">
+          {sortedResources.length} of {(resources ?? []).length} resources
+        </Text>
+      </Group>
+
+      {/* ── Table ───────────────────────────────────────────── */}
       <Table.ScrollContainer minWidth={800}>
         <Table striped highlightOnHover withTableBorder withColumnBorders>
           <Table.Thead>
@@ -205,7 +402,13 @@ export default function ResourcesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {sortedResources.map((r, idx) => {
+            {sortedResources.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <Text c="dimmed" size="sm">No resources match the current filters.</Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : sortedResources.map((r, idx) => {
               const fte = r.podAssignment?.capacityFte ?? 1;
               const isPartTime = fte < 1;
               const overCount = overAllocMap.get(r.id);

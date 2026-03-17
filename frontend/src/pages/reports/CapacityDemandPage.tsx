@@ -24,6 +24,15 @@ export default function CapacityDemandPage() {
   const dark = useDarkMode();
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
+  const isFte = unit === 'fte';
+
+  // Shared formatters that respect the current unit
+  const tickFmt = (v: number) =>
+    isFte ? v.toFixed(1) : (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v));
+
+  const tooltipFmt = (value: number) =>
+    isFte ? `${(value as number).toFixed(1)} FTE` : formatHours(value);
+
   const allPods = useMemo(() => {
     if (!gapData?.gaps) return [];
     return Array.from(new Set(gapData.gaps.map(g => g.podName))).sort();
@@ -40,7 +49,6 @@ export default function CapacityDemandPage() {
     return map;
   }, [allPods]);
 
-  // Org-level totals derived from gap data so they respect POD filter
   // Derive working hours per month from gapData (gapHours / gapFte)
   const workingHoursPerMonth = useMemo(() => {
     const map: Record<number, number> = {};
@@ -82,39 +90,50 @@ export default function CapacityDemandPage() {
     });
   }, [gapData, pods, months, monthLabels, workingHoursPerMonth]);
 
+  // Org-level line chart — switches between hours and FTE
   const orgChartData = useMemo(() => {
     return filteredSummary.map(d => ({
       month: d.monthLabel,
-      demand: Math.round(d.totalDemandHours),
-      capacity: Math.round(d.totalCapacityHours),
+      demand: isFte
+        ? Math.round(d.demandFte * 10) / 10
+        : Math.round(d.totalDemandHours),
+      capacity: isFte
+        ? Math.round(d.capacityFte * 10) / 10
+        : Math.round(d.totalCapacityHours),
     }));
-  }, [filteredSummary]);
+  }, [filteredSummary, isFte]);
 
+  // Capacity by POD stacked bar — switches between hours and FTE
   const podCapChartData = useMemo(() => {
     if (!gapData?.gaps) return [];
     return months.map(m => {
+      const wh = workingHoursPerMonth[m] ?? 160;
       const row: Record<string, number | string> = { month: monthLabels[m] ?? `M${m}` };
       pods.forEach(pod => {
         const g = gapData.gaps.find(g => g.podName === pod && g.monthIndex === m);
-        row[pod] = Math.round(g?.capacityHours ?? 0);
+        const hours = g?.capacityHours ?? 0;
+        row[pod] = isFte ? Math.round((hours / wh) * 10) / 10 : Math.round(hours);
       });
       return row;
     });
-  }, [gapData, pods, monthLabels, months]);
+  }, [gapData, pods, monthLabels, months, isFte, workingHoursPerMonth]);
 
+  // Demand by POD stacked bar — switches between hours and FTE
   const podDemChartData = useMemo(() => {
     if (!gapData?.gaps) return [];
     return months.map(m => {
+      const wh = workingHoursPerMonth[m] ?? 160;
       const row: Record<string, number | string> = { month: monthLabels[m] ?? `M${m}` };
       pods.forEach(pod => {
         const g = gapData.gaps.find(g => g.podName === pod && g.monthIndex === m);
-        row[pod] = Math.round(g?.demandHours ?? 0);
+        const hours = g?.demandHours ?? 0;
+        row[pod] = isFte ? Math.round((hours / wh) * 10) / 10 : Math.round(hours);
       });
       return row;
     });
-  }, [gapData, pods, monthLabels, months]);
+  }, [gapData, pods, monthLabels, months, isFte, workingHoursPerMonth]);
 
-  // Per-POD individual capacity vs demand data
+  // Per-POD individual data — stores both hours and FTE so chart can switch
   const podDetailData = useMemo(() => {
     if (!gapData?.gaps) return [];
     return pods.map(pod => {
@@ -126,6 +145,8 @@ export default function CapacityDemandPage() {
           month: monthLabels[m] ?? `M${m}`,
           capacity: Math.round(g?.capacityHours ?? 0),
           demand: Math.round(g?.demandHours ?? 0),
+          capacityFte: Math.round(((g?.capacityHours ?? 0) / wh) * 10) / 10,
+          demandFte: Math.round(((g?.demandHours ?? 0) / wh) * 10) / 10,
           gap: (g?.gapHours ?? 0),
           gapFte: (g?.gapFte ?? 0),
           workingHours: wh,
@@ -135,11 +156,10 @@ export default function CapacityDemandPage() {
       const totalDem = chartData.reduce((s, d) => s + d.demand, 0);
       const totalGapFte = chartData.reduce((s, d) => s + d.gapFte, 0);
       const avgUtil = totalCap > 0 ? (totalDem / totalCap) * 100 : 0;
-      // Avg working hours for annual FTE conversion
       const avgWh = chartData.reduce((s, d) => s + d.workingHours, 0) / 12;
       return { pod, chartData, totalCap, totalDem, totalGapFte, avgUtil, avgWh };
     });
-  }, [gapData, pods, monthLabels, months]);
+  }, [gapData, pods, monthLabels, months, workingHoursPerMonth]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <Text c="red">Error loading capacity demand data</Text>;
@@ -178,13 +198,16 @@ export default function CapacityDemandPage() {
       <Card withBorder padding="md">
         <ExportableChart title="Total Org - Capacity vs Demand">
           <Title order={4} mb={4}>Total Org — Capacity vs Demand</Title>
-          <Text size="xs" c="dimmed" mb="sm">{selectedPods.length === 0 ? 'All PODs combined' : `${pods.length} POD${pods.length > 1 ? 's' : ''} selected`} — hours per month</Text>
+          <Text size="xs" c="dimmed" mb="sm">
+            {selectedPods.length === 0 ? 'All PODs combined' : `${pods.length} POD${pods.length > 1 ? 's' : ''} selected`}
+            {' — '}{isFte ? 'FTE per month' : 'hours per month'}
+          </Text>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={orgChartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" fontSize={11} />
-              <YAxis fontSize={11} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-              <Tooltip formatter={(value: number) => formatHours(value)} />
+              <YAxis fontSize={11} tickFormatter={tickFmt} />
+              <Tooltip formatter={(value: number) => tooltipFmt(value)} />
               <Legend />
               <Line type="monotone" dataKey="capacity" stroke="#1e40af" strokeWidth={2.5} dot={{ r: 3.5 }} name="Capacity" />
               <Line type="monotone" dataKey="demand" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 3.5 }} name="Demand" />
@@ -197,13 +220,13 @@ export default function CapacityDemandPage() {
         <Card withBorder padding="md">
           <ExportableChart title="Capacity by POD">
             <Title order={4} mb={4}>Capacity by POD</Title>
-            <Text size="xs" c="dimmed" mb="sm">Stacked by POD — project-available hours</Text>
+            <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project-available hours'}</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={podCapChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={9} />
-                <YAxis fontSize={9} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                <Tooltip formatter={(value: number) => formatHours(value as number)} />
+                <YAxis fontSize={9} tickFormatter={tickFmt} />
+                <Tooltip formatter={(value: number) => tooltipFmt(value as number)} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 {pods.map(pod => (
                   <Bar key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
@@ -216,13 +239,13 @@ export default function CapacityDemandPage() {
         <Card withBorder padding="md">
           <ExportableChart title="Demand by POD">
             <Title order={4} mb={4}>Demand by POD</Title>
-            <Text size="xs" c="dimmed" mb="sm">Stacked by POD — project demand hours</Text>
+            <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project demand hours'}</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={podDemChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={9} />
-                <YAxis fontSize={9} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                <Tooltip formatter={(value: number) => formatHours(value as number)} />
+                <YAxis fontSize={9} tickFormatter={tickFmt} />
+                <Tooltip formatter={(value: number) => tooltipFmt(value as number)} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 {pods.map(pod => (
                   <Bar key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
@@ -313,11 +336,11 @@ export default function CapacityDemandPage() {
                       <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" fontSize={10} />
-                        <YAxis fontSize={10} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                        <Tooltip formatter={(value: number) => formatHours(value)} />
+                        <YAxis fontSize={10} tickFormatter={tickFmt} />
+                        <Tooltip formatter={(value: number) => tooltipFmt(value)} />
                         <Legend />
-                        <Bar dataKey="capacity" fill="#1e40af" name="Capacity" />
-                        <Bar dataKey="demand" fill="#7c3aed" name="Demand" />
+                        <Bar dataKey={isFte ? 'capacityFte' : 'capacity'} fill="#1e40af" name="Capacity" />
+                        <Bar dataKey={isFte ? 'demandFte' : 'demand'} fill="#7c3aed" name="Demand" />
                       </BarChart>
                     </ResponsiveContainer>
                   </ExportableChart>

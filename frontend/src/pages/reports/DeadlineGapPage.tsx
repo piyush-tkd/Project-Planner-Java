@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Title, Stack, Text, Card, SimpleGrid, Table, Badge } from '@mantine/core';
+import { Title, Stack, Text, Card, SimpleGrid, Table, Badge, Group, TextInput, Select, Button } from '@mantine/core';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { IconAlertTriangle, IconFlame, IconCircleCheck } from '@tabler/icons-react';
+import { IconAlertTriangle, IconFlame, IconCircleCheck, IconSearch } from '@tabler/icons-react';
 import { useProjects } from '../../api/projects';
 import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
@@ -36,6 +36,10 @@ export default function DeadlineGapPage() {
   const { data: gapData, isLoading: gapLoading } = useCapacityGap('hours');
   const { monthLabels } = useMonthLabels();
   const navigate = useNavigate();
+  const [search, setSearch]           = useState('');
+  const [riskFilter, setRiskFilter]   = useState<string | null>(null);
+  const [ownerFilter, setOwnerFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
 
   const projectHealth = useMemo(() => {
     if (!projects || !gapData?.gaps) return [];
@@ -92,7 +96,29 @@ export default function DeadlineGapPage() {
     }));
   }, [projectHealth]);
 
-  const { sorted, sortKey, sortDir, onSort } = useTableSort(projectHealth);
+  const ownerOptions = useMemo(() => {
+    const owners = [...new Set(projectHealth.map(p => p.owner).filter(Boolean))].sort();
+    return owners.map(o => ({ value: o, label: o }));
+  }, [projectHealth]);
+
+  const priorityOptions = useMemo(() => {
+    const ps = [...new Set(projectHealth.map(p => p.priority))].sort();
+    return ps.map(p => ({ value: p, label: p }));
+  }, [projectHealth]);
+
+  const filteredHealth = useMemo(() => {
+    let list = projectHealth;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q));
+    }
+    if (riskFilter)     list = list.filter(p => p.risk === riskFilter);
+    if (ownerFilter)    list = list.filter(p => p.owner === ownerFilter);
+    if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
+    return list;
+  }, [projectHealth, search, riskFilter, ownerFilter, priorityFilter]);
+
+  const { sorted, sortKey, sortDir, onSort } = useTableSort(filteredHealth);
 
   if (projLoading || gapLoading) return <LoadingSpinner />;
 
@@ -104,9 +130,12 @@ export default function DeadlineGapPage() {
       </Text>
 
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
-        <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red" />
-        <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color="#fd7e14" />} color="orange" />
-        <SummaryCard title="Low Load" value={stats.low} icon={<IconCircleCheck size={20} color="#40c057" />} color="green" />
+        <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red"
+          onClick={() => setRiskFilter(prev => prev === 'High' ? null : 'High')} active={riskFilter === 'High'} />
+        <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color="#fd7e14" />} color="orange"
+          onClick={() => setRiskFilter(prev => prev === 'Medium' ? null : 'Medium')} active={riskFilter === 'Medium'} />
+        <SummaryCard title="Low Load" value={stats.low} icon={<IconCircleCheck size={20} color="#40c057" />} color="green"
+          onClick={() => setRiskFilter(prev => prev === 'Low' ? null : 'Low')} active={riskFilter === 'Low'} />
       </SimpleGrid>
 
       {chartData.length > 0 && (
@@ -128,6 +157,45 @@ export default function DeadlineGapPage() {
           </ExportableChart>
         </Card>
       )}
+
+      <Group gap="sm" align="flex-end" wrap="wrap">
+        <TextInput
+          placeholder="Search by name…"
+          leftSection={<IconSearch size={15} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          style={{ flex: '1 1 200px', maxWidth: 280 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Owners"
+          data={ownerOptions}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          clearable
+          searchable
+          style={{ flex: '1 1 160px', maxWidth: 220 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Priorities"
+          data={priorityOptions}
+          value={priorityFilter}
+          onChange={v => { setPriorityFilter(v); }}
+          clearable
+          style={{ flex: '1 1 140px', maxWidth: 180 }}
+          size="sm"
+        />
+        {(search || ownerFilter || priorityFilter || riskFilter) && (
+          <Button variant="subtle" color="gray" size="sm"
+            onClick={() => { setSearch(''); setOwnerFilter(null); setPriorityFilter(null); setRiskFilter(null); }}>
+            Clear filters
+          </Button>
+        )}
+        <Text size="sm" c="dimmed" ml="auto">
+          {sorted.length} of {projectHealth.length} projects
+        </Text>
+      </Group>
 
       <Card withBorder padding="md">
         <Title order={4} mb={4}>Project Health Detail</Title>

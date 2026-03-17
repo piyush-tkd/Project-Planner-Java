@@ -13,6 +13,15 @@ const apiClient = axios.create({
   },
 });
 
+// Attach JWT from localStorage to every outgoing request
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('pp_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

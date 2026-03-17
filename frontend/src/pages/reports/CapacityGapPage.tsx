@@ -30,6 +30,18 @@ export default function CapacityGapPage() {
     return Array.from(podMap.entries()).map(([label, values]) => ({ label, values }));
   }, [data, unit]);
 
+  // Derive working hours per month from gapHours / gapFte ratio
+  const workingHoursMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    if (!data) return map;
+    data.gaps.forEach(g => {
+      if (g.gapFte !== 0 && g.gapHours !== 0 && !map[g.monthIndex]) {
+        map[g.monthIndex] = Math.abs(g.gapHours / g.gapFte);
+      }
+    });
+    return map;
+  }, [data]);
+
   const chartData = useMemo(() => {
     if (!data) return [];
     const monthMap = new Map<number, { demand: number; capacity: number }>();
@@ -41,12 +53,22 @@ export default function CapacityGapPage() {
     });
     return Array.from(monthMap.entries())
       .sort(([a], [b]) => a - b)
-      .map(([m, v]) => ({
-        month: monthLabels[m] ?? `M${m}`,
-        demand: Math.round(v.demand),
-        capacity: Math.round(v.capacity),
-      }));
-  }, [data, unit, monthLabels]);
+      .map(([m, v]) => {
+        const wh = workingHoursMap[m] ?? 160;
+        if (unit === 'fte') {
+          return {
+            month: monthLabels[m] ?? `M${m}`,
+            demand: Math.round((v.demand / wh) * 10) / 10,
+            capacity: Math.round((v.capacity / wh) * 10) / 10,
+          };
+        }
+        return {
+          month: monthLabels[m] ?? `M${m}`,
+          demand: Math.round(v.demand),
+          capacity: Math.round(v.capacity),
+        };
+      });
+  }, [data, unit, monthLabels, workingHoursMap]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <Text c="red">Error loading capacity gap data</Text>;
@@ -80,7 +102,7 @@ export default function CapacityGapPage() {
 
       <ExportableChart title="Demand vs Capacity">
         <Title order={4} mt="lg">Demand vs Capacity</Title>
-        <CapacityBarChart data={chartData} />
+        <CapacityBarChart data={chartData} unit={unit} />
       </ExportableChart>
     </Stack>
   );

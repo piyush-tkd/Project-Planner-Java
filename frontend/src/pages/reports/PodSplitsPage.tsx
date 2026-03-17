@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { Title, Stack, Text, Card, Table, Badge, SimpleGrid } from '@mantine/core';
-import { IconUsers, IconArrowsShuffle, IconAlertTriangle, IconHexagons } from '@tabler/icons-react';
+import { useState, useMemo } from 'react';
+import { Title, Stack, Text, Card, Table, Badge, SimpleGrid, Group, TextInput, Select, Button } from '@mantine/core';
+import { IconUsers, IconArrowsShuffle, IconAlertTriangle, IconHexagons, IconSearch } from '@tabler/icons-react';
 import { useOverrides } from '../../api/overrides';
 import { useResources } from '../../api/resources';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
@@ -85,8 +85,34 @@ export default function PodSplitsPage() {
     };
   }, [overrides, resources]);
 
-  const { sorted: sortedPerm, sortKey: permSortKey, sortDir: permSortDir, onSort: onPermSort } = useTableSort(permanent);
-  const { sorted: sortedTemp, sortKey: tempSortKey, sortDir: tempSortDir, onSort: onTempSort } = useTableSort(temporary);
+  const [search, setSearch]       = useState('');
+  const [podFilter, setPodFilter] = useState<string | null>(null);
+
+  const allPods = useMemo(() => {
+    const allRows = [...permanent, ...temporary];
+    const pods = [...new Set([...allRows.map(r => r.homePod), ...allRows.map(r => r.splitTo)])].filter(Boolean).sort();
+    return pods.map(p => ({ value: p, label: p }));
+  }, [permanent, temporary]);
+
+  const applyFilters = (rows: SplitRow[]) => {
+    let list = rows;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(r => r.person.toLowerCase().includes(q));
+    }
+    if (podFilter) {
+      list = list.filter(r => r.homePod === podFilter || r.splitTo === podFilter);
+    }
+    return list;
+  };
+
+  const filteredPerm = useMemo(() => applyFilters(permanent), [permanent, search, podFilter]);
+  const filteredTemp = useMemo(() => applyFilters(temporary), [temporary, search, podFilter]);
+
+  const { sorted: sortedPerm, sortKey: permSortKey, sortDir: permSortDir, onSort: onPermSort } = useTableSort(filteredPerm);
+  const { sorted: sortedTemp, sortKey: tempSortKey, sortDir: tempSortDir, onSort: onTempSort } = useTableSort(filteredTemp);
+
+  const hasFilters = search.trim() !== '' || podFilter !== null;
 
   if (overridesLoading || resourcesLoading) return <LoadingSpinner />;
 
@@ -101,6 +127,36 @@ export default function PodSplitsPage() {
         <SummaryCard title="People Affected" value={stats.peopleAffected} icon={<IconUsers size={20} color="#fa5252" />} />
         <SummaryCard title="PODs Receiving" value={stats.podsReceiving} icon={<IconHexagons size={20} color="#40c057" />} />
       </SimpleGrid>
+
+      <Group gap="sm" align="flex-end" wrap="wrap">
+        <TextInput
+          placeholder="Search by person…"
+          leftSection={<IconSearch size={15} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          style={{ flex: '1 1 180px', maxWidth: 260 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All PODs (home or split-to)"
+          data={allPods}
+          value={podFilter}
+          onChange={setPodFilter}
+          clearable
+          searchable
+          style={{ flex: '1 1 220px', maxWidth: 340 }}
+          size="sm"
+        />
+        {hasFilters && (
+          <Button variant="subtle" color="gray" size="sm"
+            onClick={() => { setSearch(''); setPodFilter(null); }}>
+            Clear filters
+          </Button>
+        )}
+        <Text size="sm" c="dimmed" ml="auto">
+          {sortedPerm.length + sortedTemp.length} of {permanent.length + temporary.length} splits
+        </Text>
+      </Group>
 
       <Card withBorder padding="md">
         <Title order={4} mb={4}>Permanent Splits</Title>

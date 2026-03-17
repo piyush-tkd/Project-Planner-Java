@@ -83,19 +83,31 @@ export default function DashboardPage() {
       <Title order={2}>Dashboard</Title>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
-        <SummaryCard title="Total Resources" value={summary?.totalResources ?? 0} icon={<IconUsers size={20} color="#339af0" />} />
-        <SummaryCard title="Active Projects" value={summary?.activeProjects ?? 0} icon={<IconBriefcase size={20} color="#845ef7" />} />
+        <SummaryCard
+          title="Total Resources"
+          value={summary?.totalResources ?? 0}
+          icon={<IconUsers size={20} color="#339af0" />}
+          onClick={() => navigate('/resources')}
+        />
+        <SummaryCard
+          title="Active Projects"
+          value={summary?.activeProjects ?? 0}
+          icon={<IconBriefcase size={20} color="#845ef7" />}
+          onClick={() => navigate('/projects')}
+        />
         <SummaryCard
           title="Overall Utilization"
           value={formatPercent(summary?.overallUtilizationPct ?? 0)}
           icon={<IconFlame size={20} color="#fd7e14" />}
           color={(summary?.overallUtilizationPct ?? 0) > 100 ? 'red' : undefined}
+          onClick={() => navigate('/reports/utilization')}
         />
         <SummaryCard
           title="POD-Months in Deficit"
           value={summary?.podMonthsInDeficit ?? 0}
           icon={<IconAlertTriangle size={20} color="#fa5252" />}
           color={(summary?.podMonthsInDeficit ?? 0) > 0 ? 'red' : 'green'}
+          onClick={() => navigate('/reports/capacity-gap')}
         />
       </SimpleGrid>
 

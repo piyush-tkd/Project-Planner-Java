@@ -1,5 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import AppShellLayout from './components/layout/AppShell';
+import ProtectedRoute from './auth/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ResourcesPage from './pages/ResourcesPage';
 import PodsPage from './pages/PodsPage';
@@ -28,31 +30,37 @@ import RefDataSettingsPage from './pages/settings/RefDataSettingsPage';
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppShellLayout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/resources" element={<ResourcesPage />} />
-        <Route path="/pods" element={<PodsPage />} />
-        <Route path="/pods/:id" element={<PodDetailPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/projects/:id" element={<ProjectDetailPage />} />
-        <Route path="/availability" element={<AvailabilityPage />} />
-        <Route path="/overrides" element={<OverridesPage />} />
-        <Route path="/reports/capacity-gap" element={<CapacityGapPage />} />
-        <Route path="/reports/utilization" element={<UtilizationHeatmapPage />} />
-        <Route path="/reports/hiring-forecast" element={<HiringForecastPage />} />
-        <Route path="/reports/concurrency" element={<ConcurrencyRiskPage />} />
-        <Route path="/reports/deadline-gap" element={<DeadlineGapPage />} />
-        <Route path="/reports/resource-allocation" element={<ResourceAllocationPage />} />
-        <Route path="/reports/capacity-demand" element={<CapacityDemandPage />} />
-        <Route path="/reports/pod-resources" element={<PodResourceSummaryPage />} />
-        <Route path="/reports/pod-splits" element={<PodSplitsPage />} />
-        <Route path="/reports/project-pod-matrix" element={<ProjectPodMatrixPage />} />
-        <Route path="/reports/gantt" element={<ProjectGanttPage />} />
-        <Route path="/reports/pod-capacity" element={<PodCapacityPage />} />
-        <Route path="/simulator/timeline" element={<TimelineSimulatorPage />} />
-        <Route path="/simulator/scenario" element={<ScenarioSimulatorPage />} />
-        <Route path="/settings/timeline" element={<TimelineSettingsPage />} />
-        <Route path="/settings/ref-data" element={<RefDataSettingsPage />} />
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* All other routes require authentication */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppShellLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/pods" element={<PodsPage />} />
+          <Route path="/pods/:id" element={<PodDetailPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:id" element={<ProjectDetailPage />} />
+          <Route path="/availability" element={<AvailabilityPage />} />
+          <Route path="/overrides" element={<OverridesPage />} />
+          <Route path="/reports/capacity-gap" element={<CapacityGapPage />} />
+          <Route path="/reports/utilization" element={<UtilizationHeatmapPage />} />
+          <Route path="/reports/hiring-forecast" element={<HiringForecastPage />} />
+          <Route path="/reports/concurrency" element={<ConcurrencyRiskPage />} />
+          <Route path="/reports/deadline-gap" element={<DeadlineGapPage />} />
+          <Route path="/reports/resource-allocation" element={<ResourceAllocationPage />} />
+          <Route path="/reports/capacity-demand" element={<CapacityDemandPage />} />
+          <Route path="/reports/pod-resources" element={<PodResourceSummaryPage />} />
+          <Route path="/reports/pod-splits" element={<PodSplitsPage />} />
+          <Route path="/reports/project-pod-matrix" element={<ProjectPodMatrixPage />} />
+          <Route path="/reports/gantt" element={<ProjectGanttPage />} />
+          <Route path="/reports/pod-capacity" element={<PodCapacityPage />} />
+          <Route path="/simulator/timeline" element={<TimelineSimulatorPage />} />
+          <Route path="/simulator/scenario" element={<ScenarioSimulatorPage />} />
+          <Route path="/settings/timeline" element={<TimelineSettingsPage />} />
+          <Route path="/settings/ref-data" element={<RefDataSettingsPage />} />
+        </Route>
       </Route>
     </Routes>
   );

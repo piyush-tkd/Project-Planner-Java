@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Title, Stack, Table, NumberInput, Button, Text, Group, Modal, TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { usePods, useCreatePod, useUpdatePod, useBauAssumptions, useUpdateBauAssumptions } from '../api/pods';
 import { Role, formatRole } from '../types';
 import type { BauAssumptionRequest } from '../types';
@@ -25,6 +25,14 @@ export default function PodsPage() {
   const [addModal, setAddModal] = useState(false);
   const [newPodName, setNewPodName] = useState('');
   const [newPodComplexity, setNewPodComplexity] = useState<number>(1.0);
+  const [search, setSearch] = useState('');
+
+  const filteredPods = useMemo(() => {
+    const all = pods ?? [];
+    if (!search.trim()) return all;
+    const q = search.trim().toLowerCase();
+    return all.filter(p => p.name.toLowerCase().includes(q));
+  }, [pods, search]);
 
   const roles = Object.values(Role);
 
@@ -102,6 +110,18 @@ export default function PodsPage() {
         </Group>
       </Group>
 
+      <Group gap="sm" align="flex-end">
+        <TextInput
+          placeholder="Search PODs…"
+          leftSection={<IconSearch size={15} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          style={{ maxWidth: 280 }}
+          size="sm"
+        />
+        <Text size="sm" c="dimmed">{filteredPods.length} of {(pods ?? []).length} PODs</Text>
+      </Group>
+
       <Table withTableBorder withColumnBorders>
         <Table.Thead>
           <Table.Tr>
@@ -112,7 +132,7 @@ export default function PodsPage() {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {(pods ?? []).map((pod, idx) => (
+          {filteredPods.map((pod, idx) => (
             <Table.Tr key={pod.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pods/${pod.id}`)}>
               <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
               <Table.Td fw={500}>{pod.name}</Table.Td>
@@ -174,7 +194,7 @@ export default function PodsPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {(pods ?? []).map(pod => (
+            {filteredPods.map(pod => (
               <Table.Tr key={pod.id}>
                 <Table.Td fw={500}>{pod.name}</Table.Td>
                 {roles.map(role => {

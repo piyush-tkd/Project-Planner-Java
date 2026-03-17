@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Title, Stack, Table, Text, Tooltip, Card, SimpleGrid } from '@mantine/core';
+import { useState, useMemo } from 'react';
+import { Title, Stack, Table, Text, Tooltip, Card, SimpleGrid, Group, MultiSelect } from '@mantine/core';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { IconAlertTriangle, IconFlame, IconTrendingUp } from '@tabler/icons-react';
 import { useConcurrencyRisk, useCapacityGap } from '../../api/reports';
@@ -21,8 +21,9 @@ export default function ConcurrencyRiskPage() {
   const dark = useDarkMode();
   const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const [selectedPods, setSelectedPods] = useState<string[]>([]);
 
-  const podRows = useMemo(() => {
+  const allPodRows = useMemo(() => {
     if (!data) return [];
     const podMap = new Map<string, Map<number, { count: number; riskLevel: string }>>();
     data.forEach(d => {
@@ -32,6 +33,10 @@ export default function ConcurrencyRiskPage() {
     return Array.from(podMap.entries()).map(([name, monthData]) => ({ name, monthData }));
   }, [data]);
 
+  const podRows = useMemo(() =>
+    selectedPods.length > 0 ? allPodRows.filter(r => selectedPods.includes(r.name)) : allPodRows,
+    [allPodRows, selectedPods]);
+
   const stats = useMemo(() => {
     if (!data) return { overloaded: 0, tight: 0, peakConcurrent: 0 };
     const overloaded = data.filter(d => d.riskLevel === 'HIGH').length;
@@ -40,10 +45,14 @@ export default function ConcurrencyRiskPage() {
     return { overloaded, tight, peakConcurrent };
   }, [data]);
 
-  const pods = useMemo(() => {
+  const allPodNames = useMemo(() => {
     if (!gapData?.gaps) return [];
     return Array.from(new Set(gapData.gaps.map(g => g.podName))).sort();
   }, [gapData]);
+
+  const pods = useMemo(() =>
+    selectedPods.length > 0 ? allPodNames.filter(p => selectedPods.includes(p)) : allPodNames,
+    [allPodNames, selectedPods]);
 
   const demandChartData = useMemo(() => {
     if (!gapData?.gaps) return [];
@@ -70,6 +79,23 @@ export default function ConcurrencyRiskPage() {
         <SummaryCard title="Medium Risk POD-Months" value={stats.tight} icon={<IconFlame size={20} color="#fd7e14" />} color="orange" />
         <SummaryCard title="Peak Concurrent Projects" value={stats.peakConcurrent} icon={<IconTrendingUp size={20} color="#339af0" />} />
       </SimpleGrid>
+
+      <Group gap="md">
+        <MultiSelect
+          label="Filter PODs"
+          placeholder={selectedPods.length === 0 ? 'All PODs' : undefined}
+          data={allPodNames}
+          value={selectedPods}
+          onChange={setSelectedPods}
+          clearable
+          searchable
+          style={{ minWidth: 260, maxWidth: 500 }}
+          size="sm"
+        />
+        <Text size="sm" c="dimmed" mt="lg">
+          {podRows.length} of {allPodRows.length} PODs shown
+        </Text>
+      </Group>
 
       <Card withBorder padding="md">
         <ExportableChart title="Concurrency Grid">

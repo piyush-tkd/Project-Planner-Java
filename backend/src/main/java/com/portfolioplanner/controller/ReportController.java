@@ -4,14 +4,18 @@ import com.portfolioplanner.domain.model.*;
 import com.portfolioplanner.domain.model.enums.Role;
 import com.portfolioplanner.domain.repository.*;
 import com.portfolioplanner.dto.response.*;
+import com.portfolioplanner.service.ExcelExportService;
 import com.portfolioplanner.service.TimelineService;
 import com.portfolioplanner.service.calculation.CalculationEngine;
 import com.portfolioplanner.service.calculation.dto.CalculationSnapshot;
 import com.portfolioplanner.service.calculation.dto.CalculationSnapshot.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -28,6 +32,7 @@ public class ReportController {
     private final ResourcePodAssignmentRepository assignmentRepository;
     private final TemporaryOverrideRepository overrideRepository;
     private final PodRepository podRepository;
+    private final ExcelExportService excelExportService;
 
     @GetMapping("/executive-summary")
     public ResponseEntity<ExecutiveSummaryResponse> getExecutiveSummary() {
@@ -319,5 +324,15 @@ public class ReportController {
         }
 
         return ResponseEntity.ok(new PodResourceSummaryResponse(podSummaries));
+    }
+
+    @GetMapping("/export/reconciliation")
+    public ResponseEntity<byte[]> exportReconciliation() throws IOException {
+        byte[] bytes = excelExportService.buildReconciliationWorkbook();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"capacity-reconciliation.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(bytes.length)
+                .body(bytes);
     }
 }

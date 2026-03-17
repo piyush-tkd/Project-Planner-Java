@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { useProjects, useCreateProject } from '../api/projects';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
@@ -43,11 +43,54 @@ export default function ProjectsPage() {
   const { monthLabels } = useMonthLabels();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter]   = useState<string>('ALL');
+  const [cardFilter, setCardFilter]       = useState<string | null>(null);
+  const [search, setSearch]               = useState('');
+  const [ownerFilter, setOwnerFilter]     = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
 
-  const filtered = statusFilter === 'ALL'
-    ? (projects ?? [])
-    : (projects ?? []).filter(p => p.status === statusFilter);
+  // Clicking a card toggles a quick-filter; also syncs the segmented control
+  function applyCardFilter(key: string) {
+    if (cardFilter === key) {
+      // toggle off → clear everything
+      setCardFilter(null);
+      setStatusFilter('ALL');
+    } else {
+      setCardFilter(key);
+      if (key === 'ACTIVE' || key === 'ON_HOLD') {
+        setStatusFilter(key);
+      } else {
+        setStatusFilter('ALL'); // P0P1 is priority-based
+      }
+    }
+  }
+
+  // Also clear card-filter when segmented control is used manually
+  function handleSegmentedChange(val: string) {
+    setStatusFilter(val);
+    setCardFilter(null);
+  }
+
+  const ownerOptions = useMemo(() => {
+    const owners = [...new Set((projects ?? []).map(p => p.owner).filter(Boolean))].sort();
+    return owners.map(o => ({ value: o, label: o }));
+  }, [projects]);
+
+  const filtered = useMemo(() => {
+    let list = projects ?? [];
+    if (cardFilter === 'P0P1') {
+      list = list.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1);
+    } else if (statusFilter !== 'ALL') {
+      list = list.filter(p => p.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q));
+    }
+    if (ownerFilter) list = list.filter(p => p.owner === ownerFilter);
+    if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
+    return list;
+  }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter]);
 
   const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered);
 
@@ -104,21 +147,90 @@ export default function ProjectsPage() {
       </Group>
 
       <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
-        <SummaryCard title="Total Projects" value={stats.total} icon={<IconBriefcase size={20} color="#339af0" />} />
-        <SummaryCard title="Active" value={stats.active} icon={<IconFlame size={20} color="#40c057" />} />
-        <SummaryCard title="On Hold" value={stats.onHold} icon={<IconAlertTriangle size={20} color="#fab005" />} color={stats.onHold > 0 ? 'yellow' : undefined} />
-        <SummaryCard title="P0 / P1" value={stats.p0p1} icon={<IconFlame size={20} color="#fa5252" />} color={stats.p0p1 > 0 ? 'red' : undefined} />
-        <SummaryCard title="Avg Duration" value={`${stats.avgDuration}m`} icon={<IconClock size={20} color="#845ef7" />} />
+        <SummaryCard
+          title="Total Projects"
+          value={stats.total}
+          icon={<IconBriefcase size={20} color="#339af0" />}
+          onClick={() => { setCardFilter(null); setStatusFilter('ALL'); }}
+          active={cardFilter === null && statusFilter === 'ALL'}
+        />
+        <SummaryCard
+          title="Active"
+          value={stats.active}
+          icon={<IconFlame size={20} color="#40c057" />}
+          onClick={() => applyCardFilter('ACTIVE')}
+          active={cardFilter === 'ACTIVE'}
+        />
+        <SummaryCard
+          title="On Hold"
+          value={stats.onHold}
+          icon={<IconAlertTriangle size={20} color="#fab005" />}
+          color={stats.onHold > 0 ? 'yellow' : undefined}
+          onClick={() => applyCardFilter('ON_HOLD')}
+          active={cardFilter === 'ON_HOLD'}
+        />
+        <SummaryCard
+          title="P0 / P1"
+          value={stats.p0p1}
+          icon={<IconFlame size={20} color="#fa5252" />}
+          color={stats.p0p1 > 0 ? 'red' : undefined}
+          onClick={() => applyCardFilter('P0P1')}
+          active={cardFilter === 'P0P1'}
+        />
+        <SummaryCard
+          title="Avg Duration"
+          value={`${stats.avgDuration}m`}
+          icon={<IconClock size={20} color="#845ef7" />}
+        />
       </SimpleGrid>
 
       <SegmentedControl
         value={statusFilter}
-        onChange={setStatusFilter}
+        onChange={handleSegmentedChange}
         data={[
           { value: 'ALL', label: 'All' },
           ...statusOptions,
         ]}
       />
+
+      <Group gap="sm" align="flex-end" wrap="wrap">
+        <TextInput
+          placeholder="Search by name…"
+          leftSection={<IconSearch size={15} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          style={{ flex: '1 1 200px', maxWidth: 300 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Owners"
+          data={ownerOptions}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          clearable
+          searchable
+          style={{ flex: '1 1 160px', maxWidth: 240 }}
+          size="sm"
+        />
+        <Select
+          placeholder="All Priorities"
+          data={priorityOptions}
+          value={priorityFilter}
+          onChange={v => { setPriorityFilter(v); setCardFilter(null); }}
+          clearable
+          style={{ flex: '1 1 140px', maxWidth: 180 }}
+          size="sm"
+        />
+        {(search || ownerFilter || priorityFilter) && (
+          <Button variant="subtle" color="gray" size="sm"
+            onClick={() => { setSearch(''); setOwnerFilter(null); setPriorityFilter(null); }}>
+            Clear filters
+          </Button>
+        )}
+        <Text size="sm" c="dimmed" ml="auto">
+          {filtered.length} of {(projects ?? []).length} projects
+        </Text>
+      </Group>
 
       <Table.ScrollContainer minWidth={900}>
         <Table striped highlightOnHover withTableBorder withColumnBorders>
@@ -136,6 +248,13 @@ export default function ProjectsPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {sortedProjects.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <Text c="dimmed" size="sm">No projects match the current filters.</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {sortedProjects.map((p, idx) => (
               <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${p.id}`)}>
                 <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
