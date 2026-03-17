@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Title, Text, Group, Button, TextInput, Badge,
+  Title, Text, Group, Button, Select, Badge,
   Alert, Loader, ActionIcon, Tooltip, Paper, Divider,
   ThemeIcon, Box, Stack, MultiSelect, Anchor,
 } from '@mantine/core';
@@ -15,6 +15,7 @@ import {
   usePodWatchConfig, useSavePodWatchConfig,
   PodConfigRequest,
 } from '../../api/jira';
+import { usePods } from '../../api/pods';
 
 const DEEP_BLUE = '#0C2340';
 const AGUA      = '#1F9196';
@@ -43,6 +44,7 @@ export default function JiraSettingsPage() {
   // Lightweight hook — only fetches key+name, not epics/labels
   const { data: jiraProjects = [], isLoading: projectsLoading, refetch: refetchProjects } = useJiraProjectsSimple();
   const { data: savedConfig = [], isLoading: configLoading } = usePodWatchConfig();
+  const { data: ppPods = [], isLoading: ppPodsLoading } = usePods();
   const save = useSavePodWatchConfig();
   const clearCache = useClearJiraCache();
 
@@ -78,7 +80,7 @@ export default function JiraSettingsPage() {
   const handleSave = async () => {
     const valid = rows.filter(r => r.podDisplayName.trim() && r.boardKeys.length > 0);
     if (valid.length === 0) {
-      notifications.show({ message: 'Add at least one POD with a name and board.', color: 'orange' });
+      notifications.show({ message: 'Add at least one POD with boards assigned.', color: 'orange' });
       return;
     }
     const payload: PodConfigRequest[] = valid.map(r => ({
@@ -99,7 +101,7 @@ export default function JiraSettingsPage() {
     }
   };
 
-  // Build Select options for board picker — exclude boards already assigned to OTHER pods
+  // Build board picker options — exclude boards already assigned to OTHER rows
   const allBoardOptions = jiraProjects.map(p => ({
     value: p.key,
     label: `${p.key} – ${p.name}`,
@@ -115,9 +117,23 @@ export default function JiraSettingsPage() {
     }));
   }
 
+  // Build POD picker options — PP POD names, disabled if already used in another row
+  const allPpPodOptions = ppPods.map(p => ({ value: p.name, label: p.name }));
+
+  function availablePodOptions(forRowKey: string) {
+    const usedElsewhere = new Set(
+      rows.filter(r => r.key !== forRowKey && r.podDisplayName).map(r => r.podDisplayName)
+    );
+    return allPpPodOptions.map(o => ({
+      ...o,
+      disabled: usedElsewhere.has(o.value),
+    }));
+  }
+
   const loading = statusLoading || configLoading;
   const enabledCount = rows.filter(r => r.enabled && r.boardKeys.length > 0).length;
   const totalBoards  = rows.reduce((n, r) => n + r.boardKeys.length, 0);
+  const allPodsAssigned = ppPods.length > 0 && rows.length >= ppPods.length;
 
   return (
     <Box p="md" maw={900}>
@@ -131,8 +147,8 @@ export default function JiraSettingsPage() {
             Jira Board Settings
           </Title>
           <Text size="sm" c="dimmed">
-            Group Jira boards into logical PODs. Multiple boards per POD are aggregated
-            in the{' '}
+            Link your Portfolio Planner PODs to Jira boards. Multiple boards per POD are
+            aggregated in the{' '}
             <Anchor size="sm" onClick={() => navigate('/jira-pods')}>POD Dashboard</Anchor>
             {' '}and{' '}
             <Anchor size="sm" onClick={() => navigate('/jira-actuals')}>Jira Actuals</Anchor>.
@@ -145,6 +161,21 @@ export default function JiraSettingsPage() {
         <Alert icon={<IconAlertTriangle />} color="orange" title="Jira Not Configured" mb="md">
           Add your Jira credentials to{' '}
           <code>backend/src/main/resources/application-local.yml</code> and restart the backend.
+        </Alert>
+      )}
+
+      {/* ── No PP PODs defined ── */}
+      {!ppPodsLoading && ppPods.length === 0 && status?.configured && (
+        <Alert icon={<IconInfoCircle />} color="blue" title="No PODs defined yet" mb="md">
+          You need to create PODs in the{' '}
+          <Text
+            component="span" size="sm" fw={600}
+            style={{ cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={() => navigate('/pods')}
+          >
+            PODs page
+          </Text>
+          {' '}before you can link them to Jira boards.
         </Alert>
       )}
 
@@ -193,14 +224,17 @@ export default function JiraSettingsPage() {
                   Clear Cache
                 </Button>
               </Tooltip>
-              <Button
-                size="sm"
-                leftSection={<IconPlus size={14} />}
-                variant="light"
-                onClick={addPod}
-              >
-                Add POD
-              </Button>
+              <Tooltip label={allPodsAssigned ? 'All PODs are already configured' : 'Add a POD'}>
+                <Button
+                  size="sm"
+                  leftSection={<IconPlus size={14} />}
+                  variant="light"
+                  onClick={addPod}
+                  disabled={ppPods.length === 0 || allPodsAssigned}
+                >
+                  Add POD
+                </Button>
+              </Tooltip>
               <Button
                 size="sm"
                 leftSection={<IconDeviceFloppy size={15} />}
@@ -216,7 +250,7 @@ export default function JiraSettingsPage() {
 
           <Alert icon={<IconInfoCircle size={15} />} color="blue" variant="light" mb="md" p="xs">
             <Text size="xs">
-              Give each POD a display name and assign one or more Jira boards to it.
+              Select a POD from your Portfolio Planner and assign one or more Jira boards to it.
               A board can only belong to one POD. Disabled PODs are hidden from dashboards
               but their config is kept.
             </Text>
@@ -225,22 +259,24 @@ export default function JiraSettingsPage() {
           <Divider mb="md" />
 
           {/* ── POD rows ── */}
-          {projectsLoading ? (
+          {ppPodsLoading || projectsLoading ? (
             <Stack align="center" py="lg">
               <Loader size="sm" />
-              <Text size="sm" c="dimmed">Fetching Jira boards…</Text>
+              <Text size="sm" c="dimmed">Loading PODs and boards…</Text>
             </Stack>
           ) : rows.length === 0 ? (
             <Stack align="center" py="xl" gap="sm">
-              <Text size="sm" c="dimmed">No PODs configured yet.</Text>
-              <Button
-                size="sm"
-                leftSection={<IconPlus size={14} />}
-                variant="light"
-                onClick={addPod}
-              >
-                Add your first POD
-              </Button>
+              <Text size="sm" c="dimmed">No Jira boards linked to any POD yet.</Text>
+              {ppPods.length > 0 && (
+                <Button
+                  size="sm"
+                  leftSection={<IconPlus size={14} />}
+                  variant="light"
+                  onClick={addPod}
+                >
+                  Link your first POD
+                </Button>
+              )}
             </Stack>
           ) : (
             <Stack gap="sm">
@@ -249,7 +285,9 @@ export default function JiraSettingsPage() {
                   key={row.key}
                   row={row}
                   index={idx}
+                  podOptions={availablePodOptions(row.key)}
                   boardOptions={availableBoardOptions(row.key)}
+                  ppPodsLoading={ppPodsLoading}
                   onChange={patch => updatePod(row.key, patch)}
                   onRemove={() => removePod(row.key)}
                 />
@@ -283,7 +321,7 @@ export default function JiraSettingsPage() {
                   loading={save.isPending}
                   onClick={handleSave}
                 >
-                  Save Watchlist
+                  Save
                 </Button>
               </Group>
             </>
@@ -297,17 +335,17 @@ export default function JiraSettingsPage() {
 // ── POD row component ─────────────────────────────────────────────────
 
 function PodRow({
-  row, index, boardOptions, onChange, onRemove,
+  row, index, podOptions, boardOptions, ppPodsLoading, onChange, onRemove,
 }: {
   row: PodRow;
   index: number;
+  podOptions: { value: string; label: string; disabled?: boolean }[];
   boardOptions: { value: string; label: string; disabled?: boolean }[];
+  ppPodsLoading: boolean;
   onChange: (patch: Partial<PodRow>) => void;
   onRemove: () => void;
 }) {
-  const DEEP_BLUE = '#0C2340';
-  const AGUA      = '#1F9196';
-  const invalid = row.podDisplayName.trim() === '' || row.boardKeys.length === 0;
+  const noBoardsYet = row.boardKeys.length === 0;
 
   return (
     <Paper
@@ -336,16 +374,21 @@ function PodRow({
           <Text size="xs" fw={700} style={{ color: '#fff' }}>{index + 1}</Text>
         </Box>
 
-        {/* POD name + board picker */}
+        {/* POD picker + board picker */}
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
           <Group gap="sm" wrap="nowrap">
-            <TextInput
-              placeholder="POD display name (e.g. Enterprise Systems)"
-              value={row.podDisplayName}
-              onChange={e => onChange({ podDisplayName: e.currentTarget.value })}
+            {/* ── POD selector (picks from PP PODs) ── */}
+            <Select
+              placeholder={ppPodsLoading ? 'Loading PODs…' : 'Select a POD…'}
+              data={podOptions}
+              value={row.podDisplayName || null}
+              onChange={v => onChange({ podDisplayName: v ?? '' })}
+              searchable
               size="sm"
               style={{ flex: 1 }}
-              error={row.podDisplayName.trim() === '' ? 'Required' : undefined}
+              error={row.podDisplayName.trim() === '' ? 'Select a POD' : undefined}
+              disabled={ppPodsLoading}
+              nothingFoundMessage="No matching PODs"
             />
             <Tooltip label={row.enabled ? 'Click to disable' : 'Click to enable'}>
               <Badge
@@ -360,15 +403,16 @@ function PodRow({
             </Tooltip>
           </Group>
 
+          {/* ── Board picker ── */}
           <MultiSelect
-            placeholder={boardOptions.length === 0 ? 'No boards available' : 'Assign Jira boards…'}
+            placeholder={boardOptions.length === 0 ? 'No Jira boards available' : 'Assign Jira boards…'}
             data={boardOptions}
             value={row.boardKeys}
             onChange={keys => onChange({ boardKeys: keys })}
             searchable
             size="xs"
             nothingFoundMessage="No matching boards"
-            error={row.boardKeys.length === 0 ? 'Add at least one board' : undefined}
+            error={noBoardsYet ? 'Add at least one board' : undefined}
             styles={{
               input: { minHeight: 32 },
               pill: { backgroundColor: `${DEEP_BLUE}18`, color: DEEP_BLUE, fontWeight: 600 },
@@ -382,14 +426,10 @@ function PodRow({
               ))}
             </Group>
           )}
-
-          {invalid && row.podDisplayName !== '' && row.boardKeys.length === 0 && (
-            <Text size="xs" c="red">Assign at least one Jira board to this POD</Text>
-          )}
         </Stack>
 
         {/* Remove button */}
-        <Tooltip label="Remove POD">
+        <Tooltip label="Remove">
           <ActionIcon
             color="red"
             variant="subtle"
