@@ -11,9 +11,14 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * In-memory cache configuration for Jira API responses.
+ * In-memory cache configuration.
  *
- * All Jira caches use Caffeine; TTLs are tuned to the frequency of change:
+ * ── Portfolio-planner calculation cache ─────────────────────────────────────
+ *  calculations           no TTL  — evicted explicitly on every data mutation
+ *                                   (resources, projects, plannings, overrides…)
+ *
+ * ── Jira API response caches ────────────────────────────────────────────────
+ *  TTLs are tuned to frequency of change:
  *
  *  jira-projects          15 min  — project list rarely changes
  *  jira-boards            15 min  — board-to-project mapping rarely changes
@@ -25,7 +30,6 @@ import java.util.concurrent.TimeUnit;
  *  jira-sprint-issues      5 min  — issue status changes during a sprint
  *  jira-backlog            5 min  — backlog changes frequently
  *
- * Each cache holds at most 500 entries to bound memory usage.
  * Users can bust all jira caches via POST /api/jira/cache/clear.
  */
 @Configuration
@@ -35,6 +39,11 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         SimpleCacheManager manager = new SimpleCacheManager();
         manager.setCaches(List.of(
+            // ── Portfolio-planner ──────────────────────────────────────────
+            // No TTL — mutating services call @CacheEvict("calculations")
+            noTtlCache("calculations", 50),
+
+            // ── Jira API ───────────────────────────────────────────────────
             jiraCache("jira-projects",         15, 50),
             jiraCache("jira-boards",           15, 200),
             jiraCache("jira-epics",            15, 500),
@@ -48,10 +57,20 @@ public class CacheConfig {
         return manager;
     }
 
+    /** Cache with a write-after TTL — for Jira responses. */
     private static CaffeineCache jiraCache(String name, int ttlMinutes, int maxSize) {
         return new CaffeineCache(name,
             Caffeine.newBuilder()
                 .expireAfterWrite(ttlMinutes, TimeUnit.MINUTES)
+                .maximumSize(maxSize)
+                .recordStats()
+                .build());
+    }
+
+    /** Eviction-only cache (no TTL) — for computation results invalidated by data mutations. */
+    private static CaffeineCache noTtlCache(String name, int maxSize) {
+        return new CaffeineCache(name,
+            Caffeine.newBuilder()
                 .maximumSize(maxSize)
                 .recordStats()
                 .build());

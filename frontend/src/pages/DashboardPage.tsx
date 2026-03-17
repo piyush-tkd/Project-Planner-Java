@@ -78,36 +78,9 @@ export default function DashboardPage() {
 
   if (summaryLoading) return <LoadingSpinner />;
 
-  const isEmpty = !summary ||
-    (summary.totalResources === 0 && summary.activeProjects === 0);
-
   return (
     <Stack>
       <Title order={2}>Dashboard</Title>
-
-      {isEmpty && (
-        <Card withBorder padding="lg" radius="md"
-          style={{ borderLeft: '4px solid #339af0', background: 'linear-gradient(135deg, #EFF6FF, #F0FDF4)' }}>
-          <Group gap="sm" mb="sm">
-            <IconUsers size={22} color="#339af0" />
-            <Title order={4} style={{ color: '#1e40af' }}>Welcome — let's get started</Title>
-          </Group>
-          <Text size="sm" c="dimmed" mb="md">
-            Your Portfolio Planner is set up but has no data yet. Add resources and projects to start
-            tracking utilization, capacity, and demand across your organization.
-          </Text>
-          <Group gap="sm">
-            <Button size="xs" variant="light" leftSection={<IconUsers size={13} />}
-              onClick={() => navigate('/resources')}>
-              Add Resources
-            </Button>
-            <Button size="xs" variant="light" leftSection={<IconBriefcase size={13} />}
-              onClick={() => navigate('/projects')}>
-              Add Projects
-            </Button>
-          </Group>
-        </Card>
-      )}
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <SummaryCard
