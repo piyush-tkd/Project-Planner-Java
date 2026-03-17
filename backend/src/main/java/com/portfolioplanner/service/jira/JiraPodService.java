@@ -133,7 +133,9 @@ public class JiraPodService {
                     if ("done".equalsIgnoreCase(statusKey))               doneIssues++;
                     else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
 
+                    // customfield_10016 = SP in classic projects; customfield_10028 = SP in Next-gen projects
                     Object sp      = fields.get("customfield_10016");
+                    if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                     double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
                     totalSP += issueSP;
                     if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
@@ -215,6 +217,7 @@ public class JiraPodService {
                     for (Map<String, Object> issue : jiraClient.getSprintIssues(sprintId)) {
                         Map<String, Object> fields = (Map<String, Object>) issue.getOrDefault("fields", Map.of());
                         Object sp = fields.get("customfield_10016");
+                        if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                         double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
                         committed += issueSP;
                         Map<String, Object> statusObj = (Map<String, Object>) fields.get("status");
