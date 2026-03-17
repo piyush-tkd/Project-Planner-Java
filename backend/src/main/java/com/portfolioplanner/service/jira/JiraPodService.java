@@ -163,8 +163,8 @@ public class JiraPodService {
                 String sName = str(sprint, "name");
                 if (sName != null && !sprintNames.contains(sName)) sprintNames.add(sName);
 
-                List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId);
                 final String boardSpField = spFieldId; // effectively final for lambda
+                List<Map<String, Object>> issues = jiraClient.getSprintIssues(sprintId, boardSpField);
 
                 for (Map<String, Object> issue : issues) {
                     try {
@@ -407,20 +407,33 @@ public class JiraPodService {
                         .findFirst().orElse(boards.get(0));
                 long boardId = ((Number) board.get("id")).longValue();
 
+                // Determine SP field for this board (reuse cached config)
+                String velSpField = "customfield_10016";
+                try {
+                    Map<String, Object> bc = jiraClient.getBoardConfiguration(boardId);
+                    Map<String, Object> est = asMap(bc.get("estimation"));
+                    if (est != null) {
+                        Map<String, Object> fld = asMap(est.get("field"));
+                        if (fld != null && str(fld, "fieldId") != null) velSpField = str(fld, "fieldId");
+                    }
+                } catch (Exception ignored) {}
+
                 for (Map<String, Object> sprint : jiraClient.getClosedSprints(boardId, VELOCITY_SPRINT_COUNT)) {
                     String name   = nvl(str(sprint, "name"), "Sprint");
                     long sprintId = ((Number) sprint.get("id")).longValue();
                     double committed = 0, completed = 0;
 
-                    for (Map<String, Object> issue : jiraClient.getSprintIssues(sprintId)) {
-                        Map<String, Object> fields = (Map<String, Object>) issue.getOrDefault("fields", Map.of());
-                        Object sp = fields.get("customfield_10016");
+                    for (Map<String, Object> issue : jiraClient.getSprintIssues(sprintId, velSpField)) {
+                        Map<String, Object> fields = asMap(issue.getOrDefault("fields", Map.of()));
+                        if (fields == null) fields = Map.of();
+                        Object sp = fields.get(velSpField);
+                        if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                         double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
                         committed += issueSP;
-                        Map<String, Object> statusObj = (Map<String, Object>) fields.get("status");
+                        Map<String, Object> statusObj = asMap(fields.get("status"));
                         Map<String, Object> statusCat = statusObj != null
-                                ? (Map<String, Object>) statusObj.get("statusCategory") : null;
+                                ? asMap(statusObj.get("statusCategory")) : null;
                         if (statusCat != null && "done".equalsIgnoreCase(str(statusCat, "key"))) completed += issueSP;
                     }
                     bySprint.computeIfAbsent(name, k -> new double[]{0, 0});

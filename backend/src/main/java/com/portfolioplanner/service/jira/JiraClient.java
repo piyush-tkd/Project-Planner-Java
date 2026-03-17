@@ -292,10 +292,22 @@ public class JiraClient {
     /**
      * Returns all issues in a sprint with fields needed for POD metrics.
      * Uses the Agile sprint issues endpoint.
+     *
+     * @param sprintId      the Jira sprint ID
+     * @param boardSpField  the board's configured estimation field (from getBoardConfiguration),
+     *                      e.g. "customfield_10062". Included in the fields request so SP values
+     *                      are returned. Pass null or empty to skip.
      */
     @SuppressWarnings("unchecked")
-    @Cacheable(value = "jira-sprint-issues", key = "#sprintId")
-    public List<Map<String, Object>> getSprintIssues(long sprintId) {
+    @Cacheable(value = "jira-sprint-issues", key = "#sprintId + '_' + #boardSpField")
+    public List<Map<String, Object>> getSprintIssues(long sprintId, String boardSpField) {
+        // Always include the board-specific SP field plus common fallback variants
+        String spFields = "customfield_10016,customfield_10028";
+        if (boardSpField != null && !boardSpField.isBlank()
+                && !boardSpField.equals("customfield_10016")
+                && !boardSpField.equals("customfield_10028")) {
+            spFields += "," + boardSpField;
+        }
         List<Map<String, Object>> all = new ArrayList<>();
         int startAt = 0;
         int pageSize = 100;
@@ -304,8 +316,7 @@ public class JiraClient {
                     .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/sprint/" + sprintId + "/issue")
                     .queryParam("fields",
                             "summary,status,assignee,timespent,timeoriginalestimate,timeestimate," +
-                            // SP fields: 10016=classic, 10028=next-gen, 10024/10025/10004=other variants
-                            "customfield_10016,customfield_10028,customfield_10024,customfield_10025,customfield_10004," +
+                            spFields + "," +
                             "story_points,issuetype,priority,labels,created,resolutiondate," +
                             "customfield_10014,parent," +
                             "fixVersions,components,worklog")
