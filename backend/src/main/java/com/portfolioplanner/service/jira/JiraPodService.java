@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -79,10 +81,25 @@ public class JiraPodService {
 
         if (boardKeys.isEmpty()) return PodMetrics.noBoards(pod.getId(), pod.getPodDisplayName());
 
-        int    totalIssues = 0, doneIssues = 0, inProgress = 0;
-        double totalSP = 0, doneSP = 0, hoursLogged = 0;
-        Map<String, Double>  hoursByMember = new LinkedHashMap<>();
-        Map<String, Integer> spByMember   = new LinkedHashMap<>();
+        // ── Sprint aggregates ─────────────────────────────────────────
+        int    totalIssues = 0, doneIssues = 0, inProgress = 0, todoIssues = 0;
+        double totalSP = 0, doneSP = 0, hoursLogged = 0, estimatedHours = 0;
+
+        // ── Breakdowns ────────────────────────────────────────────────
+        Map<String, Double>  hoursByMember    = new LinkedHashMap<>();
+        Map<String, Integer> spByMember       = new LinkedHashMap<>();
+        Map<String, Integer> memberIssueCount = new LinkedHashMap<>();
+        Map<String, Integer> issueTypeBreakdown  = new LinkedHashMap<>();
+        Map<String, Integer> priorityBreakdown   = new LinkedHashMap<>();
+        Map<String, Integer> statusBreakdown     = new LinkedHashMap<>();
+        Map<String, Integer> labelBreakdown      = new LinkedHashMap<>();
+        Map<String, Integer> epicBreakdown       = new LinkedHashMap<>();
+
+        // ── Cycle time (done issues only) ─────────────────────────────
+        long cycleTimeSum = 0;
+        int  cycleTimeCount = 0;
+
+        // ── Board / sprint metadata ───────────────────────────────────
         List<String> boardNames  = new ArrayList<>();
         List<String> sprintNames = new ArrayList<>();
         String startDate = null, endDate = null;
@@ -125,29 +142,97 @@ public class JiraPodService {
 
                 for (Map<String, Object> issue : issues) {
                     Map<String, Object> fields = (Map<String, Object>) issue.getOrDefault("fields", Map.of());
+
+                    // ── Status ──────────────────────────────────────────
                     Map<String, Object> statusObj = (Map<String, Object>) fields.get("status");
                     Map<String, Object> statusCat = statusObj != null
                             ? (Map<String, Object>) statusObj.get("statusCategory") : null;
-                    String statusKey = statusCat != null ? nvl(str(statusCat, "key"), "") : "";
+                    String statusKey  = statusCat != null ? nvl(str(statusCat, "key"), "") : "";
+                    String statusName = statusObj  != null ? nvl(str(statusObj,  "name"), "Unknown") : "Unknown";
+                    statusBreakdown.merge(statusName, 1, Integer::sum);
 
-                    if ("done".equalsIgnoreCase(statusKey))               doneIssues++;
+                    if      ("done".equalsIgnoreCase(statusKey))          doneIssues++;
                     else if ("indeterminate".equalsIgnoreCase(statusKey)) inProgress++;
+                    else                                                   todoIssues++;
 
-                    // customfield_10016 = SP in classic projects; customfield_10028 = SP in Next-gen projects
-                    Object sp      = fields.get("customfield_10016");
+                    // ── Story points (classic=10016, next-gen=10028) ────
+                    Object sp = fields.get("customfield_10016");
                     if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
                     double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
                     totalSP += issueSP;
                     if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
 
+                    // ── Time tracking ────────────────────────────────────
+                    Object ts      = fields.get("timespent");
+                    Object origEst = fields.get("timeoriginalestimate");
+                    double hrs  = ts      instanceof Number ? ((Number) ts).doubleValue()      / SECONDS_PER_HOUR : 0;
+                    double est  = origEst instanceof Number ? ((Number) origEst).doubleValue() / SECONDS_PER_HOUR : 0;
+                    hoursLogged    += hrs;
+                    estimatedHours += est;
+
+                    // ── Assignee ─────────────────────────────────────────
                     Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
                     String member = assignee != null
                             ? nvl((String) assignee.get("displayName"), "Unassigned") : "Unassigned";
-                    Object ts  = fields.get("timespent");
-                    double hrs = ts instanceof Number ? ((Number) ts).doubleValue() / SECONDS_PER_HOUR : 0;
-                    hoursLogged += hrs;
-                    if (hrs > 0)     hoursByMember.merge(member, hrs, Double::sum);
-                    if (issueSP > 0) spByMember.merge(member, (int) issueSP, Integer::sum);
+                    if (hrs     > 0)  hoursByMember.merge(member, hrs,         Double::sum);
+                    if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
+                    memberIssueCount.merge(member, 1, Integer::sum);
+
+                    // ── Issue type ────────────────────────────────────────
+                    Map<String, Object> issueType = (Map<String, Object>) fields.get("issuetype");
+                    String typeName = issueType != null ? nvl(str(issueType, "name"), "Unknown") : "Unknown";
+                    issueTypeBreakdown.merge(typeName, 1, Integer::sum);
+
+                    // ── Priority ──────────────────────────────────────────
+                    Map<String, Object> priorityObj = (Map<String, Object>) fields.get("priority");
+                    String priorityName = priorityObj != null ? nvl(str(priorityObj, "name"), "None") : "None";
+                    priorityBreakdown.merge(priorityName, 1, Integer::sum);
+
+                    // ── Labels ────────────────────────────────────────────
+                    Object labelsObj = fields.get("labels");
+                    if (labelsObj instanceof List) {
+                        for (Object lbl : (List<?>) labelsObj) {
+                            if (lbl instanceof String && !((String) lbl).isBlank())
+                                labelBreakdown.merge((String) lbl, 1, Integer::sum);
+                        }
+                    }
+
+                    // ── Epic ──────────────────────────────────────────────
+                    // classic: customfield_10014 = epic key; next-gen: parent.fields.summary
+                    String epicName = null;
+                    Object epicLink = fields.get("customfield_10014");
+                    if (epicLink instanceof String && !((String) epicLink).isBlank()) {
+                        epicName = (String) epicLink;
+                    } else {
+                        Map<String, Object> parent = (Map<String, Object>) fields.get("parent");
+                        if (parent != null) {
+                            Map<String, Object> pf = (Map<String, Object>) parent.get("fields");
+                            if (pf != null) {
+                                String pType = null;
+                                Map<String, Object> pIssueType = (Map<String, Object>) pf.get("issuetype");
+                                if (pIssueType != null) pType = str(pIssueType, "name");
+                                if ("Epic".equalsIgnoreCase(pType)) {
+                                    epicName = nvl(str(pf, "summary"), str(parent, "key"));
+                                }
+                            }
+                        }
+                    }
+                    if (epicName != null) epicBreakdown.merge(epicName, 1, Integer::sum);
+
+                    // ── Cycle time (for done issues with resolution date) ─
+                    if ("done".equalsIgnoreCase(statusKey)) {
+                        String created  = str(fields, "created");
+                        String resolved = str(fields, "resolutiondate");
+                        if (created != null && resolved != null) {
+                            try {
+                                long days = ChronoUnit.DAYS.between(
+                                        OffsetDateTime.parse(created),
+                                        OffsetDateTime.parse(resolved));
+                                cycleTimeSum += Math.max(0, days);
+                                cycleTimeCount++;
+                            } catch (Exception ignored) {}
+                        }
+                    }
                 }
 
             } catch (Exception e) {
@@ -156,15 +241,19 @@ public class JiraPodService {
             }
         }
 
+        double avgCycleTimeDays = cycleTimeCount > 0 ? round((double) cycleTimeSum / cycleTimeCount) : 0;
+
         SprintInfo activeSprint = null;
         if (hasActiveSprint) {
             String combinedName = sprintNames.isEmpty() ? "Active Sprint"
                     : sprintNames.size() == 1           ? sprintNames.get(0)
                     : sprintNames.get(0) + " (+" + (sprintNames.size() - 1) + " more)";
-            activeSprint = SprintInfo.of(firstSprintId, combinedName, "active",
+            activeSprint = SprintInfo.of(
+                    firstSprintId, combinedName, "active",
                     startDate, endDate,
-                    totalIssues, doneIssues, inProgress,
-                    round(totalSP), round(doneSP), round(hoursLogged));
+                    totalIssues, doneIssues, inProgress, todoIssues,
+                    round(totalSP), round(doneSP), round(hoursLogged), round(estimatedHours),
+                    avgCycleTimeDays);
         }
 
         String boardDisplay = boardNames.isEmpty() ? null
@@ -172,9 +261,15 @@ public class JiraPodService {
                 : boardNames.size() <= 2           ? String.join(", ", boardNames)
                 : boardNames.size() + " boards";
 
-        return new PodMetrics(pod.getId(), pod.getPodDisplayName(), boardKeys,
-                boardDisplay, activeSprint, List.of(),
-                backlogSize, hoursByMember, spByMember, null);
+        return new PodMetrics(
+                pod.getId(), pod.getPodDisplayName(), boardKeys, boardDisplay,
+                activeSprint, List.of(),
+                backlogSize,
+                hoursByMember, spByMember, memberIssueCount,
+                issueTypeBreakdown, priorityBreakdown, statusBreakdown,
+                labelBreakdown, epicBreakdown,
+                round(estimatedHours), avgCycleTimeDays,
+                null);
     }
 
     private List<PodMetrics> getAllProjectsAsDefaultPods() {
@@ -243,6 +338,7 @@ public class JiraPodService {
 
     private static double round(double v) { return Math.round(v * 10.0) / 10.0; }
     private static String str(Map<String, Object> m, String key) {
+        if (m == null) return null;
         Object v = m.get(key); return v instanceof String ? (String) v : null;
     }
     private static String nvl(String s, String def) {
@@ -259,38 +355,64 @@ public class JiraPodService {
             SprintInfo activeSprint,
             List<SprintVelocity> velocity,
             int    backlogSize,
+            // Team breakdown
             Map<String, Double>  hoursByMember,
             Map<String, Integer> spByMember,
+            Map<String, Integer> memberIssueCount,
+            // Issue breakdowns (current sprint)
+            Map<String, Integer> issueTypeBreakdown,
+            Map<String, Integer> priorityBreakdown,
+            Map<String, Integer> statusBreakdown,
+            Map<String, Integer> labelBreakdown,
+            Map<String, Integer> epicBreakdown,
+            // Estimates & cycle time
+            double totalEstimatedHours,
+            double avgCycleTimeDays,
             String errorMessage) {
 
         static PodMetrics error(Long podId, String name, String msg) {
             return new PodMetrics(podId, name, List.of(), null, null,
-                    List.of(), 0, Map.of(), Map.of(), msg);
+                    List.of(), 0,
+                    Map.of(), Map.of(), Map.of(),
+                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                    0, 0, msg);
         }
         static PodMetrics noBoards(Long podId, String name) {
             return new PodMetrics(podId, name, List.of(), null, null,
-                    List.of(), 0, Map.of(), Map.of(), null);
+                    List.of(), 0,
+                    Map.of(), Map.of(), Map.of(),
+                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                    0, 0, null);
         }
     }
 
     public record SprintInfo(
             int id, String name, String state,
             String startDate, String endDate,
-            int totalIssues, int doneIssues, int inProgressIssues,
-            double totalSP, double doneSP, double hoursLogged,
-            // Pre-computed so Jackson serializes them as JSON fields
-            double progressPct, double spProgressPct) {
+            // Issue counts
+            int totalIssues, int doneIssues, int inProgressIssues, int todoIssues,
+            // Story points
+            double totalSP, double doneSP,
+            // Time
+            double hoursLogged, double estimatedHours,
+            // Pre-computed percentages (stored as fields so Jackson serialises them)
+            double progressPct, double spProgressPct,
+            // Cycle time
+            double avgCycleTimeDays) {
 
-        /** Factory — computes the two percentage fields automatically. */
+        /** Factory — computes percentage fields automatically. */
         static SprintInfo of(int id, String name, String state,
                              String startDate, String endDate,
-                             int totalIssues, int doneIssues, int inProgressIssues,
-                             double totalSP, double doneSP, double hoursLogged) {
-            double pct   = totalIssues == 0 ? 0 : round(doneIssues  * 100.0 / totalIssues);
-            double spPct = totalSP     == 0 ? 0 : round(doneSP      * 100.0 / totalSP);
+                             int totalIssues, int doneIssues, int inProgressIssues, int todoIssues,
+                             double totalSP, double doneSP,
+                             double hoursLogged, double estimatedHours,
+                             double avgCycleTimeDays) {
+            double pct   = totalIssues == 0 ? 0 : Math.round(doneIssues * 100.0 / totalIssues * 10) / 10.0;
+            double spPct = totalSP     == 0 ? 0 : Math.round(doneSP     * 100.0 / totalSP     * 10) / 10.0;
             return new SprintInfo(id, name, state, startDate, endDate,
-                    totalIssues, doneIssues, inProgressIssues,
-                    totalSP, doneSP, hoursLogged, pct, spPct);
+                    totalIssues, doneIssues, inProgressIssues, todoIssues,
+                    totalSP, doneSP, hoursLogged, estimatedHours,
+                    pct, spPct, avgCycleTimeDays);
         }
     }
 

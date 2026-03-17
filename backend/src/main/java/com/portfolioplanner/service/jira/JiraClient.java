@@ -304,7 +304,9 @@ public class JiraClient {
                     .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/sprint/" + sprintId + "/issue")
                     .queryParam("fields",
                             "summary,status,assignee,timespent,timeoriginalestimate," +
-                            "customfield_10016,customfield_10028,story_points,issuetype,created,resolutiondate")
+                            "customfield_10016,customfield_10028,story_points," +
+                            "issuetype,priority,labels,created,resolutiondate," +
+                            "customfield_10014,parent")
                     .queryParam("maxResults", pageSize)
                     .queryParam("startAt", startAt)
                     .toUriString();

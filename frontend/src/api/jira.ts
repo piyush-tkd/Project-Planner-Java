@@ -71,14 +71,22 @@ export interface SprintInfo {
   state: string;
   startDate: string | null;
   endDate: string | null;
+  // Issue counts
   totalIssues: number;
   doneIssues: number;
   inProgressIssues: number;
+  todoIssues: number;
+  // Story points
   totalSP: number;
   doneSP: number;
+  // Time
   hoursLogged: number;
+  estimatedHours: number;
+  // Pre-computed percentages
   progressPct: number;
   spProgressPct: number;
+  // Cycle time
+  avgCycleTimeDays: number;
 }
 
 export interface SprintVelocity {
@@ -95,8 +103,19 @@ export interface PodMetrics {
   activeSprint: SprintInfo | null;
   velocity: SprintVelocity[];
   backlogSize: number;
+  // Team breakdown
   hoursByMember: Record<string, number>;
   spByMember: Record<string, number>;
+  memberIssueCount: Record<string, number>;
+  // Issue breakdowns (current sprint)
+  issueTypeBreakdown: Record<string, number>;   // e.g. { Bug: 5, Story: 10, Task: 3 }
+  priorityBreakdown: Record<string, number>;    // e.g. { High: 4, Medium: 8, Low: 2 }
+  statusBreakdown: Record<string, number>;      // e.g. { "To Do": 2, "In Progress": 8, Done: 10 }
+  labelBreakdown: Record<string, number>;       // e.g. { "frontend": 5, "api": 3 }
+  epicBreakdown: Record<string, number>;        // e.g. { "Auth Epic": 4, "Dashboard": 6 }
+  // Estimates & cycle time
+  totalEstimatedHours: number;
+  avgCycleTimeDays: number;
   errorMessage: string | null;
 }
 
