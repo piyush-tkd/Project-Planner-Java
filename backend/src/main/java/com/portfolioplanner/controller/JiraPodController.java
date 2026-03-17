@@ -52,8 +52,10 @@ public class JiraPodController {
     @PostMapping("/config")
     @Transactional
     public ResponseEntity<List<PodConfigResponse>> saveConfig(@RequestBody List<PodConfigRequest> requests) {
-        // Delete all existing PODs (cascade deletes boards)
+        // Delete all existing PODs (cascade deletes boards), then flush so the
+        // DB sees the deletes before we insert — avoids uq_jira_pod_board_key violation.
         podRepo.deleteAll();
+        podRepo.flush();
 
         for (int i = 0; i < requests.size(); i++) {
             PodConfigRequest req = requests.get(i);
