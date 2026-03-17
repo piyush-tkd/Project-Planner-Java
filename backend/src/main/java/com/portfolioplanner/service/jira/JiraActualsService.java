@@ -16,7 +16,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
  * Fetches Jira issues for each mapped project, derives actual hours/story-points
@@ -36,6 +40,9 @@ public class JiraActualsService {
     // Jira stores time in seconds; 1 FTE-day = 8 h = 28800 s
     private static final double SECONDS_PER_HOUR = 3600.0;
 
+    // Thread pool for parallel epic/label fetching across projects
+    private static final ExecutorService POOL = Executors.newFixedThreadPool(8);
+
     // ── Public API ────────────────────────────────────────────────────
 
     /** Delegates to JiraClient for a raw connectivity check. */
@@ -44,50 +51,72 @@ public class JiraActualsService {
     }
 
     /**
+     * Lightweight: returns only key + name for every Jira project.
+     * Used by the Settings board-picker — no epic/label data needed there.
+     */
+    public List<SimpleProject> getSimpleProjects() {
+        if (!props.isConfigured()) return List.of();
+        return jiraClient.getProjects().stream()
+                .map(p -> new SimpleProject(str(p, "key"), str(p, "name")))
+                .filter(sp -> sp.key() != null && !sp.key().isBlank())
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Returns all Jira projects with their epics/labels so the UI can build
      * the mapping configuration.
+     * Epics and labels are fetched in parallel (8-thread pool) so N projects
+     * take roughly 1× the latency of one project instead of N×.
      */
     @Transactional(readOnly = true)
     public List<JiraProjectInfo> getJiraProjects() {
         if (!props.isConfigured()) return List.of();
 
         List<Map<String, Object>> raw = jiraClient.getProjects();
-        log.info("Jira returned {} projects", raw.size());
-        List<JiraProjectInfo> result = new ArrayList<>();
+        log.info("Jira returned {} projects — fetching epics/labels in parallel", raw.size());
+        long t0 = System.currentTimeMillis();
 
-        for (Map<String, Object> p : raw) {
-            String key  = str(p, "key");
-            String name = str(p, "name");
-            if (key == null || key.isBlank()) continue;
+        List<CompletableFuture<JiraProjectInfo>> futures = raw.stream()
+                .map(p -> {
+                    String key  = str(p, "key");
+                    String name = str(p, "name");
+                    if (key == null || key.isBlank()) return null;
+                    return CompletableFuture.supplyAsync(() -> fetchProjectInfo(key, name), POOL);
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
-            // Fetch epics for this project
-            List<EpicInfo> epics;
-            try {
-                epics = jiraClient.getEpics(key).stream()
-                        .map(e -> new EpicInfo(
-                                str(e, "key"),
-                                epicName(e),   // handles Agile vs REST format
-                                epicStatus(e)))
-                        .filter(ei -> ei.name() != null && !ei.name().isBlank())
-                        .collect(Collectors.toList());
-                log.info("  Project {}: {} epics", key, epics.size());
-            } catch (Exception e) {
-                log.warn("Failed to fetch epics for project {}: {}", key, e.getMessage());
-                epics = List.of();
-            }
+        List<JiraProjectInfo> result = futures.stream()
+                .map(f -> { try { return f.join(); } catch (Exception e) { return null; } })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
-            // Fetch labels
-            List<String> labels;
-            try {
-                labels = jiraClient.getLabels(key);
-            } catch (Exception e) {
-                log.warn("Failed to fetch labels for project {}: {}", key, e.getMessage());
-                labels = List.of();
-            }
-
-            result.add(new JiraProjectInfo(key, name, epics, labels));
-        }
+        log.info("Fetched epics/labels for {} projects in {}ms", result.size(), System.currentTimeMillis() - t0);
         return result;
+    }
+
+    private JiraProjectInfo fetchProjectInfo(String key, String name) {
+        List<EpicInfo> epics;
+        try {
+            epics = jiraClient.getEpics(key).stream()
+                    .map(e -> new EpicInfo(str(e, "key"), epicName(e), epicStatus(e)))
+                    .filter(ei -> ei.name() != null && !ei.name().isBlank())
+                    .collect(Collectors.toList());
+            log.debug("  Project {}: {} epics", key, epics.size());
+        } catch (Exception e) {
+            log.warn("Failed to fetch epics for project {}: {}", key, e.getMessage());
+            epics = List.of();
+        }
+
+        List<String> labels;
+        try {
+            labels = jiraClient.getLabels(key);
+        } catch (Exception e) {
+            log.warn("Failed to fetch labels for project {}: {}", key, e.getMessage());
+            labels = List.of();
+        }
+
+        return new JiraProjectInfo(key, name, epics, labels);
     }
 
     /**
@@ -335,6 +364,8 @@ public class JiraActualsService {
     }
 
     // ── DTOs ──────────────────────────────────────────────────────────
+
+    public record SimpleProject(String key, String name) {}
 
     public record JiraProjectInfo(
             String key,

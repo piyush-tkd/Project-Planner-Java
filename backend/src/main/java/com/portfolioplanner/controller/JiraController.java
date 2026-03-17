@@ -7,6 +7,7 @@ import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
 import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.service.jira.JiraActualsService;
 import com.portfolioplanner.service.jira.JiraActualsService.*;
+import com.portfolioplanner.service.jira.JiraClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class JiraController {
 
     private final JiraActualsService actualsService;
+    private final JiraClient jiraClient;
     private final JiraProjectMappingRepository mappingRepo;
     private final ProjectRepository projectRepo;
     private final JiraProperties props;
@@ -137,6 +139,25 @@ public class JiraController {
         return ResponseEntity.ok(actualsService.getActuals());
     }
 
+    /**
+     * Lightweight project list — just key + name, no epics or labels.
+     * Used by the Settings board-picker to avoid loading all epic/label data.
+     */
+    @GetMapping("/projects/simple")
+    public ResponseEntity<List<SimpleProject>> getProjectsSimple() {
+        return ResponseEntity.ok(actualsService.getSimpleProjects());
+    }
+
+    /**
+     * Bust all Jira API caches so the next calls re-fetch live data.
+     * Returns 200 OK with a count of caches cleared.
+     */
+    @PostMapping("/cache/clear")
+    public ResponseEntity<Map<String, Object>> clearCache() {
+        jiraClient.evictAllCaches();
+        return ResponseEntity.ok(Map.of("cleared", true, "message", "All Jira caches cleared"));
+    }
+
     // ── DTOs ──────────────────────────────────────────────────────────
 
     public record SaveMappingRequest(
@@ -153,4 +174,5 @@ public class JiraController {
             String matchType,
             String matchValue,
             Boolean active) {}
+    // SimpleProject DTO is defined in JiraActualsService and imported via wildcard above
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Title, Text, Group, Button, TextInput, Badge,
   Alert, Loader, ActionIcon, Tooltip, Paper, Divider,
-  ThemeIcon, Box, Stack, Select, MultiSelect, Anchor,
+  ThemeIcon, Box, Stack, MultiSelect, Anchor,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -11,7 +11,7 @@ import {
   IconAlertTriangle, IconPlus, IconTrash, IconGripVertical,
 } from '@tabler/icons-react';
 import {
-  useJiraStatus, useJiraProjects,
+  useJiraStatus, useJiraProjectsSimple, useClearJiraCache,
   usePodWatchConfig, useSavePodWatchConfig,
   PodConfigRequest,
 } from '../../api/jira';
@@ -40,9 +40,11 @@ export default function JiraSettingsPage() {
   const navigate = useNavigate();
 
   const { data: status, isLoading: statusLoading } = useJiraStatus();
-  const { data: jiraProjects = [], isLoading: projectsLoading, refetch: refetchProjects } = useJiraProjects();
+  // Lightweight hook — only fetches key+name, not epics/labels
+  const { data: jiraProjects = [], isLoading: projectsLoading, refetch: refetchProjects } = useJiraProjectsSimple();
   const { data: savedConfig = [], isLoading: configLoading } = usePodWatchConfig();
   const save = useSavePodWatchConfig();
+  const clearCache = useClearJiraCache();
 
   const [rows, setRows] = useState<PodRow[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -164,10 +166,32 @@ export default function JiraSettingsPage() {
               {dirty && <Badge color="orange" size="sm" variant="light">Unsaved changes</Badge>}
             </Group>
             <Group gap="xs">
-              <Tooltip label="Reload Jira board list">
+              <Tooltip label="Refresh board list from Jira">
                 <ActionIcon variant="light" loading={projectsLoading} onClick={() => refetchProjects()}>
                   <IconRefresh size={16} />
                 </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Clear all Jira caches (forces fresh data across all Integration pages)">
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="orange"
+                  loading={clearCache.isPending}
+                  onClick={() =>
+                    clearCache.mutate(undefined, {
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Cache cleared',
+                          message: 'All Jira caches cleared — next load will fetch live data.',
+                          color: 'teal',
+                        });
+                        refetchProjects();
+                      },
+                    })
+                  }
+                >
+                  Clear Cache
+                </Button>
               </Tooltip>
               <Button
                 size="sm"

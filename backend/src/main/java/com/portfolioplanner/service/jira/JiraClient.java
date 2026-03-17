@@ -1,6 +1,9 @@
 package com.portfolioplanner.service.jira;
 
 import com.portfolioplanner.config.JiraProperties;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -27,6 +30,7 @@ public class JiraClient {
 
     /** Returns all Jira projects visible to the configured account. */
     @SuppressWarnings("unchecked")
+    @Cacheable("jira-projects")
     public List<Map<String, Object>> getProjects() {
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getBaseUrl() + "/rest/api/3/project/search")
@@ -48,6 +52,7 @@ public class JiraClient {
      * then falls back to REST API v3 JQL search.
      */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-epics", key = "#projectKey")
     public List<Map<String, Object>> getEpics(String projectKey) {
         // 1. Try Agile board epic endpoint
         try {
@@ -90,6 +95,7 @@ public class JiraClient {
      * way to list epics on Jira Cloud.
      */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-epics-from-board", key = "#boardId")
     public List<Map<String, Object>> getEpicsFromBoard(long boardId) {
         List<Map<String, Object>> all = new ArrayList<>();
         int startAt = 0;
@@ -116,6 +122,7 @@ public class JiraClient {
 
     /** Returns all distinct labels used in a project. */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-labels", key = "#projectKey")
     public List<String> getLabels(String projectKey) {
         // Use label suggest API
         String url = UriComponentsBuilder
@@ -236,6 +243,7 @@ public class JiraClient {
      * Uses the Agile REST API at /rest/agile/1.0/
      */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-boards", key = "#projectKey")
     public List<Map<String, Object>> getBoards(String projectKey) {
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/board")
@@ -250,6 +258,7 @@ public class JiraClient {
 
     /** Returns the active sprint(s) for a board, or empty list if none. */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-active-sprints", key = "#boardId")
     public List<Map<String, Object>> getActiveSprints(long boardId) {
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/board/" + boardId + "/sprint")
@@ -263,6 +272,7 @@ public class JiraClient {
 
     /** Returns recent closed sprints for a board (for velocity calculation). */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-closed-sprints", key = "#boardId + '-' + #count")
     public List<Map<String, Object>> getClosedSprints(long boardId, int count) {
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/board/" + boardId + "/sprint")
@@ -284,6 +294,7 @@ public class JiraClient {
      * Uses the Agile sprint issues endpoint.
      */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-sprint-issues", key = "#sprintId")
     public List<Map<String, Object>> getSprintIssues(long sprintId) {
         List<Map<String, Object>> all = new ArrayList<>();
         int startAt = 0;
@@ -315,6 +326,7 @@ public class JiraClient {
      * Returns issues in a board backlog (sprint = null) — used for backlog sizing.
      */
     @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-backlog", key = "#boardId")
     public List<Map<String, Object>> getBacklogIssues(long boardId) {
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getBaseUrl() + "/rest/agile/1.0/board/" + boardId + "/backlog")
@@ -325,6 +337,27 @@ public class JiraClient {
         if (resp == null) return List.of();
         Object issues = resp.get("issues");
         return issues instanceof List ? (List<Map<String, Object>>) issues : List.of();
+    }
+
+    // ── Cache management ──────────────────────────────────────────────
+
+    /**
+     * Evicts all Jira caches so the next calls re-fetch live data from Jira.
+     * Called from POST /api/jira/cache/clear.
+     */
+    @Caching(evict = {
+        @CacheEvict(value = "jira-projects",         allEntries = true),
+        @CacheEvict(value = "jira-boards",           allEntries = true),
+        @CacheEvict(value = "jira-epics",            allEntries = true),
+        @CacheEvict(value = "jira-epics-from-board", allEntries = true),
+        @CacheEvict(value = "jira-labels",           allEntries = true),
+        @CacheEvict(value = "jira-active-sprints",   allEntries = true),
+        @CacheEvict(value = "jira-closed-sprints",   allEntries = true),
+        @CacheEvict(value = "jira-sprint-issues",    allEntries = true),
+        @CacheEvict(value = "jira-backlog",          allEntries = true),
+    })
+    public void evictAllCaches() {
+        log.info("All Jira caches evicted");
     }
 
     // ── Connection test ───────────────────────────────────────────────

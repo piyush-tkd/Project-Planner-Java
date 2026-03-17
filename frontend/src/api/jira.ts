@@ -271,3 +271,41 @@ export function useDeleteMapping() {
     },
   });
 }
+
+// ── Lightweight project list (key + name only) ─────────────────────
+
+export interface SimpleProject {
+  key: string;
+  name: string;
+}
+
+/**
+ * Fetches just project key + name — no epics or labels.
+ * Used by board pickers in Settings so we don't pay the full project load cost.
+ */
+export function useJiraProjectsSimple() {
+  return useQuery<SimpleProject[]>({
+    queryKey: ['jira', 'projects', 'simple'],
+    queryFn: () => apiClient.get('/jira/projects/simple').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+/**
+ * Clears all Jira server-side caches and removes the relevant React Query
+ * caches so the next request re-fetches live data from Jira.
+ */
+export function useClearJiraCache() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post('/jira/cache/clear').then(r => r.data),
+    onSuccess: () => {
+      // Remove all cached Jira data — next load will re-fetch from Jira
+      qc.removeQueries({ queryKey: ['jira', 'projects'] });
+      qc.removeQueries({ queryKey: ['jira', 'pods'] });
+      qc.removeQueries({ queryKey: ['jira', 'actuals'] });
+      qc.removeQueries({ queryKey: ['jira', 'suggestions'] });
+    },
+  });
+}
