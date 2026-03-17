@@ -28,6 +28,7 @@ import TimelineSimulatorPage from './pages/simulators/TimelineSimulatorPage';
 import ScenarioSimulatorPage from './pages/simulators/ScenarioSimulatorPage';
 import TimelineSettingsPage from './pages/settings/TimelineSettingsPage';
 import RefDataSettingsPage from './pages/settings/RefDataSettingsPage';
+import JiraSettingsPage from './pages/settings/JiraSettingsPage';
 
 export default function App() {
   return (
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/simulator/scenario" element={<ScenarioSimulatorPage />} />
           <Route path="/settings/timeline" element={<TimelineSettingsPage />} />
           <Route path="/settings/ref-data" element={<RefDataSettingsPage />} />
+          <Route path="/settings/jira" element={<JiraSettingsPage />} />
         </Route>
       </Route>
     </Routes>

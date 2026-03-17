@@ -1,26 +1,25 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Title, Text, Group, Stack, Badge, Button, Grid, Paper,
   Progress, Loader, Alert, ThemeIcon, Tooltip, Collapse,
-  TextInput, SegmentedControl, Divider, Modal, Switch, ActionIcon,
-  ScrollArea, Table, Checkbox,
+  TextInput, SegmentedControl, Divider,
 } from '@mantine/core';
 import {
   IconTicket, IconRefresh, IconAlertTriangle, IconCircleCheck,
-  IconChevronDown, IconChevronUp, IconUsers, IconClockHour4,
+  IconChevronDown, IconChevronUp, IconClockHour4,
   IconChartBar, IconSearch, IconTrendingUp, IconList,
-  IconCircleDot, IconSquareCheck, IconSettings, IconGripVertical,
+  IconCircleDot, IconSquareCheck, IconSettings,
   IconInfoCircle,
 } from '@tabler/icons-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { notifications } from '@mantine/notifications';
 import {
-  useJiraStatus, useJiraProjects, useJiraPods,
-  usePodWatchConfig, useSavePodWatchConfig, usePodVelocity,
-  PodMetrics, SprintVelocity, PodWatchRequest,
+  useJiraStatus, useJiraPods,
+  usePodWatchConfig, usePodVelocity,
+  PodMetrics,
 } from '../api/jira';
 
 const DEEP_BLUE = '#0C2340';
@@ -36,9 +35,9 @@ const POD_COLORS = [
 ];
 
 export default function PodDashboardPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'cards' | 'table'>('cards');
-  const [configOpen, setConfigOpen] = useState(false);
 
   const { data: status, isLoading: statusLoading } = useJiraStatus();
   const { data: pods = [], isLoading, refetch, error } = useJiraPods();
@@ -69,7 +68,7 @@ export default function PodDashboardPage() {
   const totalDoneSP  = pods.reduce((s, p) => s + (p.activeSprint?.doneSP ?? 0), 0);
   const overallPct   = totalSP > 0 ? (totalDoneSP / totalSP) * 100 : 0;
 
-  const isConfigured = watchConfig.length > 0;
+  const isConfigured = watchConfig.some(w => w.enabled);
 
   return (
     <Box p="md">
@@ -77,7 +76,7 @@ export default function PodDashboardPage() {
       <Group justify="space-between" mb="lg">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
-            <IconUsers size={22} color="white" />
+            <IconChartBar size={22} color="white" />
           </ThemeIcon>
           <div>
             <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
@@ -87,7 +86,7 @@ export default function PodDashboardPage() {
               Live sprint health &amp; team activity
               {isConfigured
                 ? ` · ${watchConfig.filter(w => w.enabled).length} watched PODs`
-                : ' · showing all Jira projects (configure below)'}
+                : ' · showing all Jira projects'}
             </Text>
           </div>
         </Group>
@@ -100,9 +99,9 @@ export default function PodDashboardPage() {
           <Button
             size="xs" variant="light"
             leftSection={<IconSettings size={14} />}
-            onClick={() => setConfigOpen(true)}
+            onClick={() => navigate('/settings/jira')}
           >
-            Configure PODs
+            Configure Boards
           </Button>
           <Button
             size="xs" variant="light"
@@ -146,9 +145,15 @@ export default function PodDashboardPage() {
       {/* ── Not configured hint ── */}
       {!isConfigured && !isLoading && (
         <Alert icon={<IconInfoCircle />} color="blue" mb="md"
-          title="No PODs configured yet">
-          Click <strong>Configure PODs</strong> to select which Jira project spaces
-          to track and set their POD display names.
+          title="No boards configured yet">
+          Go to{' '}
+          <Text
+            component="span" size="sm" fw={600} style={{ cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={() => navigate('/settings/jira')}
+          >
+            Settings → Jira Boards
+          </Text>
+          {' '}to select which Jira project spaces to track and set their POD display names.
         </Alert>
       )}
 
@@ -187,169 +192,8 @@ export default function PodDashboardPage() {
       )}
 
       {!isLoading && view === 'table' && <PodTable pods={filtered} />}
-
-      {/* ── Configure Modal ── */}
-      <ConfigureModal
-        opened={configOpen}
-        onClose={() => setConfigOpen(false)}
-        currentConfig={watchConfig}
-        onRefreshPods={() => refetch()}
-      />
     </Box>
   );
-}
-
-// ── Configure Modal ───────────────────────────────────────────────────
-
-function ConfigureModal({
-  opened, onClose, currentConfig, onRefreshPods,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  currentConfig: Array<{ id: number; jiraProjectKey: string; podDisplayName: string; enabled: boolean }>;
-  onRefreshPods: () => void;
-}) {
-  const { data: jiraProjects = [], isLoading: loadingProjects, refetch: refetchJira } = useJiraProjects();
-  const save = useSavePodWatchConfig();
-
-  // Build editable rows: merge jira projects with existing config
-  const [rows, setRows] = useState<PodWatchRequest[]>(() => initRows(currentConfig, jiraProjects));
-
-  // Re-init when projects load or modal opens
-  const computedRows = useMemo(
-    () => initRows(currentConfig, jiraProjects),
-    [currentConfig, jiraProjects]
-  );
-
-  const [localRows, setLocalRows] = useState<PodWatchRequest[]>(computedRows);
-
-  // Sync when modal opens
-  const handleOpen = () => setLocalRows(computedRows);
-
-  const toggle = (key: string) =>
-    setLocalRows(r => r.map(row => row.jiraProjectKey === key ? { ...row, enabled: !row.enabled } : row));
-
-  const rename = (key: string, name: string) =>
-    setLocalRows(r => r.map(row => row.jiraProjectKey === key ? { ...row, podDisplayName: name } : row));
-
-  const handleSave = async () => {
-    try {
-      await save.mutateAsync(localRows);
-      notifications.show({ message: 'POD watchlist saved', color: 'teal' });
-      onRefreshPods();
-      onClose();
-    } catch (e) {
-      notifications.show({ message: 'Save failed', color: 'red' });
-    }
-  };
-
-  const enabledCount = localRows.filter(r => r.enabled).length;
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      onEntered={handleOpen}
-      title={
-        <Group gap="xs">
-          <IconSettings size={18} />
-          <Text fw={700} style={{ color: DEEP_BLUE }}>Configure POD Watchlist</Text>
-        </Group>
-      }
-      size="lg"
-    >
-      <Stack gap="sm">
-        <Group justify="space-between">
-          <Text size="sm" c="dimmed">
-            Select which Jira project spaces to show in the POD Dashboard
-            and customize their display names.
-          </Text>
-          <Badge color="teal">{enabledCount} enabled</Badge>
-        </Group>
-
-        {loadingProjects ? (
-          <Stack align="center" py="md"><Loader size="sm" /><Text size="sm" c="dimmed">Loading Jira projects…</Text></Stack>
-        ) : (
-          <ScrollArea mah={460}>
-            <Table verticalSpacing={6} highlightOnHover>
-              <Table.Thead style={{ backgroundColor: '#f8fafb' }}>
-                <Table.Tr>
-                  <Table.Th style={{ width: 40 }}>On</Table.Th>
-                  <Table.Th>Jira Space</Table.Th>
-                  <Table.Th>POD Display Name</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {localRows.map(row => (
-                  <Table.Tr key={row.jiraProjectKey}
-                    style={{ opacity: row.enabled ? 1 : 0.45 }}>
-                    <Table.Td>
-                      <Checkbox
-                        checked={row.enabled}
-                        onChange={() => toggle(row.jiraProjectKey)}
-                        size="sm"
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <Badge size="xs" variant="outline" color="blue">
-                          {row.jiraProjectKey}
-                        </Badge>
-                        <Text size="xs" c="dimmed">
-                          {jiraProjects.find(p => p.key === row.jiraProjectKey)?.name ?? ''}
-                        </Text>
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <TextInput
-                        size="xs"
-                        value={row.podDisplayName}
-                        onChange={e => rename(row.jiraProjectKey, e.currentTarget.value)}
-                        placeholder={row.jiraProjectKey}
-                        disabled={!row.enabled}
-                        style={{ maxWidth: 220 }}
-                      />
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-        )}
-
-        <Group justify="space-between" pt="xs">
-          <Button size="xs" variant="subtle" leftSection={<IconRefresh size={13} />}
-            loading={loadingProjects} onClick={() => refetchJira()}>
-            Reload Jira Spaces
-          </Button>
-          <Group gap="xs">
-            <Button size="sm" variant="default" onClick={onClose}>Cancel</Button>
-            <Button size="sm" style={{ backgroundColor: DEEP_BLUE }}
-              loading={save.isPending} onClick={handleSave}>
-              Save Watchlist
-            </Button>
-          </Group>
-        </Group>
-      </Stack>
-    </Modal>
-  );
-}
-
-function initRows(
-  config: Array<{ jiraProjectKey: string; podDisplayName: string; enabled: boolean }>,
-  jiraProjects: Array<{ key: string; name: string }>
-): PodWatchRequest[] {
-  // Merge: existing config rows first, then any new Jira projects not yet configured
-  const configKeys = new Set(config.map(c => c.jiraProjectKey));
-  const fromConfig: PodWatchRequest[] = config.map(c => ({
-    jiraProjectKey: c.jiraProjectKey,
-    podDisplayName: c.podDisplayName,
-    enabled: c.enabled,
-  }));
-  const newProjects: PodWatchRequest[] = jiraProjects
-    .filter(p => !configKeys.has(p.key))
-    .map(p => ({ jiraProjectKey: p.key, podDisplayName: p.name, enabled: false }));
-  return [...fromConfig, ...newProjects];
 }
 
 // ── POD Card ──────────────────────────────────────────────────────────

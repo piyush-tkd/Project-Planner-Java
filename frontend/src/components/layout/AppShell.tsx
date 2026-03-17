@@ -109,6 +109,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Timeline',       path: '/settings/timeline', icon: <IconSettings size={17} /> },
       { label: 'Reference Data', path: '/settings/ref-data', icon: <IconDatabase size={17} /> },
+      { label: 'Jira Boards',    path: '/settings/jira',     icon: <IconTicket size={17} /> },
     ],
   },
 ];
