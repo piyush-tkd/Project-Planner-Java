@@ -3,24 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Title, Text, Group, Stack, Badge, Button, Grid, Paper,
   Progress, Loader, Alert, ThemeIcon, Tooltip, Collapse,
-  TextInput, SegmentedControl, Divider,
+  TextInput, SegmentedControl, Divider, SimpleGrid, ActionIcon,
 } from '@mantine/core';
 import {
   IconTicket, IconRefresh, IconAlertTriangle, IconCircleCheck,
   IconChevronDown, IconChevronUp, IconClockHour4,
   IconChartBar, IconSearch, IconTrendingUp, IconList,
   IconCircleDot, IconSquareCheck, IconSettings,
-  IconInfoCircle,
+  IconInfoCircle, IconExternalLink, IconUsers,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
-  ResponsiveContainer,
+  ResponsiveContainer, Legend, Cell, PieChart, Pie, LabelList,
 } from 'recharts';
 import {
   useJiraStatus, useJiraPods, useClearJiraCache,
   usePodWatchConfig, usePodVelocity,
   PodMetrics,
 } from '../api/jira';
+import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
+import ChartCard from '../components/common/ChartCard';
 
 const DEEP_BLUE = '#0C2340';
 const AGUA = '#1F9196';
@@ -37,14 +40,15 @@ const POD_COLORS = [
 export default function PodDashboardPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'cards' | 'table'>('cards');
+  const [view, setView] = useState<'cards' | 'table' | 'heatmap'>('cards');
 
   const { data: status, isLoading: statusLoading } = useJiraStatus();
   const { data: pods = [], isLoading, refetch, error } = useJiraPods();
   const { data: watchConfig = [] } = usePodWatchConfig();
   const clearCache = useClearJiraCache();
 
-  // Refresh = clear backend Caffeine cache first, then re-fetch live data
+  const jiraBaseUrl = status?.baseUrl ?? '';
+
   const handleRefresh = () => {
     clearCache.mutate(undefined, { onSettled: () => refetch() });
   };
@@ -76,6 +80,31 @@ export default function PodDashboardPage() {
 
   const isConfigured = watchConfig.some(w => w.enabled);
 
+  // Cross-pod SP comparison data for heatmap view
+  const spCompareData = pods
+    .filter(p => p.activeSprint && p.activeSprint.totalSP > 0)
+    .map((p, i) => ({
+      name: p.podDisplayName.length > 16 ? p.podDisplayName.slice(0, 14) + '…' : p.podDisplayName,
+      fullName: p.podDisplayName,
+      Done: Math.round(p.activeSprint!.doneSP),
+      Remaining: Math.round(p.activeSprint!.totalSP - p.activeSprint!.doneSP),
+      pct: Math.round(p.activeSprint!.spProgressPct),
+      color: POD_COLORS[i % POD_COLORS.length],
+    }))
+    .sort((a, b) => b.pct - a.pct);
+
+  // Team workload aggregation across all pods
+  const teamHours: Record<string, number> = {};
+  pods.forEach(p => {
+    Object.entries(p.hoursByMember ?? {}).forEach(([name, h]) => {
+      teamHours[name] = (teamHours[name] ?? 0) + h;
+    });
+  });
+  const topTeam = Object.entries(teamHours)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 12)
+    .map(([name, hours]) => ({ name: name.split(' ')[0], hours: Math.round(hours) }));
+
   return (
     <Box p="md">
       {/* ── Header ── */}
@@ -99,15 +128,19 @@ export default function PodDashboardPage() {
         <Group gap="xs">
           <SegmentedControl
             size="xs" value={view}
-            onChange={v => setView(v as 'cards' | 'table')}
-            data={[{ label: 'Cards', value: 'cards' }, { label: 'Table', value: 'table' }]}
+            onChange={v => setView(v as 'cards' | 'table' | 'heatmap')}
+            data={[
+              { label: 'Cards', value: 'cards' },
+              { label: 'Table', value: 'table' },
+              { label: 'Compare', value: 'heatmap' },
+            ]}
           />
           <Button
             size="xs" variant="light"
             leftSection={<IconSettings size={14} />}
             onClick={() => navigate('/settings/jira')}
           >
-            Configure Boards
+            Configure
           </Button>
           <Button
             size="xs" variant="light"
@@ -115,7 +148,7 @@ export default function PodDashboardPage() {
             loading={clearCache.isPending || isLoading}
             onClick={handleRefresh}
           >
-            {clearCache.isPending ? 'Clearing cache…' : 'Refresh'}
+            {clearCache.isPending ? 'Clearing…' : 'Refresh'}
           </Button>
         </Group>
       </Group>
@@ -148,22 +181,19 @@ export default function PodDashboardPage() {
         </Paper>
       )}
 
-      {/* ── Not configured hint ── */}
       {!isConfigured && !isLoading && (
-        <Alert icon={<IconInfoCircle />} color="blue" mb="md"
-          title="No boards configured yet">
+        <Alert icon={<IconInfoCircle />} color="blue" mb="md" title="No boards configured yet">
           Go to{' '}
-          <Text
-            component="span" size="sm" fw={600} style={{ cursor: 'pointer', textDecoration: 'underline' }}
+          <Text component="span" size="sm" fw={600}
+            style={{ cursor: 'pointer', textDecoration: 'underline' }}
             onClick={() => navigate('/settings/jira')}
           >
             Settings → Jira Boards
-          </Text>
-          {' '}to select which Jira project spaces to track and set their POD display names.
+          </Text>{' '}
+          to select which Jira project spaces to track.
         </Alert>
       )}
 
-      {/* ── Filter bar ── */}
       <Group mb="md" gap="sm">
         <TextInput
           placeholder="Search PODs…"
@@ -187,38 +217,177 @@ export default function PodDashboardPage() {
         </Stack>
       )}
 
+      {/* ── Cards view ── */}
       {!isLoading && view === 'cards' && (
         <Grid gutter="md">
           {filtered.map((pod, idx) => (
             <Grid.Col key={pod.podId ?? pod.podDisplayName} span={{ base: 12, sm: 6, lg: 4 }}>
-              <PodCard pod={pod} color={POD_COLORS[idx % POD_COLORS.length]} />
+              <PodCard
+                pod={pod}
+                color={POD_COLORS[idx % POD_COLORS.length]}
+                jiraBaseUrl={jiraBaseUrl}
+                onNavigate={() => pod.podId && navigate(`/jira-pods/${pod.podId}`)}
+              />
             </Grid.Col>
           ))}
         </Grid>
       )}
 
-      {!isLoading && view === 'table' && <PodTable pods={filtered} />}
+      {/* ── Table view ── */}
+      {!isLoading && view === 'table' && (
+        <PodTable pods={filtered} jiraBaseUrl={jiraBaseUrl}
+          onRowClick={(pod) => pod.podId && navigate(`/jira-pods/${pod.podId}`)} />
+      )}
+
+      {/* ── Compare view ── */}
+      {!isLoading && view === 'heatmap' && (
+        <WidgetGrid pageKey="pod-compare">
+          {/* SP comparison */}
+          <Widget id="sprint-sp" title="Sprint Story Points">
+          {spCompareData.length > 0 && (
+            <ChartCard title="Sprint Story Points — All PODs" minHeight={Math.max(200, spCompareData.length * 36)}>
+              <ResponsiveContainer width="100%" height={Math.max(200, spCompareData.length * 36)}>
+                <BarChart
+                  data={spCompareData}
+                  layout="vertical"
+                  margin={{ top: 0, right: 50, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
+                  <RTooltip
+                    contentStyle={{ fontSize: 11 }}
+                    formatter={(v: number, n: string) => [`${v} SP`, n]}
+                  />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Done" stackId="a" fill={GREEN} radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Remaining" stackId="a" fill="#E2E8F0" radius={[0, 3, 3, 0]}>
+                    <LabelList
+                      dataKey="pct"
+                      position="right"
+                      style={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                      formatter={(v: number) => `${v}%`}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          </Widget>
+
+          {/* Hours by issue type across pods */}
+          <Widget id="issue-types" title="Issue Types Across PODs">
+          {pods.some(p => Object.keys(p.issueTypeBreakdown ?? {}).length > 0) && (
+            <ChartCard title="Issue Types Across PODs (Active Sprint)" minHeight={300}>
+              <Grid>
+                {filtered
+                  .filter(p => p.activeSprint && Object.keys(p.issueTypeBreakdown ?? {}).length > 0)
+                  .map((pod, i) => {
+                    const typeData = Object.entries(pod.issueTypeBreakdown ?? {})
+                      .map(([name, value]) => ({ name, value }));
+                    return (
+                      <Grid.Col key={pod.podDisplayName} span={{ base: 12, sm: 6, lg: 4 }}>
+                        <Paper withBorder p="xs" radius="sm"
+                          style={{ cursor: 'pointer', borderTop: `3px solid ${POD_COLORS[i % POD_COLORS.length]}` }}
+                          onClick={() => pod.podId && navigate(`/jira-pods/${pod.podId}`)}
+                        >
+                          <Group justify="space-between" mb={6}>
+                            <Text size="xs" fw={600}>{pod.podDisplayName}</Text>
+                            <ActionIcon size="xs" variant="subtle" color="gray">
+                              <IconArrowRight size={12} />
+                            </ActionIcon>
+                          </Group>
+                          <ResponsiveContainer width="100%" height={100}>
+                            <BarChart data={typeData} margin={{ top: 16, right: 4, left: -28, bottom: 0 }}>
+                              <XAxis dataKey="name" tick={{ fontSize: 8 }} />
+                              <YAxis tick={{ fontSize: 8 }} allowDecimals={false} />
+                              <RTooltip contentStyle={{ fontSize: 10 }} />
+                              <Bar dataKey="value" radius={[2, 2, 0, 0]}>
+                                {typeData.map((_, j) => (
+                                  <Cell key={j} fill={POD_COLORS[(i + j + 1) % POD_COLORS.length]} />
+                                ))}
+                                <LabelList
+                                  dataKey="value"
+                                  position="top"
+                                  style={{ fontSize: 9, fontWeight: 700, fill: '#334155' }}
+                                />
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Paper>
+                      </Grid.Col>
+                    );
+                  })}
+              </Grid>
+            </ChartCard>
+          )}
+
+          </Widget>
+
+          {/* Team workload across all pods */}
+          <Widget id="team-hours" title="Team Hours">
+          {topTeam.length > 0 && (
+            <ChartCard
+              title="Team Hours Logged This Sprint (All PODs)"
+              minHeight={180}
+              headerRight={
+                <Badge size="sm" variant="light" color="teal" leftSection={<IconUsers size={11} />}>
+                  {topTeam.length} contributors
+                </Badge>
+              }
+            >
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={topTeam} margin={{ top: 2, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <RTooltip contentStyle={{ fontSize: 11 }}
+                    formatter={(v: number) => [`${v}h`, 'Hours']} />
+                  <Bar dataKey="hours" fill={AGUA} radius={[3, 3, 0, 0]}>
+                    {topTeam.map((_, i) => (
+                      <Cell key={i} fill={POD_COLORS[i % POD_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+          </Widget>
+
+        </WidgetGrid>
+      )}
     </Box>
   );
 }
 
 // ── POD Card ──────────────────────────────────────────────────────────
 
-function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
+function PodCard({
+  pod, color, jiraBaseUrl, onNavigate,
+}: {
+  pod: PodMetrics;
+  color: string;
+  jiraBaseUrl: string;
+  onNavigate: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [showAllTeam, setShowAllTeam] = useState(false);
   const { data: velocity = [], isLoading: loadingVelocity } =
     usePodVelocity(pod.podId, expanded);
 
   const sprint = pod.activeSprint;
 
-  const topMembers = useMemo(() =>
-    Object.entries(pod.hoursByMember).sort(([, a], [, b]) => b - a).slice(0, 4),
+  const allMembers = useMemo(() =>
+    Object.entries(pod.hoursByMember).sort(([, a], [, b]) => b - a),
     [pod.hoursByMember]
   );
   const spEntries = useMemo(() =>
-    Object.entries(pod.spByMember).sort(([, a], [, b]) => b - a).slice(0, 4),
+    Object.entries(pod.spByMember).sort(([, a], [, b]) => b - a),
     [pod.spByMember]
   );
+
+  const displayMembers = showAllTeam ? allMembers : allMembers.slice(0, 5);
 
   const velocityData = velocity.map(v => ({
     sprint: v.sprintName.length > 14 ? '…' + v.sprintName.slice(-12) : v.sprintName,
@@ -226,19 +395,35 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
     Completed: v.completedSP,
   }));
 
+  // Build Jira backlog URL
+  const boardUrl = jiraBaseUrl && pod.boardKeys[0]
+    ? `${jiraBaseUrl.replace(/\/$/, '')}/browse/${pod.boardKeys[0]}?backlog`
+    : null;
+
+  const todoCount = sprint
+    ? sprint.totalIssues - sprint.doneIssues - sprint.inProgressIssues
+    : 0;
+
   return (
     <Paper withBorder radius="md" style={{ borderTop: `4px solid ${color}`, height: '100%' }}>
-      {/* Header */}
-      <Box p="md" pb="xs">
+      {/* Header — clickable to POD detail */}
+      <Box
+        p="md" pb="xs"
+        style={{ cursor: 'pointer' }}
+        onClick={onNavigate}
+      >
         <Group justify="space-between" mb={4}>
           <Group gap="xs">
             <ThemeIcon size={28} radius="sm" style={{ backgroundColor: color }}>
               <IconTicket size={15} color="white" />
             </ThemeIcon>
             <div>
-              <Text fw={700} size="sm" style={{ color: DEEP_BLUE, lineHeight: 1.2 }}>
-                {pod.podDisplayName}
-              </Text>
+              <Group gap={4}>
+                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, lineHeight: 1.2 }}>
+                  {pod.podDisplayName}
+                </Text>
+                <IconArrowRight size={12} color={GRAY} />
+              </Group>
               <Group gap={4}>
                 {pod.boardKeys.slice(0, 3).map(k => (
                   <Badge key={k} size="xs" variant="outline" color="gray">{k}</Badge>
@@ -249,9 +434,22 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
               </Group>
             </div>
           </Group>
-          {pod.errorMessage
-            ? <Tooltip label={pod.errorMessage}><IconAlertTriangle size={16} color={RED} /></Tooltip>
-            : sprint ? <IconCircleCheck size={16} color={GREEN} /> : null}
+          <Group gap={4}>
+            {boardUrl && (
+              <Tooltip label="Open Jira backlog">
+                <ActionIcon
+                  size="sm" variant="subtle" color="gray"
+                  component="a" href={boardUrl} target="_blank" rel="noreferrer"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <IconExternalLink size={13} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {pod.errorMessage
+              ? <Tooltip label={pod.errorMessage}><IconAlertTriangle size={16} color={RED} /></Tooltip>
+              : sprint ? <IconCircleCheck size={16} color={GREEN} /> : null}
+          </Group>
         </Group>
         {pod.boardName && <Text size="xs" c="dimmed">Board: {pod.boardName}</Text>}
       </Box>
@@ -290,14 +488,37 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
               <Progress value={sprint.spProgressPct} size="md" radius="xs"
                 color={sprint.spProgressPct >= 80 ? 'teal' : sprint.spProgressPct >= 50 ? 'yellow' : 'orange'} />
             </Box>
+
+            {/* Issue counts — clicking opens Jira sprint board */}
             <Group gap="xs" mt={2}>
-              <StatPill icon={<IconSquareCheck size={11} />} label={String(sprint.doneIssues)} tip="Done" color={GREEN} />
-              <StatPill icon={<IconCircleDot size={11} />} label={String(sprint.inProgressIssues)} tip="In Progress" color={AMBER} />
-              <StatPill icon={<IconList size={11} />}
-                label={String(sprint.totalIssues - sprint.doneIssues - sprint.inProgressIssues)} tip="To Do" color={GRAY} />
+              <StatPill
+                icon={<IconSquareCheck size={11} />}
+                label={String(sprint.doneIssues)}
+                tip={`${sprint.doneIssues} Done — click to open Jira backlog`}
+                color={GREEN}
+                href={boardUrl}
+              />
+              <StatPill
+                icon={<IconCircleDot size={11} />}
+                label={String(sprint.inProgressIssues)}
+                tip={`${sprint.inProgressIssues} In Progress`}
+                color={AMBER}
+                href={boardUrl}
+              />
+              <StatPill
+                icon={<IconList size={11} />}
+                label={String(todoCount)}
+                tip={`${todoCount} To Do`}
+                color={GRAY}
+                href={boardUrl}
+              />
               {sprint.hoursLogged > 0 && (
-                <StatPill icon={<IconClockHour4 size={11} />}
-                  label={`${Math.round(sprint.hoursLogged)}h`} tip="Hours Logged" color={AGUA} />
+                <StatPill
+                  icon={<IconClockHour4 size={11} />}
+                  label={`${Math.round(sprint.hoursLogged)}h`}
+                  tip="Hours Logged this sprint"
+                  color={AGUA}
+                />
               )}
             </Group>
           </Stack>
@@ -306,7 +527,21 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
 
       {pod.backlogSize > 0 && (
         <Box px="md" pb="xs">
-          <Text size="xs" c="dimmed">Backlog: <strong>{pod.backlogSize}</strong> items</Text>
+          {boardUrl ? (
+            <Text
+              size="xs" c="dimmed"
+              component="a"
+              href={`${jiraBaseUrl.replace(/\/$/, '')}/browse/${pod.boardKeys[0]}?backlog`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ textDecoration: 'none', cursor: 'pointer' }}
+            >
+              Backlog: <strong>{pod.backlogSize}</strong> items{' '}
+              <IconExternalLink size={10} style={{ verticalAlign: 'middle' }} />
+            </Text>
+          ) : (
+            <Text size="xs" c="dimmed">Backlog: <strong>{pod.backlogSize}</strong> items</Text>
+          )}
         </Box>
       )}
 
@@ -315,7 +550,7 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
       <Box px="md" py="xs" style={{ cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
         <Group justify="space-between">
           <Text size="xs" c="dimmed">
-            {expanded ? 'Hide' : 'Velocity & team breakdown'}
+            {expanded ? 'Hide details' : 'Velocity & team breakdown'}
           </Text>
           {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
         </Group>
@@ -324,7 +559,10 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
       <Collapse in={expanded}>
         <Box px="md" pb="md">
           {loadingVelocity ? (
-            <Stack align="center" py="sm"><Loader size="xs" /><Text size="xs" c="dimmed">Loading velocity…</Text></Stack>
+            <Stack align="center" py="sm">
+              <Loader size="xs" />
+              <Text size="xs" c="dimmed">Loading velocity…</Text>
+            </Stack>
           ) : velocityData.length > 0 ? (
             <>
               <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs">
@@ -345,13 +583,46 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
             <Text size="xs" c="dimmed" ta="center">No closed sprints found</Text>
           )}
 
-          {(topMembers.length > 0 || spEntries.length > 0) && (
+          {/* Issue type breakdown for active sprint */}
+          {Object.keys(pod.issueTypeBreakdown ?? {}).length > 0 && (
             <>
-              <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs" mt="sm">Team (current sprint)</Text>
+              <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs" mt="sm">
+                Issue Types (current sprint)
+              </Text>
+              <Group gap="xs" wrap="wrap">
+                {Object.entries(pod.issueTypeBreakdown).map(([type, count], i) => (
+                  <Badge
+                    key={type} size="xs" variant="light"
+                    style={{ backgroundColor: `${POD_COLORS[i % POD_COLORS.length]}18`,
+                             color: POD_COLORS[i % POD_COLORS.length] }}
+                  >
+                    {type}: {count}
+                  </Badge>
+                ))}
+              </Group>
+            </>
+          )}
+
+          {/* Team members — all of them */}
+          {(allMembers.length > 0 || spEntries.length > 0) && (
+            <>
+              <Group justify="space-between" mt="sm" mb="xs">
+                <Text size="xs" fw={600} tt="uppercase" c="dimmed">
+                  Team ({allMembers.length} members)
+                </Text>
+                {allMembers.length > 5 && (
+                  <Text
+                    size="xs" c="teal" style={{ cursor: 'pointer' }}
+                    onClick={() => setShowAllTeam(s => !s)}
+                  >
+                    {showAllTeam ? 'Show less' : `+${allMembers.length - 5} more`}
+                  </Text>
+                )}
+              </Group>
               <Stack gap={4}>
-                {(topMembers.length > 0 ? topMembers : spEntries).map(([name, val]) => {
-                  const isHours = topMembers.length > 0;
-                  const maxVal = (topMembers.length > 0 ? topMembers : spEntries)[0]?.[1] ?? 1;
+                {(displayMembers.length > 0 ? displayMembers : spEntries.slice(0, showAllTeam ? undefined : 5)).map(([name, val]) => {
+                  const isHours = allMembers.length > 0;
+                  const maxVal = (allMembers.length > 0 ? allMembers : spEntries)[0]?.[1] ?? 1;
                   return (
                     <Group key={name} gap="xs" wrap="nowrap">
                       <Text size="xs" style={{ width: 130, flexShrink: 0 }} truncate>{name}</Text>
@@ -375,7 +646,13 @@ function PodCard({ pod, color }: { pod: PodMetrics; color: string }) {
 
 // ── Table view ────────────────────────────────────────────────────────
 
-function PodTable({ pods }: { pods: PodMetrics[] }) {
+function PodTable({
+  pods, jiraBaseUrl, onRowClick,
+}: {
+  pods: PodMetrics[];
+  jiraBaseUrl: string;
+  onRowClick: (pod: PodMetrics) => void;
+}) {
   return (
     <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -389,23 +666,46 @@ function PodTable({ pods }: { pods: PodMetrics[] }) {
         <tbody>
           {pods.map((pod, idx) => {
             const sprint = pod.activeSprint;
+            const boardUrl = jiraBaseUrl && pod.boardKeys[0]
+              ? `${jiraBaseUrl.replace(/\/$/, '')}/browse/${pod.boardKeys[0]}?backlog`
+              : null;
             return (
-              <tr key={pod.podDisplayName + idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafb' }}>
+              <tr
+                key={pod.podDisplayName + idx}
+                style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafb', cursor: 'pointer' }}
+                onClick={() => onRowClick(pod)}
+              >
                 <td style={{ padding: '10px 12px' }}>
-                  <div>
-                    <Text size="sm" fw={600}>{pod.podDisplayName}</Text>
-                    <Group gap={4} mt={2}>
-                      {pod.boardKeys.slice(0, 4).map(k => (
-                        <Badge key={k} size="xs" variant="outline">{k}</Badge>
-                      ))}
-                      {pod.boardKeys.length > 4 && (
-                        <Badge size="xs" variant="outline">+{pod.boardKeys.length - 4}</Badge>
-                      )}
-                    </Group>
-                  </div>
+                  <Group gap={4}>
+                    <div>
+                      <Text size="sm" fw={600}>{pod.podDisplayName}</Text>
+                      <Group gap={4} mt={2}>
+                        {pod.boardKeys.slice(0, 4).map(k => (
+                          <Badge key={k} size="xs" variant="outline">{k}</Badge>
+                        ))}
+                        {pod.boardKeys.length > 4 && (
+                          <Badge size="xs" variant="outline">+{pod.boardKeys.length - 4}</Badge>
+                        )}
+                      </Group>
+                    </div>
+                    <IconArrowRight size={12} color={GRAY} />
+                  </Group>
                 </td>
                 <td style={{ padding: '10px 12px' }}>
-                  {sprint ? <Text size="sm">{sprint.name}</Text> : <Text size="sm" c="dimmed">—</Text>}
+                  {sprint ? (
+                    <Group gap={4}>
+                      <Text size="sm">{sprint.name}</Text>
+                      {boardUrl && (
+                        <ActionIcon
+                          size="xs" variant="subtle" color="gray"
+                          component="a" href={boardUrl} target="_blank" rel="noreferrer"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <IconExternalLink size={11} />
+                        </ActionIcon>
+                      )}
+                    </Group>
+                  ) : <Text size="sm" c="dimmed">—</Text>}
                 </td>
                 <td style={{ padding: '10px 12px', minWidth: 120 }}>
                   {sprint ? (
@@ -429,7 +729,7 @@ function PodTable({ pods }: { pods: PodMetrics[] }) {
                     <Group gap={4}>
                       <Badge size="xs" color="teal">{sprint.doneIssues}✓</Badge>
                       <Badge size="xs" color="yellow">{sprint.inProgressIssues}⟳</Badge>
-                      <Badge size="xs" color="gray">{sprint.totalIssues - sprint.doneIssues - sprint.inProgressIssues}</Badge>
+                      <Badge size="xs" color="gray">{sprint.todoIssues ?? (sprint.totalIssues - sprint.doneIssues - sprint.inProgressIssues)}</Badge>
                     </Group>
                   ) : <Text size="sm" c="dimmed">—</Text>}
                 </td>
@@ -464,15 +764,30 @@ function CompanyStat({ label, value, sub, color, icon }: {
   );
 }
 
-function StatPill({ icon, label, tip, color }: {
-  icon: React.ReactNode; label: string; tip: string; color: string;
+function StatPill({ icon, label, tip, color, href }: {
+  icon: React.ReactNode;
+  label: string;
+  tip: string;
+  color: string;
+  href?: string | null;
 }) {
+  const content = (
+    <Badge
+      size="sm" variant="light" leftSection={icon}
+      style={{ backgroundColor: `${color}18`, color, borderColor: `${color}30`, cursor: href ? 'pointer' : 'default' }}
+    >
+      {label}
+    </Badge>
+  );
+
   return (
     <Tooltip label={tip}>
-      <Badge size="sm" variant="light" leftSection={icon}
-        style={{ backgroundColor: `${color}18`, color, borderColor: `${color}30` }}>
-        {label}
-      </Badge>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}
+          onClick={e => e.stopPropagation()}>
+          {content}
+        </a>
+      ) : content}
     </Tooltip>
   );
 }

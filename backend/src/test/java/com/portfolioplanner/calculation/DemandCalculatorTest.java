@@ -23,6 +23,10 @@ import static org.assertj.core.api.Assertions.*;
 /**
  * Unit tests for DemandCalculator.
  * All tests are pure Java — no Spring context required.
+ *
+ * The calculator now uses explicit role hours (devHours, qaHours, bsaHours,
+ * techLeadHours) with contingencyPct, distributing hours across months
+ * using the assigned effort pattern.
  */
 class DemandCalculatorTest {
 
@@ -32,16 +36,6 @@ class DemandCalculatorTest {
     private static final Long POD_ID   = 1L;
     private static final Long PROJ_ID  = 10L;
     private static final Long PLAN_ID  = 100L;
-
-    /** Standard 4-role mix: Dev 60%, QA 20%, BSA 10%, TL 10% */
-    private static Map<Role, BigDecimal> stdRoleMix() {
-        return Map.of(
-            Role.DEVELOPER, BigDecimal.valueOf(60),
-            Role.QA,        BigDecimal.valueOf(20),
-            Role.BSA,       BigDecimal.valueOf(10),
-            Role.TECH_LEAD, BigDecimal.valueOf(10)
-        );
-    }
 
     /** Flat pattern: all 12 weights = 1 */
     private static EffortPattern flatPattern() {
@@ -67,11 +61,11 @@ class DemandCalculatorTest {
         return ep;
     }
 
-    private static Pod pod(Long id, BigDecimal complexity) {
+    private static Pod pod(Long id) {
         Pod p = new Pod();
         p.setId(id);
         p.setName("Test POD");
-        p.setComplexityMultiplier(complexity);
+        p.setComplexityMultiplier(BigDecimal.ONE);
         return p;
     }
 
@@ -88,15 +82,20 @@ class DemandCalculatorTest {
     }
 
     private static ProjectPodPlanning planning(Long id, Project project, Pod pod,
-                                               String size, BigDecimal complexity,
+                                               BigDecimal devHours, BigDecimal qaHours,
+                                               BigDecimal bsaHours, BigDecimal techLeadHours,
+                                               BigDecimal contingencyPct,
                                                String patternOverride,
                                                Integer podStart, Integer duration) {
         ProjectPodPlanning pp = new ProjectPodPlanning();
         pp.setId(id);
         pp.setProject(project);
         pp.setPod(pod);
-        pp.setTshirtSize(size);
-        pp.setComplexityOverride(complexity);
+        pp.setDevHours(devHours);
+        pp.setQaHours(qaHours);
+        pp.setBsaHours(bsaHours);
+        pp.setTechLeadHours(techLeadHours);
+        pp.setContingencyPct(contingencyPct != null ? contingencyPct : BigDecimal.ZERO);
         pp.setEffortPattern(patternOverride);
         pp.setPodStartMonth(podStart);
         pp.setDurationOverride(duration);
@@ -114,21 +113,22 @@ class DemandCalculatorTest {
     class FlatPatternTests {
 
         @Test
-        @DisplayName("Dev demand = baseHours × complexity × 60% spread evenly across 3 months")
+        @DisplayName("Dev demand = 600 hours spread evenly across 3 months = 200/month")
         void devDemandFlatThreeMonths() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 3, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
-            // M size = 1000 base hours
+            // 600 dev hours, no contingency
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("600"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
-            Map<String, Integer> sizes = Map.of("M", 1000);
-            Map<String, EffortPattern> patterns = Map.of("Flat", flatPattern());
-            Map<Long, Pod> pods = Map.of(POD_ID, pod);
-            Map<Long, Project> projects = Map.of(PROJ_ID, project);
+            var result = calculator.calculate(
+                List.of(pp),
+                Map.of("Flat", flatPattern()),
+                Map.of(POD_ID, pod),
+                Map.of(PROJ_ID, project)
+            );
 
-            var result = calculator.calculate(List.of(pp), patterns, stdRoleMix(), pods, projects, sizes);
-
-            // Total Dev hours = 1000 × 1.0 complexity × 60% = 600 hours spread over 3 months = 200/month
             var devByMonth = result.get(POD_ID).get(Role.DEVELOPER);
             assertThat(devByMonth.get(1)).isEqualByComparingTo("200.00");
             assertThat(devByMonth.get(2)).isEqualByComparingTo("200.00");
@@ -137,101 +137,79 @@ class DemandCalculatorTest {
         }
 
         @Test
-        @DisplayName("QA demand = 1000 × 20% / 3 months = 66.67/month")
+        @DisplayName("QA demand = 200 hours / 3 months ≈ 66.67/month")
         void qaDemandFlatThreeMonths() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 3, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    BigDecimal.ZERO, new BigDecimal("200"), BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                stdRoleMix(),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             BigDecimal qa1 = result.get(POD_ID).get(Role.QA).get(1);
             BigDecimal qa2 = result.get(POD_ID).get(Role.QA).get(2);
             BigDecimal qa3 = result.get(POD_ID).get(Role.QA).get(3);
-            // Total QA = 200, each month ≈ 66.67
             assertThat(qa1.add(qa2).add(qa3)).isEqualByComparingTo("200.00");
         }
 
         @Test
-        @DisplayName("All 4 roles demand sums to total base hours × complexity")
-        void totalDemandEqualsBaseHoursTimesComplexity() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+        @DisplayName("All 4 roles demand sums to total hours")
+        void totalDemandEqualsAllRoleHours() {
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 6, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "L", BigDecimal.ONE, null, null, null);
+            // 1800 dev + 600 qa + 300 bsa + 300 tl = 3000 total
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1800"), new BigDecimal("600"),
+                    new BigDecimal("300"), new BigDecimal("300"),
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                stdRoleMix(),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("L", 3000)
+                Map.of(PROJ_ID, project)
             );
 
-            // Sum all roles all months for this pod
             BigDecimal total = BigDecimal.ZERO;
             for (Role role : Role.values()) {
                 var byMonth = result.getOrDefault(POD_ID, Map.of())
                                     .getOrDefault(role, Map.of());
                 for (var v : byMonth.values()) total = total.add(v);
             }
-            // Total = 3000 × 1.0 × (60+20+10+10)% = 3000 (mix sums to 100%)
             assertThat(total).isEqualByComparingTo("3000.00");
         }
     }
 
-    // ── 2. Complexity multiplier ─────────────────────────────────────────────
+    // ── 2. Contingency ────────────────────────────────────────────────────────
     @Nested
-    @DisplayName("Complexity multiplier")
-    class ComplexityTests {
+    @DisplayName("Contingency percentage")
+    class ContingencyTests {
 
         @Test
-        @DisplayName("Pod complexity 1.4 multiplies base hours")
-        void podComplexityScalesHours() {
-            Pod pod = pod(POD_ID, new BigDecimal("1.4")); // Integrations-level complexity
+        @DisplayName("10% contingency increases total demand by 10%")
+        void contingencyIncreasesHours() {
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 1, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
+            // 1000 dev hours with 10% contingency = 1100
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    new BigDecimal("10"), null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)), // 100% dev for simplicity
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
-            // 1000 × 1.4 pod × 1.0 row × 100% dev = 1400 in M1
             assertThat(result.get(POD_ID).get(Role.DEVELOPER).get(1))
-                .isEqualByComparingTo("1400.00");
-        }
-
-        @Test
-        @DisplayName("Row complexity 1.2 stacks multiplicatively with pod complexity 1.1")
-        void rowAndPodComplexityAreMultiplicative() {
-            Pod pod = pod(POD_ID, new BigDecimal("1.1"));
-            Project project = activeProject(PROJ_ID, 1, 1, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", new BigDecimal("1.2"), null, null, null);
-
-            var result = calculator.calculate(
-                List.of(pp),
-                Map.of("Flat", flatPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)),
-                Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
-            );
-
-            // 1000 × 1.1 × 1.2 × 100% = 1320
-            assertThat(result.get(POD_ID).get(Role.DEVELOPER).get(1))
-                .isEqualByComparingTo("1320.00");
+                .isEqualByComparingTo("1100.00");
         }
     }
 
@@ -243,17 +221,17 @@ class DemandCalculatorTest {
         @Test
         @DisplayName("Ramp-Up: M1 gets less demand than M4")
         void rampUpPatternFrontLoadsLess() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 4, "Ramp Up");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Ramp Up", rampUpPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             BigDecimal m1 = result.get(POD_ID).get(Role.DEVELOPER).get(1);
@@ -262,19 +240,19 @@ class DemandCalculatorTest {
         }
 
         @Test
-        @DisplayName("Ramp-Up over 4 months: total Dev demand = base hours × 100%")
+        @DisplayName("Ramp-Up over 4 months: total Dev demand is conserved")
         void rampUpTotalDemandIsConserved() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 4, "Ramp Up");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "L", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("3000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Ramp Up", rampUpPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("L", 3000)
+                Map.of(PROJ_ID, project)
             );
 
             var byMonth = result.get(POD_ID).get(Role.DEVELOPER);
@@ -285,25 +263,26 @@ class DemandCalculatorTest {
         @Test
         @DisplayName("POD start month offset shifts demand window")
         void podStartMonthOffsetsDemandWindow() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
-            Project project = activeProject(PROJ_ID, 1, 6, "Flat"); // project starts M1
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, 3, 2); // POD starts M3 for 2 months
+            Pod pod = pod(POD_ID);
+            Project project = activeProject(PROJ_ID, 1, 6, "Flat");
+            // POD starts M3 for 2 months, 1000 dev hours
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, 3, 2);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             var devByMonth = result.get(POD_ID).get(Role.DEVELOPER);
-            assertThat(devByMonth.get(1)).isNull(); // no demand before M3
+            assertThat(devByMonth.get(1)).isNull();
             assertThat(devByMonth.get(2)).isNull();
-            assertThat(devByMonth.get(3)).isEqualByComparingTo("500.00"); // 1000 / 2 months
+            assertThat(devByMonth.get(3)).isEqualByComparingTo("500.00");
             assertThat(devByMonth.get(4)).isEqualByComparingTo("500.00");
-            assertThat(devByMonth.get(5)).isNull(); // after POD window
+            assertThat(devByMonth.get(5)).isNull();
         }
     }
 
@@ -313,20 +292,20 @@ class DemandCalculatorTest {
     class EdgeCaseTests {
 
         @Test
-        @DisplayName("ON_HOLD project produces zero demand")
-        void onHoldProjectProducesZeroDemand() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+        @DisplayName("CANCELLED project produces zero demand")
+        void cancelledProjectProducesZeroDemand() {
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 6, "Flat");
-            project.setStatus(ProjectStatus.ON_HOLD);
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
+            project.setStatus(ProjectStatus.CANCELLED);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                stdRoleMix(),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             assertThat(result).isEmpty();
@@ -335,55 +314,36 @@ class DemandCalculatorTest {
         @Test
         @DisplayName("Unknown pattern name produces zero demand (and does not throw)")
         void unknownPatternProducesZeroDemand() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 3, "NonExistent");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()), // "NonExistent" not in map
-                stdRoleMix(),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             assertThat(result).isEmpty();
         }
 
         @Test
-        @DisplayName("Unknown t-shirt size produces zero demand")
-        void unknownTshirtSizeProducesZeroDemand() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
+        @DisplayName("Zero hours for all roles produces zero demand")
+        void zeroHoursProducesZeroDemand() {
+            Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 3, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "XXXL", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp),
                 Map.of("Flat", flatPattern()),
-                stdRoleMix(),
                 Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000) // "XXXL" not in sizes
-            );
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Empty role mix produces zero demand")
-        void emptyRoleMixProducesZeroDemand() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
-            Project project = activeProject(PROJ_ID, 1, 3, "Flat");
-            ProjectPodPlanning pp = planning(PLAN_ID, project, pod, "M", BigDecimal.ONE, null, null, null);
-
-            var result = calculator.calculate(
-                List.of(pp),
-                Map.of("Flat", flatPattern()),
-                Map.of(), // empty role mix
-                Map.of(POD_ID, pod),
-                Map.of(PROJ_ID, project),
-                Map.of("M", 1000)
+                Map.of(PROJ_ID, project)
             );
 
             assertThat(result).isEmpty();
@@ -392,23 +352,24 @@ class DemandCalculatorTest {
         @Test
         @DisplayName("Multiple plannings for same pod accumulate demand")
         void multiplePlanningsAccumulateDemand() {
-            Pod pod = pod(POD_ID, BigDecimal.ONE);
-
+            Pod pod = pod(POD_ID);
             Project p1 = activeProject(1L, 1, 1, "Flat");
             Project p2 = activeProject(2L, 1, 1, "Flat");
-            ProjectPodPlanning pp1 = planning(1L, p1, pod, "M", BigDecimal.ONE, null, null, null);
-            ProjectPodPlanning pp2 = planning(2L, p2, pod, "M", BigDecimal.ONE, null, null, null);
+            ProjectPodPlanning pp1 = planning(1L, p1, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
+            ProjectPodPlanning pp2 = planning(2L, p2, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
 
             var result = calculator.calculate(
                 List.of(pp1, pp2),
                 Map.of("Flat", flatPattern()),
-                Map.of(Role.DEVELOPER, BigDecimal.valueOf(100)),
                 Map.of(POD_ID, pod),
-                Map.of(1L, p1, 2L, p2),
-                Map.of("M", 1000)
+                Map.of(1L, p1, 2L, p2)
             );
 
-            // Both M-size projects: 1000 × 100% each = 2000 total in M1
+            // Both 1000 dev hours in M1 = 2000 total
             assertThat(result.get(POD_ID).get(Role.DEVELOPER).get(1))
                 .isEqualByComparingTo("2000.00");
         }

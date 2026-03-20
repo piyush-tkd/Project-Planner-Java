@@ -4,13 +4,13 @@ import com.portfolioplanner.domain.model.TimelineConfig;
 import com.portfolioplanner.domain.repository.TimelineConfigRepository;
 import com.portfolioplanner.dto.request.TimelineConfigRequest;
 import com.portfolioplanner.dto.response.TimelineConfigResponse;
-import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.LinkedHashMap;
@@ -28,8 +28,19 @@ public class TimelineService {
     public TimelineConfigResponse getCurrentConfig() {
         TimelineConfig config = timelineRepository.findAll().stream()
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("TimelineConfig not found"));
+                .orElse(null);
         Map<Integer, String> monthLabels = getMonthLabels(config);
+        // Return a sensible default response when no config row exists yet
+        if (config == null) {
+            config = new TimelineConfig();
+            config.setStartYear(LocalDate.now().getYear());
+            config.setStartMonth(LocalDate.now().getMonthValue());
+            config.setCurrentMonthIndex(1);
+            // Default 160 h/month for all 12 months
+            Map<String, Integer> defaultHours = new LinkedHashMap<>();
+            for (int m = 1; m <= 12; m++) defaultHours.put("M" + m, 160);
+            config.setWorkingHours(defaultHours);
+        }
         return mapper.toTimelineResponse(config, monthLabels);
     }
 
@@ -53,14 +64,15 @@ public class TimelineService {
     public Map<Integer, String> getMonthLabels() {
         TimelineConfig config = timelineRepository.findAll().stream()
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("TimelineConfig not found"));
+                .orElse(null);
         return getMonthLabels(config);
     }
 
     private Map<Integer, String> getMonthLabels(TimelineConfig config) {
         Map<Integer, String> labels = new LinkedHashMap<>();
-        int startMonth = config.getStartMonth();
-        int startYear = config.getStartYear();
+        // Fall back to current calendar year/month when no timeline has been configured yet
+        int startMonth = config != null ? config.getStartMonth() : LocalDate.now().getMonthValue();
+        int startYear  = config != null ? config.getStartYear()  : LocalDate.now().getYear();
 
         for (int i = 1; i <= 12; i++) {
             int monthOfYear = ((startMonth - 1 + (i - 1)) % 12) + 1;

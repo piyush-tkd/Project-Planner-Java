@@ -1,6 +1,5 @@
 package com.portfolioplanner.service.jira;
 
-import com.portfolioplanner.config.JiraProperties;
 import com.portfolioplanner.domain.model.JiraProjectMapping;
 import com.portfolioplanner.domain.model.Resource;
 import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
@@ -32,7 +31,7 @@ import java.util.Objects;
 public class JiraActualsService {
 
     private final JiraClient jiraClient;
-    private final JiraProperties props;
+    private final JiraCredentialsService creds;
     private final JiraProjectMappingRepository mappingRepo;
     private final ResourceRepository resourceRepo;
     private final TimelineService timelineService;
@@ -55,7 +54,7 @@ public class JiraActualsService {
      * Used by the Settings board-picker — no epic/label data needed there.
      */
     public List<SimpleProject> getSimpleProjects() {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
         return jiraClient.getProjects().stream()
                 .map(p -> new SimpleProject(str(p, "key"), str(p, "name")))
                 .filter(sp -> sp.key() != null && !sp.key().isBlank())
@@ -70,7 +69,7 @@ public class JiraActualsService {
      */
     @Transactional(readOnly = true)
     public List<JiraProjectInfo> getJiraProjects() {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
 
         List<Map<String, Object>> raw = jiraClient.getProjects();
         log.info("Jira returned {} projects — fetching epics/labels in parallel", raw.size());
@@ -125,7 +124,7 @@ public class JiraActualsService {
      */
     @Transactional(readOnly = true)
     public List<ActualsRow> getActuals() {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
 
         List<JiraProjectMapping> mappings = mappingRepo.findByActiveTrueOrderByJiraProjectKey();
         if (mappings.isEmpty()) return List.of();
@@ -163,7 +162,7 @@ public class JiraActualsService {
      */
     @Transactional(readOnly = true)
     public List<MappingSuggestion> suggestMappings() {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
 
         List<JiraProjectInfo> jiraProjects = getJiraProjects();
         List<Resource> resources = resourceRepo.findAll(); // not needed here but kept for future

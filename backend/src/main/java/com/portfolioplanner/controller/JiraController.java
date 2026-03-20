@@ -1,9 +1,12 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.config.JiraProperties;
+import com.portfolioplanner.service.jira.JiraCredentialsService;
 import com.portfolioplanner.domain.model.JiraProjectMapping;
+import com.portfolioplanner.domain.model.JiraPod;
+import com.portfolioplanner.domain.model.JiraPodBoard;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
+import com.portfolioplanner.domain.repository.JiraPodRepository;
 import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.service.jira.JiraActualsService;
 import com.portfolioplanner.service.jira.JiraActualsService.*;
@@ -24,15 +27,16 @@ public class JiraController {
     private final JiraActualsService actualsService;
     private final JiraClient jiraClient;
     private final JiraProjectMappingRepository mappingRepo;
+    private final JiraPodRepository podRepo;
     private final ProjectRepository projectRepo;
-    private final JiraProperties props;
+    private final JiraCredentialsService creds;
 
     /** Check whether Jira credentials are configured */
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> status() {
         return ResponseEntity.ok(Map.of(
-                "configured", props.isConfigured(),
-                "baseUrl", props.isConfigured() ? props.getBaseUrl() : ""
+                "configured", creds.isConfigured(),
+                "baseUrl", creds.isConfigured() ? creds.getBaseUrl() : ""
         ));
     }
 
@@ -42,7 +46,7 @@ public class JiraController {
      */
     @GetMapping("/test")
     public ResponseEntity<Map<String, Object>> testConnection() {
-        if (!props.isConfigured()) {
+        if (!creds.isConfigured()) {
             return ResponseEntity.ok(Map.of("ok", false, "error", "Jira credentials not configured"));
         }
         try {
@@ -170,7 +174,7 @@ public class JiraController {
     @GetMapping("/debug/board/{boardId}")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> debugBoard(@PathVariable long boardId) {
-        if (!props.isConfigured()) {
+        if (!creds.isConfigured()) {
             return ResponseEntity.ok(Map.of("error", "Jira not configured"));
         }
         try {
@@ -240,7 +244,7 @@ public class JiraController {
     @GetMapping("/debug/board/{boardId}/sp-audit")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> spAudit(@PathVariable long boardId) {
-        if (!props.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+        if (!creds.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
         try {
             Map<String, Object> boardConfig = jiraClient.getBoardConfiguration(boardId);
             String spField = null;
@@ -308,7 +312,301 @@ public class JiraController {
         }
     }
 
+    /**
+     * SP path trace — runs the EXACT same Map-navigation logic as buildPodMetrics
+     * and shows the intermediate values, so we can pinpoint where SP extraction fails.
+     * Does NOT evict caches or touch other state.
+     *
+     * Example: GET /api/jira/debug/board/15/sp-trace
+     */
+    @GetMapping("/debug/board/{boardId}/sp-trace")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> spTrace(@PathVariable long boardId) {
+        if (!creds.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+        Map<String, Object> trace = new java.util.LinkedHashMap<>();
+        try {
+            // Step 1 — active sprint
+            List<Map<String, Object>> activeSprints = jiraClient.getActiveSprints(boardId);
+            if (activeSprints.isEmpty()) return ResponseEntity.ok(Map.of("error", "No active sprint"));
+            long sprintId = ((Number) activeSprints.get(0).get("id")).longValue();
+            trace.put("sprintId", sprintId);
+
+            // Step 2 — call getSprintReport (same call as buildPodMetrics)
+            Map<String, Object> sr;
+            try {
+                sr = jiraClient.getSprintReport(boardId, sprintId);
+                trace.put("step2_getSprintReport", "SUCCESS");
+                trace.put("step2_reportIsEmpty", sr.isEmpty());
+                trace.put("step2_reportKeys", sr.keySet());
+            } catch (Exception e) {
+                trace.put("step2_getSprintReport", "FAILED: " + e.getMessage());
+                return ResponseEntity.ok(trace);
+            }
+
+            // Step 3 — navigate contents (exact same asMap logic as buildPodMetrics)
+            Object contentsRaw = sr.get("contents");
+            trace.put("step3_contentsRawType", contentsRaw == null ? "NULL" : contentsRaw.getClass().getName());
+            Map<String, Object> srContents = contentsRaw instanceof Map ? (Map<String, Object>) contentsRaw : null;
+            trace.put("step3_srContentsNull", srContents == null);
+            if (srContents == null) return ResponseEntity.ok(trace);
+            trace.put("step3_contentsKeys", srContents.keySet());
+
+            // Step 4 — extract the three sum objects
+            Object allSumRaw  = srContents.get("allIssuesEstimateSum");
+            Object doneSumRaw = srContents.get("completedIssuesEstimateSum");
+            Object puntSumRaw = srContents.get("puntedIssuesEstimateSum");
+            trace.put("step4_allSumType",  allSumRaw  == null ? "NULL" : allSumRaw.getClass().getName());
+            trace.put("step4_doneSumType", doneSumRaw == null ? "NULL" : doneSumRaw.getClass().getName());
+            trace.put("step4_puntSumType", puntSumRaw == null ? "NULL" : puntSumRaw.getClass().getName());
+
+            Map<String, Object> allSum  = allSumRaw  instanceof Map ? (Map<String, Object>) allSumRaw  : null;
+            Map<String, Object> doneSum = doneSumRaw instanceof Map ? (Map<String, Object>) doneSumRaw : null;
+            Map<String, Object> puntSum = puntSumRaw instanceof Map ? (Map<String, Object>) puntSumRaw : null;
+
+            // Step 5 — extract .value fields
+            Object allVal  = allSum  != null ? allSum.get("value")  : null;
+            Object doneVal = doneSum != null ? doneSum.get("value") : null;
+            Object puntVal = puntSum != null ? puntSum.get("value") : null;
+            trace.put("step5_allValueType",  allVal  == null ? "NULL" : allVal.getClass().getName());
+            trace.put("step5_doneValueType", doneVal == null ? "NULL" : doneVal.getClass().getName());
+            trace.put("step5_puntValueType", puntVal == null ? "NULL" : puntVal.getClass().getName());
+            trace.put("step5_allValue",  allVal);
+            trace.put("step5_doneValue", doneVal);
+            trace.put("step5_puntValue", puntVal);
+
+            // Step 6 — apply instanceof Number check (exact same as buildPodMetrics)
+            double allSP    = allVal  instanceof Number ? ((Number) allVal).doubleValue()  : -1;
+            double doneSPv  = doneVal instanceof Number ? ((Number) doneVal).doubleValue() : -1;
+            double puntSP   = puntVal instanceof Number ? ((Number) puntVal).doubleValue() : 0;
+            trace.put("step6_allSP",   allSP);
+            trace.put("step6_doneSPv", doneSPv);
+            trace.put("step6_puntSP",  puntSP);
+            trace.put("step6_conditionPassed", allSP >= 0 && doneSPv >= 0);
+
+            // Step 7 — final result
+            if (allSP >= 0 && doneSPv >= 0) {
+                trace.put("RESULT_totalSP", allSP - puntSP);
+                trace.put("RESULT_doneSP",  doneSPv);
+            } else {
+                trace.put("RESULT", "FALLBACK (condition failed) — raw SP would be used");
+            }
+
+        } catch (Exception e) {
+            trace.put("error", e.getMessage());
+        }
+        return ResponseEntity.ok(trace);
+    }
+
+    /**
+     * Sprint report debug — calls the Greenhopper sprint report API directly and
+     * returns the raw response plus the extracted SP values our code uses.
+     *
+     * Example: GET /api/jira/debug/board/15/sprint-report
+     */
+    @GetMapping("/debug/board/{boardId}/sprint-report")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> debugSprintReport(@PathVariable long boardId) {
+        if (!creds.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+        try {
+            // Evict cache so we definitely hit the API live
+            jiraClient.evictAllCaches();
+
+            List<Map<String, Object>> activeSprints = jiraClient.getActiveSprints(boardId);
+            if (activeSprints.isEmpty()) return ResponseEntity.ok(Map.of("error", "No active sprint for board " + boardId));
+
+            Map<String, Object> sprint = activeSprints.get(0);
+            long sprintId = ((Number) sprint.get("id")).longValue();
+            String sprintName = sprint.get("name") instanceof String ? (String) sprint.get("name") : "?";
+
+            // Fetch the sprint report
+            Map<String, Object> report = jiraClient.getSprintReport(boardId, sprintId);
+
+            // Extract the SP values our code reads
+            Map<String, Object> extracted = new java.util.LinkedHashMap<>();
+            Object contents = report.get("contents");
+            if (contents instanceof Map) {
+                Map<String, Object> c = (Map<String, Object>) contents;
+                extracted.put("allIssuesEstimateSum",       extractValue(c, "allIssuesEstimateSum"));
+                extracted.put("completedIssuesEstimateSum", extractValue(c, "completedIssuesEstimateSum"));
+                extracted.put("puntedIssuesEstimateSum",    extractValue(c, "puntedIssuesEstimateSum"));
+                extracted.put("issuesNotCompletedEstimateSum", extractValue(c, "issuesNotCompletedEstimateSum"));
+
+                double allSP       = numberValue(c, "allIssuesEstimateSum");
+                double completedSP = numberValue(c, "completedIssuesEstimateSum");
+                double puntedSP    = numberValue(c, "puntedIssuesEstimateSum");
+                extracted.put("=> totalSP (all - punted)", allSP - puntedSP);
+                extracted.put("=> doneSP  (completed)",    completedSP);
+            } else {
+                extracted.put("warning", "No 'contents' key in sprint report — report may be empty");
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "boardId",    boardId,
+                    "sprintId",   sprintId,
+                    "sprintName", sprintName,
+                    "extracted",  extracted,
+                    "rawReport",  report
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object extractValue(Map<String, Object> contents, String key) {
+        Object wrapper = contents.get(key);
+        if (wrapper instanceof Map) return ((Map<?,?>) wrapper).get("value");
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static double numberValue(Map<String, Object> contents, String key) {
+        Object wrapper = contents.get(key);
+        if (wrapper instanceof Map) {
+            Object v = ((Map<?,?>) wrapper).get("value");
+            if (v instanceof Number) return ((Number) v).doubleValue();
+        }
+        return 0;
+    }
+
+    /**
+     * Pods SP debug — for EVERY configured POD, walks the same board→sprint→sprintReport
+     * path that buildPodMetrics uses and reports exactly what happens.
+     *
+     * Evicts all caches first (same as Refresh button) so results are realistic.
+     * Call this immediately after seeing wrong SP on the dashboard.
+     *
+     * Example: GET /api/jira/debug/pods/sp
+     */
+    @GetMapping("/debug/pods/sp")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> debugPodsSprintReports() {
+        if (!creds.isConfigured()) return ResponseEntity.ok(Map.of("error", "Jira not configured"));
+
+        // Evict caches — same as Refresh button
+        jiraClient.evictAllCaches();
+
+        List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
+        List<Map<String, Object>> results = new java.util.ArrayList<>();
+
+        for (JiraPod pod : pods) {
+            Map<String, Object> podResult = new java.util.LinkedHashMap<>();
+            podResult.put("pod", pod.getPodDisplayName());
+            List<Map<String, Object>> boardResults = new java.util.ArrayList<>();
+
+            for (JiraPodBoard boardEntry : pod.getBoards()) {
+                Map<String, Object> br = new java.util.LinkedHashMap<>();
+                String projectKey = boardEntry.getJiraProjectKey();
+                br.put("projectKey", projectKey);
+                try {
+                    // 1. Get board
+                    List<Map<String, Object>> boards = jiraClient.getBoards(projectKey);
+                    if (boards.isEmpty()) { br.put("error", "No boards found"); boardResults.add(br); continue; }
+                    Map<String, Object> board = boards.stream()
+                            .filter(b -> "scrum".equalsIgnoreCase(b.get("type") instanceof String ? (String)b.get("type") : ""))
+                            .findFirst().orElse(boards.get(0));
+                    long boardId = ((Number) board.get("id")).longValue();
+                    br.put("boardId", boardId);
+                    br.put("boardName", board.get("name"));
+
+                    // 2. Active sprint
+                    List<Map<String, Object>> sprints = jiraClient.getActiveSprints(boardId);
+                    if (sprints.isEmpty()) { br.put("activeSprint", "NONE"); boardResults.add(br); continue; }
+                    long sprintId = ((Number) sprints.get(0).get("id")).longValue();
+                    br.put("sprintId", sprintId);
+                    br.put("sprintName", sprints.get(0).get("name"));
+
+                    // 3. Sprint report
+                    try {
+                        Map<String, Object> sr = jiraClient.getSprintReport(boardId, sprintId);
+                        br.put("sprintReportStatus", "SUCCESS");
+                        br.put("sprintReportEmpty", sr.isEmpty());
+                        Object contents = sr.get("contents");
+                        if (contents instanceof Map) {
+                            Map<String, Object> c = (Map<String, Object>) contents;
+                            br.put("allIssuesEstimateSum",       extractValue(c, "allIssuesEstimateSum"));
+                            br.put("completedIssuesEstimateSum", extractValue(c, "completedIssuesEstimateSum"));
+                            br.put("puntedIssuesEstimateSum",    extractValue(c, "puntedIssuesEstimateSum"));
+                            double all  = numberValue(c, "allIssuesEstimateSum");
+                            double done = numberValue(c, "completedIssuesEstimateSum");
+                            double punt = numberValue(c, "puntedIssuesEstimateSum");
+                            br.put("=> totalSP", all - punt);
+                            br.put("=> doneSP",  done);
+                        } else {
+                            br.put("contentsKey", "MISSING — sprint report may be empty or wrong format");
+                        }
+                    } catch (Exception srEx) {
+                        br.put("sprintReportStatus", "FAILED: " + srEx.getMessage());
+                    }
+
+                } catch (Exception e) {
+                    br.put("error", e.getMessage());
+                }
+                boardResults.add(br);
+            }
+            podResult.put("boards", boardResults);
+            results.add(podResult);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "note", "Caches were evicted before this call — same as Refresh button",
+                "pods", results
+        ));
+    }
+
+    // ── Credentials endpoints ─────────────────────────────────────────
+
+    /**
+     * Returns the currently active Jira credentials (token masked for security).
+     * The caller can use this to pre-fill the settings form.
+     */
+    @GetMapping("/credentials")
+    public ResponseEntity<Map<String, Object>> getCredentials() {
+        var db = creds.dbCredentials();
+        String baseUrl  = db.map(c -> c.getBaseUrl()  != null ? c.getBaseUrl()  : "").orElse("");
+        String email    = db.map(c -> c.getEmail()    != null ? c.getEmail()    : "").orElse("");
+        boolean hasToken = db.map(c -> c.getApiToken() != null && !c.getApiToken().isBlank()).orElse(false);
+        // Return a masked token placeholder so the UI shows "saved" state
+        String tokenMask = hasToken ? "••••••••••••••••" : "";
+        return ResponseEntity.ok(Map.of(
+                "baseUrl",   baseUrl,
+                "email",     email,
+                "apiToken",  tokenMask,
+                "hasToken",  hasToken,
+                "configured", creds.isConfigured(),
+                "source", db.isPresent() && db.get().isConfigured() ? "database" : "config-file"
+        ));
+    }
+
+    /**
+     * Saves Jira credentials entered via the UI.
+     * Pass an empty {@code apiToken} to keep the existing token unchanged.
+     */
+    @PostMapping("/credentials")
+    public ResponseEntity<Map<String, Object>> saveCredentials(
+            @RequestBody CredentialsSaveRequest req) {
+        // If client sends the mask placeholder, preserve the existing token
+        String token = req.apiToken();
+        if (token != null && token.startsWith("••")) {
+            token = creds.dbCredentials()
+                    .map(c -> c.getApiToken() != null ? c.getApiToken() : "")
+                    .orElse("");
+        }
+        creds.save(req.baseUrl(), req.email(), token);
+        // Evict all Jira caches since the endpoint may have changed
+        jiraClient.evictAllCaches();
+        return ResponseEntity.ok(Map.of(
+                "saved", true,
+                "configured", creds.isConfigured()
+        ));
+    }
+
     // ── DTOs ──────────────────────────────────────────────────────────
+
+    public record CredentialsSaveRequest(
+            String baseUrl,
+            String email,
+            String apiToken) {}
 
     public record SaveMappingRequest(
             Long ppProjectId,

@@ -13,6 +13,7 @@ import SummaryCard from '../../components/charts/SummaryCard';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 
 interface ProjectHealth {
   id: number;
@@ -139,9 +140,8 @@ export default function DeadlineGapPage() {
       </SimpleGrid>
 
       {chartData.length > 0 && (
-        <Card withBorder padding="md">
+        <ChartCard title="Project Demand Load Ranking" minHeight={320}>
           <ExportableChart title="Project Demand Load Ranking">
-            <Title order={4} mb={4}>Project Demand Load Ranking</Title>
             <Text size="xs" c="dimmed" mb="sm">Demand / available POD capacity during project window — higher % = more impact on POD</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 40 }}>
@@ -155,7 +155,7 @@ export default function DeadlineGapPage() {
               </BarChart>
             </ResponsiveContainer>
           </ExportableChart>
-        </Card>
+        </ChartCard>
       )}
 
       <Group gap="sm" align="flex-end" wrap="wrap">

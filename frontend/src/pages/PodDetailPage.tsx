@@ -10,6 +10,7 @@ import { useResources, useAllAvailability } from '../api/resources';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
 import { formatRole } from '../types';
+import { deriveTshirtSize } from '../types/project';
 import SortableHeader from '../components/common/SortableHeader';
 import SummaryCard from '../components/charts/SummaryCard';
 import StatusBadge from '../components/common/StatusBadge';
@@ -98,7 +99,7 @@ export default function PodDetailPage() {
                 <SortableHeader sortKey="projectName" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Project</SortableHeader>
                 <SortableHeader sortKey="priority" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Priority</SortableHeader>
                 <SortableHeader sortKey="owner" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Owner</SortableHeader>
-                <SortableHeader sortKey="tshirtSize" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Size</SortableHeader>
+                <SortableHeader sortKey="totalHoursWithContingency" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Size</SortableHeader>
                 <Table.Th>Pattern</Table.Th>
                 <SortableHeader sortKey="podStartMonth" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Start</SortableHeader>
                 <SortableHeader sortKey="durationOverride" currentKey={pSortKey} dir={pSortDir} onSort={onPSort}>Duration</SortableHeader>
@@ -111,7 +112,7 @@ export default function PodDetailPage() {
                   <Table.Td fw={500}>{p.projectName}</Table.Td>
                   <Table.Td><PriorityBadge priority={p.priority} /></Table.Td>
                   <Table.Td>{p.owner}</Table.Td>
-                  <Table.Td><Badge variant="light">{p.tshirtSize}</Badge></Table.Td>
+                  <Table.Td><Badge variant="light">{deriveTshirtSize(p.totalHoursWithContingency)}</Badge></Table.Td>
                   <Table.Td>{p.effortPattern ?? p.defaultPattern}</Table.Td>
                   <Table.Td>{monthLabels[p.podStartMonth ?? p.projectStartMonth] ?? `M${p.podStartMonth ?? p.projectStartMonth}`}</Table.Td>
                   <Table.Td>{p.durationOverride ?? p.projectDurationMonths}m</Table.Td>

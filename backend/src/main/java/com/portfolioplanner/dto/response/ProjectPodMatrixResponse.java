@@ -14,10 +14,16 @@ public record ProjectPodMatrixResponse(
         String defaultPattern,
         Long podId,
         String podName,
-        String tshirtSize,
-        BigDecimal complexityOverride,
+        BigDecimal devHours,
+        BigDecimal qaHours,
+        BigDecimal bsaHours,
+        BigDecimal techLeadHours,
+        BigDecimal contingencyPct,
+        BigDecimal totalHours,
+        BigDecimal totalHoursWithContingency,
+        Long targetReleaseId,
+        String targetReleaseName,
         String effortPattern,
         Integer podStartMonth,
         Integer durationOverride
-) {
-}
+) {}

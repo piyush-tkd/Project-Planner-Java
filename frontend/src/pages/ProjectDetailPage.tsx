@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge,
+  Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconPlus, IconTrash, IconEdit } from '@tabler/icons-react';
 import { useProject, useUpdateProject, useDeleteProject, useProjectPodPlannings, useUpdatePodPlannings } from '../api/projects';
 import { usePods } from '../api/pods';
-import { useTshirtSizes } from '../api/refData';
+import { useEffortPatterns } from '../api/refData';
+import { useReleases } from '../api/releases';
 import { Priority, ProjectStatus } from '../types';
 import type { ProjectRequest, ProjectPodPlanningRequest } from '../types';
+import { deriveTshirtSize } from '../types/project';
 import StatusBadge from '../components/common/StatusBadge';
 import PriorityBadge from '../components/common/PriorityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -18,7 +20,20 @@ import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
-const statusOptions = Object.values(ProjectStatus).map(s => ({ value: s, label: s.replace('_', ' ') }));
+const statusOptions = Object.values(ProjectStatus).map(s => ({ value: s, label: s.replace(/_/g, ' ') }));
+
+const emptyPlan = (): ProjectPodPlanningRequest => ({
+  podId: 0,
+  devHours: 0,
+  qaHours: 0,
+  bsaHours: 0,
+  techLeadHours: 0,
+  contingencyPct: 0,
+  targetReleaseId: null,
+  effortPattern: null,
+  podStartMonth: null,
+  durationOverride: null,
+});
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,63 +42,87 @@ export default function ProjectDetailPage() {
   const { data: project, isLoading } = useProject(projectId);
   const { data: plannings, isLoading: planningsLoading } = useProjectPodPlannings(projectId);
   const { data: pods } = usePods();
-  const { data: tshirtSizes } = useTshirtSizes();
+  const { data: releases } = useReleases();
   const updateProject = useUpdateProject();
   const updatePlannings = useUpdatePodPlannings();
   const deleteProject = useDeleteProject();
 
-  const sizeOptions = (tshirtSizes ?? []).map(s => ({ value: s.name, label: `${s.name} (${s.baseHours}h)` }));
+  const { data: effortPatterns } = useEffortPatterns();
+  const patternOptions = [
+    { value: '', label: '— use project default —' },
+    ...(effortPatterns ?? []).map(p => ({ value: p.name, label: p.name })),
+  ];
+  const releaseOptions = [
+    { value: '', label: '— no target release —' },
+    ...(releases ?? []).map(r => ({
+      value: String(r.id),
+      label: `${r.name}${r.type === 'SPECIAL' ? ' ⭐' : ''}`,
+    })),
+  ];
+  const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
   const { monthLabels } = useMonthLabels();
+
   const [editModal, setEditModal] = useState(false);
   const [editForm, setEditForm] = useState<ProjectRequest>({
-    name: '', priority: Priority.P2, owner: '', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat', status: ProjectStatus.ACTIVE, notes: null, startDate: null, targetDate: null,
+    name: '', priority: Priority.P2, owner: '', startMonth: 1, durationMonths: 3,
+    defaultPattern: 'Flat', status: ProjectStatus.ACTIVE, notes: null,
+    startDate: null, targetDate: null, client: null,
   });
 
   const [addModal, setAddModal] = useState(false);
-  const [newPlan, setNewPlan] = useState<ProjectPodPlanningRequest>({
-    podId: 0,
-    tshirtSize: 'M',
-    complexityOverride: null,
-    effortPattern: null,
-    podStartMonth: null,
-    durationOverride: null,
-  });
+  const [editPlanModal, setEditPlanModal] = useState(false);
+  const [newPlan, setNewPlan] = useState<ProjectPodPlanningRequest>(emptyPlan());
+  const [editingPodId, setEditingPodId] = useState<number | null>(null);
 
-  const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
+  const planningToRequest = (p: { podId: number; devHours: number; qaHours: number; bsaHours: number; techLeadHours: number; contingencyPct: number; targetReleaseId: number | null; effortPattern: string | null; podStartMonth: number | null; durationOverride: number | null; }): ProjectPodPlanningRequest => ({
+    podId: p.podId,
+    devHours: p.devHours,
+    qaHours: p.qaHours,
+    bsaHours: p.bsaHours,
+    techLeadHours: p.techLeadHours,
+    contingencyPct: p.contingencyPct,
+    targetReleaseId: p.targetReleaseId,
+    effortPattern: p.effortPattern,
+    podStartMonth: p.podStartMonth,
+    durationOverride: p.durationOverride,
+  });
 
   const handleAddPod = () => {
     if (!newPlan.podId) return;
-    const existing = (plannings ?? []).map(p => ({
-      podId: p.podId,
-      tshirtSize: p.tshirtSize,
-      complexityOverride: p.complexityOverride,
-      effortPattern: p.effortPattern,
-      podStartMonth: p.podStartMonth,
-      durationOverride: p.durationOverride,
-    }));
-    updatePlannings.mutate({
-      projectId,
-      data: [...existing, newPlan],
-    }, {
+    const existing = (plannings ?? []).map(planningToRequest);
+    updatePlannings.mutate({ projectId, data: [...existing, newPlan] }, {
       onSuccess: () => {
         setAddModal(false);
+        setNewPlan(emptyPlan());
         notifications.show({ title: 'Added', message: 'POD assignment added', color: 'green' });
       },
     });
   };
 
+  const openEditPlan = (podId: number) => {
+    const p = (plannings ?? []).find(x => x.podId === podId);
+    if (!p) return;
+    setNewPlan(planningToRequest(p));
+    setEditingPodId(podId);
+    setEditPlanModal(true);
+  };
+
+  const handleEditPlan = () => {
+    const others = (plannings ?? []).filter(p => p.podId !== editingPodId).map(planningToRequest);
+    updatePlannings.mutate({ projectId, data: [...others, newPlan] }, {
+      onSuccess: () => {
+        setEditPlanModal(false);
+        setNewPlan(emptyPlan());
+        notifications.show({ title: 'Updated', message: 'POD assignment updated', color: 'green' });
+      },
+    });
+  };
+
   const handleRemovePod = (podId: number) => {
-    const remaining = (plannings ?? [])
-      .filter(p => p.podId !== podId)
-      .map(p => ({
-        podId: p.podId,
-        tshirtSize: p.tshirtSize,
-        complexityOverride: p.complexityOverride,
-        effortPattern: p.effortPattern,
-        podStartMonth: p.podStartMonth,
-        durationOverride: p.durationOverride,
-      }));
-    updatePlannings.mutate({ projectId, data: remaining });
+    const remaining = (plannings ?? []).filter(p => p.podId !== podId).map(planningToRequest);
+    updatePlannings.mutate({ projectId, data: remaining }, {
+      onSuccess: () => notifications.show({ title: 'Removed', message: 'POD removed', color: 'orange' }),
+    });
   };
 
   const openEditProject = () => {
@@ -92,13 +131,14 @@ export default function ProjectDetailPage() {
       name: project.name,
       priority: project.priority,
       owner: project.owner,
-      startMonth: project.startMonth,
+      startMonth: project.startMonth ?? 1,
       durationMonths: project.durationMonths,
       defaultPattern: project.defaultPattern,
       status: project.status,
       notes: project.notes,
       startDate: project.startDate ?? null,
       targetDate: project.targetDate ?? null,
+      client: project.client ?? null,
     });
     setEditModal(true);
   };
@@ -113,23 +153,80 @@ export default function ProjectDetailPage() {
   };
 
   const handleDeleteProject = () => {
-    deleteProject.mutate(projectId, {
-      onSuccess: () => navigate('/projects'),
-    });
+    deleteProject.mutate(projectId, { onSuccess: () => navigate('/projects') });
   };
+
+  // Total hours across all pods → derived T-shirt size
+  const totalAllPodHours = (plannings ?? []).reduce((sum, p) => sum + p.totalHoursWithContingency, 0);
 
   if (isLoading || planningsLoading) return <LoadingSpinner />;
   if (!project) return <Text c="red">Project not found</Text>;
 
+  const PodPlanForm = ({ plan, setPlan }: { plan: ProjectPodPlanningRequest; setPlan: (p: ProjectPodPlanningRequest) => void }) => {
+    const totalHours = (plan.devHours || 0) + (plan.qaHours || 0) + (plan.bsaHours || 0) + (plan.techLeadHours || 0);
+    const withContingency = totalHours * (1 + (plan.contingencyPct || 0) / 100);
+    const toNum = (v: number | string): number => {
+      if (typeof v === 'number') return v;
+      const parsed = parseFloat(v);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+    return (
+      <Stack gap="sm">
+        <Group grow>
+          <NumberInput label="Dev Hours" value={plan.devHours} onChange={v => setPlan({ ...plan, devHours: toNum(v) })} min={0} decimalScale={1} allowDecimal hideControls={false} />
+          <NumberInput label="QA Hours" value={plan.qaHours} onChange={v => setPlan({ ...plan, qaHours: toNum(v) })} min={0} decimalScale={1} allowDecimal hideControls={false} />
+        </Group>
+        <Group grow>
+          <NumberInput label="BSA Hours" value={plan.bsaHours} onChange={v => setPlan({ ...plan, bsaHours: toNum(v) })} min={0} decimalScale={1} allowDecimal hideControls={false} />
+          <NumberInput label="Tech Lead Hours" value={plan.techLeadHours} onChange={v => setPlan({ ...plan, techLeadHours: toNum(v) })} min={0} decimalScale={1} allowDecimal hideControls={false} />
+        </Group>
+        <NumberInput
+          label="Contingency %"
+          description="Buffer added on top of total hours"
+          value={plan.contingencyPct}
+          onChange={v => setPlan({ ...plan, contingencyPct: toNum(v) })}
+          min={0} max={100} suffix="%" decimalScale={1} allowDecimal
+        />
+        {totalHours > 0 && (
+          <Text size="sm" c="dimmed">
+            Total: <b>{totalHours.toFixed(0)}h</b>
+            {plan.contingencyPct > 0 && <> → with contingency: <b>{withContingency.toFixed(0)}h</b></>}
+            {' '}· Size: <Badge variant="light" size="sm">{deriveTshirtSize(withContingency)}</Badge>
+          </Text>
+        )}
+        <Select
+          label="Target Release"
+          data={releaseOptions}
+          value={plan.targetReleaseId ? String(plan.targetReleaseId) : ''}
+          onChange={v => setPlan({ ...plan, targetReleaseId: v ? Number(v) : null })}
+          clearable
+        />
+        <Select
+          label="Effort Pattern"
+          description="Override the project default for this POD"
+          data={patternOptions}
+          value={plan.effortPattern ?? ''}
+          onChange={v => setPlan({ ...plan, effortPattern: v || null })}
+          clearable
+        />
+      </Stack>
+    );
+  };
+
   return (
     <Stack>
       <Group>
-        <ActionIcon variant="subtle" onClick={() => navigate('/projects')}>
+        <ActionIcon variant="subtle" onClick={() => navigate(-1)}>
           <IconArrowLeft size={20} />
         </ActionIcon>
         <Title order={2}>{project.name}</Title>
         <PriorityBadge priority={project.priority} />
         <StatusBadge status={project.status} />
+        {totalAllPodHours > 0 && (
+          <Tooltip label={`${totalAllPodHours.toFixed(0)}h total across all pods (incl. contingency)`}>
+            <Badge variant="outline" color="gray">{deriveTshirtSize(totalAllPodHours)}</Badge>
+          </Tooltip>
+        )}
         <Button variant="light" size="xs" leftSection={<IconEdit size={14} />} onClick={openEditProject}>Edit</Button>
       </Group>
 
@@ -150,6 +247,9 @@ export default function ProjectDetailPage() {
             <Text fw={500}>{project.defaultPattern}</Text>
           </div>
         </Group>
+        {project.client && (
+          <Text mt="xs" size="sm"><Text span c="dimmed">Client: </Text>{project.client}</Text>
+        )}
         {project.notes && (
           <Text mt="sm" size="sm" c="dimmed">{project.notes}</Text>
         )}
@@ -157,7 +257,7 @@ export default function ProjectDetailPage() {
 
       <Group justify="space-between">
         <Title order={3}>POD Assignments</Title>
-        <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => setAddModal(true)}>
+        <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => { setNewPlan(emptyPlan()); setAddModal(true); }}>
           Add POD
         </Button>
       </Group>
@@ -166,11 +266,14 @@ export default function ProjectDetailPage() {
         <Table.Thead>
           <Table.Tr>
             <Table.Th>POD</Table.Th>
+            <Table.Th>Dev h</Table.Th>
+            <Table.Th>QA h</Table.Th>
+            <Table.Th>BSA h</Table.Th>
+            <Table.Th>TL h</Table.Th>
+            <Table.Th>Contingency %</Table.Th>
+            <Table.Th>Total (w/ contingency)</Table.Th>
             <Table.Th>Size</Table.Th>
-            <Table.Th>Complexity Override</Table.Th>
-            <Table.Th>Effort Pattern</Table.Th>
-            <Table.Th>Start Month</Table.Th>
-            <Table.Th>Duration Override</Table.Th>
+            <Table.Th>Target Release</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -178,21 +281,29 @@ export default function ProjectDetailPage() {
           {(plannings ?? []).map(p => (
             <Table.Tr key={p.id}>
               <Table.Td fw={500}>{p.podName}</Table.Td>
-              <Table.Td><Badge variant="light">{p.tshirtSize}</Badge></Table.Td>
-              <Table.Td>{p.complexityOverride ?? '-'}</Table.Td>
-              <Table.Td>{p.effortPattern ?? '-'}</Table.Td>
-              <Table.Td>{p.podStartMonth ? `M${p.podStartMonth}` : '-'}</Table.Td>
-              <Table.Td>{p.durationOverride ?? '-'}</Table.Td>
+              <Table.Td>{p.devHours}</Table.Td>
+              <Table.Td>{p.qaHours}</Table.Td>
+              <Table.Td>{p.bsaHours}</Table.Td>
+              <Table.Td>{p.techLeadHours}</Table.Td>
+              <Table.Td>{p.contingencyPct > 0 ? `${p.contingencyPct}%` : '-'}</Table.Td>
+              <Table.Td fw={500}>{p.totalHoursWithContingency}h</Table.Td>
+              <Table.Td><Badge variant="light">{deriveTshirtSize(p.totalHoursWithContingency)}</Badge></Table.Td>
+              <Table.Td>{p.targetReleaseName ?? '-'}</Table.Td>
               <Table.Td>
-                <ActionIcon color="red" variant="subtle" onClick={() => handleRemovePod(p.podId)}>
-                  <IconTrash size={16} />
-                </ActionIcon>
+                <Group gap="xs">
+                  <ActionIcon variant="subtle" onClick={() => openEditPlan(p.podId)}>
+                    <IconEdit size={14} />
+                  </ActionIcon>
+                  <ActionIcon color="red" variant="subtle" onClick={() => handleRemovePod(p.podId)}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Group>
               </Table.Td>
             </Table.Tr>
           ))}
           {(plannings ?? []).length === 0 && (
             <Table.Tr>
-              <Table.Td colSpan={7}>
+              <Table.Td colSpan={10}>
                 <Text ta="center" c="dimmed" py="md">No PODs assigned yet</Text>
               </Table.Td>
             </Table.Tr>
@@ -204,7 +315,8 @@ export default function ProjectDetailPage() {
         <Button color="red" variant="outline" onClick={handleDeleteProject}>Delete Project</Button>
       </Group>
 
-      <Modal opened={editModal} onClose={() => setEditModal(false)} title="Edit Project" size="lg">
+      {/* Edit Project Modal */}
+      <Modal opened={editModal} onClose={() => setEditModal(false)} title="Edit Project" size="xl">
         <Stack>
           <TextInput label="Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required />
           <Group grow>
@@ -212,37 +324,32 @@ export default function ProjectDetailPage() {
             <Select label="Status" data={statusOptions} value={editForm.status} onChange={v => setEditForm({ ...editForm, status: v as ProjectStatus })} required />
           </Group>
           <TextInput label="Owner" value={editForm.owner} onChange={e => setEditForm({ ...editForm, owner: e.target.value })} />
+          <TextInput label="Client" placeholder="Optional — external client name" value={editForm.client ?? ''} onChange={e => setEditForm({ ...editForm, client: e.target.value || null })} />
           <Group grow>
-            <DateInput
-              label="Start Date"
-              value={editForm.startDate ? new Date(editForm.startDate + 'T00:00:00') : null}
-              onChange={d => setEditForm({ ...editForm, startDate: d ? d.toISOString().slice(0, 10) : null })}
-              clearable
-              valueFormat="MMM DD, YYYY"
-            />
-            <DateInput
-              label="Launch Date"
-              value={editForm.targetDate ? new Date(editForm.targetDate + 'T00:00:00') : null}
-              onChange={d => setEditForm({ ...editForm, targetDate: d ? d.toISOString().slice(0, 10) : null })}
-              clearable
-              valueFormat="MMM DD, YYYY"
-            />
+            <DateInput label="Start Date" value={editForm.startDate ? new Date(editForm.startDate + 'T00:00:00') : null} onChange={d => setEditForm({ ...editForm, startDate: d ? d.toISOString().slice(0, 10) : null })} clearable valueFormat="MMM DD, YYYY" />
+            <DateInput label="Launch Date" value={editForm.targetDate ? new Date(editForm.targetDate + 'T00:00:00') : null} onChange={d => setEditForm({ ...editForm, targetDate: d ? d.toISOString().slice(0, 10) : null })} clearable valueFormat="MMM DD, YYYY" />
           </Group>
-          <TextInput label="Default Pattern" value={editForm.defaultPattern} onChange={e => setEditForm({ ...editForm, defaultPattern: e.target.value })} />
+          <Select label="Default Pattern" data={(effortPatterns ?? []).map(p => ({ value: p.name, label: p.name }))} value={editForm.defaultPattern} onChange={v => setEditForm({ ...editForm, defaultPattern: v ?? 'Flat' })} />
           <Textarea label="Notes" value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value || null })} />
           <Button onClick={handleEditProject} loading={updateProject.isPending}>Save Changes</Button>
         </Stack>
       </Modal>
 
-      <Modal opened={addModal} onClose={() => setAddModal(false)} title="Add POD Assignment">
+      {/* Add POD Modal */}
+      <Modal opened={addModal} onClose={() => setAddModal(false)} title="Add POD Assignment" size="md">
         <Stack>
           <Select label="POD" data={podOptions} value={newPlan.podId ? String(newPlan.podId) : null} onChange={v => setNewPlan({ ...newPlan, podId: Number(v) })} required />
-          <Select label="Size" data={sizeOptions} value={newPlan.tshirtSize} onChange={v => setNewPlan({ ...newPlan, tshirtSize: v ?? 'M' })} />
-          <NumberInput label="Complexity Override" value={newPlan.complexityOverride ?? ''} onChange={v => setNewPlan({ ...newPlan, complexityOverride: v ? Number(v) : null })} decimalScale={2} />
-          <TextInput label="Effort Pattern" value={newPlan.effortPattern ?? ''} onChange={e => setNewPlan({ ...newPlan, effortPattern: e.target.value || null })} />
-          <NumberInput label="Start Month" value={newPlan.podStartMonth ?? ''} onChange={v => setNewPlan({ ...newPlan, podStartMonth: v ? Number(v) : null })} min={1} max={12} />
-          <NumberInput label="Duration Override" value={newPlan.durationOverride ?? ''} onChange={v => setNewPlan({ ...newPlan, durationOverride: v ? Number(v) : null })} min={1} />
-          <Button onClick={handleAddPod} loading={updatePlannings.isPending}>Add</Button>
+          <PodPlanForm plan={newPlan} setPlan={setNewPlan} />
+          <Button onClick={handleAddPod} loading={updatePlannings.isPending} disabled={!newPlan.podId}>Add</Button>
+        </Stack>
+      </Modal>
+
+      {/* Edit POD Modal */}
+      <Modal opened={editPlanModal} onClose={() => setEditPlanModal(false)} title="Edit POD Assignment" size="md">
+        <Stack>
+          <Text fw={500} size="sm">POD: {(pods ?? []).find(p => p.id === editingPodId)?.name}</Text>
+          <PodPlanForm plan={newPlan} setPlan={setNewPlan} />
+          <Button onClick={handleEditPlan} loading={updatePlannings.isPending}>Save</Button>
         </Stack>
       </Modal>
     </Stack>

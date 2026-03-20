@@ -30,7 +30,7 @@ class ProjectControllerTest extends BaseControllerTest {
             var req = new ProjectRequest(
                     "Portal Rebuild", Priority.P1, "Alice",
                     1, 6, 6, "Flat", "Some notes",
-                    ProjectStatus.ACTIVE, null, null, null, null
+                    ProjectStatus.ACTIVE, null, null, null, null, null
             );
 
             mockMvc.perform(post("/api/projects").contentType(JSON).content(json(req)))
@@ -48,7 +48,7 @@ class ProjectControllerTest extends BaseControllerTest {
             var req = new ProjectRequest(
                     "", Priority.P2, null,
                     null, null, null, null, null,
-                    null, null, null, null, null
+                    null, null, null, null, null, null
             );
 
             mockMvc.perform(post("/api/projects").contentType(JSON).content(json(req)))
@@ -66,22 +66,6 @@ class ProjectControllerTest extends BaseControllerTest {
                     .andExpect(status().isBadRequest());
         }
 
-        @Test
-        @DisplayName("requiredSkills field is stored and returned")
-        void requiredSkillsRoundTrip() throws Exception {
-            String body = """
-                    {
-                      "name": "AI Platform",
-                      "priority": "P0",
-                      "status": "ACTIVE",
-                      "requiredSkills": "Python, ML, Spark"
-                    }
-                    """;
-
-            mockMvc.perform(post("/api/projects").contentType(JSON).content(body))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.requiredSkills").value("Python, ML, Spark"));
-        }
     }
 
     // ── GET /api/projects ────────────────────────────────────────────────────
@@ -182,7 +166,7 @@ class ProjectControllerTest extends BaseControllerTest {
             var updated = new ProjectRequest(
                     "New Name", Priority.P0, "Bob",
                     2, 8, 6, "BackLoaded", "Updated notes",
-                    ProjectStatus.ON_HOLD, null, null, null, null
+                    ProjectStatus.ON_HOLD, null, null, null, null, null
             );
 
             mockMvc.perform(put("/api/projects/{id}", id).contentType(JSON).content(json(updated)))
@@ -202,7 +186,7 @@ class ProjectControllerTest extends BaseControllerTest {
             var req = new ProjectRequest(
                     "X", Priority.P1, null,
                     null, null, null, null, null,
-                    null, null, null, null, null
+                    null, null, null, null, null, null
             );
 
             mockMvc.perform(put("/api/projects/{id}", 99999L).contentType(JSON).content(json(req)))
@@ -234,7 +218,7 @@ class ProjectControllerTest extends BaseControllerTest {
         var req = new ProjectRequest(
                 name, priority, null,
                 1, 6, 6, "Flat", null,
-                status, null, null, null, null
+                status, null, null, null, null, null
         );
         String resp = mockMvc.perform(post("/api/projects").contentType(JSON).content(json(req)))
                 .andExpect(status().isCreated())

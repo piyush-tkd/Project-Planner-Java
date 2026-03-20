@@ -98,7 +98,7 @@ export default function ExcelUploadModal({ opened, onClose }: ExcelUploadModalPr
   };
 
   return (
-    <Modal opened={opened} onClose={handleClose} title="Upload Excel Data" size="lg">
+    <Modal opened={opened} onClose={handleClose} title="Upload Excel Data" size="xl">
       <Box pos="relative">
         <LoadingOverlay visible={importMutation.isPending} />
         <Stack>

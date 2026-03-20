@@ -12,6 +12,7 @@ public record ResourceResponse(
         Location location,
         Boolean active,
         Boolean countsInCapacity,
+        BigDecimal actualRate,
         PodAssignment podAssignment
 ) {
     public record PodAssignment(

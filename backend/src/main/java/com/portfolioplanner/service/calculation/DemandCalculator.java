@@ -16,6 +16,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Computes demand hours per pod, role, and month from ProjectPodPlanning records.
+ *
+ * The new model uses explicit role hours (dev/qa/bsa/techLead) with a contingency
+ * percentage rather than the old t-shirt size + complexity multiplier approach.
+ * Hours are distributed across months using the assigned effort pattern.
+ */
 @Slf4j
 @Component
 public class DemandCalculator {
@@ -23,67 +30,61 @@ public class DemandCalculator {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     /**
-     * Computes demand hours per pod, role, and month.
-     *
-     * @param plannings   all project-pod planning records
-     * @param patterns    effort patterns keyed by name
-     * @param roleMix     role -> percentage of total effort allocated to that role
-     * @param pods        pod lookup by id
-     * @param projects    project lookup by id
+     * @param plannings  all project-pod planning records
+     * @param patterns   effort patterns keyed by name
+     * @param pods       pod lookup by id
+     * @param projects   project lookup by id
      * @return nested map: podId -> role -> monthIndex -> hours
      */
     public Map<Long, Map<Role, Map<Integer, BigDecimal>>> calculate(
             List<ProjectPodPlanning> plannings,
             Map<String, EffortPattern> patterns,
-            Map<Role, BigDecimal> roleMix,
             Map<Long, Pod> pods,
-            Map<Long, Project> projects,
-            Map<String, Integer> tshirtSizeMap) {
+            Map<Long, Project> projects) {
 
         Map<Long, Map<Role, Map<Integer, BigDecimal>>> demand = new HashMap<>();
 
         for (ProjectPodPlanning pp : plannings) {
             Project project = projects.get(pp.getProject().getId());
-            if (project == null || project.getStatus() != ProjectStatus.ACTIVE) {
+            if (project == null || project.getStatus() == ProjectStatus.CANCELLED) {
                 continue;
             }
 
-            String sizeName = pp.getTshirtSize();
-            if (sizeName == null || !tshirtSizeMap.containsKey(sizeName)) {
-                continue;
-            }
+            // Only include statuses that contribute to demand
+            if (project.getStatus() == null) continue;
 
-            BigDecimal baseHours = BigDecimal.valueOf(tshirtSizeMap.get(sizeName));
-
-            if (pp.getPod() == null) {
-                continue;
-            }
+            if (pp.getPod() == null) continue;
             Long podId = pp.getPod().getId();
-            Pod pod = pods.get(podId);
-            if (pod == null) {
-                continue;
-            }
+            if (!pods.containsKey(podId)) continue;
 
-            // Apply both pod-level and row-level complexity (multiplicative).
-            // Previously, complexityOverride (always non-null, defaulting to 1.0) shadowed
-            // podComplexityMultiplier entirely — so pod complexity was never applied.
-            BigDecimal podComplexity = pod.getComplexityMultiplier() != null
-                    ? pod.getComplexityMultiplier()
-                    : BigDecimal.ONE;
-            BigDecimal rowComplexity = pp.getComplexityOverride() != null
-                    ? pp.getComplexityOverride()
-                    : BigDecimal.ONE;
-            BigDecimal complexity = podComplexity.multiply(rowComplexity);
+            // Role hours with contingency applied to the total
+            BigDecimal dev = orZero(pp.getDevHours());
+            BigDecimal qa  = orZero(pp.getQaHours());
+            BigDecimal bsa = orZero(pp.getBsaHours());
+            BigDecimal tl  = orZero(pp.getTechLeadHours());
+            BigDecimal contingencyFactor = BigDecimal.ONE.add(
+                    orZero(pp.getContingencyPct()).divide(HUNDRED, 10, RoundingMode.HALF_UP));
 
+            Map<Role, BigDecimal> roleHours = new EnumMap<>(Role.class);
+            roleHours.put(Role.DEVELOPER,       dev.multiply(contingencyFactor).setScale(2, RoundingMode.HALF_UP));
+            roleHours.put(Role.QA,        qa.multiply(contingencyFactor).setScale(2, RoundingMode.HALF_UP));
+            roleHours.put(Role.BSA,       bsa.multiply(contingencyFactor).setScale(2, RoundingMode.HALF_UP));
+            roleHours.put(Role.TECH_LEAD, tl.multiply(contingencyFactor).setScale(2, RoundingMode.HALF_UP));
+
+            // Skip if no hours at all
+            boolean hasHours = roleHours.values().stream()
+                    .anyMatch(h -> h.compareTo(BigDecimal.ZERO) > 0);
+            if (!hasHours) continue;
+
+            // Effort pattern for distributing hours across months
             String patternName = pp.getEffortPattern() != null
                     ? pp.getEffortPattern()
                     : project.getDefaultPattern();
 
             EffortPattern pattern = patternName != null ? patterns.get(patternName) : null;
             if (pattern == null || pattern.getWeights() == null || pattern.getWeights().isEmpty()) {
-                log.warn("DemandCalculator: no effort pattern '{}' found for project '{}' / pod {}. " +
-                         "Demand for this row will be 0. Check Effort Patterns sheet.",
-                         patternName, project.getName(), pp.getPod().getId());
+                log.warn("DemandCalculator: no effort pattern '{}' for project '{}' / pod {}. Skipping.",
+                        patternName, project.getName(), podId);
                 continue;
             }
 
@@ -97,41 +98,32 @@ public class DemandCalculator {
 
             int endM = Math.min(startM + duration - 1, 12);
 
-            // Collect active weights using relative position in pattern
+            // Build month weight map
             BigDecimal weightSum = BigDecimal.ZERO;
             Map<Integer, BigDecimal> monthWeights = new HashMap<>();
             for (int m = startM; m <= endM; m++) {
-                int relativeIndex = m - startM + 1;
-                String key = "M" + relativeIndex;
+                String key = "M" + (m - startM + 1);
                 BigDecimal weight = pattern.getWeights().getOrDefault(key, BigDecimal.ZERO);
                 monthWeights.put(m, weight);
                 weightSum = weightSum.add(weight);
             }
 
             if (weightSum.compareTo(BigDecimal.ZERO) == 0) {
-                log.warn("DemandCalculator: all effort-pattern weights are zero for project '{}' / pod {} " +
-                         "in its active period M{}-M{}. Demand will be 0. " +
-                         "Pattern '{}' may have zero weights beyond its intended duration.",
-                         project.getName(), pp.getPod().getId(), startM, endM, patternName);
+                log.warn("DemandCalculator: all pattern weights zero for project '{}' / pod {} M{}-M{}.",
+                        project.getName(), podId, startM, endM);
                 continue;
             }
 
-            for (Role role : Role.values()) {
-                BigDecimal mixPct = roleMix.getOrDefault(role, BigDecimal.ZERO);
-                if (mixPct.compareTo(BigDecimal.ZERO) == 0) {
-                    continue;
-                }
-
-                BigDecimal totalRoleHours = baseHours
-                        .multiply(complexity)
-                        .multiply(mixPct)
-                        .divide(HUNDRED, 10, RoundingMode.HALF_UP);
+            // Distribute each role's hours across months by pattern weight
+            for (Map.Entry<Role, BigDecimal> entry : roleHours.entrySet()) {
+                Role role = entry.getKey();
+                BigDecimal totalRoleHours = entry.getValue();
+                if (totalRoleHours.compareTo(BigDecimal.ZERO) == 0) continue;
 
                 for (int m = startM; m <= endM; m++) {
                     BigDecimal weight = monthWeights.get(m);
-                    if (weight == null) {
-                        continue;
-                    }
+                    if (weight == null || weight.compareTo(BigDecimal.ZERO) == 0) continue;
+
                     BigDecimal normalizedWeight = weight.divide(weightSum, 10, RoundingMode.HALF_UP);
                     BigDecimal monthDemand = totalRoleHours
                             .multiply(normalizedWeight)
@@ -146,5 +138,9 @@ public class DemandCalculator {
 
         log.debug("Demand calculated: {} pod entries", demand.size());
         return demand;
+    }
+
+    private static BigDecimal orZero(BigDecimal val) {
+        return val != null ? val : BigDecimal.ZERO;
     }
 }

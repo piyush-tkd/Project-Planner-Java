@@ -13,6 +13,7 @@ export interface ResourceResponse {
   location: string;
   active: boolean;
   countsInCapacity: boolean;
+  actualRate: number | null;
   podAssignment: ResourcePodAssignmentInfo | null;
 }
 

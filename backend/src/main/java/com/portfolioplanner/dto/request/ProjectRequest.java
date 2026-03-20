@@ -20,6 +20,7 @@ public record ProjectRequest(
         Long blockedById,
         LocalDate targetDate,
         LocalDate startDate,
-        String capacityNote
+        String capacityNote,
+        String client
 ) {
 }

@@ -27,4 +27,8 @@ public class AppUser {
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    /** Optional display name shown in the UI (e.g. "John Smith"). */
+    @Column(name = "display_name", length = 150)
+    private String displayName;
 }

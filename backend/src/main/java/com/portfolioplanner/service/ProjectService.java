@@ -6,6 +6,8 @@ import com.portfolioplanner.domain.model.ProjectPodPlanning;
 import com.portfolioplanner.domain.model.TimelineConfig;
 import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.repository.PodRepository;
+import com.portfolioplanner.domain.repository.ReleaseCalendarRepository;
+import com.portfolioplanner.domain.model.ReleaseCalendar;
 import com.portfolioplanner.domain.repository.ProjectPodPlanningRepository;
 import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.domain.repository.TimelineConfigRepository;
@@ -36,8 +38,10 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectPodPlanningRepository planningRepository;
     private final PodRepository podRepository;
+    private final ReleaseCalendarRepository releaseCalendarRepository;
     private final TimelineConfigRepository timelineRepository;
     private final EntityMapper mapper;
+    private final AuditLogService auditLogService;
 
     public List<ProjectResponse> getAll(ProjectStatus status) {
         List<Project> projects;
@@ -67,6 +71,8 @@ public class ProjectService {
         }
         deriveMonthFieldsFromDates(project);
         project = projectRepository.save(project);
+        auditLogService.log("Project", project.getId(), project.getName(), "CREATE",
+                projectSnapshot(project));
         return mapper.toProjectResponse(project);
     }
 
@@ -75,6 +81,8 @@ public class ProjectService {
     public ProjectResponse update(Long id, ProjectRequest request) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+        // Capture before-state for diff
+        String beforeDetails = projectSnapshot(project);
         mapper.updateEntity(request, project);
         if (request.blockedById() != null) {
             Project blockedBy = projectRepository.findById(request.blockedById())
@@ -85,18 +93,75 @@ public class ProjectService {
         }
         deriveMonthFieldsFromDates(project);
         project = projectRepository.save(project);
+        auditLogService.log("Project", project.getId(), project.getName(), "UPDATE",
+                projectDiff(beforeDetails, projectSnapshot(project)));
         return mapper.toProjectResponse(project);
     }
 
     @Transactional
     @CacheEvict(value = "calculations", allEntries = true)
     public void delete(Long id) {
-        if (!projectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Project", id);
-        }
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+        String name = project.getName();
+        String snapshot = projectSnapshot(project);
         List<ProjectPodPlanning> plannings = planningRepository.findByProjectId(id);
         planningRepository.deleteAll(plannings);
         projectRepository.deleteById(id);
+        auditLogService.log("Project", id, name, "DELETE", snapshot);
+    }
+
+    // ── Audit helpers ─────────────────────────────────────────────────────────
+
+    /** Returns a flat key=value snapshot of the fields most relevant to audit. */
+    private String projectSnapshot(Project p) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("priority=").append(p.getPriority());
+        sb.append(", status=").append(p.getStatus());
+        if (p.getOwner() != null)      sb.append(", owner=").append(p.getOwner());
+        if (p.getStartDate() != null)  sb.append(", startDate=").append(p.getStartDate());
+        if (p.getTargetDate() != null) sb.append(", targetDate=").append(p.getTargetDate());
+        if (p.getDurationMonths() != null) sb.append(", durationMonths=").append(p.getDurationMonths());
+        return sb.toString();
+    }
+
+    /**
+     * Compares two snapshots produced by {@link #projectSnapshot} and returns
+     * only the fields whose values changed, in the form "field: OLD → NEW".
+     * Falls back to the full after-snapshot when parsing fails.
+     */
+    private String projectDiff(String before, String after) {
+        try {
+            java.util.Map<String, String> bMap = parseSnapshot(before);
+            java.util.Map<String, String> aMap = parseSnapshot(after);
+            List<String> diffs = new ArrayList<>();
+            // Check fields that appear in either snapshot
+            java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+            keys.addAll(bMap.keySet());
+            keys.addAll(aMap.keySet());
+            for (String key : keys) {
+                String bVal = bMap.getOrDefault(key, "—");
+                String aVal = aMap.getOrDefault(key, "—");
+                if (!bVal.equals(aVal)) {
+                    diffs.add(key + ": " + bVal + " → " + aVal);
+                }
+            }
+            return diffs.isEmpty() ? "no changes" : String.join(", ", diffs);
+        } catch (Exception e) {
+            return after; // fallback
+        }
+    }
+
+    private java.util.Map<String, String> parseSnapshot(String snapshot) {
+        java.util.Map<String, String> map = new java.util.LinkedHashMap<>();
+        if (snapshot == null || snapshot.isBlank()) return map;
+        for (String pair : snapshot.split(",\\s*")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0) {
+                map.put(pair.substring(0, eq).trim(), pair.substring(eq + 1).trim());
+            }
+        }
+        return map;
     }
 
     public List<ProjectPodMatrixResponse> getAllPodPlannings() {
@@ -187,11 +252,21 @@ public class ProjectService {
                         return newPlanning;
                     });
 
-            planning.setTshirtSize(req.tshirtSize());
-            planning.setComplexityOverride(req.complexityOverride());
-            planning.setEffortPattern(req.effortPattern());
-            planning.setPodStartMonth(req.podStartMonth());
-            planning.setDurationOverride(req.durationOverride());
+            // Always apply all fields so nullable ones can be cleared by sending null
+            planning.setDevHours(req.devHours() != null ? req.devHours() : java.math.BigDecimal.ZERO);
+            planning.setQaHours(req.qaHours() != null ? req.qaHours() : java.math.BigDecimal.ZERO);
+            planning.setBsaHours(req.bsaHours() != null ? req.bsaHours() : java.math.BigDecimal.ZERO);
+            planning.setTechLeadHours(req.techLeadHours() != null ? req.techLeadHours() : java.math.BigDecimal.ZERO);
+            planning.setContingencyPct(req.contingencyPct() != null ? req.contingencyPct() : java.math.BigDecimal.ZERO);
+            planning.setEffortPattern(req.effortPattern());       // null = use project default
+            planning.setPodStartMonth(req.podStartMonth());       // null = use project start
+            planning.setDurationOverride(req.durationOverride()); // null = use project duration
+            if (req.targetReleaseId() != null) {
+                ReleaseCalendar release = releaseCalendarRepository.findById(req.targetReleaseId()).orElse(null);
+                planning.setTargetRelease(release);
+            } else {
+                planning.setTargetRelease(null);                  // null = clear the release link
+            }
 
             result.add(planningRepository.save(planning));
         }

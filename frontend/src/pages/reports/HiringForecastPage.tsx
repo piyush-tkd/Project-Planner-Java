@@ -6,6 +6,7 @@ import { formatHours, formatFte } from '../../utils/formatting';
 import { formatRole } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
 
@@ -120,8 +121,7 @@ export default function HiringForecastPage() {
       </Table.ScrollContainer>
 
       {chartData.length > 0 && (
-        <ExportableChart title="Hiring Needs Over Time">
-          <Title order={4} mt="lg">Hiring Needs Over Time</Title>
+        <ChartCard title="Hiring Needs Over Time" minHeight={350}>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -134,7 +134,7 @@ export default function HiringForecastPage() {
               ))}
             </BarChart>
           </ResponsiveContainer>
-        </ExportableChart>
+        </ChartCard>
       )}
     </Stack>
   );

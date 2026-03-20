@@ -23,6 +23,17 @@ spring:
     type: caffeine
     caffeine:
       spec: maximumSize=100,expireAfterWrite=300s
+  # ── Mail (weekly digest) ──────────────────────────────────────────────────────
+  mail:
+    host:     ${MAIL_HOST:smtp.gmail.com}
+    port:     ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth:            true
+          starttls.enable: true
 
 server:
   port: 8080
@@ -31,6 +42,14 @@ jira:
   base-url: ${JIRA_BASE_URL:}
   email: ${JIRA_EMAIL:}
   api-token: ${JIRA_API_TOKEN:}
+
+app:
+  digest:
+    enabled:    ${DIGEST_ENABLED:false}      # set true to activate weekly emails
+    recipients: ${DIGEST_RECIPIENTS:}        # comma-separated list, e.g. pm@example.com
+    from:       ${DIGEST_FROM:noreply@portfolioplanner}
+    # cron: every Monday 08:00 (server local time)
+    cron:       ${DIGEST_CRON:0 0 8 * * MON}
 
 logging:
   level:

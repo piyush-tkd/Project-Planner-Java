@@ -93,16 +93,6 @@ export default function LoginPage() {
           marginBottom: 24,
         }} />
 
-        <Text style={{
-          color: 'rgba(255,255,255,0.55)',
-          fontSize: 13,
-          fontFamily: 'Barlow, system-ui, sans-serif',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          textAlign: 'center',
-        }}>
-          OOPPv2
-        </Text>
       </div>
 
       {/* ── Right panel: login form ── */}
@@ -242,18 +232,6 @@ export default function LoginPage() {
             </Stack>
           </form>
 
-          <Text
-            style={{
-              textAlign: 'center',
-              marginTop: 20,
-              fontSize: 13,
-              color: GREY_400,
-              fontFamily: 'Barlow, system-ui, sans-serif',
-            }}
-          >
-            Default credentials:{' '}
-            <span style={{ color: DEEP_BLUE, fontWeight: 600 }}>admin / admin</span>
-          </Text>
         </div>
       </div>
     </div>

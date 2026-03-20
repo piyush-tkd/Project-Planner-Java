@@ -14,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import ChartCard from '../components/common/ChartCard';
 import {
   useJiraStatus, useJiraProjects, useJiraMappings, useJiraActuals,
   useSaveMapping, useSaveMappingsBulk, useDeleteMapping,
@@ -271,10 +272,7 @@ function ActualsView({
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <Paper withBorder p="md" radius="md">
-          <Text fw={600} mb="sm" size="sm">
-            {unit === 'hours' ? 'Actual Hours' : 'Story Points'} by Month
-          </Text>
+        <ChartCard title={`${unit === 'hours' ? 'Actual Hours' : 'Story Points'} by Month`} minHeight={220}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -287,7 +285,7 @@ function ActualsView({
               <Bar dataKey="actual" fill={AGUA} radius={[3, 3, 0, 0]} name="Actual" />
             </BarChart>
           </ResponsiveContainer>
-        </Paper>
+        </ChartCard>
       )}
 
       {/* Per-project breakdown table */}
@@ -371,8 +369,7 @@ function ResourceBreakdown({ row }: { row: ActualsRow }) {
   const max = entries[0][1];
 
   return (
-    <Paper withBorder p="md" radius="md">
-      <Text fw={600} mb="md" size="sm">Hours by Team Member — {row.ppProjectName}</Text>
+    <ChartCard title={`Hours by Team Member — ${row.ppProjectName}`} minHeight={180}>
       <Stack gap="xs">
         {entries.map(([name, hours]) => (
           <Group key={name} gap="sm">
@@ -391,7 +388,7 @@ function ResourceBreakdown({ row }: { row: ActualsRow }) {
           </Group>
         ))}
       </Stack>
-    </Paper>
+    </ChartCard>
   );
 }
 
@@ -580,7 +577,7 @@ function MapperView({
         opened={addModal}
         onClose={() => setAddModal(false)}
         title={<Text fw={700} style={{ color: DEEP_BLUE }}>Add Jira Mapping</Text>}
-        size="md"
+        size="xl"
       >
         <Stack gap="sm">
           <Select

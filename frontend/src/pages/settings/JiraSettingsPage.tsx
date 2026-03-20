@@ -159,8 +159,11 @@ export default function JiraSettingsPage() {
       {/* ── Jira not configured ── */}
       {!statusLoading && !status?.configured && (
         <Alert icon={<IconAlertTriangle />} color="orange" title="Jira Not Configured" mb="md">
-          Add your Jira credentials to{' '}
-          <code>backend/src/main/resources/application-local.yml</code> and restart the backend.
+          Add your Jira credentials in{' '}
+          <Anchor size="sm" onClick={() => navigate('/settings/jira-credentials')}>
+            Settings → Jira Credentials
+          </Anchor>{' '}
+          — no YAML file edits required.
         </Alert>
       )}
 

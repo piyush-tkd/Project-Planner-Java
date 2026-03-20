@@ -1,0 +1,152 @@
+package com.portfolioplanner.service;
+
+import com.portfolioplanner.domain.model.AppUser;
+import com.portfolioplanner.domain.model.PagePermission;
+import com.portfolioplanner.domain.repository.AppUserRepository;
+import com.portfolioplanner.domain.repository.PagePermissionRepository;
+import com.portfolioplanner.exception.ResourceNotFoundException;
+import com.portfolioplanner.exception.ValidationException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class UserManagementService {
+
+    private static final String ADMIN = "ADMIN";
+
+    private final AppUserRepository userRepo;
+    private final PagePermissionRepository permRepo;
+    private final PasswordEncoder passwordEncoder;
+
+    // ── User CRUD ──────────────────────────────────────────────────────────────
+
+    public List<AppUser> listUsers() {
+        return userRepo.findAll();
+    }
+
+    public AppUser getUser(Long id) {
+        return userRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    }
+
+    @Transactional
+    public AppUser createUser(CreateUserRequest req) {
+        if (userRepo.findByUsername(req.username()).isPresent()) {
+            throw new ValidationException("Username already exists: " + req.username());
+        }
+        var user = new AppUser();
+        user.setUsername(req.username());
+        user.setPassword(passwordEncoder.encode(req.password()));
+        user.setRole(req.role().toUpperCase());
+        user.setEnabled(true);
+        user.setDisplayName(req.displayName());
+        return userRepo.save(user);
+    }
+
+    @Transactional
+    public AppUser updateUser(Long id, UpdateUserRequest req) {
+        var user = getUser(id);
+
+        if (req.displayName() != null) {
+            user.setDisplayName(req.displayName());
+        }
+        if (req.role() != null) {
+            user.setRole(req.role().toUpperCase());
+        }
+        if (req.enabled() != null) {
+            user.setEnabled(req.enabled());
+        }
+        if (req.password() != null && !req.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(req.password()));
+        }
+
+        return userRepo.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        var user = getUser(id);
+        // Prevent deleting the last admin
+        if (ADMIN.equals(user.getRole())) {
+            long adminCount = userRepo.findAll().stream()
+                    .filter(u -> ADMIN.equals(u.getRole()) && u.isEnabled())
+                    .count();
+            if (adminCount <= 1) {
+                throw new ValidationException("Cannot delete the last admin user.");
+            }
+        }
+        userRepo.delete(user);
+    }
+
+    // ── Page permissions ───────────────────────────────────────────────────────
+
+    /**
+     * Returns the page permissions for a role as a map of pageKey → allowed.
+     * ADMIN always gets null (meaning all pages are allowed — no restrictions).
+     */
+    public Map<String, Boolean> getPermissions(String role) {
+        if (ADMIN.equalsIgnoreCase(role)) return null;
+        return permRepo.findByRole(role.toUpperCase())
+                .stream()
+                .collect(Collectors.toMap(PagePermission::getPageKey, PagePermission::isAllowed));
+    }
+
+    /**
+     * Returns the list of allowed page keys for a role.
+     * ADMIN always returns null (= unrestricted).
+     */
+    public List<String> getAllowedPages(String role) {
+        if (ADMIN.equalsIgnoreCase(role)) return null;
+        return permRepo.findByRoleAndAllowedTrue(role.toUpperCase())
+                .stream()
+                .map(PagePermission::getPageKey)
+                .toList();
+    }
+
+    /**
+     * Upserts a single page permission for the given role.
+     * ADMIN permissions cannot be modified.
+     */
+    @Transactional
+    public void setPermission(String role, String pageKey, boolean allowed) {
+        if (ADMIN.equalsIgnoreCase(role)) {
+            throw new ValidationException("ADMIN always has full access — permissions cannot be restricted.");
+        }
+        var existing = permRepo.findByRoleAndPageKey(role.toUpperCase(), pageKey);
+        if (existing.isPresent()) {
+            existing.get().setAllowed(allowed);
+            permRepo.save(existing.get());
+        } else {
+            permRepo.save(new PagePermission(null, role.toUpperCase(), pageKey, allowed));
+        }
+    }
+
+    /**
+     * Bulk update of all permissions for a role.
+     */
+    @Transactional
+    public void setPermissions(String role, Map<String, Boolean> permissions) {
+        permissions.forEach((pageKey, allowed) -> setPermission(role, pageKey, allowed));
+    }
+
+    // ── Request records ────────────────────────────────────────────────────────
+
+    public record CreateUserRequest(
+            String username,
+            String password,
+            String role,
+            String displayName) {}
+
+    public record UpdateUserRequest(
+            String displayName,
+            String role,
+            Boolean enabled,
+            String password) {}
+}

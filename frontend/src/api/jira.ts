@@ -158,6 +158,43 @@ export function useJiraStatus() {
   });
 }
 
+// ── Jira credentials (UI-managed) ──────────────────────────────────────
+
+export interface JiraCredentialsResponse {
+  baseUrl: string;
+  email: string;
+  apiToken: string;   // always masked on the server side
+  hasToken: boolean;
+  configured: boolean;
+  source: 'database' | 'config-file';
+}
+
+export interface JiraCredentialsSaveRequest {
+  baseUrl: string;
+  email: string;
+  apiToken: string;
+}
+
+export function useJiraCredentials() {
+  return useQuery<JiraCredentialsResponse>({
+    queryKey: ['jira', 'credentials'],
+    queryFn: () => apiClient.get('/jira/credentials').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+export function useSaveJiraCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: JiraCredentialsSaveRequest) =>
+      apiClient.post('/jira/credentials', req).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jira', 'status'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'credentials'] });
+    },
+  });
+}
+
 /**
  * Loads Jira projects + epics/labels for the mapper.
  * Expensive: makes N API calls for N projects. Cached for 30 min.
@@ -209,6 +246,34 @@ export function useJiraPods() {
     queryKey: ['jira', 'pods'],
     queryFn: () => apiClient.get('/jira/pods').then(r => r.data),
     ...JIRA_LIVE_OPTS,
+  });
+}
+
+// ── Sprint issue row (for drill-down modal in JiraPodDetailPage) ────────
+
+export interface SprintIssueRow {
+  key: string;
+  summary: string;
+  issueType: string;
+  statusCategory: string;
+  statusName: string;
+  assignee: string;
+  storyPoints: number;
+  hoursLogged: number;
+  priority: string;
+}
+
+/**
+ * Fetches the active-sprint issue list for one POD.
+ * Only fires when `enabled` is true (modal is open) — avoids unnecessary Jira calls.
+ */
+export function useSprintIssues(podId: number | null, enabled = false) {
+  return useQuery<SprintIssueRow[]>({
+    queryKey: ['jira', 'pods', podId, 'sprint-issues'],
+    queryFn: () => apiClient.get(`/jira/pods/${podId}/sprint-issues`).then(r => r.data),
+    enabled: !!podId && enabled,
+    staleTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -317,6 +382,271 @@ export function useJiraProjectsSimple() {
   });
 }
 
+// ── Release tracking types ─────────────────────────────────────────────
+
+export interface IssueRow {
+  key: string;
+  summary: string;
+  issueType: string;
+  statusName: string;
+  statusCategory: string;
+  assignee: string;
+  storyPoints: number;
+  hoursLogged: number;
+  parentKey: string | null;
+}
+
+export interface ReleaseMetrics {
+  podId: number | null;
+  podDisplayName: string;
+  versionName: string;
+  notes: string | null;
+  totalIssues: number;
+  issueTypeBreakdown: Record<string, number>;
+  statusBreakdown: Record<string, number>;
+  statusCategoryBreakdown: Record<string, number>;
+  totalSP: number;
+  doneSP: number;
+  totalHoursLogged: number;
+  assigneeHoursLogged: Record<string, number>;
+  assigneeBreakdown: Record<string, number>;
+  issues: IssueRow[];
+  errorMessage: string | null;
+}
+
+export interface ReleaseConfigResponse {
+  podId: number;
+  podDisplayName: string;
+  enabled: boolean;
+  versions: string[];
+  boardKeys: string[];
+  versionNotes: Record<string, string>;
+}
+
+export interface ReleaseConfigRequest {
+  podId: number;
+  versions: string[];
+  versionNotes: Record<string, string>;
+}
+
+export interface JiraFixVersion {
+  id: string;
+  name: string;
+  released: boolean;
+  releaseDate: string | null;
+  description: string | null;
+  /** Only present on the /fixversions (all-pods) endpoint — lists which PODs carry this version */
+  podNames?: string[];
+}
+
+// ── Release hooks ──────────────────────────────────────────────────────
+
+/** All (pod, version) release metrics — expensive Jira call, cached 30 min client-side. */
+export function useReleaseMetrics() {
+  return useQuery<ReleaseMetrics[]>({
+    queryKey: ['jira', 'releases'],
+    queryFn: () => apiClient.get('/jira/releases').then(r => r.data),
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+/** Release version config per POD (DB-backed, cheap). */
+export function useReleaseConfig() {
+  return useQuery<ReleaseConfigResponse[]>({
+    queryKey: ['jira', 'releases', 'config'],
+    queryFn: () => apiClient.get('/jira/releases/config').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+/**
+ * Ad-hoc search: fetches release metrics for any Jira fix-version name,
+ * broken down one entry per enabled POD that has issues tagged with that version.
+ * Only fires when `enabled` is true and `versionName` is non-empty.
+ */
+export function useSearchReleaseVersion(versionName: string, enabled: boolean) {
+  return useQuery<ReleaseMetrics[]>({
+    queryKey: ['jira', 'releases', 'search', versionName],
+    queryFn: () =>
+      apiClient.get(`/jira/releases/search?version=${encodeURIComponent(versionName)}`).then(r => r.data),
+    enabled: enabled && versionName.trim().length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+/**
+ * Fetches Jira sprint issues by date range — finds every Jira sprint (across all enabled
+ * POD boards) whose dates overlap the given calendar-sprint window, then returns issues
+ * grouped by POD.  Only fires when `enabled` is true and both dates are non-empty.
+ */
+export function useSprintCalendarIssues(startDate: string, endDate: string, enabled: boolean) {
+  return useQuery<ReleaseMetrics[]>({
+    queryKey: ['jira', 'sprint-issues', startDate, endDate],
+    queryFn: () =>
+      apiClient
+        .get(`/jira/sprint-issues?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`)
+        .then(r => r.data),
+    enabled: enabled && startDate.length > 0 && endDate.length > 0,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+/** Saves tracked release versions for a list of PODs. */
+export function useSaveReleaseConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reqs: ReleaseConfigRequest[]) =>
+      apiClient.post('/jira/releases/config', reqs).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jira', 'releases', 'config'] });
+      qc.removeQueries({ queryKey: ['jira', 'releases'] });
+    },
+  });
+}
+
+/**
+ * All fix versions across every enabled POD — for the global version search multi-select.
+ * Returns versions annotated with `podNames` (which PODs carry that version).
+ * Cached 30 min — matches the cost of loading per-pod versions.
+ */
+export function useAllFixVersions() {
+  return useQuery<JiraFixVersion[]>({
+    queryKey: ['jira', 'releases', 'fixversions', 'all'],
+    queryFn: () => apiClient.get('/jira/releases/fixversions').then(r => r.data),
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+/** Available fix versions in Jira for a given POD's boards — for the version picker. */
+export function usePodFixVersions(podId: number | null) {
+  return useQuery<JiraFixVersion[]>({
+    queryKey: ['jira', 'releases', 'fixversions', podId],
+    queryFn: () => apiClient.get(`/jira/releases/fixversions/${podId}`).then(r => r.data),
+    enabled: podId != null,
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+// ── CapEx / OpEx types ─────────────────────────────────────────────────
+
+export interface CapexIssue {
+  key: string;
+  summary: string;
+  issueType: string;
+  statusName: string;
+  statusCategory: string;
+  assignee: string;
+  assigneeLocation: string;       // "US" or "India"
+  podDisplayName: string | null;
+  capexCategory: string | null;   // "IDS", "NON-IDS", or null = Untagged
+  monthlyHours: number;
+  storyPoints: number;
+}
+
+export interface CapexCategoryBreakdown {
+  category: string;
+  issueCount: number;
+  totalHours: number;
+  totalSP: number;
+}
+
+export interface CapexPodBreakdown {
+  podName: string;
+  hoursByCategory: Record<string, number>;
+}
+
+/** Per worklog-author breakdown (hours logged by a person this month). */
+export interface WorklogAuthorRow {
+  author: string;
+  location: string;       // "US" or "India"
+  idsHours: number;
+  nonIdsHours: number;
+  untaggedHours: number;
+  totalHours: number;
+}
+
+/** Aggregate hours by location (India vs US). */
+export interface LocationSummary {
+  location: string;
+  idsHours: number;
+  nonIdsHours: number;
+  untaggedHours: number;
+  totalHours: number;
+  authorCount: number;
+}
+
+export interface CapexMonthReport {
+  month: string;
+  fieldId: string | null;
+  totalIssues: number;
+  taggedIssues: number;
+  untaggedIssues: number;
+  totalHours: number;
+  breakdown: CapexCategoryBreakdown[];
+  podBreakdown: CapexPodBreakdown[];
+  issues: CapexIssue[];
+  authorBreakdown: WorklogAuthorRow[];
+  locationBreakdown: LocationSummary[];
+}
+
+export interface JiraField {
+  id: string;
+  name: string;
+  type: string;
+}
+
+// ── CapEx hooks ────────────────────────────────────────────────────────
+
+export function useCapexReport(month: string, fieldId?: string) {
+  return useQuery<CapexMonthReport>({
+    queryKey: ['jira', 'capex', month, fieldId ?? ''],
+    queryFn: () => {
+      const params = new URLSearchParams({ month });
+      if (fieldId) params.set('fieldId', fieldId);
+      return apiClient.get(`/jira/capex?${params}`).then(r => r.data);
+    },
+    enabled: !!month,
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+export function useCapexSettings() {
+  return useQuery<{ capexFieldId: string }>({
+    queryKey: ['jira', 'capex', 'settings'],
+    queryFn: () => apiClient.get('/jira/capex/settings').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+export function useSaveCapexSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { capexFieldId: string }) =>
+      apiClient.post('/jira/capex/settings', body).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jira', 'capex', 'settings'] });
+    },
+  });
+}
+
+export function useJiraFields(enabled = true) {
+  return useQuery<JiraField[]>({
+    queryKey: ['jira', 'fields'],
+    queryFn: () => apiClient.get('/jira/capex/fields').then(r => r.data),
+    enabled,
+    // staleTime: 0 so every time the modal opens (enabled flips true) the
+    // data is treated as stale and a fresh fetch fires — prevents a previously
+    // cached empty array from being returned permanently.
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    retry: 2,
+  });
+}
+
 /**
  * Clears all Jira server-side caches and removes the relevant React Query
  * caches so the next request re-fetches live data from Jira.
@@ -332,6 +662,249 @@ export function useClearJiraCache() {
       qc.removeQueries({ queryKey: ['jira', 'pods'] });
       qc.removeQueries({ queryKey: ['jira', 'actuals'] });
       qc.removeQueries({ queryKey: ['jira', 'suggestions'] });
+      qc.removeQueries({ queryKey: ['jira', 'releases'] });
+      qc.removeQueries({ queryKey: ['jira', 'support'] });
     },
+  });
+}
+
+// ── Support Queue ──────────────────────────────────────────────────────────────
+
+export interface SupportTicket {
+  key: string;
+  summary: string;
+  status: string | null;
+  statusCategory: string | null;
+  priority: string | null;
+  priorityIconUrl: string | null;
+  reporter: string | null;
+  assignee: string | null;
+  labels: string[];
+  created: string | null;
+  updated: string | null;
+  lastCommentDate: string | null;
+  lastCommentSnippet: string | null;
+  lastStatusChangeDate: string | null;
+  stale: boolean;
+  /** "today" | "last3" | "last7" | "older" */
+  timeWindow: string;
+}
+
+export interface SupportBoardSnapshot {
+  configId: number;
+  boardId: number;
+  boardName: string;
+  tickets: SupportTicket[];
+  errorMessage: string | null;
+}
+
+export interface SupportSnapshot {
+  boards: SupportBoardSnapshot[];
+  fetchedAt: string;
+}
+
+export interface SupportBoard {
+  id: number;
+  name: string;
+  boardId: number | null;
+  /** Jira project key, e.g. "AC" or "LR" — preferred over boardId */
+  projectKey: string | null;
+  /** JSM custom-queue ID from the queue URL, e.g. 1649 */
+  queueId: number | null;
+  enabled: boolean;
+  staleThresholdDays: number;
+}
+
+export interface SnapshotDayPoint {
+  date: string;
+  openCount: number;
+  staleCount: number;
+  avgAgeDays: number;
+}
+
+export interface BoardHistory {
+  boardId: number;
+  boardName: string;
+  history: SnapshotDayPoint[];
+}
+
+export interface AvailableBoard {
+  id: number;
+  name: string;
+  type: string;
+  location?: { projectName?: string };
+}
+
+export function useSupportSnapshot(enabled = true) {
+  return useQuery<SupportSnapshot>({
+    queryKey: ['jira', 'support', 'snapshot'],
+    queryFn: () => apiClient.get('/jira/support/snapshot').then(r => r.data),
+    enabled,
+    staleTime: 60_000,        // re-fetch after 1 min
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSupportBoards() {
+  return useQuery<SupportBoard[]>({
+    queryKey: ['jira', 'support', 'boards'],
+    queryFn: () => apiClient.get('/jira/support/boards').then(r => r.data),
+  });
+}
+
+export function useAvailableBoards(enabled = true) {
+  return useQuery<AvailableBoard[]>({
+    queryKey: ['jira', 'support', 'available-boards'],
+    queryFn: () => apiClient.get('/jira/support/available-boards').then(r => r.data),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSupportHistory(days = 30) {
+  return useQuery<BoardHistory[]>({
+    queryKey: ['jira', 'support', 'history', days],
+    queryFn: () => apiClient.get(`/jira/support/history?days=${days}`).then(r => r.data),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ── Monthly throughput ──────────────────────────────────────────────────────
+
+export interface MonthPoint {
+  month: string;   // "YYYY-MM"
+  created: number;
+  closed: number;
+}
+
+export interface MonthlyThroughput {
+  boardId: number;
+  boardName: string;
+  months: MonthPoint[];
+}
+
+export function useSupportMonthlyThroughput(months = 6, enabled = true) {
+  return useQuery<MonthlyThroughput[]>({
+    queryKey: ['jira', 'support', 'monthly-throughput', months],
+    queryFn: () =>
+      apiClient.get(`/jira/support/monthly-throughput?months=${months}`).then(r => r.data),
+    enabled,
+    staleTime: 15 * 60_000,   // 15 min — counts don't change that fast
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useAllSupportTickets(enabled = false, days = 90) {
+  return useQuery<SupportSnapshot>({
+    queryKey: ['jira', 'support', 'all-tickets', days],
+    queryFn: () => apiClient.get(`/jira/support/all-tickets?days=${days}`).then(r => r.data),
+    enabled,
+    staleTime: 10 * 60_000,   // 10 min — historical data changes slowly
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCaptureSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.post('/jira/support/snapshot/capture').then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'support', 'history'] }),
+  });
+}
+
+export interface BoardUpsertPayload {
+  name: string;
+  boardId?: number | null;
+  projectKey?: string | null;
+  queueId?: number | null;
+  enabled?: boolean;
+  staleThresholdDays: number;
+}
+
+export function useCreateSupportBoard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BoardUpsertPayload) =>
+      apiClient.post('/jira/support/boards', body).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'support', 'boards'] }),
+  });
+}
+
+export function useUpdateSupportBoard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number } & BoardUpsertPayload) =>
+      apiClient.put(`/jira/support/boards/${id}`, body).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'support', 'boards'] }),
+  });
+}
+
+export function useDeleteSupportBoard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/jira/support/boards/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'support', 'boards'] }),
+  });
+}
+
+// ── Worklog Report ─────────────────────────────────────────────────────────────
+
+export interface WorklogIssueEntry {
+  issueKey: string;
+  summary: string;
+  issueType: string;
+  projectKey: string;
+  hoursLogged: number;
+}
+
+export interface WorklogUserRow {
+  author: string;
+  totalHours: number;
+  issueTypeBreakdown: Record<string, number>;
+  issues: WorklogIssueEntry[];
+}
+
+export interface WorklogMonthReport {
+  month: string;
+  totalUsers: number;
+  totalHours: number;
+  issueTypeBreakdown: Record<string, number>;
+  users: WorklogUserRow[];
+}
+
+export function useWorklogReport(month: string, projectKey?: string) {
+  return useQuery<WorklogMonthReport>({
+    queryKey: ['jira', 'worklog', month, projectKey ?? ''],
+    queryFn: () => {
+      const params = new URLSearchParams({ month });
+      if (projectKey) params.set('projectKey', projectKey);
+      return apiClient.get(`/jira/worklog?${params}`).then(r => r.data);
+    },
+    enabled: !!month,
+    ...JIRA_LIVE_OPTS,
+  });
+}
+
+export interface UserMonthPoint {
+  month: string;
+  monthLabel: string;
+  totalHours: number;
+  issueTypeBreakdown: Record<string, number>;
+}
+
+export interface UserHistoryReport {
+  author: string;
+  months: UserMonthPoint[];
+}
+
+export function useWorklogUserHistory(author: string | null, months = 6) {
+  return useQuery<UserHistoryReport>({
+    queryKey: ['jira', 'worklog', 'history', author, months],
+    queryFn: () =>
+      apiClient.get(`/jira/worklog/user-history?author=${encodeURIComponent(author!)}&months=${months}`)
+        .then(r => r.data),
+    enabled: !!author,
+    ...JIRA_LIVE_OPTS,
   });
 }

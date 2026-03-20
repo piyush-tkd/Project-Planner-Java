@@ -13,7 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/resources")
@@ -47,6 +49,13 @@ public class ResourceController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         resourceService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/actual-rate")
+    public ResponseEntity<ResourceResponse> updateActualRate(@PathVariable Long id,
+                                                             @RequestBody Map<String, BigDecimal> body) {
+        BigDecimal rate = body.get("actualRate");
+        return ResponseEntity.ok(resourceService.updateActualRate(id, rate));
     }
 
     @PutMapping("/{id}/assignment")

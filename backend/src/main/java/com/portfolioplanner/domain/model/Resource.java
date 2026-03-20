@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,6 +37,10 @@ public class Resource {
 
     @Column(name = "counts_in_capacity", nullable = false)
     private Boolean countsInCapacity = true;
+
+    /** Individual hourly rate override — takes precedence over the role+location CostRate when set. */
+    @Column(name = "actual_rate", precision = 10, scale = 2)
+    private BigDecimal actualRate;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

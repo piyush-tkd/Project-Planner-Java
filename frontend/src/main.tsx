@@ -9,6 +9,7 @@ import { AuthProvider } from './auth/AuthContext';
 import App from './App';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '@mantine/dates/styles.css';
 
 // Baylor Genetics / OOPPv2 design tokens (from Figma)
 // Deep Blue 500: #0C2340  |  Agua 700: #1F9196  |  Font: Barlow
@@ -48,6 +49,9 @@ const theme = createTheme({
     Button: {
       defaultProps: { radius: 'xl' },
       styles: { root: { fontWeight: 600 } },
+    },
+    Modal: {
+      defaultProps: { size: 'xl' },
     },
   },
 });

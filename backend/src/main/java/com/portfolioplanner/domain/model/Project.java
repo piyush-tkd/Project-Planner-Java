@@ -62,6 +62,10 @@ public class Project {
     @Column(name = "capacity_note")
     private String capacityNote;
 
+    /** Optional client name associated with this project (e.g. an external customer). */
+    @Column(name = "client", length = 150)
+    private String client;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

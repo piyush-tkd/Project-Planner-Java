@@ -13,6 +13,7 @@ import { getUtilizationBgColor, getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 
 const POD_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
@@ -195,9 +196,8 @@ export default function CapacityDemandPage() {
         />
       </Group>
 
-      <Card withBorder padding="md">
+      <ChartCard title="Total Org — Capacity vs Demand" minHeight={320}>
         <ExportableChart title="Total Org - Capacity vs Demand">
-          <Title order={4} mb={4}>Total Org — Capacity vs Demand</Title>
           <Text size="xs" c="dimmed" mb="sm">
             {selectedPods.length === 0 ? 'All PODs combined' : `${pods.length} POD${pods.length > 1 ? 's' : ''} selected`}
             {' — '}{isFte ? 'FTE per month' : 'hours per month'}
@@ -214,12 +214,11 @@ export default function CapacityDemandPage() {
             </LineChart>
           </ResponsiveContainer>
         </ExportableChart>
-      </Card>
+      </ChartCard>
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <Card withBorder padding="md">
+        <ChartCard title="Capacity by POD" minHeight={320}>
           <ExportableChart title="Capacity by POD">
-            <Title order={4} mb={4}>Capacity by POD</Title>
             <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project-available hours'}</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={podCapChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -234,11 +233,10 @@ export default function CapacityDemandPage() {
               </BarChart>
             </ResponsiveContainer>
           </ExportableChart>
-        </Card>
+        </ChartCard>
 
-        <Card withBorder padding="md">
+        <ChartCard title="Demand by POD" minHeight={320}>
           <ExportableChart title="Demand by POD">
-            <Title order={4} mb={4}>Demand by POD</Title>
             <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project demand hours'}</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={podDemChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -253,7 +251,7 @@ export default function CapacityDemandPage() {
               </BarChart>
             </ResponsiveContainer>
           </ExportableChart>
-        </Card>
+        </ChartCard>
       </SimpleGrid>
 
       <Card withBorder padding="md">
@@ -329,9 +327,8 @@ export default function CapacityDemandPage() {
               </Group>
 
               <SimpleGrid cols={{ base: 1, md: 2 }}>
-                <Card withBorder padding="md">
+                <ChartCard title={`${pod} — Capacity vs Demand`} minHeight={270}>
                   <ExportableChart title={`${pod} — Capacity vs Demand`}>
-                    <Title order={5} mb="xs">{pod} — Capacity vs Demand</Title>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -344,7 +341,7 @@ export default function CapacityDemandPage() {
                       </BarChart>
                     </ResponsiveContainer>
                   </ExportableChart>
-                </Card>
+                </ChartCard>
 
                 <Card withBorder padding="md">
                   <Title order={5} mb="xs">{pod} — Monthly Breakdown</Title>

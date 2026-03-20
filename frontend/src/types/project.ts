@@ -3,8 +3,8 @@ export interface ProjectResponse {
   name: string;
   priority: string;
   owner: string;
-  startMonth: number;
-  targetEndMonth: number;
+  startMonth: number | null;
+  targetEndMonth: number | null;
   durationMonths: number;
   defaultPattern: string;
   status: string;
@@ -13,6 +13,7 @@ export interface ProjectResponse {
   targetDate: string | null;
   startDate: string | null;
   capacityNote: string | null;
+  client: string | null;
 }
 
 export interface ProjectRequest {
@@ -26,14 +27,22 @@ export interface ProjectRequest {
   notes: string | null;
   startDate?: string | null;
   targetDate?: string | null;
+  client?: string | null;
 }
 
 export interface ProjectPodPlanningResponse {
   id: number;
   podId: number;
   podName: string;
-  tshirtSize: string;
-  complexityOverride: number | null;
+  devHours: number;
+  qaHours: number;
+  bsaHours: number;
+  techLeadHours: number;
+  contingencyPct: number;
+  totalHours: number;
+  totalHoursWithContingency: number;
+  targetReleaseId: number | null;
+  targetReleaseName: string | null;
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
@@ -51,8 +60,15 @@ export interface ProjectPodMatrixResponse {
   defaultPattern: string;
   podId: number;
   podName: string;
-  tshirtSize: string;
-  complexityOverride: number | null;
+  devHours: number;
+  qaHours: number;
+  bsaHours: number;
+  techLeadHours: number;
+  contingencyPct: number;
+  totalHours: number;
+  totalHoursWithContingency: number;
+  targetReleaseId: number | null;
+  targetReleaseName: string | null;
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
@@ -60,9 +76,57 @@ export interface ProjectPodMatrixResponse {
 
 export interface ProjectPodPlanningRequest {
   podId: number;
-  tshirtSize: string;
-  complexityOverride: number | null;
+  devHours: number;
+  qaHours: number;
+  bsaHours: number;
+  techLeadHours: number;
+  contingencyPct: number;
+  targetReleaseId: number | null;
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
+}
+
+// T-shirt size derived from total hours (display only)
+export function deriveTshirtSize(totalHours: number): string {
+  if (totalHours < 100) return 'XS';
+  if (totalHours < 300) return 'S';
+  if (totalHours < 600) return 'M';
+  if (totalHours < 1200) return 'L';
+  return 'XL';
+}
+
+// Sprint and Release Calendar types
+export interface SprintResponse {
+  id: number;
+  name: string;
+  type: 'SPRINT' | 'IP_WEEK';
+  startDate: string;
+  endDate: string;
+  requirementsLockInDate: string | null;
+}
+
+export interface SprintRequest {
+  name: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  requirementsLockInDate: string | null;
+}
+
+export interface ReleaseCalendarResponse {
+  id: number;
+  name: string;
+  releaseDate: string;
+  codeFreezeDate: string;
+  type: 'REGULAR' | 'SPECIAL';
+  notes: string | null;
+}
+
+export interface ReleaseCalendarRequest {
+  name: string;
+  releaseDate: string;
+  codeFreezeDate: string;
+  type: string;
+  notes: string | null;
 }

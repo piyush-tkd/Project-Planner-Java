@@ -13,6 +13,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import SummaryCard from '../../components/charts/SummaryCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 
 export default function PodCapacityPage() {
   const { data: gapData, isLoading } = useCapacityGap('hours');
@@ -144,9 +145,8 @@ export default function PodCapacityPage() {
       </SimpleGrid>
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <Card withBorder padding="md">
+        <ChartCard title={`Capacity vs Demand — ${activePod}`} minHeight={300}>
           <ExportableChart title={`Capacity vs Demand - ${activePod}`}>
-            <Title order={4} mb={4}>Capacity vs Demand — {activePod}</Title>
             <Text size="xs" c="dimmed" mb="sm">
               Total hours per month{activeMonth ? ` — ${visibleMonthData.find(d => d.monthIndex === activeMonth)?.month ?? ''} highlighted` : ''}
             </Text>
@@ -184,11 +184,10 @@ export default function PodCapacityPage() {
               </BarChart>
             </ResponsiveContainer>
           </ExportableChart>
-        </Card>
+        </ChartCard>
 
-        <Card withBorder padding="md">
+        <ChartCard title={`Utilization % — ${activePod}`} minHeight={300}>
           <ExportableChart title={`Utilization - ${activePod}`}>
-            <Title order={4} mb={4}>Utilization % — {activePod}</Title>
             <Text size="xs" c="dimmed" mb="sm">Demand / capacity per month</Text>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={visibleMonthData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -220,7 +219,7 @@ export default function PodCapacityPage() {
               </LineChart>
             </ResponsiveContainer>
           </ExportableChart>
-        </Card>
+        </ChartCard>
       </SimpleGrid>
 
       <Card withBorder padding="md">

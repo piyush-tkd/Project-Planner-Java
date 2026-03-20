@@ -136,7 +136,7 @@ export default function PodsPage() {
             <Table.Tr key={pod.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pods/${pod.id}`)}>
               <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
               <Table.Td fw={500}>{pod.name}</Table.Td>
-              <Table.Td>
+              <Table.Td onClick={e => e.stopPropagation()}>
                 <NumberInput
                   value={editingComplexity[pod.id] ?? pod.complexityMultiplier}
                   onChange={v => setEditingComplexity(prev => ({ ...prev, [pod.id]: Number(v) }))}
@@ -147,8 +147,9 @@ export default function PodsPage() {
                   style={{ maxWidth: 120 }}
                 />
               </Table.Td>
-              <Table.Td>
-                <Button size="xs" variant="light" onClick={() => handleComplexitySave(pod.id)}
+              <Table.Td onClick={e => e.stopPropagation()}>
+                <Button size="xs" variant="light"
+                  onClick={() => handleComplexitySave(pod.id)}
                   disabled={editingComplexity[pod.id] === undefined}>
                   Save
                 </Button>

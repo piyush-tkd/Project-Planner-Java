@@ -28,9 +28,11 @@ public class ProjectPodPlanning {
     @JoinColumn(name = "pod_id", nullable = false)
     private Pod pod;
 
+    /** @deprecated retained for backward-compat; use devHours/qaHours/bsaHours/techLeadHours */
     @Column(name = "tshirt_size")
     private String tshirtSize;
 
+    /** @deprecated retained for backward-compat; use contingencyPct */
     @Column(name = "complexity_override", precision = 5, scale = 2)
     private BigDecimal complexityOverride;
 
@@ -42,6 +44,29 @@ public class ProjectPodPlanning {
 
     @Column(name = "duration_override")
     private Integer durationOverride;
+
+    // ── Role-hours model ──────────────────────────────────────────────────────
+    @Column(name = "dev_hours", precision = 8, scale = 2, nullable = false)
+    private BigDecimal devHours = BigDecimal.ZERO;
+
+    @Column(name = "qa_hours", precision = 8, scale = 2, nullable = false)
+    private BigDecimal qaHours = BigDecimal.ZERO;
+
+    @Column(name = "bsa_hours", precision = 8, scale = 2, nullable = false)
+    private BigDecimal bsaHours = BigDecimal.ZERO;
+
+    @Column(name = "tech_lead_hours", precision = 8, scale = 2, nullable = false)
+    private BigDecimal techLeadHours = BigDecimal.ZERO;
+
+    /** Contingency applied to the total pod-project hours (e.g. 10 = 10%). */
+    @Column(name = "contingency_pct", precision = 5, scale = 2, nullable = false)
+    private BigDecimal contingencyPct = BigDecimal.ZERO;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_release_id")
+    private ReleaseCalendar targetRelease;
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

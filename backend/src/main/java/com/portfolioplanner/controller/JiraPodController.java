@@ -1,12 +1,13 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.config.JiraProperties;
+import com.portfolioplanner.service.jira.JiraCredentialsService;
 import com.portfolioplanner.domain.model.JiraPod;
 import com.portfolioplanner.domain.model.JiraPodBoard;
 import com.portfolioplanner.domain.repository.JiraPodRepository;
 import com.portfolioplanner.service.jira.JiraPodService;
 import com.portfolioplanner.service.jira.JiraPodService.PodMetrics;
 import com.portfolioplanner.service.jira.JiraPodService.SprintVelocity;
+import com.portfolioplanner.service.jira.JiraPodService.SprintIssueRow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,7 @@ public class JiraPodController {
 
     private final JiraPodService    podService;
     private final JiraPodRepository podRepo;
-    private final JiraProperties    props;
+    private final JiraCredentialsService creds;
 
     // ── Metrics ────────────────────────────────────────────────────────
 
@@ -34,6 +35,12 @@ public class JiraPodController {
     @GetMapping("/{podId}/velocity")
     public ResponseEntity<List<SprintVelocity>> getVelocity(@PathVariable Long podId) {
         return ResponseEntity.ok(podService.getVelocityForPod(podId));
+    }
+
+    /** Active-sprint issue list for a single POD — used for the drill-down modal. */
+    @GetMapping("/{podId}/sprint-issues")
+    public ResponseEntity<List<SprintIssueRow>> getSprintIssues(@PathVariable Long podId) {
+        return ResponseEntity.ok(podService.getSprintIssuesForPod(podId));
     }
 
     // ── Config ────────────────────────────────────────────────────────

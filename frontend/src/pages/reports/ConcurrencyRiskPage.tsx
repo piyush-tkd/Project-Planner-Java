@@ -11,6 +11,7 @@ import SummaryCard from '../../components/charts/SummaryCard';
 import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 
 const POD_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
@@ -145,9 +146,8 @@ export default function ConcurrencyRiskPage() {
         </ExportableChart>
       </Card>
 
-      <Card withBorder padding="md">
+      <ChartCard title="Peak Demand Chart — Projects Stacked by POD" minHeight={370}>
         <ExportableChart title="Peak Demand by POD">
-        <Title order={4} mb={4}>Peak Demand Chart — Projects Stacked by POD</Title>
         <Text size="xs" c="dimmed" mb="sm">Total demand hours per month — stacked by POD</Text>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={demandChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -162,7 +162,7 @@ export default function ConcurrencyRiskPage() {
           </BarChart>
         </ResponsiveContainer>
         </ExportableChart>
-      </Card>
+      </ChartCard>
     </Stack>
   );
 }

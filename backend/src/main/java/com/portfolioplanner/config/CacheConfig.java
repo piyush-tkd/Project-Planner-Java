@@ -30,6 +30,9 @@ import java.util.concurrent.TimeUnit;
  *  jira-sprint-issues      5 min  — issue status changes during a sprint
  *  jira-backlog            5 min  — backlog changes frequently
  *  jira-board-config      30 min  — board estimation field config (rarely changes)
+ *  jira-sprint-report     10 min  — sprint report SP totals (authoritative source)
+ *  jira-fix-versions      30 min  — project fix/release versions (stable)
+ *  jira-release-issues    10 min  — issues belonging to a release version
  *
  * Users can bust all jira caches via POST /api/jira/cache/clear.
  */
@@ -51,10 +54,18 @@ public class CacheConfig {
             jiraCache("jira-epics-from-board", 15, 500),
             jiraCache("jira-labels",           30, 200),
             jiraCache("jira-active-sprints",    3, 200),
+            jiraCache("jira-all-sprints",       10, 200),   // all sprints per board (active+closed+future) — 10 min TTL
             jiraCache("jira-closed-sprints",   30, 200),
             jiraCache("jira-sprint-issues",     5, 500),
             jiraCache("jira-backlog",            5, 200),
-            jiraCache("jira-board-config",      30, 100)  // board estimation field config — rarely changes
+            jiraCache("jira-board-config",      30, 100), // board estimation field config — rarely changes
+            jiraCache("jira-sprint-report",     10, 200),  // sprint report SP totals — 10 min TTL
+            jiraCache("jira-fix-versions",       30, 200),  // project fix/release versions — 30 min TTL
+            jiraCache("jira-release-issues",     10, 200),  // issues per release version  — 10 min TTL
+
+            // ── Support Queue ───────────────────────────────────────────────
+            jiraCache("jira-all-boards",         15, 1),    // all Jira boards for picker   — 15 min TTL
+            jiraCache("jira-support-issues",      2, 50)    // non-Done issues per board    —  2 min TTL
         ));
         return manager;
     }

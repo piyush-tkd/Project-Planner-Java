@@ -7,6 +7,7 @@ import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { useProjects, useCreateProject } from '../api/projects';
+import { useEffortPatterns } from '../api/refData';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
 import { Priority, ProjectStatus } from '../types';
@@ -34,11 +35,13 @@ const emptyForm: ProjectRequest = {
   notes: null,
   startDate: null,
   targetDate: null,
+  client: null,
 };
 
 export default function ProjectsPage() {
   const { data: projects, isLoading, error } = useProjects();
   const createMutation = useCreateProject();
+  const { data: effortPatterns } = useEffortPatterns();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
   const [modalOpen, setModalOpen] = useState(false);
@@ -272,7 +275,7 @@ export default function ProjectsPage() {
         </Table>
       </Table.ScrollContainer>
 
-      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Add Project" size="lg">
+      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Add Project" size="xl">
         <Stack>
           <TextInput label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
           <Group grow>
@@ -280,6 +283,7 @@ export default function ProjectsPage() {
             <Select label="Status" data={statusOptions} value={form.status} onChange={v => setForm({ ...form, status: v as ProjectStatus })} required />
           </Group>
           <TextInput label="Owner" value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
+          <TextInput label="Client" placeholder="Optional — external client name" value={form.client ?? ''} onChange={e => setForm({ ...form, client: e.target.value || null })} />
           <Group grow>
             <DateInput
               label="Start Date"
@@ -296,7 +300,13 @@ export default function ProjectsPage() {
               valueFormat="MMM DD, YYYY"
             />
           </Group>
-          <TextInput label="Default Pattern" value={form.defaultPattern} onChange={e => setForm({ ...form, defaultPattern: e.target.value })} />
+          <Select
+            label="Default Pattern"
+            data={(effortPatterns ?? []).map(p => ({ value: p.name, label: p.name }))}
+            value={form.defaultPattern}
+            onChange={v => setForm({ ...form, defaultPattern: v ?? 'Flat' })}
+            clearable={false}
+          />
           <Textarea label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
           <Button onClick={handleCreate} loading={createMutation.isPending}>Create</Button>
         </Stack>

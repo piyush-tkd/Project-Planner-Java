@@ -45,10 +45,10 @@ public class PodService {
     public PodResponse update(Long id, Pod updated) {
         Pod pod = podRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pod", id));
-        pod.setName(updated.getName());
-        pod.setComplexityMultiplier(updated.getComplexityMultiplier());
-        pod.setDisplayOrder(updated.getDisplayOrder());
-        pod.setActive(updated.getActive());
+        if (updated.getName() != null) pod.setName(updated.getName());
+        if (updated.getComplexityMultiplier() != null) pod.setComplexityMultiplier(updated.getComplexityMultiplier());
+        if (updated.getDisplayOrder() != null) pod.setDisplayOrder(updated.getDisplayOrder());
+        if (updated.getActive() != null) pod.setActive(updated.getActive());
         pod = podRepository.save(pod);
         return mapper.toPodResponse(pod);
     }

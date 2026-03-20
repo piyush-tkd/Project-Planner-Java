@@ -2,6 +2,51 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 import { ResourceResponse, ResourceRequest, AvailabilityData } from '../types';
 
+export interface CostRateData {
+  id: number;
+  role: string;
+  location: string;
+  hourlyRate: number;
+}
+
+export interface CostRateRequest {
+  role: string;
+  location: string;
+  hourlyRate: number;
+}
+
+export function useCostRates() {
+  return useQuery<CostRateData[]>({
+    queryKey: ['cost-rates'],
+    queryFn: () => apiClient.get('/cost-rates').then(r => r.data),
+  });
+}
+
+export function useCreateCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CostRateRequest) => apiClient.post('/cost-rates', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cost-rates'] }),
+  });
+}
+
+export function useUpdateCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CostRateRequest }) =>
+      apiClient.put(`/cost-rates/${id}`, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cost-rates'] }),
+  });
+}
+
+export function useDeleteCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/cost-rates/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cost-rates'] }),
+  });
+}
+
 export function useResources() {
   return useQuery<ResourceResponse[]>({
     queryKey: ['resources'],
@@ -63,6 +108,16 @@ export function useUpdateAvailability() {
     mutationFn: (data: AvailabilityData[]) =>
       apiClient.put('/availability', data).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['availability'] }),
+  });
+}
+
+
+export function useUpdateActualRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, actualRate }: { id: number; actualRate: number | null }) =>
+      apiClient.put(`/resources/${id}/actual-rate`, { actualRate }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resources"] }),
   });
 }
 

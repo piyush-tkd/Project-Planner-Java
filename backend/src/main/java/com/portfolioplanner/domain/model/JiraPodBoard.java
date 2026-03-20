@@ -28,6 +28,19 @@ public class JiraPodBoard {
     @Column(name = "jira_project_key", nullable = false, length = 64)
     private String jiraProjectKey;
 
+    /**
+     * Optional Jira board ID override for sprint fetching.
+     *
+     * When set, this board ID is used directly to fetch sprints instead of
+     * looking up boards via the project-key API.  Needed when the Scrum board
+     * belongs to a different Jira project than the ticket project keys.
+     *
+     * How to find: open the board in Jira — the URL contains
+     * {@code rapidView=NNN} or {@code /boards/NNN}.
+     */
+    @Column(name = "sprint_board_id")
+    private Long sprintBoardId;
+
     public JiraPodBoard(JiraPod pod, String jiraProjectKey) {
         this.pod = pod;
         this.jiraProjectKey = jiraProjectKey;

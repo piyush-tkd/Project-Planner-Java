@@ -36,15 +36,17 @@ export function formatResourceName(name: string): string {
     .replace(/DEVELOPER/g, 'Developer');
 }
 
-/** Format a project date for display, falling back to month label if no date. */
+/** Format a project date for display, falling back to month label if no date.
+ * Returns "TBD" when both isoDate and monthIndex are absent. */
 export function formatProjectDate(
   isoDate: string | null | undefined,
-  monthIndex: number,
+  monthIndex: number | null | undefined,
   monthLabels: Record<number, string>,
 ): string {
   if (isoDate) {
     const d = new Date(isoDate + 'T00:00:00');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
+  if (monthIndex == null) return 'TBD';
   return monthLabels[monthIndex] ?? `M${monthIndex}`;
 }

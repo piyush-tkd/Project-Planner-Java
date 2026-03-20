@@ -7,6 +7,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -33,6 +35,7 @@ public interface EntityMapper {
                 resource.getLocation(),
                 resource.getActive(),
                 resource.getCountsInCapacity(),
+                resource.getActualRate(),
                 podAssignment
         );
     }
@@ -65,7 +68,8 @@ public interface EntityMapper {
                 blockedById,
                 project.getTargetDate(),
                 project.getStartDate(),
-                project.getCapacityNote()
+                project.getCapacityNote(),
+                project.getClient()
         );
     }
 
@@ -75,12 +79,30 @@ public interface EntityMapper {
 
     // ProjectPodPlanning mappings
     default ProjectPodPlanningResponse toPodPlanningResponse(ProjectPodPlanning planning) {
+        BigDecimal dev  = orZero(planning.getDevHours());
+        BigDecimal qa   = orZero(planning.getQaHours());
+        BigDecimal bsa  = orZero(planning.getBsaHours());
+        BigDecimal tl   = orZero(planning.getTechLeadHours());
+        BigDecimal contingency = orZero(planning.getContingencyPct());
+
+        BigDecimal total = dev.add(qa).add(bsa).add(tl);
+        BigDecimal totalWithContingency = total.multiply(
+                BigDecimal.ONE.add(contingency.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP))
+        ).setScale(2, RoundingMode.HALF_UP);
+
+        Long releaseId = planning.getTargetRelease() != null ? planning.getTargetRelease().getId() : null;
+        String releaseName = planning.getTargetRelease() != null ? planning.getTargetRelease().getName() : null;
+
         return new ProjectPodPlanningResponse(
                 planning.getId(),
                 planning.getPod().getId(),
                 planning.getPod().getName(),
-                planning.getTshirtSize(),
-                planning.getComplexityOverride(),
+                dev, qa, bsa, tl,
+                contingency,
+                total.setScale(2, RoundingMode.HALF_UP),
+                totalWithContingency,
+                releaseId,
+                releaseName,
                 planning.getEffortPattern(),
                 planning.getPodStartMonth(),
                 planning.getDurationOverride()
@@ -93,6 +115,21 @@ public interface EntityMapper {
 
     default ProjectPodMatrixResponse toProjectPodMatrixResponse(ProjectPodPlanning planning) {
         Project project = planning.getProject();
+
+        BigDecimal dev  = orZero(planning.getDevHours());
+        BigDecimal qa   = orZero(planning.getQaHours());
+        BigDecimal bsa  = orZero(planning.getBsaHours());
+        BigDecimal tl   = orZero(planning.getTechLeadHours());
+        BigDecimal contingency = orZero(planning.getContingencyPct());
+
+        BigDecimal total = dev.add(qa).add(bsa).add(tl);
+        BigDecimal totalWithContingency = total.multiply(
+                BigDecimal.ONE.add(contingency.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP))
+        ).setScale(2, RoundingMode.HALF_UP);
+
+        Long releaseId = planning.getTargetRelease() != null ? planning.getTargetRelease().getId() : null;
+        String releaseName = planning.getTargetRelease() != null ? planning.getTargetRelease().getName() : null;
+
         return new ProjectPodMatrixResponse(
                 planning.getId(),
                 project.getId(),
@@ -105,8 +142,12 @@ public interface EntityMapper {
                 project.getDefaultPattern(),
                 planning.getPod().getId(),
                 planning.getPod().getName(),
-                planning.getTshirtSize(),
-                planning.getComplexityOverride(),
+                dev, qa, bsa, tl,
+                contingency,
+                total.setScale(2, RoundingMode.HALF_UP),
+                totalWithContingency,
+                releaseId,
+                releaseName,
                 planning.getEffortPattern(),
                 planning.getPodStartMonth(),
                 planning.getDurationOverride()
@@ -115,6 +156,38 @@ public interface EntityMapper {
 
     default List<ProjectPodMatrixResponse> toProjectPodMatrixResponseList(List<ProjectPodPlanning> plannings) {
         return plannings.stream().map(this::toProjectPodMatrixResponse).toList();
+    }
+
+    // Sprint mappings
+    default SprintResponse toSprintResponse(Sprint sprint) {
+        return new SprintResponse(
+                sprint.getId(),
+                sprint.getName(),
+                sprint.getType(),
+                sprint.getStartDate(),
+                sprint.getEndDate(),
+                sprint.getRequirementsLockInDate()
+        );
+    }
+
+    default List<SprintResponse> toSprintResponseList(List<Sprint> sprints) {
+        return sprints.stream().map(this::toSprintResponse).toList();
+    }
+
+    // ReleaseCalendar mappings
+    default ReleaseCalendarResponse toReleaseCalendarResponse(ReleaseCalendar release) {
+        return new ReleaseCalendarResponse(
+                release.getId(),
+                release.getName(),
+                release.getReleaseDate(),
+                release.getCodeFreezeDate(),
+                release.getType(),
+                release.getNotes()
+        );
+    }
+
+    default List<ReleaseCalendarResponse> toReleaseCalendarResponseList(List<ReleaseCalendar> releases) {
+        return releases.stream().map(this::toReleaseCalendarResponse).toList();
     }
 
     // TemporaryOverride mappings
@@ -173,12 +246,16 @@ public interface EntityMapper {
 
     List<RoleEffortMixResponse> toRoleEffortMixResponseList(List<RoleEffortMix> mixes);
 
-    // TshirtSizeConfig response helper
+    // TshirtSizeConfig response helper (kept for settings page)
     default TshirtSizeResponse toTshirtSizeResponse(TshirtSizeConfig config) {
         return new TshirtSizeResponse(config.getId(), config.getName(), config.getBaseHours(), config.getDisplayOrder());
     }
 
     default java.util.List<TshirtSizeResponse> toTshirtSizeResponseList(java.util.List<TshirtSizeConfig> configs) {
         return configs.stream().map(this::toTshirtSizeResponse).toList();
+    }
+
+    private static BigDecimal orZero(BigDecimal val) {
+        return val != null ? val : BigDecimal.ZERO;
     }
 }

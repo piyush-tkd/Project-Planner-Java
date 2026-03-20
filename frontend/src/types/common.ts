@@ -29,6 +29,8 @@ export enum Priority {
 }
 
 export enum ProjectStatus {
+  NOT_STARTED = 'NOT_STARTED',
+  IN_DISCOVERY = 'IN_DISCOVERY',
   ACTIVE = 'ACTIVE',
   ON_HOLD = 'ON_HOLD',
   COMPLETED = 'COMPLETED',

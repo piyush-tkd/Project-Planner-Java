@@ -8,6 +8,7 @@ import HeatmapChart from '../../components/charts/HeatmapChart';
 import CapacityBarChart from '../../components/charts/CapacityBarChart';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
+import ChartCard from '../../components/common/ChartCard';
 
 export default function CapacityGapPage() {
   const [unit, setUnit] = useState<'hours' | 'fte'>('hours');
@@ -91,19 +92,18 @@ export default function CapacityGapPage() {
         <Badge color="red" variant="light" size="sm">− Deficit (hiring needed)</Badge>
       </Group>
 
-      <ExportableChart title="Capacity Gap Heatmap">
+      <ChartCard title="Capacity Gap Heatmap" minHeight={400}>
         <HeatmapChart
           rows={heatmapRows}
           monthLabels={monthLabels}
           colorFn={getGapCellColor}
           currentMonthIndex={currentMonthIndex}
         />
-      </ExportableChart>
+      </ChartCard>
 
-      <ExportableChart title="Demand vs Capacity">
-        <Title order={4} mt="lg">Demand vs Capacity</Title>
+      <ChartCard title="Demand vs Capacity" minHeight={350}>
         <CapacityBarChart data={chartData} unit={unit} />
-      </ExportableChart>
+      </ChartCard>
     </Stack>
   );
 }

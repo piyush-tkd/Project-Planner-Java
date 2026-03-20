@@ -1,6 +1,5 @@
 package com.portfolioplanner.service.jira;
 
-import com.portfolioplanner.config.JiraProperties;
 import com.portfolioplanner.domain.model.JiraPod;
 import com.portfolioplanner.domain.model.JiraPodBoard;
 import com.portfolioplanner.domain.repository.JiraPodRepository;
@@ -22,17 +21,19 @@ import java.util.stream.Collectors;
 public class JiraPodService {
 
     private final JiraClient     jiraClient;
-    private final JiraProperties props;
+    private final JiraCredentialsService creds;
     private final JiraPodRepository podRepo;
 
     private static final double SECONDS_PER_HOUR     = 3600.0;
     private static final int    VELOCITY_SPRINT_COUNT = 6;
-    private static final ExecutorService POOL = Executors.newFixedThreadPool(8);
+    // Limit parallel POD processing to 2 threads so we don't flood Jira with
+    // 40+ simultaneous API calls after a cache clear and trigger rate limiting.
+    private static final ExecutorService POOL = Executors.newFixedThreadPool(2);
 
     // ── Public API ────────────────────────────────────────────────────
 
     public List<PodMetrics> getAllPodMetrics() {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
 
         List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
 
@@ -64,12 +65,99 @@ public class JiraPodService {
     }
 
     public List<SprintVelocity> getVelocityForPod(Long podId) {
-        if (!props.isConfigured()) return List.of();
+        if (!creds.isConfigured()) return List.of();
         JiraPod pod = podRepo.findById(podId).orElse(null);
         if (pod == null) return List.of();
         List<String> keys = pod.getBoards().stream()
                 .map(JiraPodBoard::getJiraProjectKey).collect(Collectors.toList());
         return buildAggregatedVelocity(keys);
+    }
+
+    /** Returns the active-sprint issues for a given POD as a flat list. */
+    @SuppressWarnings("unchecked")
+    public List<SprintIssueRow> getSprintIssuesForPod(Long podId) {
+        if (!creds.isConfigured()) return List.of();
+        JiraPod pod = podRepo.findById(podId).orElse(null);
+        if (pod == null) return List.of();
+
+        List<SprintIssueRow> result = new ArrayList<>();
+        for (JiraPodBoard board : pod.getBoards()) {
+            String projectKey = board.getJiraProjectKey();
+            try {
+                List<Map<String, Object>> boards = jiraClient.getBoards(projectKey);
+                if (boards.isEmpty()) continue;
+                Map<String, Object> jiraBoard = boards.stream()
+                        .filter(b -> "scrum".equalsIgnoreCase(str(b, "type")))
+                        .findFirst().orElse(boards.get(0));
+                long boardId = ((Number) jiraBoard.get("id")).longValue();
+
+                // SP field
+                String spFieldId = "customfield_10016";
+                try {
+                    Map<String, Object> bc = jiraClient.getBoardConfiguration(boardId);
+                    Map<String, Object> est = asMap(bc.get("estimation"));
+                    if (est != null) {
+                        Map<String, Object> fld = asMap(est.get("field"));
+                        if (fld != null && str(fld, "fieldId") != null) spFieldId = str(fld, "fieldId");
+                    }
+                } catch (Exception ignored) {}
+
+                List<Map<String, Object>> activeSprints = jiraClient.getActiveSprints(boardId);
+                if (activeSprints.isEmpty()) continue;
+                long sprintId = ((Number) activeSprints.get(0).get("id")).longValue();
+
+                for (Map<String, Object> issue : jiraClient.getSprintIssues(boardId, sprintId, spFieldId)) {
+                    try {
+                        String key = str(issue, "key");
+                        Map<String, Object> fields = asMap(issue.get("fields"));
+                        if (fields == null) fields = Map.of();
+
+                        String summary = nvl(str(fields, "summary"), "");
+
+                        Map<String, Object> issueTypeObj = asMap(fields.get("issuetype"));
+                        String typeName = issueTypeObj != null ? nvl(str(issueTypeObj, "name"), "Unknown") : "Unknown";
+                        boolean isSubtask = issueTypeObj != null && Boolean.TRUE.equals(issueTypeObj.get("subtask"));
+                        if (isSubtask) continue; // skip subtasks
+
+                        Map<String, Object> statusObj = asMap(fields.get("status"));
+                        Map<String, Object> statusCat = statusObj != null ? asMap(statusObj.get("statusCategory")) : null;
+                        String statusCategory = statusCat != null ? nvl(str(statusCat, "key"), "undefined") : "undefined";
+                        // Normalise to display-friendly form
+                        statusCategory = switch (statusCategory.toLowerCase()) {
+                            case "done"          -> "Done";
+                            case "indeterminate" -> "In Progress";
+                            default              -> "To Do";
+                        };
+                        String statusName = statusObj != null ? nvl(str(statusObj, "name"), "Unknown") : "Unknown";
+
+                        Map<String, Object> assigneeObj = asMap(fields.get("assignee"));
+                        String assignee = assigneeObj != null ? nvl(str(assigneeObj, "displayName"), "Unassigned") : "Unassigned";
+
+                        // SP
+                        Object spVal = fields.get(spFieldId);
+                        if (!(spVal instanceof Number)) spVal = fields.get("customfield_10016");
+                        if (!(spVal instanceof Number)) spVal = fields.get("customfield_10028");
+                        double sp = spVal instanceof Number ? ((Number) spVal).doubleValue() : 0;
+
+                        // Hours
+                        Object ts = fields.get("timespent");
+                        double hours = ts instanceof Number ? ((Number) ts).doubleValue() / SECONDS_PER_HOUR : 0;
+
+                        // Priority
+                        Map<String, Object> priorityObj = asMap(fields.get("priority"));
+                        String priority = priorityObj != null ? nvl(str(priorityObj, "name"), "None") : "None";
+
+                        result.add(new SprintIssueRow(key, summary, typeName, statusCategory, statusName,
+                                assignee, round(sp), round(hours), priority));
+                    } catch (Exception e) {
+                        log.debug("Error mapping issue in sprint issues for pod {}: {}", podId, e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Sprint issues failed for board {} in pod {}: {}", projectKey, podId, e.getMessage());
+            }
+        }
+        return result;
     }
 
     // ── Internal builders ─────────────────────────────────────────────
@@ -165,7 +253,14 @@ public class JiraPodService {
 
                 final String boardSpField = spFieldId; // effectively final for lambda
                 final long   finalBoardId = boardId;
+
                 List<Map<String, Object>> issues = jiraClient.getSprintIssues(finalBoardId, sprintId, boardSpField);
+
+                // SP accumulators — Story-type issues only.
+                // Jira's sprint board statistics count only Story-level issues toward SP;
+                // Bugs, Tasks, Incidents etc. have SP values but are excluded from the
+                // sprint SP totals displayed on the board. We mirror that behaviour here.
+                double rawBoardTotalSP = 0, rawBoardDoneSP = 0;
 
                 for (Map<String, Object> issue : issues) {
                     try {
@@ -190,16 +285,17 @@ public class JiraPodService {
                         boolean isSubTask = issueType != null && Boolean.TRUE.equals(issueType.get("subtask"));
                         issueTypeBreakdown.merge(typeName, 1, Integer::sum);
 
-                        // ── Story points ──────────────────────────────────────
-                        // Exclude sub-tasks: their SP is already counted on the parent story.
-                        // This matches Jira's own board sprint statistics behaviour.
+                        // ── Story points ─────────────────────────────────────
+                        // Only "Story" issues count toward SP — this matches Jira's
+                        // sprint board statistics which exclude Bugs, Tasks, Incidents etc.
                         Object sp = fields.get(boardSpField);
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
                         if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
-                        double issueSP = (!isSubTask && sp instanceof Number)
+                        boolean countsForSP = !isSubTask && "Story".equalsIgnoreCase(typeName);
+                        double issueSP = (countsForSP && sp instanceof Number)
                                 ? ((Number) sp).doubleValue() : 0;
-                        totalSP += issueSP;
-                        if ("done".equalsIgnoreCase(statusKey)) doneSP += issueSP;
+                        rawBoardTotalSP += issueSP;
+                        if ("done".equalsIgnoreCase(statusKey)) rawBoardDoneSP += issueSP;
 
                         // ── Time tracking ────────────────────────────────────
                         Object ts      = fields.get("timespent");
@@ -213,10 +309,12 @@ public class JiraPodService {
                         if (!"done".equalsIgnoreCase(statusKey)) remainingHours += rem;
 
                         // ── Assignee ─────────────────────────────────────────
+                        // SP and issue counts are attributed to the assignee.
+                        // Hours are attributed to worklog authors below (not the assignee),
+                        // since multiple people can log time against the same ticket.
                         Map<String, Object> assignee = asMap(fields.get("assignee"));
                         String member = assignee != null
                                 ? nvl(str(assignee, "displayName"), "Unassigned") : "Unassigned";
-                        if (hrs     > 0)  hoursByMember.merge(member, hrs,           Double::sum);
                         if (issueSP > 0)  spByMember.merge(member,    (int) issueSP, Integer::sum);
                         memberIssueCount.merge(member, 1, Integer::sum);
 
@@ -277,11 +375,15 @@ public class JiraPodService {
                         }
                         if (epicName != null) epicBreakdown.merge(epicName, 1, Integer::sum);
 
-                        // ── Worklogs (inline, up to 20 per issue) ────────────
-                        Map<String, Object> worklogWrapper = asMap(fields.get("worklog"));
-                        if (worklogWrapper != null && worklogWrapper.get("worklogs") instanceof List) {
-                            for (Object wl : (List<?>) worklogWrapper.get("worklogs")) {
-                                Map<String, Object> wlMap = asMap(wl);
+                        // ── Worklogs ─────────────────────────────────────────
+                        // Use resolveWorklogs() so we get the COMPLETE list even when
+                        // the issue has more than 20 entries (the Jira search API limit).
+                        // Hours are attributed to each worklog's author — not the assignee —
+                        // because multiple people can log time against the same ticket.
+                        String issueKey = issue.get("key") instanceof String ? (String) issue.get("key") : null;
+                        boolean hasWorklogHours = false;
+                        if (issueKey != null) {
+                            for (Map<String, Object> wlMap : resolveWorklogs(issueKey, fields)) {
                                 if (wlMap == null) continue;
                                 Map<String, Object> wlAuthor = asMap(wlMap.get("author"));
                                 String wlMember = wlAuthor != null
@@ -289,7 +391,10 @@ public class JiraPodService {
                                 Object wlSecs = wlMap.get("timeSpentSeconds");
                                 double wlHrs  = wlSecs instanceof Number
                                         ? ((Number) wlSecs).doubleValue() / SECONDS_PER_HOUR : 0;
-                                // started may be a String like "2024-03-11T10:00:00.000+0000"
+                                if (wlHrs > 0) {
+                                    hoursByMember.merge(wlMember, wlHrs, Double::sum);
+                                    hasWorklogHours = true;
+                                }
                                 Object startedObj = wlMap.get("started");
                                 String started = startedObj instanceof String ? (String) startedObj : null;
                                 if (started != null && started.length() >= 10 && wlHrs > 0) {
@@ -300,6 +405,12 @@ public class JiraPodService {
                                             .merge(date, wlHrs, Double::sum);
                                 }
                             }
+                        }
+
+                        // If there were no worklog entries embedded, fall back to
+                        // timespent attributed to the assignee so the bar chart still shows data.
+                        if (!hasWorklogHours && hrs > 0) {
+                            hoursByMember.merge(member, hrs, Double::sum);
                         }
 
                         // ── Cycle time (done issues with resolution date) ─────
@@ -322,6 +433,12 @@ public class JiraPodService {
                         log.warn("Skipping issue {} due to parse error: {}", issueKey, e.getMessage());
                     }
                 }
+
+                // ── Accumulate Story-only SP ──────────────────────────────
+                totalSP += rawBoardTotalSP;
+                doneSP  += rawBoardDoneSP;
+                log.info("SP board={} sprint={}: storyTotal={} storyDone={}",
+                        finalBoardId, sprintId, rawBoardTotalSP, rawBoardDoneSP);
 
             } catch (Exception e) {
                 log.warn("Error fetching board {} for POD [{}]: {}",
@@ -417,23 +534,50 @@ public class JiraPodService {
                     String name   = nvl(str(sprint, "name"), "Sprint");
                     long sprintId = ((Number) sprint.get("id")).longValue();
                     double committed = 0, completed = 0;
+                    boolean usedSprintReport = false;
 
-                    for (Map<String, Object> issue : jiraClient.getSprintIssues(boardId, sprintId, velSpField)) {
-                        Map<String, Object> fields = asMap(issue.getOrDefault("fields", Map.of()));
-                        if (fields == null) fields = Map.of();
-                        // Skip sub-tasks — their SP duplicates the parent's
-                        Map<String, Object> vIssueType = asMap(fields.get("issuetype"));
-                        if (vIssueType != null && Boolean.TRUE.equals(vIssueType.get("subtask"))) continue;
-                        Object sp = fields.get(velSpField);
-                        if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
-                        if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
-                        double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
-                        committed += issueSP;
-                        Map<String, Object> statusObj = asMap(fields.get("status"));
-                        Map<String, Object> statusCat = statusObj != null
-                                ? asMap(statusObj.get("statusCategory")) : null;
-                        if (statusCat != null && "done".equalsIgnoreCase(str(statusCat, "key"))) completed += issueSP;
+                    // ── Prefer sprint report for SP (authoritative source) ────
+                    try {
+                        Map<String, Object> sprintReport = jiraClient.getSprintReport(boardId, sprintId);
+                        Map<String, Object> contents = asMap(sprintReport.get("contents"));
+                        if (contents != null) {
+                            Map<String, Object> allSum       = asMap(contents.get("allIssuesEstimateSum"));
+                            Map<String, Object> completedSum = asMap(contents.get("completedIssuesEstimateSum"));
+                            double allSP       = allSum       != null && allSum.get("value")       instanceof Number
+                                    ? ((Number) allSum.get("value")).doubleValue()       : -1;
+                            double completedSP = completedSum != null && completedSum.get("value") instanceof Number
+                                    ? ((Number) completedSum.get("value")).doubleValue() : -1;
+                            if (allSP >= 0 && completedSP >= 0) {
+                                committed         = allSP;      // velocity: all committed (including punted)
+                                completed         = completedSP;
+                                usedSprintReport  = true;
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.debug("Sprint report unavailable for velocity board={}, sprint={}: {}",
+                                boardId, sprintId, ex.getMessage());
                     }
+
+                    // ── Fallback: compute from raw issues if sprint report failed ─
+                    if (!usedSprintReport) {
+                        for (Map<String, Object> issue : jiraClient.getSprintIssues(boardId, sprintId, velSpField)) {
+                            Map<String, Object> fields = asMap(issue.getOrDefault("fields", Map.of()));
+                            if (fields == null) fields = Map.of();
+                            // Skip sub-tasks — their SP duplicates the parent's
+                            Map<String, Object> vIssueType = asMap(fields.get("issuetype"));
+                            if (vIssueType != null && Boolean.TRUE.equals(vIssueType.get("subtask"))) continue;
+                            Object sp = fields.get(velSpField);
+                            if (!(sp instanceof Number)) sp = fields.get("customfield_10016");
+                            if (!(sp instanceof Number)) sp = fields.get("customfield_10028");
+                            double issueSP = sp instanceof Number ? ((Number) sp).doubleValue() : 0;
+                            committed += issueSP;
+                            Map<String, Object> statusObj = asMap(fields.get("status"));
+                            Map<String, Object> statusCat = statusObj != null
+                                    ? asMap(statusObj.get("statusCategory")) : null;
+                            if (statusCat != null && "done".equalsIgnoreCase(str(statusCat, "key"))) completed += issueSP;
+                        }
+                    }
+
                     bySprint.computeIfAbsent(name, k -> new double[]{0, 0});
                     bySprint.get(name)[0] += committed;
                     bySprint.get(name)[1] += completed;
@@ -449,6 +593,45 @@ public class JiraPodService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Returns the complete worklog list for an issue.
+     *
+     * Jira's search endpoint embeds only the first 20 worklogs per issue.
+     * When {@code worklog.total} exceeds the number of embedded entries we
+     * fall back to the dedicated /rest/api/3/issue/{key}/worklog endpoint
+     * to get every entry — important for long-running tickets that have
+     * accumulated many time-log entries.
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> resolveWorklogs(String issueKey, Map<String, Object> fields) {
+        Map<String, Object> worklogWrapper = asMap(fields.get("worklog"));
+        if (worklogWrapper == null) return List.of();
+
+        Object embeddedObj = worklogWrapper.get("worklogs");
+        List<Map<String, Object>> embedded = embeddedObj instanceof List
+                ? (List<Map<String, Object>>) embeddedObj : List.of();
+
+        Object totalObj = worklogWrapper.get("total");
+        int total = totalObj instanceof Number ? ((Number) totalObj).intValue() : embedded.size();
+
+        if (total <= embedded.size()) {
+            // All worklogs are already embedded — use them directly
+            return embedded;
+        }
+
+        // More worklogs exist than were returned in the search response.
+        // Fetch the complete list from the dedicated endpoint.
+        log.debug("Issue {} has {} worklogs but only {} embedded — fetching full list",
+                issueKey, total, embedded.size());
+        try {
+            List<Map<String, Object>> full = jiraClient.getWorklogs(issueKey);
+            return full.isEmpty() ? embedded : full;
+        } catch (Exception e) {
+            log.warn("Could not fetch full worklogs for {}: {} — using embedded subset", issueKey, e.getMessage());
+            return embedded;
+        }
+    }
 
     private static double round(double v) { return Math.round(v * 10.0) / 10.0; }
 
@@ -540,4 +723,15 @@ public class JiraPodService {
     }
 
     public record SprintVelocity(String sprintName, double committedSP, double completedSP) {}
+
+    public record SprintIssueRow(
+            String key,
+            String summary,
+            String issueType,
+            String statusCategory,
+            String statusName,
+            String assignee,
+            double storyPoints,
+            double hoursLogged,
+            String priority) {}
 }

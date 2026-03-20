@@ -36,8 +36,6 @@ public class CalculationEngine {
     private final EffortPatternRepository effortPatternRepository;
     private final RoleEffortMixRepository roleEffortMixRepository;
     private final PodRepository podRepository;
-    private final TshirtSizeConfigRepository tshirtSizeConfigRepository;
-
     private final DemandCalculator demandCalculator;
     private final CapacityCalculator capacityCalculator;
     private final GapAnalyzer gapAnalyzer;
@@ -161,13 +159,9 @@ public class CalculationEngine {
         // Working hours map: monthIndex -> BigDecimal hours
         Map<Integer, BigDecimal> workingHoursMap = getWorkingHoursMap();
 
-        // T-shirt size lookup: name -> baseHours
-        Map<String, Integer> tshirtSizeMap = tshirtSizeConfigRepository.findAll().stream()
-                .collect(Collectors.toMap(TshirtSizeConfig::getName, TshirtSizeConfig::getBaseHours));
-
         // Calculate demand and capacity
         Map<Long, Map<Role, Map<Integer, BigDecimal>>> demandData = demandCalculator.calculate(
-                plannings, patternMap, roleMixMap, podMap, projectMap, tshirtSizeMap);
+                plannings, patternMap, podMap, projectMap);
         log.info("Demand calculated for {} pods", demandData.size());
 
         Map<Long, Map<Role, Map<Integer, BigDecimal>>> capacityData = capacityCalculator.calculate(
