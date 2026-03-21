@@ -1,0 +1,15 @@
+meta {
+  name: Get Pod
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/pods/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

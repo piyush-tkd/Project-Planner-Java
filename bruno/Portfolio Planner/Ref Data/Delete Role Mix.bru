@@ -1,0 +1,15 @@
+meta {
+  name: Delete Role Mix
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{base_url}}/api/ref-data/role-mix/DEVELOPER
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

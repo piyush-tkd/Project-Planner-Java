@@ -1,0 +1,22 @@
+meta {
+  name: Create Board
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/jira/support/boards
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "boardId": 100,
+    "name": "Support Board"
+  }
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Assign to Pod
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{base_url}}/api/resources/1/assignment
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "podId": 1,
+    "allocationPercentage": 100
+  }
+}

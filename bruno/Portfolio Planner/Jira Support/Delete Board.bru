@@ -1,0 +1,15 @@
+meta {
+  name: Delete Board
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{base_url}}/api/jira/support/boards/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

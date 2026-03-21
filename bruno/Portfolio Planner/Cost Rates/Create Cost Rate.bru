@@ -1,0 +1,23 @@
+meta {
+  name: Create Cost Rate
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/cost-rates
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "role": "DEVELOPER",
+    "location": "Singapore",
+    "ratePerHour": 120.00
+  }
+}

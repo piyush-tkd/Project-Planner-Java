@@ -1,0 +1,15 @@
+meta {
+  name: Get Catalog
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/nlp/catalog
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

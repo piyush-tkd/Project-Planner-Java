@@ -1,0 +1,15 @@
+meta {
+  name: Utilization Heatmap
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/reports/utilization-heatmap
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

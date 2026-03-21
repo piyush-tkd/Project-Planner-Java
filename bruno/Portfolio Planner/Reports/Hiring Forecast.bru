@@ -1,0 +1,15 @@
+meta {
+  name: Hiring Forecast
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/reports/hiring-forecast
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

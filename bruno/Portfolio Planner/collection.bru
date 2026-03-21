@@ -1,0 +1,15 @@
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+vars:pre-request {
+  base_url: http://localhost:8080
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Update Resource
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/resources/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Jane Smith",
+    "role": "SENIOR_DEVELOPER",
+    "location": "Singapore",
+    "fte": 1.0
+  }
+}

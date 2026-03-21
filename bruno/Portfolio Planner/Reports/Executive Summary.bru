@@ -1,0 +1,15 @@
+meta {
+  name: Executive Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/reports/executive-summary
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Update Release
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/releases/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "v2.0.1",
+    "releaseDate": "2025-06-15",
+    "description": "Patch release"
+  }
+}

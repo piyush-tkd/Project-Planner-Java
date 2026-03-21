@@ -1,0 +1,23 @@
+meta {
+  name: Create Sprint
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/sprints
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Sprint 1",
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-14"
+  }
+}

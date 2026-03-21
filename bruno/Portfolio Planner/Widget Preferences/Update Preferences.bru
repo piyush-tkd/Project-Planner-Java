@@ -1,0 +1,22 @@
+meta {
+  name: Update Preferences
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/api/widget-preferences/dashboard
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "order": ["summary", "chart", "table"],
+    "hidden": ["chart"]
+  }
+}

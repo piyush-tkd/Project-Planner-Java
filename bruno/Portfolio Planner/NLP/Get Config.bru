@@ -1,0 +1,15 @@
+meta {
+  name: Get Config
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/nlp/config
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

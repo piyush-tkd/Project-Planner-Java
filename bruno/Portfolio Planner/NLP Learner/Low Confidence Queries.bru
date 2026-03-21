@@ -1,0 +1,15 @@
+meta {
+  name: Low Confidence Queries
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/nlp/learner/low-confidence
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

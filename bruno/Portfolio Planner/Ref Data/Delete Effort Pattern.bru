@@ -1,0 +1,15 @@
+meta {
+  name: Delete Effort Pattern
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{base_url}}/api/ref-data/effort-patterns/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

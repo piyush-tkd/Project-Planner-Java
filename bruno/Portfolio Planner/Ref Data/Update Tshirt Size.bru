@@ -1,0 +1,23 @@
+meta {
+  name: Update Tshirt Size
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/ref-data/tshirt-sizes/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "size": "XXL",
+    "minHours": 5000,
+    "maxHours": 9000
+  }
+}

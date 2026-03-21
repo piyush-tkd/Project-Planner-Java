@@ -1,0 +1,23 @@
+meta {
+  name: Create Release
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/releases
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "v2.0",
+    "releaseDate": "2025-06-01",
+    "description": "Major release"
+  }
+}

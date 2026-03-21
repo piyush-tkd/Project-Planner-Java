@@ -1,0 +1,22 @@
+meta {
+  name: Run Simulation
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/simulator/timeline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "projectId": 1,
+    "scenarios": []
+  }
+}

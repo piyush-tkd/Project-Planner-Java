@@ -1,0 +1,22 @@
+meta {
+  name: Create Pod
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/pods
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "New Pod",
+    "description": "A new development pod"
+  }
+}

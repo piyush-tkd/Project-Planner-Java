@@ -1,0 +1,15 @@
+meta {
+  name: List Errors
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/error-logs
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

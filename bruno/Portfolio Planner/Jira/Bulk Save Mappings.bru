@@ -1,0 +1,22 @@
+meta {
+  name: Bulk Save Mappings
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/jira/mappings/bulk
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  [
+    { "podId": 1, "boardId": 100 },
+    { "podId": 2, "boardId": 200 }
+  ]
+}

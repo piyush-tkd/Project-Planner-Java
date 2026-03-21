@@ -1,0 +1,26 @@
+meta {
+  name: Create Project
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/projects
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "New Project",
+    "status": "ACTIVE",
+    "priority": "HIGH",
+    "owner": "John Doe",
+    "startDate": "2025-01-01",
+    "endDate": "2025-06-30"
+  }
+}

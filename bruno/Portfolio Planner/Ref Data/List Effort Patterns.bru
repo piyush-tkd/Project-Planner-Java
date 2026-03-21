@@ -1,0 +1,15 @@
+meta {
+  name: List Effort Patterns
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/ref-data/effort-patterns
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

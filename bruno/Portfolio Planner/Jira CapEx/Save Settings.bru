@@ -1,0 +1,21 @@
+meta {
+  name: Save Settings
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/jira/capex/settings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "capexFieldId": "customfield_10001"
+  }
+}

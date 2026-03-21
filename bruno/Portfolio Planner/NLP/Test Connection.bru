@@ -1,0 +1,15 @@
+meta {
+  name: Test Connection
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/nlp/test-connection
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

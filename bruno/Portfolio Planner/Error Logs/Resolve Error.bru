@@ -1,0 +1,15 @@
+meta {
+  name: Resolve Error
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/error-logs/1/resolve
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

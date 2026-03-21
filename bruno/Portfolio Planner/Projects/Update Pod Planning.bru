@@ -1,0 +1,24 @@
+meta {
+  name: Update Pod Planning
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{base_url}}/api/projects/1/pod-planning
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  [
+    {
+      "podId": 1,
+      "allocationPercentage": 50
+    }
+  ]
+}

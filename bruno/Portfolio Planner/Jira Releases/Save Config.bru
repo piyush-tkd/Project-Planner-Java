@@ -1,0 +1,24 @@
+meta {
+  name: Save Config
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/jira/releases/config
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  [
+    {
+      "podId": 1,
+      "projectKey": "PROJ"
+    }
+  ]
+}

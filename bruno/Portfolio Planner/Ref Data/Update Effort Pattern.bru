@@ -1,0 +1,22 @@
+meta {
+  name: Update Effort Pattern
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{base_url}}/api/ref-data/effort-patterns/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Agile Updated",
+    "distribution": [10, 20, 30, 25, 15]
+  }
+}

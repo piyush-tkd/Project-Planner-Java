@@ -1,0 +1,15 @@
+meta {
+  name: Trigger Run
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/nlp/learner/run
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Export Reconciliation Excel
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/reports/export/reconciliation
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

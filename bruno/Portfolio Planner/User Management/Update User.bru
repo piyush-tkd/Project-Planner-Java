@@ -1,0 +1,22 @@
+meta {
+  name: Update User
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/users/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "displayName": "Updated Name",
+    "role": "READ_WRITE"
+  }
+}

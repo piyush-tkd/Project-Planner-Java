@@ -1,0 +1,21 @@
+meta {
+  name: Update Actual Rate
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/api/resources/1/actual-rate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "actualRate": 150.00
+  }
+}

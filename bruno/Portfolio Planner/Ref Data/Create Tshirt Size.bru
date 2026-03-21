@@ -1,0 +1,23 @@
+meta {
+  name: Create Tshirt Size
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/ref-data/tshirt-sizes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "size": "XXL",
+    "minHours": 5000,
+    "maxHours": 8000
+  }
+}

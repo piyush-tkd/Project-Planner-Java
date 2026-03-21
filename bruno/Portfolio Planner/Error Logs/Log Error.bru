@@ -1,0 +1,25 @@
+meta {
+  name: Log Error
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/error-logs
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "source": "FRONTEND",
+    "severity": "ERROR",
+    "errorType": "TypeError",
+    "message": "Cannot read property of undefined",
+    "pageUrl": "/dashboard"
+  }
+}

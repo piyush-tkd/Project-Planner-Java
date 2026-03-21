@@ -1,0 +1,15 @@
+meta {
+  name: Get Resource Availability
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/resources/1/availability
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Timeline Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/timeline
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Role Permissions
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/users/permissions/READ_ONLY
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

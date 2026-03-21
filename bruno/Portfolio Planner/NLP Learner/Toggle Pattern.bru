@@ -1,0 +1,15 @@
+meta {
+  name: Toggle Pattern
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base_url}}/api/nlp/learner/patterns/1/toggle
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

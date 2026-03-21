@@ -1,0 +1,15 @@
+meta {
+  name: Fix Versions By Pod
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/jira/releases/fixversions/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

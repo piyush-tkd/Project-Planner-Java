@@ -1,0 +1,22 @@
+meta {
+  name: Update Timeline Config
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/api/timeline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "months": 12,
+    "startMonth": "2025-01"
+  }
+}

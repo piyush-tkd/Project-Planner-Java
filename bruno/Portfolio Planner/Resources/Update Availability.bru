@@ -1,0 +1,25 @@
+meta {
+  name: Update Availability
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{base_url}}/api/resources/1/availability
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  [
+    {
+      "month": "2025-01",
+      "availableHours": 160,
+      "leaveHours": 0
+    }
+  ]
+}

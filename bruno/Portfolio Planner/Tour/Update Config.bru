@@ -1,0 +1,23 @@
+meta {
+  name: Update Config
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/tour/config
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "enabled": true,
+    "frequency": "EVERY_N_LOGINS",
+    "everyN": 5
+  }
+}

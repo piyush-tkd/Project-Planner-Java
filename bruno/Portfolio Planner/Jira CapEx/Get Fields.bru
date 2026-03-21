@@ -1,0 +1,15 @@
+meta {
+  name: Get Fields
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/jira/capex/fields
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

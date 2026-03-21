@@ -1,0 +1,15 @@
+meta {
+  name: List BAU Assumptions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/bau-assumptions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

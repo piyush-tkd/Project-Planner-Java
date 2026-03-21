@@ -1,0 +1,22 @@
+meta {
+  name: Update Pod
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/pods/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Updated Pod",
+    "description": "Updated description"
+  }
+}

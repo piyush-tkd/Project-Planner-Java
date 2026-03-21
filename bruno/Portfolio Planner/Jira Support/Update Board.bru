@@ -1,0 +1,22 @@
+meta {
+  name: Update Board
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/api/jira/support/boards/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "boardId": 100,
+    "name": "Updated Support Board"
+  }
+}

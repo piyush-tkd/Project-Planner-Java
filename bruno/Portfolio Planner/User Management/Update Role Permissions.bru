@@ -1,0 +1,23 @@
+meta {
+  name: Update Role Permissions
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/api/users/permissions/READ_ONLY
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "DASHBOARD": true,
+    "RESOURCES": false,
+    "PROJECTS": true
+  }
+}

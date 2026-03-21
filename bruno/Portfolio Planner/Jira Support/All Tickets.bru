@@ -1,0 +1,15 @@
+meta {
+  name: All Tickets
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/jira/support/all-tickets?days=90
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Concurrency Risk
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/reports/concurrency-risk
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

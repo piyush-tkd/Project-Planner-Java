@@ -1,0 +1,15 @@
+meta {
+  name: Get Sprint Issues
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/jira/sprint-issues?startDate=2025-01-01&endDate=2025-01-14
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

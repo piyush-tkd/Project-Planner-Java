@@ -1,0 +1,21 @@
+meta {
+  name: Undo Feedback
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/nlp/feedback/undo
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "queryLogId": 1
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Pod Sprint Issues
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/jira/pods/1/sprint-issues
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

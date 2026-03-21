@@ -1,0 +1,22 @@
+meta {
+  name: Create Role Mix
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/ref-data/role-mix
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "role": "DEVELOPER",
+    "percentage": 60
+  }
+}

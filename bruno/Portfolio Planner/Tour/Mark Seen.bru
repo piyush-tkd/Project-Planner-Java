@@ -1,0 +1,15 @@
+meta {
+  name: Mark Seen
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/tour/seen
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

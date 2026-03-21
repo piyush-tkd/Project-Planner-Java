@@ -1,0 +1,15 @@
+meta {
+  name: Delete Pattern
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{base_url}}/api/nlp/learner/patterns/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

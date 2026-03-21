@@ -1,0 +1,15 @@
+meta {
+  name: Resource Allocation
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/reports/resource-allocation
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

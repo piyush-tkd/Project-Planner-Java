@@ -1,0 +1,23 @@
+meta {
+  name: Update Project
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/projects/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Updated Project",
+    "status": "ACTIVE",
+    "priority": "CRITICAL"
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Update Sprint
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/sprints/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Sprint 1 Updated",
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-14"
+  }
+}

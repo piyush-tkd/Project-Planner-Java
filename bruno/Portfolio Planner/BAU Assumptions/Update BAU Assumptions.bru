@@ -1,0 +1,24 @@
+meta {
+  name: Update BAU Assumptions
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/api/bau-assumptions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  [
+    {
+      "role": "DEVELOPER",
+      "bauPercentage": 20
+    }
+  ]
+}

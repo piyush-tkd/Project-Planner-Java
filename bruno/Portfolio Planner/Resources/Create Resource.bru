@@ -1,0 +1,24 @@
+meta {
+  name: Create Resource
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/resources
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Jane Smith",
+    "role": "DEVELOPER",
+    "location": "Singapore",
+    "fte": 1.0
+  }
+}

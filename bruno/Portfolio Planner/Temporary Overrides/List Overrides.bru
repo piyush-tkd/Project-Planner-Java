@@ -1,0 +1,15 @@
+meta {
+  name: List Overrides
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/overrides
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

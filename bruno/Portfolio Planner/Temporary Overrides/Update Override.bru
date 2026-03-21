@@ -1,0 +1,24 @@
+meta {
+  name: Update Override
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/overrides/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "resourceId": 1,
+    "month": "2025-03",
+    "overrideHours": 100,
+    "reason": "Updated reason"
+  }
+}

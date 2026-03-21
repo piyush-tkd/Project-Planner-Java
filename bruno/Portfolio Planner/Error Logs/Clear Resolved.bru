@@ -1,0 +1,15 @@
+meta {
+  name: Clear Resolved
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{base_url}}/api/error-logs/clear-resolved
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

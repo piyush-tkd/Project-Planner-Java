@@ -1,0 +1,15 @@
+meta {
+  name: Get Pod Matrix
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/projects/pod-matrix
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

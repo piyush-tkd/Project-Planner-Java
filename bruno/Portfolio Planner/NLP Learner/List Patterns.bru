@@ -1,0 +1,15 @@
+meta {
+  name: List Patterns
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/nlp/learner/patterns
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

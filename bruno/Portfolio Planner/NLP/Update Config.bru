@@ -1,0 +1,23 @@
+meta {
+  name: Update Config
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/api/nlp/config
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "strategyChain": "RULE_BASED,LOCAL_LLM,CLOUD_LLM",
+    "localModel": "llama3:8b",
+    "confidenceThreshold": 0.6
+  }
+}

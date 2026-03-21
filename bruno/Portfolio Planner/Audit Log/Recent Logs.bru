@@ -1,0 +1,15 @@
+meta {
+  name: Recent Logs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/audit/recent?limit=50
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

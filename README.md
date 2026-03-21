@@ -22,7 +22,8 @@ A full-stack capacity planning, portfolio management, and NLP-powered analytics 
 12. [API Reference](#api-reference)
 13. [Running Tests](#running-tests)
 14. [Default Credentials](#default-credentials)
-15. [Troubleshooting](#troubleshooting)
+15. [Bruno API Collection](#bruno-api-collection)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -330,6 +331,25 @@ psql -U pp_user -d portfolio_planner -c "SELECT version, description, installed_
 
 ## Production Deployment
 
+### One-Shot Setup Scripts
+
+Automated scripts are provided in the `scripts/` directory that handle the entire setup end-to-end — installing dependencies, configuring PostgreSQL, building the app, creating services, and configuring the reverse proxy.
+
+**Linux (Ubuntu/Debian):**
+```bash
+chmod +x scripts/setup-linux.sh
+sudo ./scripts/setup-linux.sh
+```
+
+**Windows (PowerShell as Administrator):**
+```powershell
+.\scripts\setup-windows.ps1
+```
+
+Both scripts are interactive — they prompt for database password, domain name, and optional components (Ollama, SSL). If you prefer manual setup, follow the detailed steps below.
+
+---
+
 ### Linux Server Deployment
 
 #### 1. Server Requirements
@@ -339,9 +359,13 @@ psql -U pp_user -d portfolio_planner -c "SELECT version, description, installed_
 | CPU | 2 cores | 4 cores |
 | RAM | 4 GB | 8 GB (16 GB if running Ollama) |
 | Disk | 20 GB | 50 GB |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| OS | Ubuntu 22.04 LTS / Windows Server 2019+ | Ubuntu 22.04 LTS / Windows Server 2022 |
 
-#### 2. Install Dependencies on Server
+---
+
+### Linux (Ubuntu/Debian)
+
+#### 2. Install Dependencies
 
 ```bash
 # Java 21
@@ -538,6 +562,237 @@ curl http://localhost:11434/api/tags
 
 ---
 
+### Windows Server
+
+#### 2. Install Dependencies
+
+Download and install the following (use default installation paths):
+
+| Tool | Download Link |
+|---|---|
+| **Java JDK 21** | [adoptium.net/temurin/releases](https://adoptium.net/temurin/releases/) — select Windows x64 `.msi` |
+| **Apache Maven 3.9+** | [maven.apache.org/download.cgi](https://maven.apache.org/download.cgi) — download the `.zip` binary |
+| **Node.js 20 LTS** | [nodejs.org](https://nodejs.org/) — download the Windows `.msi` installer |
+| **PostgreSQL 16** | [postgresql.org/download/windows](https://www.postgresql.org/download/windows/) — use the EDB installer |
+| **Git for Windows** | [git-scm.com/download/win](https://git-scm.com/download/win) |
+
+After installation, add to your system `PATH` (if not done automatically):
+
+```powershell
+# Open PowerShell as Administrator and verify:
+java -version          # openjdk version "21.x.x"
+mvn -version           # Apache Maven 3.9.x
+node -v                # v20.x.x
+npm -v                 # 10.x.x
+psql --version         # psql (PostgreSQL) 16.x
+git --version          # git version 2.x.x
+```
+
+If Maven isn't in your PATH, add it manually:
+```powershell
+# Example: Extract Maven to C:\tools\apache-maven-3.9.9
+[System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\tools\apache-maven-3.9.9\bin", "Machine")
+```
+
+#### 3. Configure PostgreSQL
+
+Open pgAdmin (installed with PostgreSQL) or use psql from the command line:
+
+```powershell
+# Open psql (it will ask for the postgres superuser password you set during installation)
+psql -U postgres
+```
+
+```sql
+CREATE DATABASE portfolio_planner;
+CREATE USER pp_user WITH PASSWORD 'CHANGE_THIS_TO_A_STRONG_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE portfolio_planner TO pp_user;
+\c portfolio_planner
+GRANT ALL ON SCHEMA public TO pp_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO pp_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO pp_user;
+\q
+```
+
+#### 4. Build the Backend
+
+```powershell
+cd backend
+
+# Build the JAR
+mvnw.cmd clean package -DskipTests
+
+# The JAR is at: target\portfolio-planner-0.0.1-SNAPSHOT.jar
+```
+
+#### 5. Run the Backend as a Windows Service
+
+**Option A: Using NSSM (Non-Sucking Service Manager) — Recommended**
+
+Download NSSM from [nssm.cc/download](https://nssm.cc/download) and extract to `C:\tools\nssm\`.
+
+```powershell
+# Install the service
+C:\tools\nssm\win64\nssm.exe install PortfolioPlanner "C:\Program Files\Eclipse Adoptium\jdk-21\bin\java.exe" "-jar -Xms512m -Xmx2g C:\portfolio-planner\backend\target\portfolio-planner-0.0.1-SNAPSHOT.jar"
+
+# Set environment variables
+C:\tools\nssm\win64\nssm.exe set PortfolioPlanner AppEnvironmentExtra ^
+  DB_USERNAME=pp_user ^
+  DB_PASSWORD=CHANGE_THIS_TO_A_STRONG_PASSWORD ^
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/portfolio_planner ^
+  ALLOWED_ORIGINS=https://your-domain.com
+
+# Set working directory
+C:\tools\nssm\win64\nssm.exe set PortfolioPlanner AppDirectory C:\portfolio-planner\backend
+
+# Configure auto-restart
+C:\tools\nssm\win64\nssm.exe set PortfolioPlanner AppRestartDelay 10000
+
+# Configure logging
+C:\tools\nssm\win64\nssm.exe set PortfolioPlanner AppStdout C:\portfolio-planner\logs\stdout.log
+C:\tools\nssm\win64\nssm.exe set PortfolioPlanner AppStderr C:\portfolio-planner\logs\stderr.log
+
+# Start the service
+net start PortfolioPlanner
+```
+
+**Option B: Quick test (foreground, not a service)**
+
+```powershell
+cd backend
+
+$env:DB_USERNAME = "pp_user"
+$env:DB_PASSWORD = "CHANGE_THIS_TO_A_STRONG_PASSWORD"
+
+java -jar -Xms512m -Xmx2g target\portfolio-planner-0.0.1-SNAPSHOT.jar
+```
+
+#### 6. Build the Frontend
+
+```powershell
+cd frontend
+
+npm install
+
+# Set the backend URL for production build
+$env:VITE_API_URL = "https://your-domain.com"
+
+# Build static files
+npm run build
+
+# Output is in: dist\
+```
+
+#### 7. Configure IIS as Reverse Proxy
+
+Install IIS with the following features:
+```powershell
+# Run in PowerShell as Administrator
+Install-WindowsFeature -Name Web-Server, Web-WebServer, Web-Common-Http, Web-Static-Content, Web-Default-Doc, Web-Http-Errors -IncludeManagementTools
+```
+
+Install URL Rewrite and ARR (Application Request Routing):
+- **URL Rewrite**: Download from [iis.net/downloads/microsoft/url-rewrite](https://www.iis.net/downloads/microsoft/url-rewrite)
+- **ARR 3.0**: Download from [iis.net/downloads/microsoft/application-request-routing](https://www.iis.net/downloads/microsoft/application-request-routing)
+
+Create a `web.config` file in the frontend `dist\` folder:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <rewrite>
+            <rules>
+                <!-- Proxy /api to Spring Boot backend -->
+                <rule name="API Proxy" stopProcessing="true">
+                    <match url="^api/(.*)" />
+                    <action type="Rewrite" url="http://localhost:8080/api/{R:1}" />
+                </rule>
+                <!-- SPA fallback — serve index.html for client-side routes -->
+                <rule name="SPA Routes" stopProcessing="true">
+                    <match url=".*" />
+                    <conditions logicalGrouping="MatchAll">
+                        <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                    </conditions>
+                    <action type="Rewrite" url="/index.html" />
+                </rule>
+            </rules>
+        </rewrite>
+        <staticContent>
+            <mimeMap fileExtension=".json" mimeType="application/json" />
+            <mimeMap fileExtension=".woff2" mimeType="font/woff2" />
+        </staticContent>
+    </system.webServer>
+</configuration>
+```
+
+In IIS Manager:
+1. Create a new site pointing to `C:\portfolio-planner\frontend\dist`
+2. Bind it to port 80 (or 443 with your SSL certificate)
+3. Enable ARR proxy: Server → Application Request Routing → Server Proxy Settings → Enable proxy
+
+**Alternative: Use Nginx on Windows**
+
+Download Nginx for Windows from [nginx.org/en/download.html](https://nginx.org/en/download.html) and use the same `nginx.conf` from the Linux section, adjusting paths:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    root C:/portfolio-planner/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        client_max_body_size 10M;
+    }
+}
+```
+
+#### 8. SSL Certificate
+
+For Windows Server, use IIS to bind an SSL certificate:
+1. Obtain an SSL certificate (purchase or use [win-acme](https://www.win-acme.com/) for free Let's Encrypt certificates)
+2. Import the certificate into the Windows Certificate Store
+3. In IIS Manager, edit site bindings → Add → Type: https → select your certificate
+
+For win-acme (Let's Encrypt):
+```powershell
+# Download win-acme from https://www.win-acme.com/
+# Extract and run:
+wacs.exe --target iis --siteid 1 --installation iis
+```
+
+#### 9. Install Ollama on Windows (Optional — for NLP local LLM)
+
+Download the Windows installer from [ollama.com/download/windows](https://ollama.com/download/windows).
+
+After installation:
+```powershell
+# Ollama runs automatically as a background service after install
+
+# Pull the model
+ollama pull llama3:8b
+
+# Verify
+curl http://localhost:11434/api/tags
+```
+
+Ollama runs on port 11434 by default. The app auto-connects to it — no additional configuration needed.
+
+---
+
 ## Project Structure
 
 ```
@@ -586,6 +841,17 @@ portfolio-planner/
 │       ├── brandTokens.ts            Design tokens (DEEP_BLUE, AQUA, FONT_FAMILY)
 │       ├── App.tsx                   Route definitions
 │       └── main.tsx                  Entry point + global error handlers
+│
+├── bruno/                            Bruno API collection
+│   └── Portfolio Planner/            104+ endpoint definitions
+│       ├── bruno.json                Collection metadata
+│       ├── collection.bru            Shared auth & headers
+│       ├── environments/             Local + Production environments
+│       └── [31 folders]/             Endpoint categories
+│
+├── scripts/
+│   ├── setup-linux.sh                One-shot Linux setup & deployment
+│   └── setup-windows.ps1             One-shot Windows setup & deployment
 │
 ├── start-backend.sh                  Backend startup script
 ├── start-frontend.sh                 Frontend startup script
@@ -718,6 +984,61 @@ The V48 seed migration creates a default admin user:
 | Display Name | `Piyush Baheti` |
 
 **Important:** Change the admin password immediately after first login in a production environment. You can create additional users via **Settings → User Management**.
+
+---
+
+## Bruno API Collection
+
+A complete [Bruno](https://www.usebruno.com/) API collection is included in the `bruno/` directory with all 104+ backend endpoints organised by category.
+
+### Setup
+
+1. Download and install Bruno from [usebruno.com](https://www.usebruno.com/)
+2. Open Bruno → **Open Collection** → select the `bruno/Portfolio Planner` folder
+3. Select the **Local** environment (pre-configured for `http://localhost:8080`)
+4. Run the **Auth → Login** request first — it automatically saves the JWT token for all subsequent requests
+
+### Collection Structure
+
+| Folder | Endpoints | Description |
+|---|---|---|
+| Auth | 3 | Login, logout, current user |
+| User Management | 6 | CRUD users, role permissions (ADMIN only) |
+| Resources | 10 | CRUD resources, availability, assignments, rates |
+| Pods | 4 | CRUD pods |
+| Projects | 10 | CRUD projects, copy, pod matrix, pod planning |
+| Sprints | 4 | CRUD sprints |
+| Timeline | 2 | Get/update timeline config |
+| Ref Data | 11 | T-shirt sizes, effort patterns, role mix |
+| BAU Assumptions | 2 | Get/update BAU assumptions |
+| Cost Rates | 4 | CRUD cost rates |
+| Temporary Overrides | 4 | CRUD temporary overrides |
+| Reports | 9 | Executive summary, capacity gap, heatmap, hiring, etc. |
+| NLP | 7 | Query, config, feedback, test connection |
+| NLP Learner | 7 | Trigger runs, patterns, history |
+| Jira | 13 | Status, mappings, credentials, cache, debug |
+| Jira Pods | 6 | Pod configs, velocity, sprint issues |
+| Jira Releases | 7 | Release config, search, fix versions |
+| Jira Support | 10 | Snapshots, boards, throughput, tickets |
+| Jira Worklog | 2 | Worklogs, user history |
+| Jira CapEx | 4 | CapEx hours, fields, settings |
+| Jira Sprint Issues | 1 | Sprint issues by date range |
+| Release Calendar | 4 | CRUD release calendar entries |
+| Feedback | 4 | Submit/manage user feedback |
+| Error Logs | 6 | Log/resolve/clear errors |
+| Audit Log | 3 | Recent logs, entity history |
+| Tour | 4 | Tour status, config |
+| Widget Preferences | 2 | Get/update widget layout |
+| Digest | 1 | Trigger email digest |
+| Simulator | 1 | Run timeline simulation |
+| Data Import | 1 | Upload Excel file |
+| Actuals | 2 | Project actuals |
+| Admin DB | 3 | Database browser (ADMIN only) |
+
+### Environments
+
+- **Local** — `http://localhost:8080` (development)
+- **Production** — `https://your-domain.com` (update with your actual domain)
 
 ---
 

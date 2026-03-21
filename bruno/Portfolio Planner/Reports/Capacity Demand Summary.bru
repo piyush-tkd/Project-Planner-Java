@@ -1,0 +1,15 @@
+meta {
+  name: Capacity Demand Summary
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/reports/capacity-demand-summary
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

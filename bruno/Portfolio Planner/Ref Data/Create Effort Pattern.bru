@@ -1,0 +1,22 @@
+meta {
+  name: Create Effort Pattern
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/ref-data/effort-patterns
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "name": "Agile Standard",
+    "distribution": [10, 20, 30, 25, 15]
+  }
+}

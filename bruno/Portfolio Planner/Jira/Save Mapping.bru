@@ -1,0 +1,22 @@
+meta {
+  name: Save Mapping
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/jira/mappings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "podId": 1,
+    "boardId": 100
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Update Cost Rate
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{base_url}}/api/cost-rates/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "role": "DEVELOPER",
+    "location": "Singapore",
+    "ratePerHour": 130.00
+  }
+}

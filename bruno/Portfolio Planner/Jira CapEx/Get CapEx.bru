@@ -1,0 +1,15 @@
+meta {
+  name: Get CapEx
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/jira/capex?month=2025-01
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

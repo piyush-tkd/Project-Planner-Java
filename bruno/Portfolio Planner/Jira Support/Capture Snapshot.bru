@@ -1,0 +1,15 @@
+meta {
+  name: Capture Snapshot
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/jira/support/snapshot/capture
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

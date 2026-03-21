@@ -1,0 +1,15 @@
+meta {
+  name: Available Boards
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/api/jira/support/available-boards
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

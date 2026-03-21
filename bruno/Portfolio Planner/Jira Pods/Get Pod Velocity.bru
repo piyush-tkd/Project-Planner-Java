@@ -1,0 +1,15 @@
+meta {
+  name: Get Pod Velocity
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/jira/pods/1/velocity
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

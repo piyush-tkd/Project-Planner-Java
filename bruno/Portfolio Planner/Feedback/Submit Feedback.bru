@@ -1,0 +1,24 @@
+meta {
+  name: Submit Feedback
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/feedback
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "category": "BUG",
+    "message": "Button not working on reports page",
+    "pageUrl": "/reports/capacity-gap",
+    "priority": "HIGH"
+  }
+}

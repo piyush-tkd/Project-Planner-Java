@@ -1,0 +1,15 @@
+meta {
+  name: List Releases
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/releases
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

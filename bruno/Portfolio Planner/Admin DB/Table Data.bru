@@ -1,0 +1,15 @@
+meta {
+  name: Table Data
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/admin/db/tables/project/data?page=0&size=50
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

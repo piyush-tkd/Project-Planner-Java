@@ -1,0 +1,15 @@
+meta {
+  name: List Fix Versions
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/jira/releases/fixversions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

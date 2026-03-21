@@ -1,0 +1,15 @@
+meta {
+  name: Send Digest
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/digest/send
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

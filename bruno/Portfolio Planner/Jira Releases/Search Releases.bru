@@ -1,0 +1,15 @@
+meta {
+  name: Search Releases
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/jira/releases/search?version=1.0
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
