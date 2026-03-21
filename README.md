@@ -199,13 +199,13 @@ Navigate to **http://localhost:5173** in your browser. Log in with the default c
 | `DIGEST_CRON` | `0 0 8 * * MON` | Cron expression for digest schedule |
 | `NLP_LEARNER_INTERVAL_MS` | `21600000` | NLP self-learning interval (default: 6 hours) |
 | `NLP_LEARNER_INITIAL_DELAY_MS` | `60000` | Delay before first learner run after boot |
-| `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS allowed origins (comma-separated for production) |
+| `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS allowed origins (comma-separated, e.g., `https://your-domain.com`) |
 
 ### Frontend
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_URL` | _(not set — uses Vite proxy)_ | Backend API base URL. Only set in production when frontend is hosted separately. |
+| `VITE_API_URL` | _(not set — uses Vite proxy)_ | Backend API base URL. Set this when building for production (e.g., `https://your-domain.com`). |
 
 ---
 
@@ -330,7 +330,7 @@ psql -U pp_user -d portfolio_planner -c "SELECT version, description, installed_
 
 ## Production Deployment
 
-### Option A: Traditional Server (Recommended)
+### Linux Server Deployment
 
 #### 1. Server Requirements
 
@@ -535,19 +535,6 @@ ollama pull llama3:8b
 # Verify
 curl http://localhost:11434/api/tags
 ```
-
-### Option B: Railway + Vercel (Cloud)
-
-**Backend on Railway:**
-1. Import the `backend/` directory at [railway.app](https://railway.app)
-2. Add a PostgreSQL plugin (Railway auto-wires connection string)
-3. Set env var: `ALLOWED_ORIGINS=https://your-app.vercel.app`
-4. Railway builds and deploys automatically
-
-**Frontend on Vercel:**
-1. Import the `frontend/` directory at [vercel.com](https://vercel.com)
-2. Set env var: `VITE_API_URL=https://your-backend.up.railway.app`
-3. Deploy — Vite builds automatically
 
 ---
 
