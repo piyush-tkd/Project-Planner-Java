@@ -95,7 +95,7 @@ SELECT setval('effort_pattern_id_seq', (SELECT COALESCE(MAX(id), 0) FROM effort_
 
 -- jira_credentials
 INSERT INTO public.jira_credentials VALUES (1, NULL, NULL, NULL, '2026-03-17 19:41:25.962598', 'customfield_10329') ON CONFLICT (id) DO NOTHING;
-SELECT setval('jira_credentials_id_seq', (SELECT COALESCE(MAX(id), 0) FROM jira_credentials), true);
+-- Note: jira_credentials uses a fixed id (not a BIGSERIAL sequence), so no setval needed.
 
 -- jira_pod
 INSERT INTO public.jira_pod VALUES (24, 'Portal V1', true, 0, '2026-03-17 14:26:35.008592', '2026-03-17 14:26:35.008603') ON CONFLICT (id) DO NOTHING;
