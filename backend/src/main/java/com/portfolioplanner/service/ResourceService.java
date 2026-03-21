@@ -10,6 +10,7 @@ import com.portfolioplanner.domain.repository.ResourceRepository;
 import com.portfolioplanner.dto.request.ResourcePodAssignmentRequest;
 import com.portfolioplanner.dto.request.ResourceRequest;
 import com.portfolioplanner.dto.response.ResourceResponse;
+import com.portfolioplanner.exception.DuplicateNameException;
 import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,11 @@ public class ResourceService {
     @Transactional
     @CacheEvict(value = "calculations", allEntries = true)
     public ResourceResponse create(ResourceRequest request) {
+        // Check for duplicate name
+        if (resourceRepository.findByNameIgnoreCase(request.name()).isPresent()) {
+            throw new DuplicateNameException("A resource with this name already exists");
+        }
+
         Resource resource = mapper.toEntity(request);
         if (resource.getActive() == null) resource.setActive(true);
         if (resource.getCountsInCapacity() == null) resource.setCountsInCapacity(true);
@@ -62,6 +68,14 @@ public class ResourceService {
     public ResourceResponse update(Long id, ResourceRequest request) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource", id));
+
+        // Check for duplicate name, excluding the current resource
+        resourceRepository.findByNameIgnoreCase(request.name()).ifPresent(existing -> {
+            if (!existing.getId().equals(id)) {
+                throw new DuplicateNameException("A resource with this name already exists");
+            }
+        });
+
         String beforeSnap = resourceSnapshot(resource);
         mapper.updateEntity(request, resource);
         resource = resourceRepository.save(resource);

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Title, Text, Stack, Group, Card, Table, Badge, ActionIcon, SimpleGrid, Tooltip,
 } from '@mantine/core';
-import { IconArrowLeft, IconBriefcase, IconUsers, IconClock, IconAlertTriangle } from '@tabler/icons-react';
+import { IconBriefcase, IconUsers, IconClock, IconAlertTriangle } from '@tabler/icons-react';
+import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import { usePods } from '../api/pods';
 import { usePodProjects } from '../api/projects';
 import { useResources, useAllAvailability } from '../api/resources';
@@ -69,15 +70,13 @@ export default function PodDetailPage() {
   const { sorted: sortedProjects, sortKey: pSortKey, sortDir: pSortDir, onSort: onPSort } = useTableSort(podProjects ?? []);
   const { sorted: sortedMembers, sortKey: mSortKey, sortDir: mSortDir, onSort: onMSort } = useTableSort(members);
 
-  if (podsLoading || projectsLoading || resourcesLoading) return <LoadingSpinner />;
+  if (podsLoading || projectsLoading || resourcesLoading) return <LoadingSpinner variant="cards" message="Loading POD details..." />;
   if (!pod) return <Text c="red">POD not found</Text>;
 
   return (
     <Stack>
+      <NlpBreadcrumb />
       <Group>
-        <ActionIcon variant="subtle" onClick={() => navigate('/pods')}>
-          <IconArrowLeft size={20} />
-        </ActionIcon>
         <Title order={2}>{pod.name}</Title>
         {pod.active && <Badge color="green">Active</Badge>}
       </Group>

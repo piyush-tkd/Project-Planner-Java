@@ -16,9 +16,9 @@ import { ProjectPodMatrixResponse } from '../types';
 import { deriveTshirtSize } from '../types/project';
 import type { SprintResponse } from '../types/project';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 
 // ── Brand colours ────────────────────────────────────────────────────────────
-const DEEP_BLUE = '#0C2340';
 
 // ── Threshold-based cell colours ─────────────────────────────────────────────
 interface CellStyle { bg: string; text: string; label: string }
@@ -193,7 +193,7 @@ export default function TeamCalendarPage() {
       });
   }, [allPodNames, selectedPods, utilMap, monthList, sprintColumns, sortBy, viewMode]);
 
-  if (utilLoading || matrixLoading || sprintsLoading) return <LoadingSpinner />;
+  if (utilLoading || matrixLoading || sprintsLoading) return <LoadingSpinner variant="table" message="Loading calendar..." />;
 
   // ── Cell click handler ────────────────────────────────────────────────────
   function handleCellClick(
@@ -219,7 +219,7 @@ export default function TeamCalendarPage() {
           <IconCalendarEvent size={20} color="white" />
         </ThemeIcon>
         <div>
-          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: 'Barlow, system-ui, sans-serif' }}>
+          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
             Team Calendar
           </Title>
           <Text size="sm" c="dimmed">
@@ -303,7 +303,7 @@ export default function TeamCalendarPage() {
                   <th style={{
                     background: DEEP_BLUE, color: 'white',
                     padding: '12px 16px', textAlign: 'left',
-                    fontFamily: 'Barlow, system-ui, sans-serif',
+                    fontFamily: FONT_FAMILY,
                     fontSize: 13, fontWeight: 700,
                     position: 'sticky', left: 0, zIndex: 2,
                     minWidth: 160,
@@ -316,11 +316,11 @@ export default function TeamCalendarPage() {
                     const isCurrent = m === currentMonthIndex;
                     return (
                       <th key={m} style={{
-                        background: isCurrent ? '#1F9196' : DEEP_BLUE,
+                        background: isCurrent ? AQUA : DEEP_BLUE,
                         color: 'white',
                         padding: '12px 8px',
                         textAlign: 'center',
-                        fontFamily: 'Barlow, system-ui, sans-serif',
+                        fontFamily: FONT_FAMILY,
                         fontSize: 12, fontWeight: 700,
                         minWidth: 90,
                         borderLeft: isCurrent ? '2px solid #40c4c9' : '1px solid rgba(255,255,255,0.1)',
@@ -336,11 +336,11 @@ export default function TeamCalendarPage() {
                     const lbl = sprintHeaderLabel(sprint);
                     return (
                       <th key={sprint.id} style={{
-                        background: isCurrent ? '#1F9196' : DEEP_BLUE,
+                        background: isCurrent ? AQUA : DEEP_BLUE,
                         color: 'white',
                         padding: '8px 6px',
                         textAlign: 'center',
-                        fontFamily: 'Barlow, system-ui, sans-serif',
+                        fontFamily: FONT_FAMILY,
                         fontSize: 11, fontWeight: 700,
                         minWidth: 100,
                         borderLeft: isCurrent ? '2px solid #40c4c9' : '1px solid rgba(255,255,255,0.1)',
@@ -383,7 +383,7 @@ export default function TeamCalendarPage() {
                       padding: '10px 16px',
                       fontWeight: 700, fontSize: 13,
                       color: DEEP_BLUE,
-                      fontFamily: 'Barlow, system-ui, sans-serif',
+                      fontFamily: FONT_FAMILY,
                       borderRight: '1px solid #e9ecef',
                       borderBottom: '1px solid #e9ecef',
                       position: 'sticky', left: 0, zIndex: 1,
@@ -474,7 +474,7 @@ export default function TeamCalendarPage() {
             <>
               <Box style={{ width: 1, height: 14, background: '#dee2e6' }} />
               <Group gap={6} align="center">
-                <Box style={{ width: 14, height: 14, borderRadius: 3, background: '#1F9196' }} />
+                <Box style={{ width: 14, height: 14, borderRadius: 3, background: AQUA }} />
                 <Text size="xs" c="dimmed">Current sprint</Text>
               </Group>
               <Group gap={6} align="center">
@@ -552,7 +552,7 @@ function HeatmapCell({
           <>
             <div style={{
               fontWeight: 700, fontSize: 14,
-              fontFamily: 'Barlow, system-ui, sans-serif',
+              fontFamily: FONT_FAMILY,
               lineHeight: 1.2,
             }}>
               {pct > 0 ? `${Math.round(pct)}%` : '—'}
@@ -629,7 +629,7 @@ function CellDetailModal({
       }}>
         <div>
           <Text size="xs" c="dimmed" fw={600}>UTILISATION</Text>
-          <Text fw={800} size="xl" style={{ color: style.text, fontFamily: 'Barlow, system-ui' }}>
+          <Text fw={800} size="xl" style={{ color: style.text, fontFamily: FONT_FAMILY }}>
             {cell.utilizationPct > 0 ? `${Math.round(cell.utilizationPct)}%` : '—'}
           </Text>
           {isSprint && (

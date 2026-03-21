@@ -11,13 +11,16 @@ import {
   Badge,
   List,
   Box,
+  SimpleGrid,
+  Paper,
+  ThemeIcon,
+  RingProgress,
 } from '@mantine/core';
+import { IconBriefcase, IconUsers, IconFlame, IconChartBar } from '@tabler/icons-react';
 import { useProjectPodMatrix } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
   planningId: number;
@@ -31,7 +34,7 @@ interface ProjectPodMatrixResponse {
   defaultPattern: string;
   podId: number;
   podName: string;
-  tshirtSize: string;
+  tshirtSize: string | null;
   complexityOverride: number | null;
   effortPattern: string | null;
   podStartMonth: number | null;
@@ -78,7 +81,7 @@ export default function OwnerDemandPage() {
       const duration = pod.durationOverride ?? pod.projectDurationMonths;
       const endMonth = startMonth + duration;
 
-      for (let month = startMonth; month < endMonth && month < 12; month++) {
+      for (let month = startMonth; month < endMonth && month <= 12; month++) {
         if (!matrix[pod.owner]) {
           matrix[pod.owner] = {};
         }
@@ -101,15 +104,56 @@ export default function OwnerDemandPage() {
     return selectedOwners.length === 0 ? owners : selectedOwners;
   }, [owners, selectedOwners]);
 
-  if (isLoading) return <LoadingSpinner />;
+  // ── Summary widget: unique projects per owner ──
+  const ownerSummary = useMemo(() => {
+    if (!projectPodMatrix) return [];
+    const map = new Map<string, Set<number>>();
+    projectPodMatrix.forEach(p => {
+      if (!map.has(p.owner)) map.set(p.owner, new Set());
+      map.get(p.owner)!.add(p.projectId);
+    });
+    return Array.from(map.entries())
+      .map(([owner, ids]) => ({ owner, count: ids.size }))
+      .sort((a, b) => b.count - a.count);
+  }, [projectPodMatrix]);
+
+  const totalUniqueProjects = useMemo(() => {
+    if (!projectPodMatrix) return 0;
+    return new Set(projectPodMatrix.map(p => p.projectId)).size;
+  }, [projectPodMatrix]);
+
+  const busiestOwner = ownerSummary[0];
+  const avgProjects = ownerSummary.length > 0
+    ? Math.round((ownerSummary.reduce((s, o) => s + o.count, 0) / ownerSummary.length) * 10) / 10
+    : 0;
+
+  // ── Owner detail modal state ──
+  const [ownerDetailOpen, setOwnerDetailOpen] = useState(false);
+  const [selectedOwnerDetail, setSelectedOwnerDetail] = useState<string | null>(null);
+
+  const selectedOwnerProjects = useMemo(() => {
+    if (!selectedOwnerDetail || !projectPodMatrix) return [];
+    const seen = new Set<number>();
+    return projectPodMatrix
+      .filter(p => p.owner === selectedOwnerDetail)
+      .filter(p => { if (seen.has(p.projectId)) return false; seen.add(p.projectId); return true; })
+      .sort((a, b) => a.projectName.localeCompare(b.projectName));
+  }, [selectedOwnerDetail, projectPodMatrix]);
+
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading owner demand..." />;
   if (error) return <Text c="red">Error loading project data</Text>;
 
   const tableRows = filteredOwners.map((owner) => (
     <Table.Tr key={owner}>
-      <Table.Td style={{ fontWeight: 600, minWidth: '150px', backgroundColor: '#f8f9fa' }}>
-        {owner}
+      <Table.Td
+        style={{ fontWeight: 600, minWidth: '150px', backgroundColor: '#f8f9fa', cursor: 'pointer' }}
+        onClick={() => { setSelectedOwnerDetail(owner); setOwnerDetailOpen(true); }}
+      >
+        <Text size="sm" fw={600} c="blue" td="underline" style={{ textDecorationStyle: 'dotted' }}>
+          {owner}
+        </Text>
       </Table.Td>
-      {Array.from({ length: 12 }).map((_, monthIndex) => {
+      {Array.from({ length: 12 }, (_, i) => i + 1).map((monthIndex) => {
         const isCurrentMonth = monthIndex === currentMonthIndex;
         const projects = ownerDemandMatrix[owner]?.[monthIndex] ?? [];
         const count = projects.length;
@@ -118,7 +162,7 @@ export default function OwnerDemandPage() {
           <Table.Td
             key={monthIndex}
             style={{
-              backgroundColor: isCurrentMonth ? AGUA : getColorForCount(count),
+              backgroundColor: isCurrentMonth ? AQUA : getColorForCount(count),
               textAlign: 'center',
               cursor: count > 0 ? 'pointer' : 'default',
               minWidth: '70px',
@@ -149,13 +193,102 @@ export default function OwnerDemandPage() {
     <Container size="xl" py="xl">
       <Stack gap="lg">
         <div>
-          <Title order={1} style={{ fontFamily: 'Barlow, system-ui', color: DEEP_BLUE }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Owner Demand
           </Title>
           <Text c="dimmed" size="sm">
             Active projects per owner per month
           </Text>
         </div>
+
+        {/* ── Summary widgets ── */}
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+          <Paper p="md" radius="md" withBorder style={{ cursor: 'default' }}>
+            <Group gap="sm" wrap="nowrap">
+              <ThemeIcon size={40} radius="md" variant="light" color="blue">
+                <IconUsers size={22} />
+              </ThemeIcon>
+              <div>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Owners</Text>
+                <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{owners.length}</Text>
+              </div>
+            </Group>
+          </Paper>
+
+          <Paper p="md" radius="md" withBorder style={{ cursor: 'default' }}>
+            <Group gap="sm" wrap="nowrap">
+              <ThemeIcon size={40} radius="md" variant="light" color="teal">
+                <IconBriefcase size={22} />
+              </ThemeIcon>
+              <div>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Total Projects</Text>
+                <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{totalUniqueProjects}</Text>
+              </div>
+            </Group>
+          </Paper>
+
+          <Paper
+            p="md" radius="md" withBorder
+            style={{ cursor: busiestOwner ? 'pointer' : 'default', transition: 'box-shadow 150ms' }}
+            className={busiestOwner ? 'owner-widget-hover' : ''}
+            onClick={() => {
+              if (busiestOwner) {
+                setSelectedOwnerDetail(busiestOwner.owner);
+                setOwnerDetailOpen(true);
+              }
+            }}
+          >
+            <Group gap="sm" wrap="nowrap">
+              <ThemeIcon size={40} radius="md" variant="light" color="orange">
+                <IconFlame size={22} />
+              </ThemeIcon>
+              <div>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Busiest Owner</Text>
+                <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>
+                  {busiestOwner ? `${busiestOwner.owner} (${busiestOwner.count})` : '–'}
+                </Text>
+              </div>
+            </Group>
+          </Paper>
+
+          <Paper p="md" radius="md" withBorder style={{ cursor: 'default' }}>
+            <Group gap="sm" wrap="nowrap">
+              <ThemeIcon size={40} radius="md" variant="light" color="violet">
+                <IconChartBar size={22} />
+              </ThemeIcon>
+              <div>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Avg per Owner</Text>
+                <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{avgProjects}</Text>
+              </div>
+            </Group>
+          </Paper>
+        </SimpleGrid>
+
+        {/* ── Per-owner project counts (clickable badges) ── */}
+        <Paper p="sm" radius="md" withBorder>
+          <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs" style={{ letterSpacing: '0.04em' }}>Unique Projects per Owner</Text>
+          <Group gap="xs" wrap="wrap">
+            {ownerSummary.map(({ owner, count }) => (
+              <Box
+                key={owner}
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setSelectedOwnerDetail(owner);
+                  setOwnerDetailOpen(true);
+                }}
+              >
+                <Badge
+                  size="lg"
+                  variant="light"
+                  color={count > avgProjects ? 'orange' : 'teal'}
+                  style={{ textTransform: 'none', fontFamily: FONT_FAMILY, cursor: 'pointer' }}
+                >
+                  {owner}: {count}
+                </Badge>
+              </Box>
+            ))}
+          </Group>
+        </Paper>
 
         <Group justify="flex-start">
           <MultiSelect
@@ -177,19 +310,19 @@ export default function OwnerDemandPage() {
                 <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white', minWidth: '150px' }}>
                   Owner
                 </Table.Th>
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const isCurrentMonth = i === currentMonthIndex;
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((monthIdx) => {
+                  const isCurrentMonth = monthIdx === currentMonthIndex;
                   return (
                     <Table.Th
-                      key={i}
+                      key={monthIdx}
                       style={{
-                        backgroundColor: isCurrentMonth ? AGUA : DEEP_BLUE,
+                        backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
                         color: 'white',
                         textAlign: 'center',
                         minWidth: '70px',
                       }}
                     >
-                      {monthLabels[i]}
+                      {monthLabels[monthIdx]}
                     </Table.Th>
                   );
                 })}
@@ -200,10 +333,56 @@ export default function OwnerDemandPage() {
         </div>
       </Stack>
 
+      {/* ── Owner detail modal ── */}
+      <Modal
+        opened={ownerDetailOpen}
+        onClose={() => setOwnerDetailOpen(false)}
+        title={`${selectedOwnerDetail} — ${selectedOwnerProjects.length} Projects`}
+        size="lg"
+      >
+        {selectedOwnerDetail && (
+          <Stack gap="sm">
+            <Table striped withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Project</Table.Th>
+                  <Table.Th>Priority</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>POD</Table.Th>
+                  <Table.Th>Duration</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {selectedOwnerProjects.map(p => (
+                  <Table.Tr key={p.projectId}>
+                    <Table.Td>
+                      <Text size="sm" fw={600}>{p.projectName}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge size="xs" color={getPriorityColor(p.priority)}>{p.priority}</Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge size="xs" variant="light">{p.status}</Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs">{p.podName}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs">{p.durationOverride ?? p.projectDurationMonths}m</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Stack>
+        )}
+      </Modal>
+
+      {/* ── Month cell detail modal ── */}
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={`${selectedCell?.owner} - ${monthLabels[selectedCell?.monthIndex ?? 0]}`}
+        title={`${selectedCell?.owner} - ${monthLabels[selectedCell?.monthIndex ?? 1]}`}
         size="sm"
       >
         {selectedCell && (
@@ -240,6 +419,13 @@ export default function OwnerDemandPage() {
           </Stack>
         )}
       </Modal>
+
+      <style>{`
+        .owner-widget-hover:hover {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          border-color: var(--mantine-color-orange-4) !important;
+        }
+      `}</style>
     </Container>
   );
 }

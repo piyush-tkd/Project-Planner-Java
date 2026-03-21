@@ -34,7 +34,7 @@ export default function ProjectGanttPage() {
       });
   }, [projects, selectedPriorities]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
 
   return (
     <Stack>

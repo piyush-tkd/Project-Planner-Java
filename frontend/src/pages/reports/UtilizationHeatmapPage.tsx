@@ -45,7 +45,7 @@ export default function UtilizationHeatmapPage() {
     });
   }, [data, selectedPods, sortBy]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading utilization data..." />;
   if (error) return <Text c="red">Error loading utilization data</Text>;
 
   return (

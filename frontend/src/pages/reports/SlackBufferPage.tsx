@@ -19,6 +19,7 @@ import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatGapHours, formatGapFte } from '../../utils/formatting';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface PodMonthGap {
   podId: number;
@@ -34,9 +35,6 @@ interface PodMonthGap {
 interface CapacityGapData {
   gaps: PodMonthGap[];
 }
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
 
 // Color thresholds (in hours, assuming 160h per month full capacity)
 const getGapColors = (
@@ -117,7 +115,7 @@ export default function SlackBufferPage() {
 
   const podOptions = pods.map((p) => ({ value: p, label: p }));
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading slack & buffer..." />;
   if (isError) return <Text color="red">Failed to load capacity data</Text>;
 
   const handleCellClick = (gap: PodMonthGap) => {
@@ -146,67 +144,69 @@ export default function SlackBufferPage() {
   return (
     <Stack gap="md" p="md">
       <div>
-        <Title order={1}>Slack & Buffer</Title>
-        <Text size="sm" c="dimmed">
+        <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
+          Slack &amp; Buffer
+        </Title>
+        <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
           Available capacity per POD per month — green = surplus, red = deficit
         </Text>
       </div>
 
-      <Group gap="md">
+      <Group gap="md" align="flex-end" wrap="wrap">
         <MultiSelect
           label="Filter PODs"
           placeholder="Select PODs..."
           data={podOptions}
           value={selectedPods}
           onChange={setSelectedPods}
-          style={{ flex: 1, maxWidth: 300 }}
+          style={{ flex: '0 1 280px' }}
+          styles={{ label: { fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 } }}
         />
         <SegmentedControl
-          label="View"
           data={[
             { value: 'hours', label: 'Hours' },
             { value: 'fte', label: 'FTE' },
           ]}
           value={viewMode}
           onChange={(value) => setViewMode(value as 'hours' | 'fte')}
+          styles={{
+            root: { fontFamily: FONT_FAMILY },
+            indicator: { background: AQUA },
+            label: { fontWeight: 600, '&[dataActive]': { color: 'white' } },
+          }}
         />
-      </Group>
 
-      <Paper p="md" radius="md" withBorder>
-        <Stack gap="sm">
-          <Text size="sm" fw={500}>
-            Legend
-          </Text>
-          <Group gap="lg">
-            {[
-              { range: '>160h', color: '#d3f9d8', text: '#2f9e44' },
-              { range: '0-160h', color: '#ebfbee', text: '#40c057' },
-              { range: '±0-8h', color: '#f8f9fa', text: '#868e96' },
-              { range: '-160 to 0h', color: '#fff3bf', text: '#e67700' },
-              { range: '<-160h', color: '#ffe3e3', text: '#c92a2a' },
-            ].map((item) => (
-              <Group key={item.range} gap="xs">
-                <Box
-                  style={{
-                    width: 24,
-                    height: 24,
-                    backgroundColor: item.color,
-                    border: `1px solid ${item.text}`,
-                    borderRadius: 4,
-                  }}
-                />
-                <Text size="xs">{item.range}</Text>
-              </Group>
-            ))}
-          </Group>
-        </Stack>
-      </Paper>
+        {/* Legend — inline to use whitespace on the right */}
+        <Group gap="sm" ml="auto" style={{ flexShrink: 0 }}>
+          {[
+            { range: '>160h', color: '#d3f9d8', text: '#2f9e44' },
+            { range: '0–160h', color: '#ebfbee', text: '#40c057' },
+            { range: '±0–8h', color: '#f8f9fa', text: '#868e96' },
+            { range: '-160–0h', color: '#fff3bf', text: '#e67700' },
+            { range: '<-160h', color: '#ffe3e3', text: '#c92a2a' },
+          ].map((item) => (
+            <Group key={item.range} gap={4} wrap="nowrap">
+              <Box
+                style={{
+                  width: 16,
+                  height: 16,
+                  backgroundColor: item.color,
+                  border: `1px solid ${item.text}`,
+                  borderRadius: 3,
+                  flexShrink: 0,
+                }}
+              />
+              <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{item.range}</Text>
+            </Group>
+          ))}
+        </Group>
+      </Group>
 
       <ScrollArea>
         <table
           style={{
             borderCollapse: 'collapse',
-            fontFamily: 'Barlow, system-ui',
+            fontFamily: FONT_FAMILY,
             fontSize: '13px',
             minWidth: '100%',
           }}
@@ -234,7 +234,7 @@ export default function SlackBufferPage() {
                   <th
                     key={monthIdx}
                     style={{
-                      backgroundColor: isCurrentMonth ? AGUA : DEEP_BLUE,
+                      backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
                       color: 'white',
                       padding: '12px',
                       textAlign: 'center',
@@ -247,7 +247,7 @@ export default function SlackBufferPage() {
                         {monthLabels[monthIdx] || `M${monthIdx}`}
                       </Text>
                       {isCurrentMonth && (
-                        <Badge size="xs" color="white" c={AGUA}>
+                        <Badge size="xs" color="white" c={AQUA}>
                           Current
                         </Badge>
                       )}
@@ -407,6 +407,7 @@ export default function SlackBufferPage() {
         onClose={() => setModalOpened(false)}
         title="Capacity Detail"
         size="sm"
+        styles={{ title: { fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 } }}
       >
         {selectedCell && (
           <Stack gap="lg">

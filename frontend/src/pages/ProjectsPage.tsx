@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Title, Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid,
+  Title, Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
 } from '@mantine/core';
+import { AQUA, AQUA_TINTS } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch } from '@tabler/icons-react';
-import { useProjects, useCreateProject } from '../api/projects';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy } from '@tabler/icons-react';
+import { useProjects, useCreateProject, useCopyProject } from '../api/projects';
 import { useEffortPatterns } from '../api/refData';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
@@ -17,8 +18,10 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import TablePagination from '../components/common/TablePagination';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
+import { usePagination } from '../hooks/usePagination';
 import { formatProjectDate } from '../utils/formatting';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
@@ -41,16 +44,37 @@ const emptyForm: ProjectRequest = {
 export default function ProjectsPage() {
   const { data: projects, isLoading, error } = useProjects();
   const createMutation = useCreateProject();
+  const copyMutation = useCopyProject();
   const { data: effortPatterns } = useEffortPatterns();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
+  const [nameError, setNameError] = useState<string>('');
   const [statusFilter, setStatusFilter]   = useState<string>('ALL');
   const [cardFilter, setCardFilter]       = useState<string | null>(null);
   const [search, setSearch]               = useState('');
   const [ownerFilter, setOwnerFilter]     = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+
+  // Highlight support from NLP drill-down (?highlight=id)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight') ? Number(searchParams.get('highlight')) : null;
+  const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
+  const [flashId, setFlashId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (highlightId && projects && projects.some(p => p.id === highlightId)) {
+      setFlashId(highlightId);
+      setTimeout(() => {
+        highlightRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+      const timer = setTimeout(() => setFlashId(null), 3000);
+      searchParams.delete('highlight');
+      setSearchParams(searchParams, { replace: true });
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, projects]);
 
   // Clicking a card toggles a quick-filter; also syncs the segmented control
   function applyCardFilter(key: string) {
@@ -96,6 +120,7 @@ export default function ProjectsPage() {
   }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter]);
 
   const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered);
+  const { paginatedData: pagedProjects, ...pagination } = usePagination(sortedProjects, 25);
 
   const stats = useMemo(() => {
     const all = projects ?? [];
@@ -107,16 +132,25 @@ export default function ProjectsPage() {
   }, [projects]);
 
   const handleCreate = () => {
+    setNameError('');
     createMutation.mutate(form, {
       onSuccess: () => {
         setModalOpen(false);
         setForm(emptyForm);
+        setNameError('');
         notifications.show({ title: 'Created', message: 'Project created', color: 'green' });
+      },
+      onError: (error: any) => {
+        if (error.response?.status === 409) {
+          setNameError('A project with this name already exists');
+        } else {
+          notifications.show({ title: 'Error', message: error.message || 'Failed to create project', color: 'red' });
+        }
       },
     });
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading projects..." />;
   if (error) return <Text c="red">Error loading projects</Text>;
 
   return (
@@ -248,19 +282,32 @@ export default function ProjectsPage() {
               <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>
               <Table.Th>Pattern</Table.Th>
               <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+              <Table.Th style={{ width: 50 }}>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {sortedProjects.length === 0 && (
+            {pagedProjects.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
+                <Table.Td colSpan={10} style={{ textAlign: 'center', padding: '2rem' }}>
                   <Text c="dimmed" size="sm">No projects match the current filters.</Text>
                 </Table.Td>
               </Table.Tr>
             )}
-            {sortedProjects.map((p, idx) => (
-              <Table.Tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${p.id}`)}>
-                <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
+            {pagedProjects.map((p, idx) => (
+              <Table.Tr
+                key={p.id}
+                ref={p.id === highlightId || p.id === flashId ? highlightRowRef : undefined}
+                style={{
+                  cursor: 'pointer',
+                  ...(p.id === flashId ? {
+                    backgroundColor: AQUA_TINTS[10],
+                    transition: 'background-color 1s ease-out',
+                    boxShadow: `0 0 0 2px ${AQUA}`,
+                  } : {}),
+                }}
+                onClick={() => navigate(`/projects/${p.id}`)}
+              >
+                <Table.Td c="dimmed" style={{ fontSize: 12 }}>{pagination.startIndex + idx + 1}</Table.Td>
                 <Table.Td fw={500}>{p.name}</Table.Td>
                 <Table.Td><PriorityBadge priority={p.priority} /></Table.Td>
                 <Table.Td>{p.owner}</Table.Td>
@@ -269,15 +316,45 @@ export default function ProjectsPage() {
                 <Table.Td>{p.durationMonths}m</Table.Td>
                 <Table.Td>{p.defaultPattern}</Table.Td>
                 <Table.Td><StatusBadge status={p.status} /></Table.Td>
+                <Table.Td>
+                  <Tooltip label="Duplicate project">
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyMutation.mutate(p.id, {
+                          onSuccess: (newProject) => {
+                            notifications.show({ title: 'Duplicated', message: 'Project duplicated successfully', color: 'green' });
+                          },
+                        });
+                      }}
+                      loading={copyMutation.isPending}
+                    >
+                      <IconCopy size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
 
-      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Add Project" size="xl">
+      <TablePagination {...pagination} />
+
+      <Modal opened={modalOpen} onClose={() => { setModalOpen(false); setNameError(''); }} title="Add Project" size="xl">
         <Stack>
-          <TextInput label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+          <TextInput
+            label="Name"
+            value={form.name}
+            onChange={e => {
+              setForm({ ...form, name: e.target.value });
+              setNameError('');
+            }}
+            error={nameError}
+            required
+          />
           <Group grow>
             <Select label="Priority" data={priorityOptions} value={form.priority} onChange={v => setForm({ ...form, priority: v as Priority })} required />
             <Select label="Status" data={statusOptions} value={form.status} onChange={v => setForm({ ...form, status: v as ProjectStatus })} required />

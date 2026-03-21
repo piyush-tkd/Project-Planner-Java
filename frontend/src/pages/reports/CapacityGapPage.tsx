@@ -71,7 +71,7 @@ export default function CapacityGapPage() {
       });
   }, [data, unit, monthLabels, workingHoursMap]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading capacity gap..." />;
   if (error) return <Text c="red">Error loading capacity gap data</Text>;
 
   return (

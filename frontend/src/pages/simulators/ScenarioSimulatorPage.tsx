@@ -144,7 +144,7 @@ export default function ScenarioSimulatorPage() {
     return { improved, worsened, totalDelta };
   }, [runScenario.data]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading scenario simulator..." />;
 
   return (
     <Stack>

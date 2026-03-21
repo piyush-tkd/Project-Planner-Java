@@ -4,6 +4,7 @@ import {
   Select, Switch, Group, Stack, Tabs, Paper, SimpleGrid, Checkbox,
   Tooltip, Loader, Center, Alert, NumberInput, SegmentedControl, Divider,
 } from '@mantine/core';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   IconUserPlus, IconPencil, IconTrash, IconShield, IconAlertCircle, IconRoute,
 } from '@tabler/icons-react';
@@ -11,6 +12,7 @@ import { useTourConfig, useUpdateTourConfig } from '../../api/tour';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import { FONT_FAMILY } from '../../brandTokens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -81,9 +83,18 @@ const PAGE_KEYS = [
   { key: 'jira_actuals',        label: 'Jira Actuals',         group: 'Integrations' },
   { key: 'jira_support',        label: 'Jira Support Queue',   group: 'Integrations' },
   { key: 'jira_worklog',        label: 'Jira Worklog',         group: 'Integrations' },
-  // ── Other
+  { key: 'release_notes',       label: 'Release Notes',        group: 'Integrations' },
+  // ── Simulators
   { key: 'timeline_simulator',   label: 'Timeline Simulator',   group: 'Simulators' },
   { key: 'scenario_simulator',   label: 'Scenario Simulator',   group: 'Simulators' },
+  // ── NLP / AI
+  { key: 'nlp_landing',          label: 'NLP Landing (Ask AI)',  group: 'NLP / AI' },
+  { key: 'nlp_settings',         label: 'NLP Settings',          group: 'NLP / AI' },
+  { key: 'nlp_optimizer',        label: 'NLP Optimizer',         group: 'NLP / AI' },
+  // ── Feedback & Monitoring
+  { key: 'feedback_hub',         label: 'Feedback Hub',          group: 'Feedback & Monitoring' },
+  { key: 'error_log',            label: 'Error Log',             group: 'Feedback & Monitoring' },
+  // ── Other
   { key: 'settings',            label: 'Settings',             group: 'Other' },
 ];
 
@@ -166,11 +177,26 @@ export default function UserManagementPage() {
     savePerms.mutate({ role: permRole, permsData: { [pageKey]: newVal } });
   }
 
+  function handleGroupToggle(group: string, newVal: boolean) {
+    const groupKeys = PAGE_KEYS.filter(p => p.group === group);
+    const permsData: PermMap = {};
+    groupKeys.forEach(({ key }) => { permsData[key] = newVal; });
+    savePerms.mutate({ role: permRole, permsData });
+  }
+
+  function getGroupState(group: string): 'all' | 'none' | 'some' {
+    const groupKeys = PAGE_KEYS.filter(p => p.group === group);
+    const allowedCount = groupKeys.filter(({ key }) => perms?.[key] ?? false).length;
+    if (allowedCount === groupKeys.length) return 'all';
+    if (allowedCount === 0) return 'none';
+    return 'some';
+  }
+
   return (
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2} style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY }}>
             User Management
           </Title>
           <Text size="sm" c="dimmed" mt={2}>
@@ -195,7 +221,7 @@ export default function UserManagementPage() {
               </Button>
             </Group>
 
-            {loadingUsers && <Center py="xl"><Loader /></Center>}
+            {loadingUsers && <LoadingSpinner variant="table" message="Loading users..." />}
             {usersError && (
               <Alert color="red" icon={<IconAlertCircle size={16} />}>
                 Failed to load users.
@@ -218,7 +244,7 @@ export default function UserManagementPage() {
                     {users.map(u => (
                       <Table.Tr key={u.id}>
                         <Table.Td>
-                          <Text fw={600} size="sm" style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>
+                          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
                             {u.username}
                           </Text>
                         </Table.Td>
@@ -293,22 +319,44 @@ export default function UserManagementPage() {
                 ADMIN always has access to all pages. Permissions cannot be restricted for this role.
               </Alert>
             ) : loadingPerms ? (
-              <Center py="xl"><Loader /></Center>
+              <LoadingSpinner variant="form" message="Loading permissions..." />
             ) : (
               <Stack gap="xl">
-                {Array.from(new Set(PAGE_KEYS.map(p => p.group))).map(grp => (
+                {Array.from(new Set(PAGE_KEYS.map(p => p.group))).map(grp => {
+                  const groupState = getGroupState(grp);
+                  const groupCount = PAGE_KEYS.filter(p => p.group === grp).length;
+                  const allowedInGroup = PAGE_KEYS.filter(p => p.group === grp && (perms?.[p.key] ?? false)).length;
+                  return (
                   <div key={grp}>
-                    <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="sm"
-                      style={{ letterSpacing: '0.06em', borderBottom: '1px solid #eee', paddingBottom: 4 }}>
-                      {grp}
-                    </Text>
+                    <Group justify="space-between" mb="sm"
+                      style={{ borderBottom: '1px solid #eee', paddingBottom: 6 }}>
+                      <Group gap="xs">
+                        <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                          style={{ letterSpacing: '0.06em' }}>
+                          {grp}
+                        </Text>
+                        <Badge size="xs" variant="light" color={groupState === 'all' ? 'green' : groupState === 'none' ? 'gray' : 'orange'}>
+                          {allowedInGroup}/{groupCount}
+                        </Badge>
+                      </Group>
+                      <Group gap={6}>
+                        <Text size="xs" c="dimmed">All</Text>
+                        <Checkbox
+                          checked={groupState === 'all'}
+                          indeterminate={groupState === 'some'}
+                          onChange={() => handleGroupToggle(grp, groupState !== 'all')}
+                          size="sm"
+                          color="teal"
+                        />
+                      </Group>
+                    </Group>
                     <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
                       {PAGE_KEYS.filter(p => p.group === grp).map(({ key, label }) => {
                         const allowed = perms?.[key] ?? false;
                         return (
                           <Paper key={key} withBorder radius="sm" p="sm">
                             <Group justify="space-between">
-                              <Text size="sm" fw={500} style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>
+                              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
                                 {label}
                               </Text>
                               <Switch
@@ -324,7 +372,8 @@ export default function UserManagementPage() {
                       })}
                     </SimpleGrid>
                   </div>
-                ))}
+                  );
+                })}
               </Stack>
             )}
           </Stack>
@@ -501,7 +550,7 @@ function TourSettingsPanel() {
   const { data: config, isLoading } = useTourConfig();
   const update = useUpdateTourConfig();
 
-  if (isLoading) return <Center py="xl"><Loader /></Center>;
+  if (isLoading) return <LoadingSpinner variant="form" message="Loading tour settings..." />;
 
   const freq = config?.frequency ?? 'first_login';
   const everyN = config?.everyN ?? 30;

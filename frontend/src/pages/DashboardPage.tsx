@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Title, Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge,
+  Title, Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge, Paper, ThemeIcon,
 } from '@mantine/core';
 import {
   IconUsers, IconBriefcase, IconFlame, IconAlertTriangle,
@@ -26,6 +26,7 @@ import ChartCard from '../components/common/ChartCard';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useJiraStatus, usePodWatchConfig, useReleaseConfig } from '../api/jira';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
 const ROLE_COLORS: Record<string, string> = {
   DEVELOPER: '#3b82f6',
@@ -34,8 +35,6 @@ const ROLE_COLORS: Record<string, string> = {
   TECH_LEAD: '#ef4444',
 };
 
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
 
 export default function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useExecutiveSummary();
@@ -104,13 +103,118 @@ export default function DashboardPage() {
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  if (summaryLoading) return <LoadingSpinner />;
+  // Compute portfolio health status
+  const healthStatus = useMemo(() => {
+    if (!summary) return { color: 'gray', status: 'UNKNOWN' };
+    const utilizationOverburdened = (summary.overallUtilizationPct ?? 0) > 100;
+    const deficitMonths = summary.podMonthsInDeficit ?? 0;
+
+    if (utilizationOverburdened || deficitMonths > 3) {
+      return { color: '#fa5252', status: 'RED' };
+    }
+    if (deficitMonths > 0) {
+      return { color: '#fd7e14', status: 'AMBER' };
+    }
+    return { color: '#51cf66', status: 'GREEN' };
+  }, [summary]);
+
+  // Generate portfolio narrative summary
+  const portfolioNarrative = useMemo(() => {
+    if (!summary || !capDemData) return '';
+    const lines: string[] = [];
+
+    // Line 1: P0 projects at risk
+    const p0AtRisk = summary?.podMonthsInDeficit ?? 0;
+    if (p0AtRisk > 0) {
+      lines.push(`${p0AtRisk} POD-month${p0AtRisk !== 1 ? 's' : ''} in deficit`);
+    }
+
+    // Line 2: Utilization status
+    const util = summary?.overallUtilizationPct ?? 0;
+    if (util > 100) {
+      lines.push(`Utilization at ${Math.round(util)}% (${Math.round(util - 100)}% overburdened)`);
+    } else if (util < 70) {
+      lines.push(`Utilization at ${Math.round(util)}% (capacity available)`);
+    }
+
+    // Line 3: Hiring needs
+    if (hiringData && hiringData.length > 0) {
+      const nextThreeMonths = hiringData.slice(0, 3);
+      const totalNeeded = nextThreeMonths.reduce((sum, d) => sum + d.ftesNeeded, 0);
+      if (totalNeeded > 0) {
+        lines.push(`${Math.round(totalNeeded)} new hires recommended in next 3 months`);
+      }
+    }
+
+    return lines.length > 0 ? lines.join('. ') + '.' : 'Portfolio is healthy.';
+  }, [summary, capDemData, hiringData]);
+
+  // Sparkline data for Overall Utilization (per month)
+  const utilizationSparkline = useMemo(() => {
+    if (!capDemData || capDemData.length === 0) return undefined;
+    return capDemData.map(d => d.totalCapacityHours > 0
+      ? Math.round((d.totalDemandHours / d.totalCapacityHours) * 100)
+      : 0
+    );
+  }, [capDemData]);
+
+  // Sparkline data for POD-Months in Deficit (deficit hours per month, abs value)
+  const deficitSparkline = useMemo(() => {
+    if (!capDemData || capDemData.length === 0) return undefined;
+    return capDemData.map(d => d.netGapHours < 0 ? Math.abs(d.netGapHours) : 0);
+  }, [capDemData]);
+
+  if (summaryLoading) return <LoadingSpinner variant="dashboard" message="Loading dashboard..." />;
 
   return (
     <Stack pb="xl">
       <Title order={2}>Dashboard</Title>
 
       <WidgetGrid pageKey="dashboard">
+
+        {/* ── Portfolio Health ── */}
+        <Widget id="portfolio-health" title="Portfolio Health">
+          <Paper
+            p="lg"
+            radius="md"
+            withBorder
+            style={{
+              borderLeft: `4px solid ${healthStatus.color}`,
+              background: dark ? 'rgba(0, 0, 0, 0.15)' : AQUA_TINTS[10],
+            }}
+          >
+            <Group align="flex-start" gap="md">
+              <ThemeIcon
+                size={56}
+                radius="100%"
+                style={{
+                  backgroundColor: healthStatus.color,
+                  flexShrink: 0,
+                }}
+              />
+              <Stack gap="xs" style={{ flex: 1 }}>
+                <Group justify="space-between" align="center">
+                  <Text fw={700} size="md" style={{ fontFamily: FONT_FAMILY }}>
+                    Status: {healthStatus.status}
+                  </Text>
+                  <Badge
+                    variant="light"
+                    color={
+                      healthStatus.status === 'RED' ? 'red'
+                        : healthStatus.status === 'AMBER' ? 'orange'
+                          : 'green'
+                    }
+                  >
+                    {healthStatus.status === 'GREEN' ? 'Healthy' : healthStatus.status === 'AMBER' ? 'Watch' : 'At Risk'}
+                  </Badge>
+                </Group>
+                <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY, lineHeight: 1.5 }}>
+                  {portfolioNarrative}
+                </Text>
+              </Stack>
+            </Group>
+          </Paper>
+        </Widget>
 
         {/* ── KPI Summary ── */}
         <Widget id="kpi-cards" title="KPI Summary">
@@ -133,6 +237,7 @@ export default function DashboardPage() {
               icon={<IconFlame size={20} color="#fd7e14" />}
               color={(summary?.overallUtilizationPct ?? 0) > 100 ? 'red' : undefined}
               onClick={() => navigate('/reports/utilization')}
+              sparkData={utilizationSparkline}
             />
             <SummaryCard
               title="POD-Months in Deficit"
@@ -140,6 +245,7 @@ export default function DashboardPage() {
               icon={<IconAlertTriangle size={20} color="#fa5252" />}
               color={(summary?.podMonthsInDeficit ?? 0) > 0 ? 'red' : 'green'}
               onClick={() => navigate('/reports/capacity-gap')}
+              sparkData={deficitSparkline}
             />
           </SimpleGrid>
         </Widget>
@@ -181,10 +287,10 @@ export default function DashboardPage() {
                   <IconHexagons size={22} color="white" />
                 </div>
                 <div>
-                  <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: 'Barlow' }}>
+                  <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: FONT_FAMILY }}>
                     POD Dashboard
                   </Text>
-                  <Text size="xl" fw={700} style={{ fontFamily: 'Barlow', color: DEEP_BLUE }}>
+                  <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
                     {activePodCount} Active POD{activePodCount !== 1 ? 's' : ''}
                   </Text>
                 </div>
@@ -195,10 +301,10 @@ export default function DashboardPage() {
                     {podConfig.length} configured
                   </Badge>
                 )}
-                <IconArrowRight size={16} color={AGUA} />
+                <IconArrowRight size={16} color={AQUA} />
               </Group>
             </Group>
-            <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: 'Barlow' }}>
+            <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
               Sprint progress, velocity, team utilization &amp; Jira board metrics
             </Text>
           </Card>
@@ -211,7 +317,7 @@ export default function DashboardPage() {
             onClick={() => navigate('/jira-releases')}
             style={{
               cursor: 'pointer',
-              borderLeft: `4px solid ${AGUA}`,
+              borderLeft: `4px solid ${AQUA}`,
               transition: 'box-shadow 0.15s ease, transform 0.1s ease',
             }}
             onMouseEnter={e => {
@@ -228,7 +334,7 @@ export default function DashboardPage() {
                 <div
                   style={{
                     width: 40, height: 40, borderRadius: 8,
-                    backgroundColor: AGUA,
+                    backgroundColor: AQUA,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}
@@ -236,10 +342,10 @@ export default function DashboardPage() {
                   <IconTag size={22} color="white" />
                 </div>
                 <div>
-                  <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: 'Barlow' }}>
+                  <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: FONT_FAMILY }}>
                     Release Tracker
                   </Text>
-                  <Text size="xl" fw={700} style={{ fontFamily: 'Barlow', color: AGUA }}>
+                  <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
                     {trackedReleaseCount} Version{trackedReleaseCount !== 1 ? 's' : ''}
                   </Text>
                 </div>
@@ -250,10 +356,10 @@ export default function DashboardPage() {
                     {releaseConfig.filter(c => c.versions.length > 0).length} PODs tracked
                   </Badge>
                 )}
-                <IconArrowRight size={16} color={AGUA} />
+                <IconArrowRight size={16} color={AQUA} />
               </Group>
             </Group>
-            <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: 'Barlow' }}>
+            <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
               Fix version progress, issue types, hours logged &amp; release notes per POD
             </Text>
           </Card>
@@ -292,10 +398,10 @@ export default function DashboardPage() {
                     <IconHeadset size={22} color="white" />
                   </div>
                   <div>
-                    <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: 'Barlow' }}>
+                    <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: FONT_FAMILY }}>
                       Support Queue
                     </Text>
-                    <Text size="xl" fw={700} style={{ fontFamily: 'Barlow', color: supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#2f9e44' }}>
+                    <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#2f9e44' }}>
                       {supportTotal} Open
                     </Text>
                   </div>
@@ -309,10 +415,10 @@ export default function DashboardPage() {
                   {supportStale === 0 && supportTotal > 0 && (
                     <Badge size="sm" variant="light" color="green">All active</Badge>
                   )}
-                  <IconArrowRight size={16} color={supportHealth === 'red' ? '#fa5252' : AGUA} />
+                  <IconArrowRight size={16} color={supportHealth === 'red' ? '#fa5252' : AQUA} />
                 </Group>
               </Group>
-              <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: 'Barlow' }}>
+              <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
                 {supportBoards.filter(b => b.enabled).length} board{supportBoards.filter(b => b.enabled).length !== 1 ? 's' : ''} monitored — ticket health &amp; stale tracking
               </Text>
             </Card>
@@ -364,8 +470,7 @@ export default function DashboardPage() {
         {/* ── Utilization Heatmap ── */}
         <Widget id="heatmap" title="Utilization Overview">
           {!heatmapLoading && miniHeatmap.length > 0 && (
-        <ChartCard title="Utilization Overview" minHeight={400}>
-          <Title order={4} mb="sm">Utilization Overview</Title>
+        <ChartCard title="Utilization Overview" minHeight={0}>
           <Table.ScrollContainer minWidth={800}>
             <Table withTableBorder withColumnBorders>
               <Table.Thead>

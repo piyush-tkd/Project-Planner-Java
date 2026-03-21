@@ -8,12 +8,11 @@ import {
   IconDashboard, IconBriefcase, IconHexagons, IconChartBar,
   IconTicket, IconPlayerPlay, IconCalendar, IconCoin,
   IconArrowRight, IconArrowLeft, IconCheck, IconExternalLink,
+  IconBrain, IconCalendarEvent, IconKeyboard,
 } from '@tabler/icons-react';
 import { useTourStatus, useMarkTourSeen } from '../../api/tour';
 import { useAuth } from '../../auth/AuthContext';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 
 // ── Tour steps ────────────────────────────────────────────────────────────────
 
@@ -34,7 +33,7 @@ const TOUR_STEPS: TourStep[] = [
     description:
       'Your command centre for tracking engineering capacity, planning projects, and monitoring team health across all PODs.',
     highlights: ['Live capacity alerts', 'POD utilisation summary', 'Project health at a glance'],
-    color: AGUA,
+    color: AQUA,
     path: '/',
     pageLabel: 'Go to Dashboard',
   },
@@ -106,6 +105,34 @@ const TOUR_STEPS: TourStep[] = [
     highlights: ['Left nav groups collapse / expand', 'Notification bell for critical Jira alerts', 'Dark mode toggle in the header'],
     color: DEEP_BLUE,
   },
+  {
+    icon: <IconBrain size={32} />,
+    title: 'Ask AI — Natural Language Search',
+    description:
+      "Type questions in plain English to look up resources, projects, PODs, and more. Ask AI understands queries like 'show me P0 projects' or 'who is John?' and navigates you straight to the answer.",
+    highlights: ['Natural language queries', 'Auto-navigation', 'Entity drill-down'],
+    color: AQUA,
+    path: '/nlp',
+    pageLabel: 'Try Ask AI',
+  },
+  {
+    icon: <IconCalendarEvent size={32} />,
+    title: 'Sprint & Release Planning',
+    description:
+      'Plan sprints, manage release calendars, and track code-freeze dates. The Sprint Planner uses AI to recommend optimal resource allocation across PODs.',
+    highlights: ['Sprint calendar view', 'AI-powered allocation', 'Release tracking'],
+    color: '#f59e0b',
+    path: '/sprint-calendar',
+    pageLabel: 'View Sprint Calendar',
+  },
+  {
+    icon: <IconKeyboard size={32} />,
+    title: 'Keyboard Shortcuts',
+    description:
+      "Navigate faster with keyboard shortcuts. Press ⌘K to search, ? for the shortcuts panel, or G followed by a letter to jump directly to any page.",
+    highlights: ['⌘K for search', '? for shortcuts', 'G+D for Dashboard, G+P for Projects'],
+    color: '#6366f1',
+  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -165,7 +192,7 @@ export default function TourGuide() {
       overlayProps={{ blur: 3, backgroundOpacity: 0.4 }}
       styles={{
         header: { background: DEEP_BLUE, padding: '16px 24px' },
-        title: { color: '#fff', fontFamily: 'Barlow, system-ui, sans-serif', fontWeight: 700, fontSize: 15 },
+        title: { color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 700, fontSize: 15 },
         close: { color: '#fff', '&:hover': { background: 'rgba(255,255,255,0.15)' } },
         body: { padding: 0 },
       }}
@@ -194,7 +221,7 @@ export default function TourGuide() {
               </ThemeIcon>
               <div style={{ flex: 1 }}>
                 <Group gap="xs" align="center" mb={4}>
-                  <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow', fontWeight: 700, lineHeight: 1.3 }}>
+                  <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700, lineHeight: 1.3 }}>
                     {current.title}
                   </Title>
                   {current.path && (

@@ -65,7 +65,10 @@ public class CacheConfig {
 
             // ── Support Queue ───────────────────────────────────────────────
             jiraCache("jira-all-boards",         15, 1),    // all Jira boards for picker   — 15 min TTL
-            jiraCache("jira-support-issues",      2, 50)    // non-Done issues per board    —  2 min TTL
+            jiraCache("jira-support-issues",      2, 50),   // non-Done issues per board    —  2 min TTL
+
+            // ── NLP ───────────────────────────────────────────────────────
+            jiraCache("nlp-catalog",              15, 1)     // entity catalog for NLP       — 15 min TTL
         ));
         return manager;
     }

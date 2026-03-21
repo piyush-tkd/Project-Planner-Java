@@ -4,6 +4,7 @@ import {
   ActionIcon, Tooltip, Loader, Center, Alert, Tabs, ThemeIcon,
   SimpleGrid, Card, Divider, Button, TextInput,
 } from '@mantine/core';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   IconCoin, IconAlertCircle, IconPencil, IconCheck, IconX,
   IconSearch, IconInfoCircle, IconChartBar, IconUsers,
@@ -11,9 +12,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useResources, useCostRates, useUpdateActualRate } from '../../api/resources';
 import { ResourceResponse } from '../../types/resource';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA     = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -101,7 +100,7 @@ function RateRow({ resource, defaultRate }: RateRowProps) {
           </Group>
         ) : (
           <Group gap={6} wrap="nowrap">
-            <Text size="sm" fw={resource.actualRate != null ? 600 : 400} c={resource.actualRate != null ? AGUA : 'dimmed'}>
+            <Text size="sm" fw={resource.actualRate != null ? 600 : 400} c={resource.actualRate != null ? AQUA : 'dimmed'}>
               {resource.actualRate != null ? fmt(resource.actualRate) + '/hr' : 'Using default'}
             </Text>
             <Tooltip label="Edit individual rate">
@@ -166,14 +165,14 @@ export default function ResourceROIPage() {
     return { total: active.length, withRate: withRate.length, withDefault: withDefault.length, noRate: noRate.length, totalMonthly };
   }, [resources, defaultRateMap]);
 
-  if (loadingRes || loadingRates) return <Center h={300}><Loader /></Center>;
+  if (loadingRes || loadingRates) return <LoadingSpinner variant="chart" message="Loading resource ROI..." />;
   if (errRes) return <Alert color="red" icon={<IconAlertCircle />}>Failed to load resources.</Alert>;
 
   return (
     <Stack gap="lg">
       <Group justify="space-between" wrap="nowrap">
         <div>
-          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: 'Barlow', fontWeight: 700 }}>
+          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
             Resource ROI
           </Title>
           <Text size="sm" c="dimmed">
@@ -202,7 +201,7 @@ export default function ResourceROIPage() {
             </ThemeIcon>
             <div>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Individual Rates Set</Text>
-              <Text size="xl" fw={700} c={AGUA}>{kpis.withRate}</Text>
+              <Text size="xl" fw={700} c={AQUA}>{kpis.withRate}</Text>
               <Text size="xs" c="dimmed">of {kpis.total} resources</Text>
             </div>
           </Group>

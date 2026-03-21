@@ -42,6 +42,14 @@ export function useDeleteProject() {
   });
 }
 
+export function useCopyProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiClient.post(`/projects/${id}/copy`, {}).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
+
 export function useProjectPodMatrix() {
   return useQuery<ProjectPodMatrixResponse[]>({
     queryKey: ['project-pod-matrix'],

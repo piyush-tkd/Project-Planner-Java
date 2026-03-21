@@ -48,6 +48,11 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/copy")
+    public ResponseEntity<ProjectResponse> copy(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(projectService.copy(id));
+    }
+
     @GetMapping("/pod-matrix")
     public ResponseEntity<List<ProjectPodMatrixResponse>> getAllPodPlannings() {
         return ResponseEntity.ok(projectService.getAllPodPlannings());

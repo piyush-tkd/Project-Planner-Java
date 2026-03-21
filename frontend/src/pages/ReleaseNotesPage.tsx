@@ -4,6 +4,7 @@ import {
   Collapse, ActionIcon, Divider, SimpleGrid, ThemeIcon, Tooltip,
   ScrollArea, Table, Box, SegmentedControl, MultiSelect, TextInput,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconPackage, IconAlertTriangle, IconChevronDown, IconChevronUp,
   IconExternalLink, IconSearch, IconCheck, IconTag,
@@ -12,9 +13,9 @@ import {
 import { useJiraStatus, useReleaseMetrics, useSearchReleaseVersion, useAllFixVersions, type IssueRow, type ReleaseMetrics } from '../api/jira';
 import { useReleases } from '../api/releases';
 import type { ReleaseCalendarResponse } from '../types/project';
+import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 
 // ── Brand / colour helpers ────────────────────────────────────────────────────
-const DEEP_BLUE = '#0C2340';
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   'Story':          { bg: '#EDE9FE', text: '#7C3AED' },
@@ -188,7 +189,7 @@ function ReleaseSection({
             </ThemeIcon>
             <div>
               <Group gap="xs" wrap="nowrap">
-                <Text fw={700} c="white" style={{ fontFamily: 'Barlow, system-ui' }}>
+                <Text fw={700} c="white" style={{ fontFamily: FONT_FAMILY }}>
                   {metrics.versionName}
                 </Text>
                 <Badge size="xs" variant="light" color="gray" style={{ opacity: 0.8 }}>
@@ -477,7 +478,7 @@ export default function ReleaseNotesPage() {
             <IconPackage size={20} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={2} style={{ color: DEEP_BLUE, fontFamily: 'Barlow, system-ui' }}>
+            <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Release Notes
             </Title>
             <Text size="sm" c="dimmed">
@@ -548,10 +549,7 @@ export default function ReleaseNotesPage() {
 
       {/* ── Loading skeleton ──────────────────────────────────────────── */}
       {metricsLoading && (
-        <Group justify="center" py="xl">
-          <Loader size="md" />
-          <Text c="dimmed">Fetching release data from Jira…</Text>
-        </Group>
+        <LoadingSpinner variant="table" message="Loading release notes..." />
       )}
 
       {/* ── Empty state: nothing tracked and nothing selected ────────── */}

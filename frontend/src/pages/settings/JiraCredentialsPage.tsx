@@ -4,6 +4,7 @@ import {
   Alert, Loader, ThemeIcon, Box, Stack, Divider, Badge,
   Paper, Anchor,
 } from '@mantine/core';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { notifications } from '@mantine/notifications';
 import {
   IconKey, IconDeviceFloppy, IconAlertTriangle, IconCircleCheck,
@@ -13,9 +14,7 @@ import {
   useJiraCredentials, useSaveJiraCredentials, useJiraStatus, useClearJiraCache,
   useCapexSettings, useSaveCapexSettings,
 } from '../../api/jira';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 // ── CapEx Field Section ────────────────────────────────────────────────
 
@@ -165,7 +164,7 @@ export default function JiraCredentialsPage() {
     }
   };
 
-  if (isLoading) return <Loader mt="xl" />;
+  if (isLoading) return <LoadingSpinner variant="form" message="Loading credentials..." />;
 
   const isConfigured = status?.configured ?? false;
 
@@ -177,7 +176,7 @@ export default function JiraCredentialsPage() {
           <IconKey size={22} color="white" />
         </ThemeIcon>
         <div>
-          <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+          <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
             Jira Credentials
           </Title>
           <Text size="sm" c="dimmed">
@@ -231,7 +230,7 @@ export default function JiraCredentialsPage() {
           href="https://id.atlassian.com/manage-profile/security/api-tokens"
           target="_blank"
           size="sm"
-          style={{ color: AGUA }}
+          style={{ color: AQUA }}
         >
           id.atlassian.com → Security → API tokens
           <IconLink size={11} style={{ marginLeft: 3, verticalAlign: 'middle' }} />
@@ -247,7 +246,7 @@ export default function JiraCredentialsPage() {
             value={baseUrl}
             onChange={e => handleChange('baseUrl', e.currentTarget.value)}
             leftSection={<IconLink size={15} />}
-            styles={{ input: { fontFamily: 'Barlow' } }}
+            styles={{ input: { fontFamily: FONT_FAMILY } }}
           />
 
           <TextInput
@@ -256,7 +255,7 @@ export default function JiraCredentialsPage() {
             placeholder="you@yourcompany.com"
             value={email}
             onChange={e => handleChange('email', e.currentTarget.value)}
-            styles={{ input: { fontFamily: 'Barlow' } }}
+            styles={{ input: { fontFamily: FONT_FAMILY } }}
           />
 
           <PasswordInput
@@ -269,7 +268,7 @@ export default function JiraCredentialsPage() {
             placeholder={saved?.hasToken ? '(unchanged)' : 'Paste API token…'}
             value={apiToken}
             onChange={e => handleChange('apiToken', e.currentTarget.value)}
-            styles={{ input: { fontFamily: 'Barlow' } }}
+            styles={{ input: { fontFamily: FONT_FAMILY } }}
           />
 
           <Divider />

@@ -53,6 +53,23 @@ apiClient.interceptors.response.use(
       message = data?.message || 'Server error. Please try again later.';
     }
 
+    // Log API errors to backend (lazy import to avoid circular dependency; skip error-logs endpoint)
+    const requestUrl = error.config?.url || '';
+    if (!requestUrl.includes('/error-logs')) {
+      import('./errorLogs').then(({ logErrorToServer }) => {
+        logErrorToServer({
+          source: 'FRONTEND',
+          severity: status >= 500 ? 'ERROR' : 'WARN',
+          errorType: `HTTP_${status}`,
+          message,
+          apiEndpoint: requestUrl,
+          httpStatus: status,
+          pageUrl: window.location.pathname,
+          userAgent: navigator.userAgent,
+        });
+      }).catch(() => { /* ignore */ });
+    }
+
     return Promise.reject(new Error(message));
   }
 );

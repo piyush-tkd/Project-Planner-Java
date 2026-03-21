@@ -12,12 +12,10 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAuth } from '../auth/AuthContext';
-
-// Baylor Genetics brand colors from Figma OOPPv2
-const DEEP_BLUE  = '#0C2340';
-const AGUA       = '#1F9196';
-const GREY_400   = '#9EA8B3';
-const GREY_200   = '#E5E8EC';
+import {
+  DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS,
+  FONT_FAMILY, SHADOW,
+} from '../brandTokens';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -50,7 +48,7 @@ export default function LoginPage() {
       display: 'flex',
       height: '100vh',
       width: '100vw',
-      fontFamily: 'Barlow, system-ui, sans-serif',
+      fontFamily: FONT_FAMILY,
     }}>
 
       {/* ── Left panel: brand / logo ── */}
@@ -62,23 +60,34 @@ export default function LoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '48px',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        {/* Logo mark — teal triangle/arrow icon mimicking Baylor Genetics mark */}
-        <svg width="52" height="48" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 16 }}>
-          <polygon points="26,0 52,48 0,48" fill="none" stroke={AGUA} strokeWidth="4" />
-          <polygon points="26,10 44,44 8,44" fill={AGUA} opacity="0.25" />
+        {/* Subtle decorative gradient overlay */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse at 30% 40%, rgba(45,204,211,0.08) 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }} />
+
+        {/* Logo mark — Aqua triangle */}
+        <svg width="52" height="48" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 16, position: 'relative' }}>
+          <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA} strokeWidth="4" />
+          <polygon points="26,10 44,44 8,44" fill={AQUA} opacity="0.25" />
         </svg>
 
         <Title
           order={1}
           style={{
             color: '#FFFFFF',
-            fontFamily: 'Barlow, system-ui, sans-serif',
-            fontWeight: 700,
+            fontFamily: FONT_FAMILY,
+            fontWeight: 300,
             fontSize: 36,
             letterSpacing: '0.04em',
             textAlign: 'center',
-            lineHeight: 1.15,
+            lineHeight: 1.1,
+            position: 'relative',
           }}
         >
           ENGINEERING<br />PORTFOLIO<br />PLANNER
@@ -87,12 +96,23 @@ export default function LoginPage() {
         <div style={{
           width: 48,
           height: 3,
-          backgroundColor: AGUA,
+          backgroundColor: AQUA,
           borderRadius: 2,
           marginTop: 24,
           marginBottom: 24,
+          position: 'relative',
         }} />
 
+        <Text style={{
+          color: AQUA_TINTS[50],
+          fontSize: 13,
+          fontFamily: FONT_FAMILY,
+          textAlign: 'center',
+          position: 'relative',
+          letterSpacing: '0.02em',
+        }}>
+          Baylor Genetics
+        </Text>
       </div>
 
       {/* ── Right panel: login form ── */}
@@ -110,19 +130,19 @@ export default function LoginPage() {
             order={2}
             style={{
               color: DEEP_BLUE,
-              fontFamily: 'Barlow, system-ui, sans-serif',
-              fontWeight: 700,
-              fontSize: 28,
+              fontFamily: FONT_FAMILY,
+              fontWeight: 300,
+              fontSize: 32,
               marginBottom: 6,
             }}
           >
-            Welcome!
+            Welcome
           </Title>
 
           <Text style={{
-            color: GREY_400,
+            color: DEEP_BLUE_TINTS[50],
             fontSize: 14,
-            fontFamily: 'Barlow, system-ui, sans-serif',
+            fontFamily: FONT_FAMILY,
             marginBottom: 32,
           }}>
             Log in to manage your portfolio and view reports.
@@ -152,19 +172,19 @@ export default function LoginPage() {
                 autoComplete="username"
                 styles={{
                   label: {
-                    fontFamily: 'Barlow, system-ui, sans-serif',
-                    fontWeight: 600,
+                    fontFamily: FONT_FAMILY,
+                    fontWeight: 500,
                     fontSize: 13,
                     color: DEEP_BLUE,
                     marginBottom: 4,
                   },
                   input: {
-                    fontFamily: 'Barlow, system-ui, sans-serif',
+                    fontFamily: FONT_FAMILY,
                     fontSize: 14,
-                    borderColor: GREY_200,
+                    borderColor: DEEP_BLUE_TINTS[10],
                     borderRadius: 6,
-                    height: 40,
-                    '&:focus': { borderColor: AGUA },
+                    height: 42,
+                    '&:focus': { borderColor: AQUA },
                   },
                 }}
               />
@@ -179,18 +199,18 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   styles={{
                     label: {
-                      fontFamily: 'Barlow, system-ui, sans-serif',
-                      fontWeight: 600,
+                      fontFamily: FONT_FAMILY,
+                      fontWeight: 500,
                       fontSize: 13,
                       color: DEEP_BLUE,
                       marginBottom: 4,
                     },
                     input: {
-                      fontFamily: 'Barlow, system-ui, sans-serif',
+                      fontFamily: FONT_FAMILY,
                       fontSize: 14,
-                      borderColor: GREY_200,
+                      borderColor: DEEP_BLUE_TINTS[10],
                       borderRadius: 6,
-                      height: 40,
+                      height: 42,
                     },
                   }}
                 />
@@ -199,8 +219,8 @@ export default function LoginPage() {
                     href="#"
                     style={{
                       fontSize: 13,
-                      color: AGUA,
-                      fontFamily: 'Barlow, system-ui, sans-serif',
+                      color: AQUA,
+                      fontFamily: FONT_FAMILY,
                       textDecoration: 'none',
                     }}
                     onClick={e => e.preventDefault()}
@@ -217,14 +237,15 @@ export default function LoginPage() {
                 disabled={!username || !password}
                 style={{
                   backgroundColor: DEEP_BLUE,
-                  borderRadius: 40,
-                  height: 42,
-                  fontFamily: 'Barlow, system-ui, sans-serif',
-                  fontWeight: 600,
+                  borderRadius: 6,
+                  height: 44,
+                  fontFamily: FONT_FAMILY,
+                  fontWeight: 500,
                   fontSize: 16,
                   letterSpacing: '0.01em',
                   border: 'none',
                   marginTop: 8,
+                  boxShadow: SHADOW.sm,
                 }}
               >
                 Log In

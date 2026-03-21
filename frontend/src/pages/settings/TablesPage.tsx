@@ -5,6 +5,7 @@ import {
   Kbd, Code, ThemeIcon, SimpleGrid, Alert, Anchor, UnstyledButton,
   Tabs, Divider,
 } from '@mantine/core';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   IconDatabase, IconSearch, IconTable, IconChevronUp, IconChevronDown,
   IconKey, IconInfoCircle, IconRefresh, IconSelector,
@@ -53,7 +54,7 @@ function formatCellValue(val: unknown): string {
 function SchemaPanel({ tableName }: { tableName: string }) {
   const { data: schema = [], isLoading } = useDbSchema(tableName);
 
-  if (isLoading) return <Center py="md"><Loader size="sm" /></Center>;
+  if (isLoading) return <LoadingSpinner variant="table" />;
 
   return (
     <Table fz="xs" withColumnBorders withTableBorder>
@@ -137,7 +138,7 @@ function DataPanel({ tableName }: { tableName: string }) {
     tableName, page - 1, parseInt(pageSize), debouncedSearch, sortCol, sortDir,
   );
 
-  if (isLoading) return <Center py="xl"><Loader size="sm" /></Center>;
+  if (isLoading) return <LoadingSpinner variant="table" />;
 
   const columns = data?.columns ?? [];
   const rows    = data?.rows    ?? [];
@@ -145,9 +146,9 @@ function DataPanel({ tableName }: { tableName: string }) {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Toolbar */}
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" wrap="nowrap" style={{ flexShrink: 0 }}>
         <TextInput
           size="xs"
           placeholder="Search all columns…"
@@ -172,7 +173,7 @@ function DataPanel({ tableName }: { tableName: string }) {
       </Group>
 
       {/* Table */}
-      <ScrollArea type="auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+      <ScrollArea type="auto" style={{ flex: 1, minHeight: 0 }}>
         <Table fz="xs" withColumnBorders withTableBorder highlightOnHover
           style={{ whiteSpace: 'nowrap', minWidth: columns.length * 120 }}>
           <Table.Thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
@@ -248,7 +249,7 @@ function DataPanel({ tableName }: { tableName: string }) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Group justify="center">
+        <Group justify="center" style={{ flexShrink: 0, paddingBottom: 4 }}>
           <Pagination value={page} onChange={setPage} total={totalPages} size="sm" />
         </Group>
       )}
@@ -302,7 +303,7 @@ export default function TablesPage() {
         <Text size="xs">Read-only view. No writes are possible from this page. Data is fetched live from the PostgreSQL database.</Text>
       </Alert>
 
-      <Group align="flex-start" gap="md" style={{ height: 'calc(100vh - 220px)' }} wrap="nowrap">
+      <Group align="flex-start" gap="md" style={{ height: 'calc(100vh - 260px)' }} wrap="nowrap">
 
         {/* ── Left panel: table list ─────────────────────────────────────── */}
         <Paper withBorder style={{ width: 260, flexShrink: 0, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -316,7 +317,7 @@ export default function TablesPage() {
             />
           </Box>
           <ScrollArea style={{ flex: 1 }} type="auto">
-            {isLoading && <Center py="xl"><Loader size="sm" /></Center>}
+            {isLoading && <LoadingSpinner variant="table" />}
             {filteredTables.map(t => (
               <UnstyledButton
                 key={t.table_name}
@@ -402,7 +403,7 @@ export default function TablesPage() {
                   </Tabs.Tab>
                 </Tabs.List>
 
-                <Tabs.Panel value="data" style={{ flex: 1, overflow: 'hidden' }}>
+                <Tabs.Panel value="data" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <DataPanel tableName={selectedTable} />
                 </Tabs.Panel>
 

@@ -220,7 +220,7 @@ export default function AvailabilityPage() {
     }
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading availability..." />;
   if (error) return <Text c="red">Error loading availability</Text>;
 
   const sourceOptions = resourceList.map(r => ({

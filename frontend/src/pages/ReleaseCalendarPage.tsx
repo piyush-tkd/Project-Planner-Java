@@ -4,6 +4,7 @@ import {
   Textarea, Alert, Drawer, ScrollArea, Anchor, Loader, Center, Box, SimpleGrid,
   SegmentedControl, Tooltip, ThemeIcon, Autocomplete,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
@@ -472,7 +473,7 @@ export default function ReleaseCalendarPage() {
           Regular releases follow the monthly cadence (Sunday following first Tuesday). Special releases are ad-hoc additions. Click any release row to view associated Jira issues by fix version.
         </Alert>
 
-        {isLoading && <Text c="dimmed" ta="center">Loading...</Text>}
+        {isLoading && <LoadingSpinner variant="table" message="Loading release calendar..." />}
 
         {/* ── Current Release ─────────────────────────────────────────────── */}
         {currentReleases.length > 0 && (

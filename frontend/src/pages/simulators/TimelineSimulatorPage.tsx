@@ -54,7 +54,7 @@ export default function TimelineSimulatorPage() {
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading simulator..." />;
 
   return (
     <Stack>

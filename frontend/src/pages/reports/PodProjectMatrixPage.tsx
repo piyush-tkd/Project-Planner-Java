@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
   planningId: number;
@@ -31,15 +32,12 @@ interface ProjectPodMatrixResponse {
   defaultPattern: string;
   podId: number;
   podName: string;
-  tshirtSize: string;
+  tshirtSize: string | null;
   complexityOverride: number | null;
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
 }
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#d3f9d8',
@@ -131,7 +129,7 @@ export default function PodProjectMatrixPage() {
     { value: 'CANCELLED', label: 'Cancelled' },
   ];
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading POD-project matrix..." />;
   if (isError) return <Text color="red">Failed to load matrix data</Text>;
 
   const formatMonthRange = (startMonth: number | null, duration: number | null) => {
@@ -151,7 +149,7 @@ export default function PodProjectMatrixPage() {
   return (
     <Stack gap="md" p="md">
       <div>
-        <Title order={1}>POD-Project Matrix</Title>
+        <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>POD-Project Matrix</Title>
         <Text size="sm" c="dimmed">
           Assign PODs to projects and track allocation by timeline
         </Text>
@@ -194,7 +192,7 @@ export default function PodProjectMatrixPage() {
         <table
           style={{
             borderCollapse: 'collapse',
-            fontFamily: 'Barlow, system-ui',
+            fontFamily: FONT_FAMILY,
             fontSize: '14px',
             minWidth: '100%',
           }}
@@ -311,11 +309,11 @@ export default function PodProjectMatrixPage() {
                           <Stack gap={2}>
                             <Badge
                               color={
-                                TSHIRT_BADGE_COLORS[item.tshirtSize] || 'gray'
+                                TSHIRT_BADGE_COLORS[item.tshirtSize ?? ''] || 'gray'
                               }
                               size="sm"
                             >
-                              {item.tshirtSize}
+                              {item.tshirtSize ?? '–'}
                             </Badge>
                             <Text size="xs" fw={500} c={textColor}>
                               {monthRange}
@@ -358,9 +356,9 @@ export default function PodProjectMatrixPage() {
                               T-Shirt Size
                             </Text>
                             <Badge
-                              color={TSHIRT_BADGE_COLORS[item.tshirtSize]}
+                              color={TSHIRT_BADGE_COLORS[item.tshirtSize ?? ''] || 'gray'}
                             >
-                              {item.tshirtSize}
+                              {item.tshirtSize ?? '–'}
                             </Badge>
                           </div>
                           <div>

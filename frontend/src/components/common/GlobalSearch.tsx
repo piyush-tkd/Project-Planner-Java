@@ -13,6 +13,7 @@ import {
 import {
   IconSearch, IconBriefcase, IconUsers, IconHexagons,
   IconChartBar, IconDashboard, IconSettings, IconArrowRight,
+  IconBrain,
 } from '@tabler/icons-react';
 import { useProjects } from '../../api/projects';
 import { useResources } from '../../api/resources';
@@ -31,6 +32,7 @@ interface SearchResult {
 // Static nav pages searchable
 const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-dash',    label: 'Dashboard',           category: 'Pages', icon: <IconDashboard size={15} />,  path: '/' },
+  { id: 'p-nlp',     label: 'Ask AI',              category: 'Pages', icon: <IconBrain size={15} />,      path: '/nlp' },
   { id: 'p-res',     label: 'Resources',            category: 'Pages', icon: <IconUsers size={15} />,      path: '/resources' },
   { id: 'p-proj',    label: 'Projects',             category: 'Pages', icon: <IconBriefcase size={15} />,  path: '/projects' },
   { id: 'p-pods',    label: 'PODs',                 category: 'Pages', icon: <IconHexagons size={15} />,   path: '/pods' },

@@ -53,6 +53,11 @@ import SprintCalendarPage from './pages/SprintCalendarPage';
 import ReleaseCalendarPage from './pages/ReleaseCalendarPage';
 import ReleaseNotesPage from './pages/ReleaseNotesPage';
 import SprintPlanningRecommenderPage from './pages/SprintPlanningRecommenderPage';
+import NlpLandingPage from './pages/NlpLandingPage';
+import NlpSettingsPage from './pages/settings/NlpSettingsPage';
+import NlpOptimizerPage from './pages/settings/NlpOptimizerPage';
+import FeedbackHubPage from './pages/settings/FeedbackHubPage';
+import ErrorLogPage from './pages/settings/ErrorLogPage';
 
 export default function App() {
   return (
@@ -227,6 +232,28 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="sprint_planner" />}>
             <Route path="/sprint-planner" element={<SprintPlanningRecommenderPage />} />
+          </Route>
+
+          {/* ── NLP ──────────────────────────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="nlp_landing" />}>
+            <Route path="/nlp" element={<NlpLandingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="nlp_settings" />}>
+            <Route path="/settings/nlp" element={<NlpSettingsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="nlp_optimizer" />}>
+            <Route path="/settings/nlp-optimizer" element={<NlpOptimizerPage />} />
+          </Route>
+
+          {/* ── Feedback & Error Logs ─────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="feedback_hub" />}>
+            <Route path="/settings/feedback-hub" element={<FeedbackHubPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="error_log" />}>
+            <Route path="/settings/error-log" element={<ErrorLogPage />} />
           </Route>
 
           {/* ── Settings ─────────────────────────────────────── */}

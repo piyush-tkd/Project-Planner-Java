@@ -35,7 +35,7 @@ export default function PodResourceSummaryPage() {
 
   const pods = useMemo(() => data ?? [], [data]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading POD resources..." />;
   if (error) return <Text c="red">Error loading POD resource summary</Text>;
 
   return (

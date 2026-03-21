@@ -4,6 +4,7 @@ import {
   Progress, ThemeIcon, Center, Loader, Paper, Tooltip,
   Table, Anchor, Divider, Button, SegmentedControl, TextInput,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconBrain, IconAlertTriangle, IconCheck, IconInfoCircle,
   IconChevronDown, IconChevronUp, IconExternalLink, IconTrendingUp,
@@ -1041,12 +1042,7 @@ export default function SprintPlanningRecommenderPage() {
 
       {/* ── Loading ────────────────────────────────────────────────────────── */}
       {isLoading && activeSprint && (
-        <Center py="lg">
-          <Stack align="center" gap="xs">
-            <Loader size="sm" />
-            <Text size="sm" c="dimmed">Loading sprint data from Jira and planning matrix…</Text>
-          </Stack>
-        </Center>
+        <LoadingSpinner variant="cards" message="Loading sprint planner..." />
       )}
 
       {/* ── No sprint selected ─────────────────────────────────────────────── */}

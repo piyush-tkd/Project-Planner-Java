@@ -14,9 +14,7 @@ import {
   usePodFixVersions, useClearJiraCache,
   ReleaseConfigResponse, ReleaseConfigRequest,
 } from '../../api/jira';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 // ── Per-pod version picker ────────────────────────────────────────────
 
@@ -53,7 +51,7 @@ function PodVersionPicker({ config, selectedVersions, onChange }: PodVersionPick
             <IconTag size={14} color="white" />
           </ThemeIcon>
           <div>
-            <Text fw={600} size="sm" style={{ fontFamily: 'Barlow', color: DEEP_BLUE }}>
+            <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
               {config.podDisplayName}
             </Text>
             <Group gap={4} mt={2}>
@@ -88,7 +86,7 @@ function PodVersionPicker({ config, selectedVersions, onChange }: PodVersionPick
         onChange={onChange}
         clearable
         size="sm"
-        styles={{ input: { fontFamily: 'Barlow' } }}
+        styles={{ input: { fontFamily: FONT_FAMILY } }}
       />
 
       {selectedVersions.length > 0 && (
@@ -206,7 +204,7 @@ export default function ReleaseSettingsPage() {
             <IconTag size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Release Version Settings
             </Title>
             <Text size="sm" c="dimmed">
@@ -253,9 +251,9 @@ export default function ReleaseSettingsPage() {
 
       {/* ── Apply a version to ALL PODs at once ─────────────────────── */}
       {savedConfig.length > 0 && (
-        <Paper withBorder p="md" radius="md" mb="md" style={{ background: '#f0fdf4', borderColor: AGUA }}>
+        <Paper withBorder p="md" radius="md" mb="md" style={{ background: '#f0fdf4', borderColor: AQUA }}>
           <Group gap="xs" mb={8}>
-            <ThemeIcon size={22} radius="sm" style={{ backgroundColor: AGUA }}>
+            <ThemeIcon size={22} radius="sm" style={{ backgroundColor: AQUA }}>
               <IconLayersIntersect size={13} color="white" />
             </ThemeIcon>
             <Text fw={600} size="sm" style={{ color: DEEP_BLUE }}>Apply version to all PODs</Text>
@@ -274,7 +272,7 @@ export default function ReleaseSettingsPage() {
             />
             <Button
               size="sm"
-              style={{ backgroundColor: AGUA }}
+              style={{ backgroundColor: AQUA }}
               disabled={!globalVersion.trim()}
               onClick={handleApplyToAll}
             >

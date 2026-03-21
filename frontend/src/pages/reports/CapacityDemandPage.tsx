@@ -162,7 +162,7 @@ export default function CapacityDemandPage() {
     });
   }, [gapData, pods, monthLabels, months, workingHoursPerMonth]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading capacity vs demand..." />;
   if (error) return <Text c="red">Error loading capacity demand data</Text>;
 
   const fmtValWithWh = (v: number, wh: number) => unit === 'hours' ? formatHours(v) : formatFte(wh > 0 ? v / wh : 0);

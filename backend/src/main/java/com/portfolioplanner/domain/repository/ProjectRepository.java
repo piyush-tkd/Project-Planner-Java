@@ -13,4 +13,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByStatus(ProjectStatus status);
 
     List<Project> findByStatusIn(List<ProjectStatus> statuses);
+
+    java.util.Optional<Project> findByNameIgnoreCase(String name);
 }

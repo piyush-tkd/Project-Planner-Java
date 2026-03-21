@@ -1,0 +1,166 @@
+/* ══════════════════════════════════════════════════════════════════════
+   Global Style Enhancements — Baylor Genetics Brand (v01.1)
+   Deep Blue: #0C2340  |  Aqua: #2DCCD3  |  Font: DIN Next LT Pro / Arial
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Web-font import (DIN Next LT Pro is licensed; Arial fallback auto) ── */
+
+/* ── Table improvements ─────────────────────────────────────────────── */
+.mantine-Table-thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--mantine-color-body);
+  backdrop-filter: blur(8px);
+  font-weight: 700;
+  color: #0C2340;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid #0C2340 !important;
+}
+
+/* Alternate row fill — Deep Blue 10% tint per brand spec */
+.mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
+.mantine-Table-tr[data-striped="even"]:nth-of-type(even) {
+  background-color: #E7E9EC;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
+[data-mantine-color-scheme="dark"] .mantine-Table-tr[data-striped="even"]:nth-of-type(even) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Hover — Aqua 10% tint */
+.mantine-Table-tr[data-hover]:hover {
+  background-color: #EAFAFB !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Table-tr[data-hover]:hover {
+  background-color: rgba(45, 204, 211, 0.08) !important;
+}
+
+/* ── Focus-visible outlines for accessibility ─────────────────────── */
+:focus-visible {
+  outline: 2px solid #2DCCD3;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.mantine-Button-root:focus-visible,
+.mantine-ActionIcon-root:focus-visible,
+.mantine-UnstyledButton-root:focus-visible {
+  outline: 2px solid #2DCCD3;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 204, 211, 0.15);
+}
+
+/* ── Card surface improvements ────────────────────────────────────── */
+.mantine-Card-root,
+.mantine-Paper-root[data-with-border] {
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.mantine-Card-root:hover {
+  box-shadow: 0 6px 20px rgba(12, 35, 64, 0.10);
+}
+
+/* ── Page transition animation ────────────────────────────────────── */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-fade-in 250ms ease-out;
+}
+
+/* ── Smooth scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(12, 35, 64, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(12, 35, 64, 0.25);
+}
+
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── NLP Breadcrumb hover ─────────────────────────────────────────── */
+.nlp-breadcrumb-btn:hover {
+  background-color: #EAFAFB !important;
+  box-shadow: 0 0 0 1px #2DCCD3;
+}
+
+/* ── Selection colour ─────────────────────────────────────────────── */
+::selection {
+  background: rgba(45, 204, 211, 0.20);
+  color: #0C2340;
+}
+
+/* ── Print-friendly styles ────────────────────────────────────────── */
+@media print {
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-header,
+  .mantine-ActionIcon-root {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .mantine-Card-root,
+  .mantine-Paper-root {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  body,
+  html {
+    background: white !important;
+    color: black !important;
+  }
+
+  .mantine-Table-root,
+  [class*="recharts"],
+  .mantine-Card-root,
+  .mantine-Paper-root {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  p, span, div, td, th {
+    color: black !important;
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+}

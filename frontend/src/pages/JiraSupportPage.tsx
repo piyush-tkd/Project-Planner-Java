@@ -5,6 +5,7 @@ import {
   Indicator, SimpleGrid, Box, Drawer, Divider, ScrollArea, SegmentedControl, Modal,
   TextInput, Switch, Button,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import CsvToolbar from '../components/common/CsvToolbar';
 import type { CsvColumnDef } from '../utils/csv';
 import {
@@ -28,6 +29,7 @@ import {
 import { useJiraStatus } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
+import { FONT_FAMILY } from '../brandTokens';
 
 // ── Palette ────────────────────────────────────────────────────────────────────
 
@@ -146,7 +148,7 @@ function StatCard({ label, value, sub, color, icon, onClick }: {
       <Group justify="space-between" wrap="nowrap" gap="xs">
         <Box>
           <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
-          <Text fw={800} size="xl" mt={4} style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>{value}</Text>
+          <Text fw={800} size="xl" mt={4} style={{ fontFamily: FONT_FAMILY }}>{value}</Text>
           {sub && <Text size="xs" c="dimmed" mt={2}>{sub}</Text>}
         </Box>
         <ThemeIcon color={color} size={44} radius="md" variant="light">{icon}</ThemeIcon>
@@ -444,7 +446,7 @@ function MonthlyThroughputChart({ months }: { months: number }) {
     });
   }, [data]);
 
-  if (isLoading) return <Center h={180}><Loader size="sm" /></Center>;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading support queue..." />;
   if (!chartData.length) return (
     <Center h={180}>
       <Text size="sm" c="dimmed">No data yet — make sure support boards are configured</Text>
@@ -532,7 +534,7 @@ function NeedsAttentionPanel({ tickets, jiraBaseUrl }: { tickets: SupportTicket[
         <ThemeIcon color="red" size="sm" radius="xl" variant="filled">
           <IconAlertCircle size={12} />
         </ThemeIcon>
-        <Text fw={700} size="sm" c="red" style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>
+        <Text fw={700} size="sm" c="red" style={{ fontFamily: FONT_FAMILY }}>
           Needs Attention — {urgent.length} high-priority stale ticket{urgent.length > 1 ? 's' : ''}
         </Text>
       </Group>
@@ -873,7 +875,7 @@ function TicketRow({ ticket, jiraBaseUrl, onLabelClick, onOpen }: {
             </Tooltip>
           )}
           <Anchor href={jiraUrl(jiraBaseUrl, ticket.key)} target="_blank" rel="noopener noreferrer"
-            size="sm" fw={600} style={{ fontFamily: 'Barlow, system-ui, sans-serif', whiteSpace: 'nowrap' }}>
+            size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, whiteSpace: 'nowrap' }}>
             {ticket.key}
           </Anchor>
         </Group>
@@ -990,7 +992,7 @@ function BoardSection({ board, timeWindow, labelFilter, searchText, priorityFilt
   return (
     <Stack gap="xs">
       <Group gap="sm">
-        <Text fw={700} size="sm" style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>{board.boardName}</Text>
+        <Text fw={700} size="sm" style={{ fontFamily: FONT_FAMILY }}>{board.boardName}</Text>
         <Badge variant="light" size="sm">{tickets.length} tickets</Badge>
         {staleCount > 0 && (
           <Badge color="orange" variant="light" size="sm" leftSection={<IconAlertTriangle size={10} />}>
@@ -1358,7 +1360,7 @@ export default function JiraSupportPage() {
   if (!isLoading && snapshot?.boards.length === 0) {
     return (
       <Stack gap="lg">
-        <Title order={2} style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>Support Queue</Title>
+        <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Support Queue</Title>
         <Alert color="blue" icon={<IconSettings size={18} />} title="No support boards configured">
           Go to Settings → Support Boards to add your first support queue.
           <Text size="sm" mt={8} style={{ cursor: 'pointer', textDecoration: 'underline' }}
@@ -1390,7 +1392,7 @@ export default function JiraSupportPage() {
         {/* ── Header ── */}
         <Group justify="space-between" wrap="nowrap">
           <div>
-            <Title order={2} style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>Support Queue</Title>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Support Queue</Title>
             <Text size="sm" c="dimmed" mt={2}>
               Open tickets across all configured support boards.
               {dataUpdatedAt ? ` Updated ${formatRelative(new Date(dataUpdatedAt).toISOString())}.` : ''}

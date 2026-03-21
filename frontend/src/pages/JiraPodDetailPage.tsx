@@ -5,6 +5,7 @@ import {
   Progress, Loader, Alert, ThemeIcon, Divider, SimpleGrid,
   ActionIcon, Tooltip, Modal, ScrollArea, Table, TextInput,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconChartBar, IconArrowLeft, IconExternalLink,
   IconAlertTriangle, IconTicket, IconClockHour4,
@@ -16,16 +17,15 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useJiraPods, useJiraStatus, usePodVelocity, useSprintIssues, SprintIssueRow } from '../api/jira';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
 const AMBER     = '#F59E0B';
 const GREEN     = '#22C55E';
 const RED       = '#EF4444';
 const GRAY      = '#94A3B8';
 
 const TYPE_COLORS = [
-  '#7C3AED', '#0C2340', '#1F9196', '#DB2777', '#D97706',
+  '#7C3AED', DEEP_BLUE, AQUA, '#DB2777', '#D97706',
   '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
 ];
 
@@ -84,7 +84,7 @@ function SprintIssueModal({
       opened={opened} onClose={onClose}
       title={
         <Group gap="xs">
-          <Text fw={700} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>{title}</Text>
+          <Text fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>{title}</Text>
           <Badge size="sm" variant="light" color="teal">{filtered.length}</Badge>
         </Group>
       }
@@ -124,7 +124,7 @@ function SprintIssueModal({
                       {jiraBaseUrl ? (
                         <a href={`${jiraBaseUrl}/browse/${issue.key}`}
                            target="_blank" rel="noreferrer"
-                           style={{ color: AGUA, fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>
+                           style={{ color: AQUA, fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>
                           {issue.key}
                         </a>
                       ) : (
@@ -239,16 +239,7 @@ export default function JiraPodDetailPage() {
 
   const jiraBaseUrl = status?.baseUrl ?? '';
 
-  if (isLoading) {
-    return (
-      <Box p="xl">
-        <Stack align="center" py="xl">
-          <Loader />
-          <Text size="sm" c="dimmed">Loading POD data from Jira…</Text>
-        </Stack>
-      </Box>
-    );
-  }
+  if (isLoading) return <LoadingSpinner variant="cards" message="Loading POD details..." />;
 
   if (error || !pod) {
     return (
@@ -322,7 +313,7 @@ export default function JiraPodDetailPage() {
             <IconTicket size={17} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               {pod.podDisplayName}
             </Title>
             <Group gap={4}>
@@ -354,7 +345,7 @@ export default function JiraPodDetailPage() {
       {/* Sprint summary bar */}
       {sprint && (
         <Paper withBorder p="md" mb="lg" radius="md"
-          style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AGUA}12)` }}>
+          style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
           <Group justify="space-between" mb="sm">
             <div>
               <Text size="xs" fw={600} tt="uppercase" c="dimmed">Active Sprint</Text>
@@ -403,7 +394,7 @@ export default function JiraPodDetailPage() {
                 onClick: () => openModal('Issues with Story Points', i => i.storyPoints > 0),
               },
               {
-                label: 'Hours Logged', value: `${Math.round(sprint.hoursLogged)} h`, color: AGUA,
+                label: 'Hours Logged', value: `${Math.round(sprint.hoursLogged)} h`, color: AQUA,
                 icon: <IconClockHour4 size={15}/>,
                 onClick: () => openModal('Issues with Hours Logged', i => i.hoursLogged > 0),
               },
@@ -469,7 +460,7 @@ export default function JiraPodDetailPage() {
                 <RTooltip formatter={(v: number, n: string) => [`${v} SP`, n]} contentStyle={{ fontSize: 11 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="Committed" fill={GRAY} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Completed" fill={AGUA} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Completed" fill={AQUA} radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -567,7 +558,7 @@ export default function JiraPodDetailPage() {
                     <Box style={{ flex: 1 }}>
                       <Progress
                         value={(hours / maxHours) * 100}
-                        color={AGUA} size="sm"
+                        color={AQUA} size="sm"
                       />
                     </Box>
                     <Text size="xs" c="dimmed" style={{ width: 48, textAlign: 'right', flexShrink: 0 }}>

@@ -20,9 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResourceAllocation } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ResourceAllocationData {
   resourceId: number;
@@ -128,7 +126,7 @@ export default function ResourcePodMatrixPage() {
     return result;
   }, [groupedData, selectedPods, pods, sortBy]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading resource-POD matrix..." />;
   if (error) return <Text c="red">Error loading resource allocations</Text>;
 
   const tableRows = Object.entries(filteredAndSorted).flatMap(([podName, resources]) => {
@@ -170,7 +168,7 @@ export default function ResourcePodMatrixPage() {
         {Array.from({ length: 12 }).map((_, i) => {
           const data = getMonthData(resource.resourceId, i);
           const isCurrentMonth = i === currentMonthIndex;
-          const bgColor = isCurrentMonth ? AGUA : 'white';
+          const bgColor = isCurrentMonth ? AQUA : 'white';
 
           if (!data || data.utilizationPct === 0) {
             return (
@@ -243,7 +241,7 @@ export default function ResourcePodMatrixPage() {
     <Container size="xl" py="xl">
       <Stack gap="lg">
         <div>
-          <Title order={1} style={{ fontFamily: 'Barlow, system-ui', color: DEEP_BLUE }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Resource · POD Matrix
           </Title>
           <Text c="dimmed" size="sm">
@@ -307,7 +305,7 @@ export default function ResourcePodMatrixPage() {
                     <Table.Th
                       key={i}
                       style={{
-                        backgroundColor: isCurrentMonth ? AGUA : DEEP_BLUE,
+                        backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
                         color: 'white',
                         textAlign: 'center',
                         minWidth: '80px',

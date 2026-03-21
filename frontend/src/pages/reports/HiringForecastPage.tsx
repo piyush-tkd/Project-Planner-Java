@@ -52,7 +52,7 @@ export default function HiringForecastPage() {
 
   const hasFilters = podFilter !== null || roleFilter !== null;
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading hiring forecast..." />;
   if (error) return <Text c="red">Error loading hiring forecast</Text>;
 
   return (

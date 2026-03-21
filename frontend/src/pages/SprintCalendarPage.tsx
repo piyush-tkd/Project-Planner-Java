@@ -4,6 +4,7 @@ import {
   ActionIcon, Text, Alert, Drawer, Loader, ScrollArea, Anchor, Tooltip,
   Box, SimpleGrid, SegmentedControl, ThemeIcon,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
@@ -465,7 +466,7 @@ export default function SprintCalendarPage() {
           <b> Click any sprint row</b> to view Jira stories from boards whose sprint dates overlap.
         </Alert>
 
-        {isLoading && <Text c="dimmed" ta="center">Loading...</Text>}
+        {isLoading && <LoadingSpinner variant="table" message="Loading sprint calendar..." />}
 
         {currentSprints.length > 0 && (
           <Stack gap="xs">

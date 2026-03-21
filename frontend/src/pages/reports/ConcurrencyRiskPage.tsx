@@ -67,7 +67,7 @@ export default function ConcurrencyRiskPage() {
     });
   }, [gapData, pods, monthLabels, months]);
 
-  if (isLoading || gapLoading) return <LoadingSpinner />;
+  if (isLoading || gapLoading) return <LoadingSpinner variant="chart" message="Loading concurrency risk..." />;
   if (error) return <Text c="red">Error loading concurrency data</Text>;
 
   return (

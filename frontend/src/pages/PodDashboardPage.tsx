@@ -5,6 +5,7 @@ import {
   Progress, Loader, Alert, ThemeIcon, Tooltip, Collapse,
   TextInput, SegmentedControl, Divider, SimpleGrid, ActionIcon,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconTicket, IconRefresh, IconAlertTriangle, IconCircleCheck,
   IconChevronDown, IconChevronUp, IconClockHour4,
@@ -24,16 +25,15 @@ import {
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
 const AMBER = '#F59E0B';
 const GREEN = '#22C55E';
 const RED = '#EF4444';
 const GRAY = '#94A3B8';
 
 const POD_COLORS = [
-  '#0C2340', '#1F9196', '#7C3AED', '#DB2777', '#D97706',
+  DEEP_BLUE, AQUA, '#7C3AED', '#DB2777', '#D97706',
   '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
 ];
 
@@ -53,7 +53,7 @@ export default function PodDashboardPage() {
     clearCache.mutate(undefined, { onSettled: () => refetch() });
   };
 
-  if (statusLoading) return <Loader />;
+  if (statusLoading) return <LoadingSpinner variant="cards" message="Loading Jira POD dashboard..." />;
 
   if (!status?.configured) {
     return (
@@ -114,7 +114,7 @@ export default function PodDashboardPage() {
             <IconChartBar size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               POD Performance Dashboard
             </Title>
             <Text size="sm" c="dimmed">
@@ -156,13 +156,13 @@ export default function PodDashboardPage() {
       {/* ── Company Summary Bar ── */}
       {pods.length > 0 && (
         <Paper withBorder p="md" mb="lg" radius="md"
-          style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AGUA}12)` }}>
+          style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
           <Group grow>
             <CompanyStat label="Active Sprints" value={String(totalActiveSprints)}
               sub={`of ${pods.length} PODs`} color={DEEP_BLUE} icon={<IconChartBar size={18} />} />
             <CompanyStat label="Sprint Progress" value={`${Math.round(overallPct)}%`}
               sub={`${Math.round(totalDoneSP)} / ${Math.round(totalSP)} SP`}
-              color={AGUA} icon={<IconTrendingUp size={18} />} />
+              color={AQUA} icon={<IconTrendingUp size={18} />} />
             <CompanyStat label="Hours Logged" value={`${Math.round(totalHours).toLocaleString()} h`}
               sub="this sprint" color="#7C3AED" icon={<IconClockHour4 size={18} />} />
             <CompanyStat label="Backlog Items" value={String(pods.reduce((s, p) => s + p.backlogSize, 0))}
@@ -344,7 +344,7 @@ export default function PodDashboardPage() {
                   <YAxis tick={{ fontSize: 10 }} />
                   <RTooltip contentStyle={{ fontSize: 11 }}
                     formatter={(v: number) => [`${v}h`, 'Hours']} />
-                  <Bar dataKey="hours" fill={AGUA} radius={[3, 3, 0, 0]}>
+                  <Bar dataKey="hours" fill={AQUA} radius={[3, 3, 0, 0]}>
                     {topTeam.map((_, i) => (
                       <Cell key={i} fill={POD_COLORS[i % POD_COLORS.length]} />
                     ))}
@@ -517,7 +517,7 @@ function PodCard({
                   icon={<IconClockHour4 size={11} />}
                   label={`${Math.round(sprint.hoursLogged)}h`}
                   tip="Hours Logged this sprint"
-                  color={AGUA}
+                  color={AQUA}
                 />
               )}
             </Group>

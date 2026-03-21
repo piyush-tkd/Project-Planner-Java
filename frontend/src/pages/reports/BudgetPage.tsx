@@ -210,7 +210,7 @@ export default function BudgetPage() {
   const noCostRates = !isLoading && costRates?.length === 0;
   const noRateMatch = !isLoading && spendRows.length === 0 && (allocations?.length ?? 0) > 0;
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading budget data..." />;
 
   const displayPods = podFilter ? [podFilter] : pods;
   const today = new Date().toISOString().slice(0, 10);

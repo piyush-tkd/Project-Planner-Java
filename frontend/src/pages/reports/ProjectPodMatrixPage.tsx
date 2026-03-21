@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Title, Stack, Text, Table, Badge, SimpleGrid, SegmentedControl } from '@mantine/core';
-import { IconBriefcase, IconHexagons, IconLink, IconFlame } from '@tabler/icons-react';
-import { useState } from 'react';
+import {
+  Title, Stack, Text, Table, Badge, SimpleGrid, SegmentedControl,
+  Group, TextInput, MultiSelect, Select,
+} from '@mantine/core';
+import { IconBriefcase, IconHexagons, IconLink, IconFlame, IconSearch } from '@tabler/icons-react';
 import { useProjectPodMatrix } from '../../api/projects';
+import { deriveTshirtSize } from '../../types/project';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useTableSort } from '../../hooks/useTableSort';
 import SortableHeader from '../../components/common/SortableHeader';
@@ -16,13 +19,54 @@ export default function ProjectPodMatrixPage() {
   const { data, isLoading, error } = useProjectPodMatrix();
   const { monthLabels } = useMonthLabels();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
+  // ── Filter state ──
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [search, setSearch] = useState('');
+  const [podFilter, setPodFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+
+  // ── Derive unique values for filter dropdowns ──
+  const filterOptions = useMemo(() => {
+    const all = data ?? [];
+    const pods = [...new Set(all.map(d => d.podName))].sort();
+    const owners = [...new Set(all.map(d => d.owner))].sort();
+    const priorities = [...new Set(all.map(d => d.priority))].sort();
+    return { pods, owners, priorities };
+  }, [data]);
+
+  // ── Apply all filters ──
   const filtered = useMemo(() => {
     if (!data) return [];
-    if (statusFilter === 'ALL') return data;
-    return data.filter(d => d.status === statusFilter);
-  }, [data, statusFilter]);
+    let result = data;
+
+    if (statusFilter !== 'ALL') {
+      result = result.filter(d => d.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(d =>
+        d.projectName.toLowerCase().includes(q) ||
+        d.podName.toLowerCase().includes(q) ||
+        d.owner.toLowerCase().includes(q)
+      );
+    }
+    if (podFilter.length > 0) {
+      result = result.filter(d => podFilter.includes(d.podName));
+    }
+    if (ownerFilter.length > 0) {
+      result = result.filter(d => ownerFilter.includes(d.owner));
+    }
+    if (priorityFilter.length > 0) {
+      result = result.filter(d => priorityFilter.includes(d.priority));
+    }
+    if (sizeFilter) {
+      result = result.filter(d => (d.tshirtSize ?? deriveTshirtSize(d.totalHours)) === sizeFilter);
+    }
+    return result;
+  }, [data, statusFilter, search, podFilter, ownerFilter, priorityFilter, sizeFilter]);
 
   const stats = useMemo(() => {
     const all = data ?? [];
@@ -34,8 +78,10 @@ export default function ProjectPodMatrixPage() {
 
   const { sorted, sortKey, sortDir, onSort } = useTableSort(filtered);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading project-POD matrix..." />;
   if (error) return <Text c="red">Error loading project-POD matrix</Text>;
+
+  const hasActiveFilters = search.trim() || podFilter.length > 0 || ownerFilter.length > 0 || priorityFilter.length > 0 || sizeFilter;
 
   return (
     <Stack>
@@ -56,10 +102,68 @@ export default function ProjectPodMatrixPage() {
           { value: 'ALL', label: 'All' },
           { value: 'ACTIVE', label: 'Active' },
           { value: 'ON_HOLD', label: 'On Hold' },
+          { value: 'NOT_STARTED', label: 'Not Started' },
+          { value: 'IN_DISCOVERY', label: 'In Discovery' },
           { value: 'COMPLETED', label: 'Completed' },
           { value: 'CANCELLED', label: 'Cancelled' },
         ]}
       />
+
+      {/* ── Filters row ── */}
+      <Group gap="sm" wrap="wrap">
+        <TextInput
+          placeholder="Search project, POD, or owner…"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          size="xs"
+          style={{ flex: 1, minWidth: 200, maxWidth: 300 }}
+        />
+        <MultiSelect
+          placeholder="Filter by POD"
+          data={filterOptions.pods}
+          value={podFilter}
+          onChange={setPodFilter}
+          searchable
+          clearable
+          size="xs"
+          style={{ minWidth: 180 }}
+        />
+        <MultiSelect
+          placeholder="Filter by Owner"
+          data={filterOptions.owners}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          searchable
+          clearable
+          size="xs"
+          style={{ minWidth: 180 }}
+        />
+        <MultiSelect
+          placeholder="Filter by Priority"
+          data={filterOptions.priorities}
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          clearable
+          size="xs"
+          style={{ minWidth: 160 }}
+        />
+        <Select
+          placeholder="Filter by Size"
+          data={['XS', 'S', 'M', 'L', 'XL']}
+          value={sizeFilter}
+          onChange={setSizeFilter}
+          clearable
+          size="xs"
+          style={{ minWidth: 120 }}
+        />
+      </Group>
+
+      {hasActiveFilters && (
+        <Text size="xs" c="dimmed">
+          Showing {sorted.length} of {(data ?? []).length} assignments
+        </Text>
+      )}
 
       <Table.ScrollContainer minWidth={1100}>
         <Table withTableBorder withColumnBorders striped highlightOnHover>
@@ -92,7 +196,7 @@ export default function ProjectPodMatrixPage() {
                 </Table.Td>
                 <Table.Td><PriorityBadge priority={row.priority} /></Table.Td>
                 <Table.Td>{row.owner}</Table.Td>
-                <Table.Td><Badge variant="light">{row.tshirtSize}</Badge></Table.Td>
+                <Table.Td><Badge variant="light">{row.tshirtSize ?? deriveTshirtSize(row.totalHours)}</Badge></Table.Td>
                 <Table.Td>{row.effortPattern ?? row.defaultPattern}</Table.Td>
                 <Table.Td>{monthLabels[row.podStartMonth ?? row.projectStartMonth] ?? `M${row.podStartMonth ?? row.projectStartMonth}`}</Table.Td>
                 <Table.Td>{row.durationOverride ?? row.projectDurationMonths}m</Table.Td>

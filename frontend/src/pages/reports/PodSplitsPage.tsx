@@ -114,7 +114,7 @@ export default function PodSplitsPage() {
 
   const hasFilters = search.trim() !== '' || podFilter !== null;
 
-  if (overridesLoading || resourcesLoading) return <LoadingSpinner />;
+  if (overridesLoading || resourcesLoading) return <LoadingSpinner variant="table" message="Loading POD splits..." />;
 
   return (
     <Stack>

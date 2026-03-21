@@ -12,4 +12,6 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     List<Resource> findByActiveTrue();
 
     List<Resource> findByActiveTrueAndCountsInCapacityTrue();
+
+    java.util.Optional<Resource> findByNameIgnoreCase(String name);
 }

@@ -150,7 +150,10 @@ public interface EntityMapper {
                 releaseName,
                 planning.getEffortPattern(),
                 planning.getPodStartMonth(),
-                planning.getDurationOverride()
+                planning.getDurationOverride(),
+                planning.getTshirtSize(),
+                planning.getPod().getComplexityMultiplier() != null
+                        ? planning.getPod().getComplexityMultiplier().doubleValue() : null
         );
     }
 

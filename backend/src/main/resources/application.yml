@@ -50,6 +50,10 @@ app:
     from:       ${DIGEST_FROM:noreply@portfolioplanner}
     # cron: every Monday 08:00 (server local time)
     cron:       ${DIGEST_CRON:0 0 8 * * MON}
+  nlp:
+    learner:
+      interval-ms:      ${NLP_LEARNER_INTERVAL_MS:21600000}    # 6 hours default
+      initial-delay-ms: ${NLP_LEARNER_INITIAL_DELAY_MS:60000}  # 1 min after boot
 
 logging:
   level:

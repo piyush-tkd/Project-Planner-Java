@@ -44,7 +44,7 @@ export default function TimelineSettingsPage() {
     });
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="form" message="Loading settings..." />;
 
   return (
     <Stack>

@@ -5,6 +5,7 @@ import {
   SimpleGrid, RingProgress, ScrollArea, Divider, TextInput, Modal,
   SegmentedControl,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconClock, IconChevronDown, IconChevronRight, IconRefresh,
@@ -18,9 +19,7 @@ import {
   WorklogUserRow, WorklogIssueEntry,
 } from '../api/jira';
 import ChartCard from '../components/common/ChartCard';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
 // Build a colour and icon for each Jira issue type
 const TYPE_META: Record<string, { color: string; hex: string; icon: React.ReactNode }> = {
@@ -31,7 +30,7 @@ const TYPE_META: Record<string, { color: string; hex: string; icon: React.ReactN
   Epic:       { color: 'violet', hex: '#6a1b9a', icon: <IconTicket size={12} /> },
   'Sub-task': { color: 'gray',   hex: '#616161', icon: <IconSubtask size={12} /> },
 };
-const TYPE_COLORS_FALLBACK = ['#1F9196', '#0C2340', '#2e7d32', '#c62828', '#e65100', '#6a1b9a', '#616161'];
+const TYPE_COLORS_FALLBACK = [AQUA, DEEP_BLUE, '#2e7d32', '#c62828', '#e65100', '#6a1b9a', '#616161'];
 
 function typeMeta(type: string) {
   return TYPE_META[type] ?? { color: 'gray', hex: '#616161', icon: <IconTicket size={12} /> };
@@ -85,7 +84,7 @@ export default function JiraWorklogPage() {
     isLoading: historyLoading,
   } = useWorklogUserHistory(historyAuthor, Number(historyMonths));
 
-  if (statusLoading) return <Loader />;
+  if (statusLoading) return <LoadingSpinner variant="table" message="Loading worklog data..." />;
 
   if (!status?.configured) {
     return (
@@ -168,7 +167,7 @@ export default function JiraWorklogPage() {
             <IconClock size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Worklog Breakdown
             </Title>
             <Text size="sm" c="dimmed">
@@ -236,7 +235,7 @@ export default function JiraWorklogPage() {
           <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
             <KpiCard label="Total Hours"
               value={`${(report?.totalHours ?? 0).toLocaleString()} h`}
-              color={AGUA} />
+              color={AQUA} />
             <KpiCard label="Team Members"
               value={String(report?.totalUsers ?? 0)}
               color={DEEP_BLUE} />
@@ -380,7 +379,7 @@ export default function JiraWorklogPage() {
                 <KpiCard
                   label="Total Hours"
                   value={`${historyData.months.reduce((s, m) => s + m.totalHours, 0).toFixed(0)} h`}
-                  color={AGUA}
+                  color={AQUA}
                 />
                 <KpiCard
                   label="Avg / Month"
@@ -420,7 +419,7 @@ export default function JiraWorklogPage() {
                         />
                       ))
                     ) : (
-                      <Bar dataKey="Total" fill={AGUA} name="Total Hours" />
+                      <Bar dataKey="Total" fill={AQUA} name="Total Hours" />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
@@ -528,7 +527,7 @@ function UserRows({
             <Box style={{ flex: 1 }}>
               <Progress
                 value={maxHrs > 0 ? (user.totalHours / maxHrs) * 100 : 0}
-                color={AGUA}
+                color={AQUA}
                 size="md"
                 radius="xs"
               />
@@ -656,7 +655,7 @@ function IssueList({
                     <Text
                       size="xs"
                       fw={600}
-                      style={{ fontFamily: 'monospace', color: '#1F9196', whiteSpace: 'nowrap' }}
+                      style={{ fontFamily: 'monospace', color: AQUA, whiteSpace: 'nowrap' }}
                     >
                       {issue.issueKey}
                     </Text>
@@ -670,7 +669,7 @@ function IssueList({
                 </Text>
 
                 {/* Hours chip */}
-                <Badge size="xs" variant="outline" color={AGUA.replace('#', '') as any}
+                <Badge size="xs" variant="outline" color={AQUA.replace('#', '') as any}
                   style={{ minWidth: 52, textAlign: 'right', flexShrink: 0 }}>
                   {issue.hoursLogged} h
                 </Badge>

@@ -16,6 +16,7 @@ import com.portfolioplanner.dto.request.ProjectRequest;
 import com.portfolioplanner.dto.response.ProjectPodMatrixResponse;
 import com.portfolioplanner.dto.response.ProjectPodPlanningResponse;
 import com.portfolioplanner.dto.response.ProjectResponse;
+import com.portfolioplanner.exception.DuplicateNameException;
 import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +63,11 @@ public class ProjectService {
     @Transactional
     @CacheEvict(value = "calculations", allEntries = true)
     public ProjectResponse create(ProjectRequest request) {
+        // Check for duplicate name
+        if (projectRepository.findByNameIgnoreCase(request.name()).isPresent()) {
+            throw new DuplicateNameException("A project with this name already exists");
+        }
+
         Project project = mapper.toEntity(request);
         if (project.getStatus() == null) project.setStatus(ProjectStatus.ACTIVE);
         if (request.blockedById() != null) {
@@ -81,6 +87,14 @@ public class ProjectService {
     public ProjectResponse update(Long id, ProjectRequest request) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+
+        // Check for duplicate name, excluding the current project
+        projectRepository.findByNameIgnoreCase(request.name()).ifPresent(existing -> {
+            if (!existing.getId().equals(id)) {
+                throw new DuplicateNameException("A project with this name already exists");
+            }
+        });
+
         // Capture before-state for diff
         String beforeDetails = projectSnapshot(project);
         mapper.updateEntity(request, project);
@@ -109,6 +123,35 @@ public class ProjectService {
         planningRepository.deleteAll(plannings);
         projectRepository.deleteById(id);
         auditLogService.log("Project", id, name, "DELETE", snapshot);
+    }
+
+    @Transactional
+    @CacheEvict(value = "calculations", allEntries = true)
+    public ProjectResponse copy(Long id) {
+        Project original = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+
+        // Create a new project with copied fields
+        Project copy = new Project();
+        copy.setName(original.getName() + " (Copy)");
+        copy.setPriority(original.getPriority());
+        copy.setOwner(original.getOwner());
+        copy.setStartMonth(original.getStartMonth());
+        copy.setTargetEndMonth(original.getTargetEndMonth());
+        copy.setDurationMonths(original.getDurationMonths());
+        copy.setDefaultPattern(original.getDefaultPattern());
+        copy.setNotes(original.getNotes());
+        copy.setStatus(ProjectStatus.NOT_STARTED);
+        copy.setBlockedBy(original.getBlockedBy());
+        copy.setTargetDate(original.getTargetDate());
+        copy.setStartDate(original.getStartDate());
+        copy.setCapacityNote(original.getCapacityNote());
+        copy.setClient(original.getClient());
+
+        copy = projectRepository.save(copy);
+        auditLogService.log("Project", copy.getId(), copy.getName(), "COPY",
+                "Copied from project ID " + id);
+        return mapper.toProjectResponse(copy);
     }
 
     // ── Audit helpers ─────────────────────────────────────────────────────────

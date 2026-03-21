@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
+import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
+import GlobalBreadcrumb from '../common/GlobalBreadcrumb';
 import {
   AppShell as MantineAppShell,
   Burger,
@@ -67,18 +69,21 @@ import {
   IconRocket,
   IconPackage,
   IconBrain,
+  IconMessageReport,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ExcelUploadModal from '../common/ExcelUploadModal';
 import NotificationBell from '../common/NotificationBell';
 import TourGuide from '../common/TourGuide';
+import FeedbackWidget from '../common/FeedbackWidget';
 import { useAuth } from '../../auth/AuthContext';
 import apiClient from '../../api/client';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
-
-// Baylor Genetics brand tokens
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import {
+  DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS,
+  FONT_FAMILY, SHADOW, SURFACE_SIDEBAR, BORDER_DEFAULT,
+  TEXT_SECONDARY,
+} from '../../brandTokens';
 
 interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string }
 interface NavGroup { label: string; items: NavItem[] }
@@ -88,6 +93,7 @@ const navGroups: NavGroup[] = [
     label: 'Dashboard',
     items: [
       { label: 'Dashboard', path: '/', icon: <IconDashboard size={17} />, pageKey: 'dashboard' },
+      { label: 'Ask AI', path: '/nlp', icon: <IconBrain size={17} />, pageKey: 'nlp_landing' },
     ],
   },
   {
@@ -162,6 +168,10 @@ const navGroups: NavGroup[] = [
       { label: 'Jira Boards',      path: '/settings/jira',             icon: <IconTicket size={17} />,   pageKey: 'settings' },
       { label: 'Release Versions', path: '/settings/releases',         icon: <IconTag size={17} />,      pageKey: 'settings' },
       { label: 'Support Boards',   path: '/settings/support-boards',   icon: <IconHeadset size={17} />,  pageKey: 'settings' },
+      { label: 'NLP / AI',         path: '/settings/nlp',              icon: <IconBrain size={17} />,    pageKey: 'nlp_settings' },
+      { label: 'NLP Optimizer',    path: '/settings/nlp-optimizer',    icon: <IconBrain size={17} />,    pageKey: 'nlp_optimizer' },
+      { label: 'Feedback Hub',    path: '/settings/feedback-hub',     icon: <IconMessageReport size={17} />, pageKey: 'feedback_hub' },
+      { label: 'Error Log',       path: '/settings/error-log',        icon: <IconAlertTriangle size={17} />,   pageKey: 'error_log' },
       { label: 'Users',            path: '/settings/users',            icon: <IconUserCog size={17} />,  pageKey: '__admin_only__' },
       { label: 'Audit Log',        path: '/settings/audit-log',        icon: <IconHistory size={17} />,  pageKey: '__admin_only__' },
       { label: 'Tables',           path: '/settings/tables',           icon: <IconDatabase size={17} />, pageKey: '__admin_only__' },
@@ -187,6 +197,7 @@ export default function AppShellLayout() {
   const isDark = computedColorScheme === 'dark';
   const alerts = useAlertCounts();
   const { opened: searchOpened, setOpened: setSearchOpened } = useGlobalSearch();
+  const { opened: shortcutsOpened, setOpened: setShortcutsOpened } = useShortcutsPanel();
 
   async function handleExportReconciliation() {
     setDownloading(true);
@@ -219,7 +230,6 @@ export default function AppShellLayout() {
     navigate('/login', { replace: true });
   }
 
-  // Build initials: "First Last" → "FL", "First" → "F", fallback → "U"
   const initials = (() => {
     const name = (displayLabel ?? username ?? '').trim();
     if (!name) return 'U';
@@ -236,7 +246,6 @@ export default function AppShellLayout() {
     .map(group => ({
       ...group,
       items: group.items.filter(item => {
-        // Admin-only items (e.g. Users page)
         if (item.pageKey === '__admin_only__') return isAdmin;
         if (!item.pageKey) return true;
         return canAccess(item.pageKey);
@@ -257,10 +266,8 @@ export default function AppShellLayout() {
       const isCurrentlyCollapsed = label in prev ? prev[label] : true;
       let next: Record<string, boolean>;
       if (isCurrentlyCollapsed) {
-        // Expanding this group — collapse all others
         next = Object.fromEntries(allGroupLabels.map(g => [g, g !== label]));
       } else {
-        // Collapsing this group
         next = { ...prev, [label]: true };
       }
       localStorage.setItem('pp_nav_collapsed', JSON.stringify(next));
@@ -269,11 +276,8 @@ export default function AppShellLayout() {
   }, []);
 
   function isGroupCollapsed(group: typeof visibleGroups[0]): boolean {
-    // Dashboard is never collapsible
     if (group.label === 'Dashboard') return false;
-    // Use stored state if available
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
-    // Default: only the group containing the current route is expanded
     return !group.items.some(item =>
       item.path === '/' ? location.pathname === '/' :
       location.pathname === item.path || location.pathname.startsWith(item.path + '/')
@@ -282,7 +286,7 @@ export default function AppShellLayout() {
 
   return (
     <MantineAppShell
-      header={{ height: 60 }}
+      header={{ height: 56 }}
       navbar={{
         width: 256,
         breakpoint: 'sm',
@@ -295,7 +299,7 @@ export default function AppShellLayout() {
         style={{
           backgroundColor: DEEP_BLUE,
           borderBottom: 'none',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+          boxShadow: SHADOW.header,
         }}
       >
         <Group h="100%" px="md" justify="space-between">
@@ -308,18 +312,18 @@ export default function AppShellLayout() {
               size="sm"
               color="white"
             />
-            {/* Teal triangle logo mark */}
+            {/* Baylor Genetics logo mark — Aqua triangle */}
             <svg width="28" height="26" viewBox="0 0 28 26" fill="none">
-              <polygon points="14,1 27,25 1,25" fill="none" stroke={AGUA} strokeWidth="2.5" />
-              <polygon points="14,7 23,23 5,23"  fill={AGUA} opacity="0.3" />
+              <polygon points="14,1 27,25 1,25" fill="none" stroke={AQUA} strokeWidth="2.5" />
+              <polygon points="14,7 23,23 5,23"  fill={AQUA} opacity="0.3" />
             </svg>
             <Text
               style={{
                 color: '#FFFFFF',
-                fontFamily: 'Barlow, system-ui, sans-serif',
-                fontWeight: 700,
+                fontFamily: FONT_FAMILY,
+                fontWeight: 500,
                 fontSize: 15,
-                letterSpacing: '0.03em',
+                letterSpacing: '0.02em',
                 lineHeight: 1.2,
               }}
             >
@@ -339,18 +343,19 @@ export default function AppShellLayout() {
                   gap: 8,
                   padding: '5px 12px',
                   borderRadius: 8,
-                  background: 'rgba(255,255,255,0.10)',
-                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
                   color: 'rgba(255,255,255,0.7)',
                   cursor: 'pointer',
                   fontSize: 13,
+                  fontFamily: FONT_FAMILY,
                   minWidth: 180,
                 }}
                 visibleFrom="sm"
               >
                 <IconSearch size={14} />
-                <Text size="sm" style={{ flex: 1, color: 'rgba(255,255,255,0.6)' }}>Search…</Text>
-                <Kbd size="xs" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', border: 'none' }}>⌘K</Kbd>
+                <Text size="sm" style={{ flex: 1, color: 'rgba(255,255,255,0.55)', fontFamily: FONT_FAMILY }}>Search…</Text>
+                <Kbd size="xs" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', border: 'none', fontFamily: FONT_FAMILY }}>⌘K</Kbd>
               </UnstyledButton>
             </Tooltip>
             <Tooltip label="Search (⌘K)" position="bottom">
@@ -411,21 +416,21 @@ export default function AppShellLayout() {
                   <Avatar
                     size={32}
                     radius="xl"
-                    style={{ backgroundColor: AGUA, color: '#fff', fontFamily: 'Barlow', fontWeight: 700 }}
+                    style={{ backgroundColor: AQUA, color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 600 }}
                   >
                     {initials}
                   </Avatar>
-                  <Text size="sm" style={{ color: '#fff', fontFamily: 'Barlow', fontWeight: 500 }} visibleFrom="sm">
+                  <Text size="sm" style={{ color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 500 }} visibleFrom="sm">
                     {displayLabel}
                   </Text>
                   <IconChevronDown size={14} color="rgba(255,255,255,0.6)" />
                 </Group>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Label style={{ fontFamily: 'Barlow' }}>
+                <Menu.Label style={{ fontFamily: FONT_FAMILY }}>
                   Signed in as <strong>{displayLabel}</strong>
                   {displayLabel !== username && (
-                    <Text size="xs" c="dimmed" style={{ fontFamily: 'Barlow' }}>@{username}</Text>
+                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>@{username}</Text>
                   )}
                   {roleInfo && (
                     <Badge size="xs" color={roleInfo.color} ml={6} variant="light">
@@ -438,7 +443,7 @@ export default function AppShellLayout() {
                   <Menu.Item
                     leftSection={<IconUserCog size={16} />}
                     onClick={() => navigate('/settings/users')}
-                    style={{ fontFamily: 'Barlow' }}
+                    style={{ fontFamily: FONT_FAMILY }}
                   >
                     Manage Users
                   </Menu.Item>
@@ -447,7 +452,7 @@ export default function AppShellLayout() {
                   leftSection={<IconLogout size={16} />}
                   color="red"
                   onClick={handleLogout}
-                  style={{ fontFamily: 'Barlow' }}
+                  style={{ fontFamily: FONT_FAMILY }}
                 >
                   Sign out
                 </Menu.Item>
@@ -461,8 +466,8 @@ export default function AppShellLayout() {
       <MantineAppShell.Navbar
         p="xs"
         style={{
-          backgroundColor: isDark ? undefined : '#F8FAFB',
-          borderRight: `1px solid ${isDark ? '#2C2C2C' : '#E8ECF2'}`,
+          backgroundColor: isDark ? undefined : SURFACE_SIDEBAR,
+          borderRight: `1px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
         }}
       >
         <MantineAppShell.Section grow component={ScrollArea}>
@@ -481,15 +486,24 @@ export default function AppShellLayout() {
                   style={{ width: '100%', padding: '10px 8px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
                   <Text
-                    size="xs" fw={700} tt="uppercase"
-                    style={{ color: hasActive ? DEEP_BLUE : AGUA, fontFamily: 'Barlow, system-ui, sans-serif', letterSpacing: '0.06em', fontSize: 10 }}
+                    size="xs" fw={600} tt="uppercase"
+                    style={{
+                      color: hasActive ? DEEP_BLUE : TEXT_SECONDARY,
+                      fontFamily: FONT_FAMILY,
+                      letterSpacing: '0.06em',
+                      fontSize: 10,
+                    }}
                   >
                     {group.label}
                   </Text>
                   {group.label !== 'Dashboard' && (
                     <IconChevronRight
                       size={12}
-                      style={{ color: AGUA, transition: 'transform 150ms ease', transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}
+                      style={{
+                        color: DEEP_BLUE_TINTS[50],
+                        transition: 'transform 150ms ease',
+                        transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                      }}
                     />
                   )}
                 </UnstyledButton>
@@ -499,7 +513,8 @@ export default function AppShellLayout() {
                   const isActive = item.path === '/'
                     ? location.pathname === '/'
                     : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-                  const alertCount = item.alertKey ? (alerts[item.alertKey as keyof typeof alerts] ?? 0) : 0;
+                  const rawAlert = item.alertKey ? (alerts[item.alertKey as keyof typeof alerts] ?? 0) : 0;
+                  const alertCount = typeof rawAlert === 'number' ? rawAlert : 0;
                   return (
                     <NavLink
                       key={item.path}
@@ -518,8 +533,18 @@ export default function AppShellLayout() {
                       leftSection={item.icon}
                       active={isActive}
                       onClick={() => navigate(item.path)}
-                      style={{ borderRadius: 6, fontFamily: 'Barlow, system-ui, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14 }}
-                      styles={{ root: { '--nav-active-bg': `${DEEP_BLUE}14`, '--nav-active-color': DEEP_BLUE } }}
+                      style={{
+                        borderRadius: 6,
+                        fontFamily: FONT_FAMILY,
+                        fontWeight: isActive ? 600 : 400,
+                        fontSize: 14,
+                      }}
+                      styles={{
+                        root: {
+                          '--nav-active-bg': AQUA_TINTS[10],
+                          '--nav-active-color': DEEP_BLUE,
+                        },
+                      }}
                       color="deepBlue"
                     />
                   );
@@ -531,12 +556,17 @@ export default function AppShellLayout() {
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main>
-        <Outlet />
+        <GlobalBreadcrumb />
+        <div key={location.pathname} className="page-transition">
+          <Outlet />
+        </div>
       </MantineAppShell.Main>
 
       <ExcelUploadModal opened={excelModalOpen} onClose={() => setExcelModalOpen(false)} />
       <GlobalSearch opened={searchOpened} onClose={() => setSearchOpened(false)} />
+      <KeyboardShortcutsPanel opened={shortcutsOpened} onClose={() => setShortcutsOpened(false)} />
       <TourGuide />
+      <FeedbackWidget />
     </MantineAppShell>
   );
 }

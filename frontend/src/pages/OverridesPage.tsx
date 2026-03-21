@@ -105,7 +105,7 @@ export default function OverridesPage() {
 
   const { sorted: sortedOverrides, sortKey, sortDir, onSort } = useTableSort(overrides ?? []);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading overrides..." />;
 
   return (
     <Stack>

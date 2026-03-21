@@ -121,7 +121,7 @@ export default function DeadlineGapPage() {
 
   const { sorted, sortKey, sortDir, onSort } = useTableSort(filteredHealth);
 
-  if (projLoading || gapLoading) return <LoadingSpinner />;
+  if (projLoading || gapLoading) return <LoadingSpinner variant="table" message="Loading deadline analysis..." />;
 
   return (
     <Stack>

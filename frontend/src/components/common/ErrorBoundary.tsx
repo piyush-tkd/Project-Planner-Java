@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, Button, Stack, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { logErrorToServer } from '../../api/errorLogs';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -23,6 +24,19 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log to backend error log table
+    logErrorToServer({
+      source: 'FRONTEND',
+      severity: 'ERROR',
+      errorType: error.name || 'ReactError',
+      message: error.message,
+      stackTrace: [error.stack, '\n--- Component Stack ---\n', errorInfo.componentStack].filter(Boolean).join(''),
+      pageUrl: window.location.pathname,
+      component: errorInfo.componentStack
+        ? (errorInfo.componentStack.match(/at\s+(\w+)/)?.[1] || undefined)
+        : undefined,
+      userAgent: navigator.userAgent,
+    });
   }
 
   handleReset = () => {

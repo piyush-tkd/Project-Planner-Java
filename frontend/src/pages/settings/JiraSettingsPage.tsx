@@ -16,9 +16,7 @@ import {
   PodConfigRequest,
 } from '../../api/jira';
 import { usePods } from '../../api/pods';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface PodRow {
   key: string;          // local temp key
@@ -143,7 +141,7 @@ export default function JiraSettingsPage() {
           <IconTicket size={22} color="white" />
         </ThemeIcon>
         <div>
-          <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+          <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
             Jira Board Settings
           </Title>
           <Text size="sm" c="dimmed">
@@ -356,7 +354,7 @@ function PodRow({
       p="sm"
       radius="sm"
       style={{
-        borderLeft: `4px solid ${row.enabled ? AGUA : '#CBD5E1'}`,
+        borderLeft: `4px solid ${row.enabled ? AQUA : '#CBD5E1'}`,
         opacity: row.enabled ? 1 : 0.6,
       }}
     >

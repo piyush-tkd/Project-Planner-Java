@@ -20,9 +20,7 @@ import { useUtilizationHeatmap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { IconAlertTriangle, IconCheck } from '@tabler/icons-react';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectResponse {
   id: number;
@@ -206,7 +204,7 @@ export default function ProjectHealthPage() {
     return healthScores.filter((h) => selectedStatuses.includes(h.status));
   }, [healthScores, selectedStatuses]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="cards" message="Loading project health..." />;
 
   const tableRows = filteredScores.map((health) => {
     const timelineStart = health.startMonth;
@@ -253,7 +251,7 @@ export default function ProjectHealthPage() {
                   left: `${(timelineStart / 12) * 100}%`,
                   width: `${((timelineEnd - timelineStart) / 12) * 100}%`,
                   height: '100%',
-                  backgroundColor: AGUA,
+                  backgroundColor: AQUA,
                 }}
               />
               <Box
@@ -321,7 +319,7 @@ export default function ProjectHealthPage() {
     <Container size="xl" py="xl">
       <Stack gap="lg">
         <div>
-          <Title order={1} style={{ fontFamily: 'Barlow, system-ui', color: DEEP_BLUE }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Project Health Scorecard
           </Title>
           <Text c="dimmed" size="sm">

@@ -93,7 +93,7 @@ export default function ResourceAllocationPage() {
 
   const hasFilters = search.trim() !== '' || podFilter !== null || roleFilter !== null;
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading resource allocation..." />;
   if (error) return <Text c="red">Error loading resource allocation data</Text>;
 
   return (

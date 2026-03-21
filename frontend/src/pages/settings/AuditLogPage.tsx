@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Title, Stack, Table, Text, Badge, Group, Select, TextInput, Button,
-  Tooltip, Card,
+  Tooltip, Card, Pagination,
 } from '@mantine/core';
 import { IconSearch, IconClock, IconUser } from '@tabler/icons-react';
 import { useAuditLog } from '../../api/audit';
@@ -42,6 +42,8 @@ export default function AuditLogPage() {
   const [userFilter, setUserFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [actionFilter, setActionFilter] = useState<string | null>(null);
+  const [page,       setPage]       = useState(1);
+  const pageSize = 50;
 
   const userOptions = useMemo(() => {
     const users = [...new Set(data.map(e => e.changedBy))].sort();
@@ -69,9 +71,21 @@ export default function AuditLogPage() {
     return list;
   }, [data, search, userFilter, typeFilter, actionFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page]);
+
+  // Reset page when filters change
+  const handleSearch = (v: string) => { setSearch(v); setPage(1); };
+  const handleUserFilter = (v: string | null) => { setUserFilter(v); setPage(1); };
+  const handleTypeFilter = (v: string | null) => { setTypeFilter(v); setPage(1); };
+  const handleActionFilter = (v: string | null) => { setActionFilter(v); setPage(1); };
+
   const hasFilters = search || userFilter || typeFilter || actionFilter;
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading audit log..." />;
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -93,7 +107,7 @@ export default function AuditLogPage() {
             placeholder="Search name, user, type…"
             leftSection={<IconSearch size={14} />}
             value={search}
-            onChange={e => setSearch(e.currentTarget.value)}
+            onChange={e => handleSearch(e.currentTarget.value)}
             style={{ flex: '1 1 200px', maxWidth: 280 }}
             size="sm"
           />
@@ -101,7 +115,7 @@ export default function AuditLogPage() {
             placeholder="All Users"
             data={userOptions}
             value={userFilter}
-            onChange={setUserFilter}
+            onChange={handleUserFilter}
             clearable
             searchable
             leftSection={<IconUser size={14} />}
@@ -112,7 +126,7 @@ export default function AuditLogPage() {
             placeholder="All Entity Types"
             data={typeOptions}
             value={typeFilter}
-            onChange={setTypeFilter}
+            onChange={handleTypeFilter}
             clearable
             size="sm"
             style={{ flex: '1 1 150px', maxWidth: 200 }}
@@ -121,18 +135,22 @@ export default function AuditLogPage() {
             placeholder="All Actions"
             data={['CREATE', 'UPDATE', 'DELETE', 'IMPORT'].map(a => ({ value: a, label: a }))}
             value={actionFilter}
-            onChange={setActionFilter}
+            onChange={handleActionFilter}
             clearable
             size="sm"
             style={{ flex: '1 1 130px', maxWidth: 160 }}
           />
           {hasFilters && (
             <Button variant="subtle" color="gray" size="sm"
-              onClick={() => { setSearch(''); setUserFilter(null); setTypeFilter(null); setActionFilter(null); }}>
+              onClick={() => { setSearch(''); setUserFilter(null); setTypeFilter(null); setActionFilter(null); setPage(1); }}>
               Clear
             </Button>
           )}
-          <Text size="sm" c="dimmed" ml="auto">{filtered.length} of {data.length} entries</Text>
+          <Text size="sm" c="dimmed" ml="auto">
+            {filtered.length > pageSize
+              ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filtered.length)} of ${filtered.length}`
+              : `${filtered.length} of ${data.length}`} entries
+          </Text>
         </Group>
       </Card>
 
@@ -149,7 +167,7 @@ export default function AuditLogPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filtered.map(entry => (
+            {paginatedRows.map(entry => (
               <Table.Tr key={entry.id}>
                 <Table.Td style={{ whiteSpace: 'nowrap' }}>
                   <Group gap={4} wrap="nowrap">
@@ -194,6 +212,12 @@ export default function AuditLogPage() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+
+      {totalPages > 1 && (
+        <Group justify="center">
+          <Pagination value={page} onChange={setPage} total={totalPages} size="sm" />
+        </Group>
+      )}
     </Stack>
   );
 }

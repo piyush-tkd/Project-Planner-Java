@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconMaximize, IconCamera } from '@tabler/icons-react';
+import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 interface ChartCardProps {
   title: string;
@@ -64,7 +65,7 @@ function captureChartSnapshot(container: HTMLDivElement | null, title: string) {
   titleEl.setAttribute('font-size', '11');
   titleEl.setAttribute('font-weight', '700');
   titleEl.setAttribute('font-family', 'system-ui, sans-serif');
-  titleEl.setAttribute('fill', '#0C2340');
+  titleEl.setAttribute('fill', DEEP_BLUE);
   titleEl.textContent = title;
   cloned.insertBefore(titleEl, bg.nextSibling);
 
@@ -161,7 +162,7 @@ export default function ChartCard({
       {/* ── Inline card ── */}
       <Paper withBorder={withBorder} p={padding} radius="md">
         <Group justify="space-between" mb="sm" wrap="nowrap" align="flex-start">
-          <Text fw={600} size="sm" style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}>
+          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
             {title}
           </Text>
           {headerButtons}

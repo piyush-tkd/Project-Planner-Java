@@ -19,9 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
   planningId: number;
@@ -147,7 +145,7 @@ export default function CrossPodDependencyPage() {
     );
   }, [multiPodProjects, selectedPods]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="table" message="Loading cross-POD dependencies..." />;
   if (error) return <Text c="red">Error loading dependency data</Text>;
 
   if (filteredProjects.length === 0) {
@@ -155,7 +153,7 @@ export default function CrossPodDependencyPage() {
       <Container size="xl" py="xl">
         <Stack gap="lg">
           <div>
-            <Title order={1} style={{ fontFamily: 'Barlow, system-ui', color: DEEP_BLUE }}>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
               Cross-POD Dependencies
             </Title>
             <Text c="dimmed" size="sm">
@@ -174,7 +172,7 @@ export default function CrossPodDependencyPage() {
     <Container size="xl" py="xl">
       <Stack gap="lg">
         <div>
-          <Title order={1} style={{ fontFamily: 'Barlow, system-ui', color: DEEP_BLUE }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Cross-POD Dependencies
           </Title>
           <Text c="dimmed" size="sm">

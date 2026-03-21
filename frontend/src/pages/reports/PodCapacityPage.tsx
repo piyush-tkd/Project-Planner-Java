@@ -80,7 +80,7 @@ export default function PodCapacityPage() {
     };
   }, [podMonthData, visibleMonthData, activeMonth, hidePast]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading POD capacity..." />;
 
   return (
     <Stack>

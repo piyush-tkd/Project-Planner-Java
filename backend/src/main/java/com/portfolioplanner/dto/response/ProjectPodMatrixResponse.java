@@ -25,5 +25,7 @@ public record ProjectPodMatrixResponse(
         String targetReleaseName,
         String effortPattern,
         Integer podStartMonth,
-        Integer durationOverride
+        Integer durationOverride,
+        String tshirtSize,
+        Double complexityOverride
 ) {}

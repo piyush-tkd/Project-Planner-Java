@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { Center, Stack, ThemeIcon, Title, Text, Button } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
+import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 
 interface Props {
   /** Optional page key to enforce page-level permission check. */
@@ -17,7 +18,7 @@ function AccessDenied() {
         <ThemeIcon size={64} radius="xl" color="red" variant="light">
           <IconLock size={32} />
         </ThemeIcon>
-        <Title order={2} ta="center" style={{ color: '#0C2340', fontFamily: 'Barlow' }}>
+        <Title order={2} ta="center" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
           Access Denied
         </Title>
         <Text ta="center" c="dimmed" size="sm">

@@ -6,6 +6,7 @@ import {
   TextInput, Divider, SimpleGrid, Modal, Table, ScrollArea,
   Tabs, Textarea, ActionIcon,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconTag, IconRefresh, IconAlertTriangle, IconSettings,
   IconSearch, IconPackage, IconClock, IconUser, IconChevronRight,
@@ -21,6 +22,7 @@ import {
   ReleaseMetrics, IssueRow,
 } from '../api/jira';
 import ChartCard from '../components/common/ChartCard';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
 // ── Issue type colour map ──────────────────────────────────────────────
 // Covers the most common Jira issue types. Falls back to a neutral blue.
@@ -41,15 +43,13 @@ function issueTypeStyle(typeName: string) {
   return ISSUE_TYPE_COLORS[typeName] ?? { bg: '#EFF6FF', text: '#3B82F6' };
 }
 
-const DEEP_BLUE = '#0C2340';
-const AGUA      = '#1F9196';
 const AMBER     = '#F59E0B';
 const GREEN     = '#22C55E';
 const RED       = '#EF4444';
 const GRAY      = '#94A3B8';
 
 const CHART_COLORS = [
-  '#0C2340', '#1F9196', '#7C3AED', '#DB2777', '#D97706',
+  DEEP_BLUE, AQUA, '#7C3AED', '#DB2777', '#D97706',
   '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
   '#9333EA', '#EA580C',
 ];
@@ -104,7 +104,7 @@ function IssueModal({
       opened={opened}
       onClose={onClose}
       title={
-        <Text fw={700} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+        <Text fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
           {filter?.label ?? 'All Issues'}{' '}
           <Badge size="sm" variant="light" color="teal" ml={6}>{filtered.length}</Badge>
         </Text>
@@ -134,7 +134,7 @@ function IssueModal({
                       href={`${jiraBaseUrl}/browse/${issue.key}`}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: AGUA, fontWeight: 700, textDecoration: 'none', fontSize: 13 }}
+                      style={{ color: AQUA, fontWeight: 700, textDecoration: 'none', fontSize: 13 }}
                     >
                       {issue.key}
                     </a>
@@ -248,7 +248,7 @@ function ReleaseCard({
         jiraBaseUrl={jiraBaseUrl}
       />
 
-      <Paper withBorder p="md" radius="md" style={{ borderTop: `3px solid ${AGUA}` }}>
+      <Paper withBorder p="md" radius="md" style={{ borderTop: `3px solid ${AQUA}` }}>
         {/* ── Card header ── */}
         <Group justify="space-between" mb="sm">
           <Group gap="xs">
@@ -256,7 +256,7 @@ function ReleaseCard({
               <IconPackage size={16} color="white" />
             </ThemeIcon>
             <div>
-              <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+              <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
                 {m.podDisplayName}
               </Text>
               <Badge size="xs" variant="light" color="teal">{m.versionName}</Badge>
@@ -368,9 +368,9 @@ function ReleaseCard({
                 {/* Hours logged summary */}
                 {m.totalHoursLogged > 0 && (
                   <Group gap="xs">
-                    <IconClock size={13} color={AGUA} />
+                    <IconClock size={13} color={AQUA} />
                     <Text size="xs" c="dimmed">Hours logged:</Text>
-                    <Text size="xs" fw={700} style={{ color: AGUA }}>
+                    <Text size="xs" fw={700} style={{ color: AQUA }}>
                       {fmtHours(m.totalHoursLogged)}
                     </Text>
                   </Group>
@@ -534,8 +534,8 @@ function ReleaseCard({
                             {hours > 0 && (
                               <Tooltip label="Hours logged">
                                 <Group gap={3}>
-                                  <IconClock size={11} color={AGUA} />
-                                  <Text size="xs" fw={600} style={{ color: AGUA }}>
+                                  <IconClock size={11} color={AQUA} />
+                                  <Text size="xs" fw={600} style={{ color: AQUA }}>
                                     {fmtHours(hours)}
                                   </Text>
                                 </Group>
@@ -563,7 +563,7 @@ function ReleaseCard({
                             formatter={(v: number) => [`${v}h`, 'Hours']}
                           />
                           <Bar
-                            dataKey="value" fill={AGUA} radius={[3, 3, 0, 0]}
+                            dataKey="value" fill={AQUA} radius={[3, 3, 0, 0]}
                             onClick={(entry) => openModal({
                               label: `${entry.fullName}'s Issues`,
                               predicate: i => i.assignee === entry.fullName,
@@ -706,7 +706,7 @@ export default function ReleasesPage() {
   // All issues across every release — used by the global stat card modals
   const allIssues = releases.flatMap(r => r.issues ?? []);
 
-  if (statusLoading) return <Loader />;
+  if (statusLoading) return <LoadingSpinner variant="table" message="Loading Jira releases..." />;
 
   if (!status?.configured) {
     return (
@@ -750,7 +750,7 @@ export default function ReleasesPage() {
             <IconTag size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Release Tracker
             </Title>
             <Text size="sm" c="dimmed">
@@ -814,7 +814,7 @@ export default function ReleasesPage() {
               })}
             >
               <Text size="xs" c="dimmed">Overall Progress</Text>
-              <Text fw={700} size="xl" style={{ color: AGUA }}>{overallDonePct}%</Text>
+              <Text fw={700} size="xl" style={{ color: AQUA }}>{overallDonePct}%</Text>
             </Paper>
           </Tooltip>
           <Tooltip label="Click to see issues with story points">
@@ -841,8 +841,8 @@ export default function ReleasesPage() {
             >
               <Text size="xs" c="dimmed">Hours Logged</Text>
               <Group justify="center" gap={4} mt={2}>
-                <IconClock size={16} color={AGUA} />
-                <Text fw={700} size="xl" style={{ color: AGUA }}>{fmtHours(totalHours)}</Text>
+                <IconClock size={16} color={AQUA} />
+                <Text fw={700} size="xl" style={{ color: AQUA }}>{fmtHours(totalHours)}</Text>
               </Group>
             </Paper>
           </Tooltip>

@@ -6,6 +6,7 @@ import {
   Modal, ActionIcon, SegmentedControl, Progress,
   Select, Collapse,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { MonthPickerInput } from '@mantine/dates';
 import {
   IconCurrencyDollar, IconRefresh, IconAlertTriangle,
@@ -23,9 +24,8 @@ import {
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
-const DEEP_BLUE  = '#0C2340';
-const AGUA       = '#1F9196';
 const AMBER      = '#F59E0B';
 const GREEN      = '#22C55E';
 const RED        = '#EF4444';
@@ -36,7 +36,7 @@ const US_COLOR    = '#0EA5E9';  // sky blue
 
 const CAT_COLORS: Record<string, string> = {
   'IDS':      DEEP_BLUE,
-  'NON-IDS':  AGUA,
+  'NON-IDS':  AQUA,
   'Untagged': AMBER,
 };
 
@@ -289,7 +289,7 @@ function IssueModal({
                   {jiraBaseUrl ? (
                     <a href={`${jiraBaseUrl}/browse/${issue.key}`}
                        target="_blank" rel="noreferrer"
-                       style={{ color: AGUA, fontWeight: 600, textDecoration: 'none' }}>
+                       style={{ color: AQUA, fontWeight: 600, textDecoration: 'none' }}>
                       {issue.key}
                     </a>
                   ) : (
@@ -400,7 +400,7 @@ function LocationCard({ loc }: { loc: LocationSummary }) {
         </Group>
         <Group justify="space-between">
           <Text size="xs" c="dimmed">NON-IDS</Text>
-          <Text size="xs" fw={600} style={{ color: AGUA }}>{fmtHours(loc.nonIdsHours)}</Text>
+          <Text size="xs" fw={600} style={{ color: AQUA }}>{fmtHours(loc.nonIdsHours)}</Text>
         </Group>
         {loc.untaggedHours > 0 && (
           <Group justify="space-between">
@@ -420,7 +420,7 @@ function LocationCard({ loc }: { loc: LocationSummary }) {
           {loc.nonIdsHours > 0 && (
             <Progress.Section
               value={(loc.nonIdsHours / loc.totalHours) * 100}
-              color={AGUA}
+              color={AQUA}
             />
           )}
           {loc.untaggedHours > 0 && (
@@ -515,7 +515,7 @@ function CompactIssueSection({
                       {jiraBaseUrl ? (
                         <a href={`${jiraBaseUrl}/browse/${i.key}`}
                            target="_blank" rel="noreferrer"
-                           style={{ color: AGUA, fontWeight: 600, textDecoration: 'none' }}>
+                           style={{ color: AQUA, fontWeight: 600, textDecoration: 'none' }}>
                           {i.key}
                         </a>
                       ) : (
@@ -729,12 +729,12 @@ export default function JiraCapexPage() {
             <IconCurrencyDollar size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               CapEx / OpEx Tracker
             </Title>
             <Text size="sm" c="dimmed">
               IDS vs NON-IDS hours by month · {fieldId
-                ? <span style={{ color: AGUA }}>field: {fieldId}</span>
+                ? <span style={{ color: AQUA }}>field: {fieldId}</span>
                 : <span style={{ color: AMBER }}>⚠ No field configured — click Settings</span>}
             </Text>
           </div>
@@ -784,12 +784,7 @@ export default function JiraCapexPage() {
       </Paper>
 
       {/* ── Loading ── */}
-      {isLoading && (
-        <Group justify="center" mt="xl">
-          <Loader />
-          <Text c="dimmed">Loading CapEx data for {monthStr}…</Text>
-        </Group>
-      )}
+      {isLoading && <LoadingSpinner variant="chart" message="Loading CapEx/OpEx data..." />}
 
       {!isLoading && report && (
         <WidgetGrid pageKey="capex">
@@ -815,7 +810,7 @@ export default function JiraCapexPage() {
               label="NON-IDS (OpEx)"
               value={fmtHours(nonIdsCat?.totalHours ?? 0)}
               sub={`${nonIdsCat?.issueCount ?? 0} issues`}
-              color={AGUA}
+              color={AQUA}
               onClick={() => openModal('NON-IDS — OpEx Issues',
                 report.issues.filter(i => i.capexCategory === 'NON-IDS'))}
             />
@@ -1021,7 +1016,7 @@ export default function JiraCapexPage() {
                       <Progress
                         value={pct}
                         color={CAT_COLORS[b.category] === AMBER ? 'orange'
-                          : CAT_COLORS[b.category] === AGUA ? 'teal' : 'dark'}
+                          : CAT_COLORS[b.category] === AQUA ? 'teal' : 'dark'}
                         size={4} radius="xl" mt="xs"
                       />
                     </Paper>
@@ -1069,7 +1064,7 @@ export default function JiraCapexPage() {
                       />
                       <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                       <Bar dataKey="IDS" fill={DEEP_BLUE} radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="NON-IDS" fill={AGUA} radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="NON-IDS" fill={AQUA} radius={[3, 3, 0, 0]} />
                       {report.untaggedIssues > 0 && (
                         <Bar dataKey="Untagged" fill={AMBER} radius={[3, 3, 0, 0]} />
                       )}
@@ -1109,7 +1104,7 @@ export default function JiraCapexPage() {
                         />
                         <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
                         <Bar dataKey="IDS" stackId="a" fill={DEEP_BLUE} />
-                        <Bar dataKey="NON-IDS" stackId="a" fill={AGUA} />
+                        <Bar dataKey="NON-IDS" stackId="a" fill={AQUA} />
                         {report.authorBreakdown.some(a => a.untaggedHours > 0) && (
                           <Bar dataKey="Untagged" stackId="a" fill={AMBER}
                             radius={[3, 3, 0, 0]} />
@@ -1189,7 +1184,7 @@ export default function JiraCapexPage() {
               <CompactIssueSection
                 title="NON-IDS Stories (OpEx)"
                 issues={nonIdsIssues}
-                color={AGUA}
+                color={AQUA}
                 jiraBaseUrl={jiraBaseUrl}
               />
             </Box>
@@ -1259,7 +1254,7 @@ export default function JiraCapexPage() {
                         {jiraBaseUrl ? (
                           <a href={`${jiraBaseUrl}/browse/${issue.key}`}
                              target="_blank" rel="noreferrer"
-                             style={{ color: AGUA, fontWeight: 600, textDecoration: 'none' }}>
+                             style={{ color: AQUA, fontWeight: 600, textDecoration: 'none' }}>
                             {issue.key}
                           </a>
                         ) : (

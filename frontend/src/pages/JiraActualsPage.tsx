@@ -4,6 +4,7 @@ import {
   Tabs, Alert, Loader, Tooltip, ActionIcon, Modal, NumberInput,
   SegmentedControl, Progress, Paper, Divider, ThemeIcon,
 } from '@mantine/core';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconTicket, IconLink, IconLinkOff, IconRefresh, IconCheck,
   IconAlertTriangle, IconPlus, IconTrash, IconChartBar, IconSettings,
@@ -23,9 +24,7 @@ import {
 } from '../api/jira';
 import { useProjects } from '../api/projects';
 import { ProjectResponse } from '../types/project';
-
-const DEEP_BLUE = '#0C2340';
-const AGUA = '#1F9196';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
 
 // ── Month ordering helper ─────────────────────────────────────────────
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -45,7 +44,7 @@ export default function JiraActualsPage() {
   const saveBulk = useSaveMappingsBulk();
   const deleteMapping = useDeleteMapping();
 
-  if (statusLoading) return <Loader />;
+  if (statusLoading) return <LoadingSpinner variant="table" message="Loading Jira actuals..." />;
 
   if (!status?.configured) {
     return (
@@ -70,7 +69,7 @@ export default function JiraActualsPage() {
             <IconTicket size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: 'Barlow' }}>
+            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Jira Actuals
             </Title>
             <Text size="sm" c="dimmed">
@@ -240,7 +239,7 @@ function ActualsView({
           value={unit === 'hours'
             ? `${Math.round(totalActual).toLocaleString()} h`
             : `${Math.round(totalSP)} SP`}
-          color={AGUA}
+          color={AQUA}
         />
         <SummaryCard
           label="Mapped Projects"
@@ -282,7 +281,7 @@ function ActualsView({
                 formatter={(v: number) =>
                   unit === 'hours' ? [`${v} hrs`, 'Actual'] : [`${v} SP`, 'Actual']}
               />
-              <Bar dataKey="actual" fill={AGUA} radius={[3, 3, 0, 0]} name="Actual" />
+              <Bar dataKey="actual" fill={AQUA} radius={[3, 3, 0, 0]} name="Actual" />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -377,7 +376,7 @@ function ResourceBreakdown({ row }: { row: ActualsRow }) {
             <Box style={{ flex: 1 }}>
               <Progress
                 value={(hours / max) * 100}
-                color={AGUA}
+                color={AQUA}
                 size="sm"
                 radius="xs"
               />

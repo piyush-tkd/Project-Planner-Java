@@ -72,6 +72,8 @@ export interface ProjectPodMatrixResponse {
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
+  tshirtSize: string | null;
+  complexityOverride: number | null;
 }
 
 export interface ProjectPodPlanningRequest {
