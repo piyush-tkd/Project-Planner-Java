@@ -14,5 +14,6 @@ public record NlpConfigRequest(
         Boolean cacheEnabled,
         Integer cacheTtlMinutes,
         Boolean logQueries,
-        Integer maxTimeoutMs
+        Integer maxTimeoutMs,
+        String embeddingModel
 ) {}

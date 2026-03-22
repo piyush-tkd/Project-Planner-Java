@@ -36,6 +36,7 @@ public class NlpLearnerService {
     private final NlpQueryLogRepository queryLogRepo;
     private final NlpLearnedPatternRepository patternRepo;
     private final NlpLearnerRunRepository learnerRunRepo;
+    private final NlpVectorSearchService vectorSearchService;
     private final ObjectMapper objectMapper;
 
     // Stop words to filter out when extracting keywords
@@ -167,6 +168,9 @@ public class NlpLearnerService {
         // 8. Decay confidence of stale patterns
         decayStalePatterns();
 
+        // 9. Sync high-confidence patterns to pgvector for semantic matching
+        syncPatternEmbeddings();
+
         long activePatterns = patternRepo.countByActiveTrue();
 
         long elapsed = System.currentTimeMillis() - start;
@@ -222,7 +226,12 @@ public class NlpLearnerService {
                         "USER_FEEDBACK",
                         1
                 );
-                log.info("NLP Real-time Learn: positive feedback → boosted pattern for '{}'", queryLog.getQueryText());
+
+                // ── Vector Learning: embed this confirmed query→intent pair ──
+                embedConfirmedPattern(queryLog.getQueryText(), queryLog.getIntent(),
+                        null, queryLog.getConfidence(), "USER_FEEDBACK_POSITIVE");
+
+                log.info("NLP Real-time Learn: positive feedback → boosted pattern + vector embedded for '{}'", queryLog.getQueryText());
             }
         } else {
             // ── Negative: Corrective learning ──
@@ -581,7 +590,62 @@ public class NlpLearnerService {
         pattern.setTimesSeen(timesSeen);
         pattern.setKeywords(extractKeywords(query));
         patternRepo.save(pattern);
+
+        // Also embed high-confidence patterns into pgvector for semantic matching
+        if (confidence >= 0.75 && intent != null && !"UNKNOWN".equals(intent)) {
+            embedConfirmedPattern(query, intent, route, confidence, "LOG_MINING");
+        }
+
         return 1;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── VECTOR-BASED LEARNING ─────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Embed a confirmed query→intent pair into pgvector for semantic matching.
+     * This allows semantically similar future queries to resolve intent
+     * without needing exact text match or LLM call.
+     */
+    private void embedConfirmedPattern(String queryText, String intent, String route,
+                                        double confidence, String source) {
+        try {
+            vectorSearchService.embedQueryPattern(queryText, intent, route, confidence, source);
+        } catch (Exception e) {
+            // Non-critical — don't fail the learning if embedding fails
+            log.debug("Failed to embed query pattern '{}': {}", queryText, e.getMessage());
+        }
+    }
+
+    /**
+     * Batch-embed all active high-confidence patterns into pgvector.
+     * Called during scheduled runs to ensure vector store stays in sync with text patterns.
+     */
+    private void syncPatternEmbeddings() {
+        try {
+            List<NlpLearnedPattern> activePatterns = patternRepo.findByActiveTrueOrderByTimesSeenDesc();
+            int embedded = 0;
+            for (var pattern : activePatterns) {
+                if (pattern.getConfidence() >= 0.70
+                        && pattern.getResolvedIntent() != null
+                        && !"UNKNOWN".equals(pattern.getResolvedIntent())) {
+                    embedConfirmedPattern(
+                            pattern.getQueryPattern(),
+                            pattern.getResolvedIntent(),
+                            pattern.getRoute(),
+                            pattern.getConfidence(),
+                            "PATTERN_SYNC"
+                    );
+                    embedded++;
+                }
+            }
+            if (embedded > 0) {
+                log.info("NLP Learner: synced {} pattern embeddings to pgvector", embedded);
+            }
+        } catch (Exception e) {
+            log.warn("NLP Learner: pattern embedding sync failed: {}", e.getMessage());
+        }
     }
 
     // ── Admin / View methods ─────────────────────────────────────────────────
