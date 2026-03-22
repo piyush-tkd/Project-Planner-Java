@@ -9,6 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -27,11 +30,50 @@ public class NlpVectorSearchService {
 
     private final EmbeddingService embeddingService;
     private final NlpEmbeddingRepository embeddingRepo;
+    private final DataSource dataSource;
+
+    /** Cached result of pgvector availability check — null means not yet checked. */
+    private volatile Boolean pgvectorAvailable = null;
 
     public NlpVectorSearchService(EmbeddingService embeddingService,
-                                   NlpEmbeddingRepository embeddingRepo) {
+                                   NlpEmbeddingRepository embeddingRepo,
+                                   DataSource dataSource) {
         this.embeddingService = embeddingService;
         this.embeddingRepo = embeddingRepo;
+        this.dataSource = dataSource;
+    }
+
+    /**
+     * Check whether the pgvector extension is installed AND the embedding column exists.
+     * Result is cached after first successful check.
+     */
+    public boolean isPgvectorAvailable() {
+        if (pgvectorAvailable != null) return pgvectorAvailable;
+        try (Connection conn = dataSource.getConnection()) {
+            // Check if the 'embedding' column exists on nlp_embedding
+            ResultSet rs = conn.getMetaData().getColumns(null, null, "nlp_embedding", "embedding");
+            pgvectorAvailable = rs.next();
+            if (!pgvectorAvailable) {
+                log.info("pgvector not available — embedding column missing from nlp_embedding. " +
+                         "Install pgvector (brew install pgvector), restart PostgreSQL, and re-run the migration.");
+            }
+            return pgvectorAvailable;
+        } catch (Exception e) {
+            log.debug("pgvector availability check failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /** Reset the cached pgvector availability (e.g. after admin installs pgvector). */
+    public void resetPgvectorCheck() {
+        pgvectorAvailable = null;
+    }
+
+    /**
+     * True only if BOTH the embedding model (Ollama) AND pgvector are available.
+     */
+    private boolean isVectorSearchReady() {
+        return embeddingService.isAvailable() && isPgvectorAvailable();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -65,7 +107,7 @@ public class NlpVectorSearchService {
      * Returns empty list if embeddings are not available.
      */
     public List<VectorSearchResult> search(String query, int topK) {
-        if (!embeddingService.isAvailable()) return List.of();
+        if (!isVectorSearchReady()) return List.of();
 
         float[] queryVector = embeddingService.embed(query);
         if (queryVector == null) return List.of();
@@ -79,7 +121,7 @@ public class NlpVectorSearchService {
      * Find the top-K most similar entities filtered by type(s).
      */
     public List<VectorSearchResult> searchByTypes(String query, List<String> entityTypes, int topK) {
-        if (!embeddingService.isAvailable()) return List.of();
+        if (!isVectorSearchReady()) return List.of();
 
         float[] queryVector = embeddingService.embed(query);
         if (queryVector == null) return List.of();
@@ -97,7 +139,7 @@ public class NlpVectorSearchService {
      * without calling the LLM at all.
      */
     public List<VectorSearchResult> searchQueryPatterns(String query, int topK) {
-        if (!embeddingService.isAvailable()) return List.of();
+        if (!isVectorSearchReady()) return List.of();
 
         float[] queryVector = embeddingService.embed(query);
         if (queryVector == null) return List.of();
@@ -145,7 +187,7 @@ public class NlpVectorSearchService {
      */
     @Transactional
     public void syncCatalogEmbeddings(NlpCatalogResponse catalog) {
-        if (!embeddingService.isAvailable()) {
+        if (!isVectorSearchReady()) {
             log.info("Embedding service not available, skipping catalog sync");
             return;
         }
@@ -247,7 +289,7 @@ public class NlpVectorSearchService {
     @Transactional
     public void embedQueryPattern(String queryText, String intent, String route,
                                    double confidence, String source) {
-        if (!embeddingService.isAvailable()) return;
+        if (!isVectorSearchReady()) return;
 
         try {
             String meta = toJson(Map.of("confidence", confidence));
@@ -264,9 +306,15 @@ public class NlpVectorSearchService {
      */
     public Map<String, Long> getEmbeddingStats() {
         Map<String, Long> stats = new LinkedHashMap<>();
-        List<Object[]> counts = embeddingRepo.countByEntityType();
-        for (Object[] row : counts) {
-            stats.put((String) row[0], (Long) row[1]);
+        try {
+            List<Object[]> counts = embeddingRepo.countByEntityType();
+            for (Object[] row : counts) {
+                stats.put((String) row[0], (Long) row[1]);
+            }
+            stats.put("_pgvectorAvailable", isPgvectorAvailable() ? 1L : 0L);
+        } catch (Exception e) {
+            log.debug("Could not fetch embedding stats: {}", e.getMessage());
+            stats.put("_pgvectorAvailable", 0L);
         }
         return stats;
     }

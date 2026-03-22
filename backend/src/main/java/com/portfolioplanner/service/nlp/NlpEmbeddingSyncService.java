@@ -43,6 +43,11 @@ public class NlpEmbeddingSyncService {
     public void onStartup() {
         log.info("NLP Embedding Sync: checking if embeddings are available...");
         try {
+            if (!vectorSearchService.isPgvectorAvailable()) {
+                log.info("NLP Embedding Sync: pgvector not installed — semantic search is disabled. " +
+                         "Install pgvector, restart PostgreSQL, and call POST /api/nlp/embeddings/sync to activate.");
+                return;
+            }
             if (embeddingService.isAvailable()) {
                 syncNow();
                 initialSyncDone = true;
@@ -60,6 +65,10 @@ public class NlpEmbeddingSyncService {
      */
     @Scheduled(fixedDelay = 1800000, initialDelay = 300000) // 30 min, first run after 5 min
     public void periodicSync() {
+        if (!vectorSearchService.isPgvectorAvailable()) {
+            log.debug("NLP Embedding Sync: pgvector not available, skipping periodic sync");
+            return;
+        }
         if (!embeddingService.isAvailable()) {
             // Try to check availability again — Ollama might have started
             embeddingService.checkAvailability();

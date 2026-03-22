@@ -30,10 +30,9 @@ public class NlpEmbedding {
     @Column(name = "content_text", nullable = false, columnDefinition = "TEXT")
     private String contentText;
 
-    // pgvector column — stored as float[] for JPA, converted via native queries
-    // We don't map the vector column directly; we use native SQL for vector operations
-    @Column(name = "embedding", insertable = false, updatable = false)
-    private String embeddingRaw;  // placeholder — actual read/write via native queries
+    // The vector embedding column is managed entirely via native SQL (pgvector operators).
+    // It is NOT mapped here so that Hibernate validation passes even when pgvector is
+    // not installed (the column may not exist in that case).
 
     @Column(length = 50)
     private String intent;
