@@ -29,6 +29,8 @@ public class NlpConfigService {
     private final NlpStrategyEngine engine;
     private final LocalLlmStrategy localLlm;
     private final CloudLlmStrategy cloudLlm;
+    private final EmbeddingService embeddingService;
+    private final NlpVectorSearchService vectorSearchService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostConstruct
@@ -56,7 +58,14 @@ public class NlpConfigService {
                     getIntValue("max_timeout_ms", 5000)
             );
 
-            log.info("NLP config loaded: chain={}, threshold={}", chain, threshold);
+            // Configure embedding service (uses same Ollama URL)
+            embeddingService.configure(
+                    getStringValue("local_model_url", "http://localhost:11434"),
+                    getStringValue("embedding_model", "nomic-embed-text")
+            );
+
+            log.info("NLP config loaded: chain={}, threshold={}, embeddings={}",
+                    chain, threshold, embeddingService.isAvailable() ? "available" : "not available");
         } catch (Exception e) {
             log.error("Failed to load NLP config, using defaults", e);
             engine.configure(List.of("RULE_BASED"), 0.75);
@@ -82,7 +91,11 @@ public class NlpConfigService {
                 getIntValue("cache_ttl_minutes", 5),
                 getBooleanValue("log_queries", true),
                 getIntValue("max_timeout_ms", 5000),
-                statuses
+                statuses,
+                embeddingService.getEmbeddingModel(),
+                embeddingService.isAvailable(),
+                embeddingService.getEmbeddingDimension(),
+                vectorSearchService.getEmbeddingStats()
         );
     }
 
@@ -112,6 +125,8 @@ public class NlpConfigService {
             setValue("log_queries", String.valueOf(request.logQueries()));
         if (request.maxTimeoutMs() != null)
             setValue("max_timeout_ms", String.valueOf(request.maxTimeoutMs()));
+        if (request.embeddingModel() != null)
+            setValue("embedding_model", request.embeddingModel());
 
         // Re-apply config to engine
         loadAndApplyConfig();

@@ -1,0 +1,15 @@
+meta {
+  name: Get Embedding Stats
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/nlp/embeddings/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

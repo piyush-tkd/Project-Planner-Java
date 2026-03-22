@@ -9,6 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Main NLP service — the single entry point for processing natural language queries.
  * Applies query preprocessing (abbreviation expansion, synonym normalization, fuzzy matching)
@@ -25,6 +28,10 @@ public class NlpService {
     private final NlpQueryLogRepository queryLogRepo;
     private final NlpConfigService configService;
     private final NlpQueryPreprocessor preprocessor;
+    private final NlpVectorSearchService vectorSearchService;
+
+    /** Minimum similarity for a vector pattern match to be used as a shortcut. */
+    private static final double VECTOR_PATTERN_THRESHOLD = 0.88;
 
     /**
      * Process a natural language query and return a structured response.
@@ -40,8 +47,16 @@ public class NlpService {
             String processedQuery = preprocessor.preprocess(queryText);
             log.debug("Query preprocessed: '{}' -> '{}'", queryText, processedQuery);
 
-            // Process through strategy chain (use preprocessed query)
-            NlpQueryResponse response = engine.process(processedQuery, catalog);
+            // ── Vector pattern shortcut: check if a very similar query was already resolved ──
+            NlpQueryResponse vectorShortcut = tryVectorPatternMatch(processedQuery);
+            NlpQueryResponse response;
+            if (vectorShortcut != null) {
+                response = vectorShortcut;
+                log.info("NLP query resolved via vector pattern match for '{}'", queryText);
+            } else {
+                // Process through strategy chain (use preprocessed query)
+                response = engine.process(processedQuery, catalog);
+            }
 
             long elapsed = System.currentTimeMillis() - start;
             log.info("NLP query processed in {}ms: '{}' -> intent={} confidence={} resolvedBy={}",
@@ -56,6 +71,39 @@ public class NlpService {
             return NlpQueryResponse.fallback(
                     "Sorry, something went wrong processing your query. The error has been logged. Please try again or rephrase your question.");
         }
+    }
+
+    /**
+     * Try to resolve a query by finding a very similar previously-confirmed query pattern
+     * in the vector store. If the closest match has high similarity, reuse its intent/route
+     * to skip the full strategy chain entirely.
+     */
+    private NlpQueryResponse tryVectorPatternMatch(String query) {
+        try {
+            var patterns = vectorSearchService.searchQueryPatterns(query, 1);
+            if (patterns.isEmpty()) return null;
+
+            var best = patterns.get(0);
+            if (best.similarity() >= VECTOR_PATTERN_THRESHOLD && best.intent() != null) {
+                log.debug("Vector pattern match: '{}' → intent={} similarity={}",
+                        query, best.intent(), String.format("%.3f", best.similarity()));
+
+                return new NlpQueryResponse(
+                        best.intent(),
+                        best.confidence() * best.similarity(), // Combine original confidence with similarity
+                        "VECTOR_PATTERN",
+                        new NlpQueryResponse.NlpResponsePayload(
+                                null, best.route(), null,
+                                best.entityName() != null ? Map.of("entityName", best.entityName()) : null,
+                                null),
+                        List.of(),
+                        null
+                );
+            }
+        } catch (Exception e) {
+            log.debug("Vector pattern search failed (non-critical): {}", e.getMessage());
+        }
+        return null;
     }
 
     private Long saveQueryLog(Long userId, String queryText, NlpQueryResponse response, int responseMs) {

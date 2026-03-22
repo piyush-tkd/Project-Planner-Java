@@ -16,7 +16,11 @@ public record NlpConfigResponse(
         int cacheTtlMinutes,
         boolean logQueries,
         int maxTimeoutMs,
-        Map<String, StrategyStatus> strategyStatuses
+        Map<String, StrategyStatus> strategyStatuses,
+        String embeddingModel,
+        boolean embeddingAvailable,
+        int embeddingDimension,
+        Map<String, Long> embeddingStats
 ) {
     public record StrategyStatus(
             boolean available,

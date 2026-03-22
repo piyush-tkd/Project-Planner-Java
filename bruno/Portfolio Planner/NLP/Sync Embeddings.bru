@@ -1,0 +1,15 @@
+meta {
+  name: Sync Embeddings
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/nlp/embeddings/sync
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

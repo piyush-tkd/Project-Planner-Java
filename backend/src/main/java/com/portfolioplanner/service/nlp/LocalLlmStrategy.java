@@ -15,9 +15,14 @@ import java.util.*;
  * Local LLM strategy using Ollama-compatible API (http://localhost:11434/api/generate).
  * Availability depends on Ollama running locally.
  *
+ * Enhanced with:
+ * - Semantic vector search for selective context injection (instead of full catalog dump)
+ * - Tool calling framework: LLM can request specific data via structured JSON tool calls
+ * - Two-turn flow: query → tool call → tool result → final synthesis
+ *
  * This strategy acts as a powerful safety net for queries the rule-based engine misses.
- * It receives the full entity catalog and can resolve synonyms, fuzzy names, and
- * natural phrasing that regex patterns cannot anticipate.
+ * It uses vector similarity to inject only the most relevant entities into the context,
+ * keeping the prompt small and focused.
  */
 @Component
 public class LocalLlmStrategy implements NlpStrategy {
@@ -25,11 +30,20 @@ public class LocalLlmStrategy implements NlpStrategy {
     private static final Logger log = LoggerFactory.getLogger(LocalLlmStrategy.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final NlpVectorSearchService vectorSearchService;
+    private final NlpToolRegistry toolRegistry;
+
     // These are set by NlpConfigService when config loads/changes
     private String modelUrl = "http://localhost:11434";
     private String model = "llama3:8b";
     private int timeoutMs = 10000;
     private volatile boolean lastHealthCheck = false;
+
+    public LocalLlmStrategy(NlpVectorSearchService vectorSearchService,
+                             NlpToolRegistry toolRegistry) {
+        this.vectorSearchService = vectorSearchService;
+        this.toolRegistry = toolRegistry;
+    }
 
     @Override
     public String name() {
@@ -58,7 +72,54 @@ public class LocalLlmStrategy implements NlpStrategy {
     @Override
     public NlpResult classify(String query, NlpCatalogResponse catalog) {
         try {
-            String systemPrompt = buildSystemPrompt(catalog);
+            // ── Step 1: Vector search for selective context ──
+            String vectorContext = "";
+            if (vectorSearchService != null) {
+                var searchResults = vectorSearchService.search(query, 10);
+                vectorContext = vectorSearchService.buildContextFromResults(searchResults);
+                if (!vectorContext.isBlank()) {
+                    log.debug("LOCAL_LLM: vector search found {} relevant entities", searchResults.size());
+                }
+            }
+
+            // ── Step 2: First LLM call (with vector context + tool definitions) ──
+            String systemPrompt = buildSystemPrompt(catalog, vectorContext);
+            String firstResponse = callOllama(query, systemPrompt);
+            if (firstResponse == null) return lowConfidenceResult();
+
+            // ── Step 3: Check if LLM wants to call a tool ──
+            JsonNode firstJson = parseRawJson(firstResponse);
+            if (firstJson != null && toolRegistry.isToolCall(firstJson)) {
+                String toolName = firstJson.path("tool").asText();
+                JsonNode toolParams = firstJson.path("params");
+                log.info("LOCAL_LLM: tool call detected — {} with params {}", toolName, toolParams);
+
+                // Execute the tool
+                NlpToolRegistry.ToolResult toolResult = toolRegistry.executeTool(toolName, toolParams, catalog);
+                log.debug("LOCAL_LLM: tool result success={}", toolResult.success());
+
+                // ── Step 4: Second LLM call with tool result ──
+                String synthesisPrompt = buildSynthesisPrompt(query, toolName, toolResult, vectorContext);
+                String secondResponse = callOllama(query, synthesisPrompt);
+                if (secondResponse != null) {
+                    return parseJsonResponse(secondResponse, catalog);
+                }
+            }
+
+            // No tool call — parse the first response directly
+            return parseJsonResponse(firstResponse, catalog);
+
+        } catch (Exception e) {
+            log.warn("LOCAL_LLM classification failed: {}", e.getMessage());
+            return lowConfidenceResult();
+        }
+    }
+
+    /**
+     * Make a single call to Ollama /api/generate and return the response text.
+     */
+    private String callOllama(String query, String systemPrompt) {
+        try {
             String payload = objectMapper.writeValueAsString(Map.of(
                     "model", model,
                     "prompt", query,
@@ -81,18 +142,75 @@ public class LocalLlmStrategy implements NlpStrategy {
 
             if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
                 log.warn("LOCAL_LLM returned non-200: {}", resp.getStatusCode());
-                return lowConfidenceResult();
+                return null;
             }
 
             JsonNode root = objectMapper.readTree(resp.getBody());
-            String responseText = root.path("response").asText("");
-
-            return parseJsonResponse(responseText, catalog);
-
+            return root.path("response").asText("");
         } catch (Exception e) {
-            log.warn("LOCAL_LLM classification failed: {}", e.getMessage());
-            return lowConfidenceResult();
+            log.warn("LOCAL_LLM Ollama call failed: {}", e.getMessage());
+            return null;
         }
+    }
+
+    /**
+     * Parse raw JSON from the LLM response, handling markdown code blocks.
+     */
+    private JsonNode parseRawJson(String json) {
+        try {
+            json = json.trim();
+            if (json.startsWith("```")) {
+                json = json.replaceAll("^```(?:json)?\\s*", "").replaceAll("```\\s*$", "").trim();
+            }
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Build a synthesis prompt for the second LLM call after tool execution.
+     */
+    private String buildSynthesisPrompt(String originalQuery, String toolName,
+                                         NlpToolRegistry.ToolResult toolResult,
+                                         String vectorContext) {
+        StringBuilder sb = new StringBuilder(2048);
+
+        sb.append("""
+                You are an expert intent classifier for a Portfolio Planning tool.
+                The user asked a question. You called a tool to fetch data. Now synthesize the answer.
+
+                Given the user's original query and the tool result below, return ONLY a valid JSON object:
+                {
+                  "intent": "one of: GREETING, NAVIGATE, FORM_PREFILL, DATA_QUERY, INSIGHT, HELP, EXPORT",
+                  "confidence": 0.0 to 1.0,
+                  "message": "human-readable conversational answer using the tool data",
+                  "route": "frontend page route or null",
+                  "formData": null,
+                  "data": { structured data with _type marker },
+                  "drillDown": "route for drill-down or null",
+                  "suggestions": ["2-3 follow-up suggestions"]
+                }
+
+                """);
+
+        // Include _type markers reference (compact version)
+        sb.append(buildTypeMarkersCompact());
+
+        sb.append("\nTOOL CALLED: ").append(toolName).append("\n");
+        if (toolResult.success()) {
+            sb.append("TOOL RESULT:\n").append(toolResult.data()).append("\n\n");
+        } else {
+            sb.append("TOOL ERROR: ").append(toolResult.error()).append("\n\n");
+            sb.append("Since the tool failed, try to answer from the context below or inform the user.\n\n");
+        }
+
+        if (!vectorContext.isBlank()) {
+            sb.append(vectorContext).append("\n");
+        }
+
+        sb.append("Return ONLY the JSON object. No text before or after it.");
+        return sb.toString();
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -596,6 +714,22 @@ public class LocalLlmStrategy implements NlpStrategy {
         };
     }
 
+    /**
+     * Compact version of _type markers for the synthesis prompt.
+     */
+    private String buildTypeMarkersCompact() {
+        return """
+                _TYPE MARKERS (put in data._type):
+                RESOURCE_PROFILE, PROJECT_PROFILE, POD_PROFILE, SPRINT_PROFILE, RELEASE_PROFILE,
+                LIST (with listType: PROJECTS|RESOURCES|PODS), COMPARISON, NAVIGATE_ACTION,
+                RISK_SUMMARY, RESOURCE_ANALYTICS, COST_RATE, EXPORT, CAPABILITIES,
+                PROJECT_ESTIMATES, SPRINT_ALLOCATIONS, RESOURCE_AVAILABILITY,
+                PROJECT_DEPENDENCIES, PROJECT_ACTUALS, EFFORT_PATTERN, ROLE_EFFORT_MIX
+                Include entityName in data when referencing a specific entity.
+
+                """;
+    }
+
     private NlpResult lowConfidenceResult() {
         return new NlpResult("UNKNOWN", 0.0, null, null, null, null, null, null);
     }
@@ -648,7 +782,7 @@ public class LocalLlmStrategy implements NlpStrategy {
     // System prompt — the brain of the LLM strategy
     // ────────────────────────────────────────────────────────────────────────
 
-    private String buildSystemPrompt(NlpCatalogResponse catalog) {
+    private String buildSystemPrompt(NlpCatalogResponse catalog, String vectorContext) {
         StringBuilder sb = new StringBuilder(4096);
 
         // ── Role & output format ────────────────────────────────────────────
@@ -656,8 +790,13 @@ public class LocalLlmStrategy implements NlpStrategy {
                 You are an expert intent classifier and entity extractor for a Portfolio Planning tool \
                 (Baylor Genetics resource/project management system).
 
-                Given a user query, return ONLY a valid JSON object with these fields:
-                {
+                Given a user query, you have TWO options:
+
+                OPTION A — CALL A TOOL (if you need specific data to answer):
+                Return: { "tool": "tool_name", "params": { ... } }
+
+                OPTION B — ANSWER DIRECTLY (for greetings, navigation, help, capabilities, or if context is sufficient):
+                Return: {
                   "intent": "one of the intents below",
                   "confidence": 0.0 to 1.0,
                   "message": "human-readable answer to the user's question",
@@ -669,12 +808,17 @@ public class LocalLlmStrategy implements NlpStrategy {
                 }
 
                 CRITICAL RULES:
-                - Return ONLY the JSON object, no explanation, no markdown.
+                - Return ONLY a JSON object, no explanation, no markdown.
+                - For GREETING, NAVIGATE, HELP, CAPABILITIES — always answer directly (Option B).
+                - For DATA_QUERY about specific entities — use a tool (Option A) to get fresh data.
                 - confidence should be 0.85-0.95 when you're confident, 0.5-0.7 if unsure.
-                - Always include 2-3 helpful follow-up suggestions.
+                - Always include 2-3 helpful follow-up suggestions when answering directly.
                 - The "message" should be a direct, conversational answer.
 
                 """);
+
+        // ── Tool definitions ────────────────────────────────────────────────
+        sb.append(toolRegistry.buildToolPromptSection());
 
         // ── Intents ─────────────────────────────────────────────────────────
         sb.append("""
@@ -776,103 +920,33 @@ public class LocalLlmStrategy implements NlpStrategy {
 
                 """);
 
-        // ── Entity catalog ──────────────────────────────────────────────────
+        // ── Semantic context from vector search (replaces full catalog dump) ─
+        if (vectorContext != null && !vectorContext.isBlank()) {
+            sb.append(vectorContext).append("\n");
+        }
+
+        // ── Compact entity name lists (for entity name matching) ────────────
         if (catalog != null) {
-            sb.append("KNOWN ENTITIES IN THIS SYSTEM:\n\n");
+            sb.append("KNOWN ENTITY NAMES (use tools above to get full details):\n\n");
 
-            // Resources with details
-            if (catalog.resourceDetails() != null && !catalog.resourceDetails().isEmpty()) {
-                sb.append("RESOURCES:\n");
-                for (var r : catalog.resourceDetails()) {
-                    sb.append("  - ").append(r.name()).append(" | Role: ").append(r.role())
-                            .append(" | Location: ").append(r.location())
-                            .append(" | Pod: ").append(r.podName() != null ? r.podName() : "None")
-                            .append(" | Rate: ").append(r.billingRate())
-                            .append(" | FTE: ").append(r.fte())
-                            .append("\n");
-                }
-                sb.append("\n");
-            } else if (catalog.resources() != null) {
-                sb.append("Resources: ").append(String.join(", ", catalog.resources())).append("\n\n");
+            if (catalog.resources() != null && !catalog.resources().isEmpty()) {
+                sb.append("Resources: ").append(String.join(", ", catalog.resources())).append("\n");
             }
-
-            // Projects with details
-            if (catalog.projectDetails() != null && !catalog.projectDetails().isEmpty()) {
-                sb.append("PROJECTS:\n");
-                for (var p : catalog.projectDetails()) {
-                    sb.append("  - ").append(p.name()).append(" | Priority: ").append(p.priority())
-                            .append(" | Owner: ").append(p.owner())
-                            .append(" | Status: ").append(p.status())
-                            .append(" | Pods: ").append(p.assignedPods() != null ? p.assignedPods() : "None")
-                            .append(" | Timeline: ").append(p.timeline() != null ? p.timeline() : "N/A")
-                            .append("\n");
-                }
-                sb.append("\n");
-            } else if (catalog.projects() != null) {
-                sb.append("Projects: ").append(String.join(", ", catalog.projects())).append("\n\n");
+            if (catalog.projects() != null && !catalog.projects().isEmpty()) {
+                sb.append("Projects: ").append(String.join(", ", catalog.projects())).append("\n");
             }
-
-            // Pods with details
-            if (catalog.podDetails() != null && !catalog.podDetails().isEmpty()) {
-                sb.append("PODS:\n");
-                for (var p : catalog.podDetails()) {
-                    sb.append("  - ").append(p.name())
-                            .append(" | Members: ").append(p.memberCount())
-                            .append(" (").append(String.join(", ", p.members())).append(")")
-                            .append(" | Projects: ").append(String.join(", ", p.projectNames()))
-                            .append(" | BAU: ").append(p.avgBauPct())
-                            .append("\n");
-                }
-                sb.append("\n");
-            } else if (catalog.pods() != null) {
-                sb.append("Pods: ").append(String.join(", ", catalog.pods())).append("\n\n");
+            if (catalog.pods() != null && !catalog.pods().isEmpty()) {
+                sb.append("Pods: ").append(String.join(", ", catalog.pods())).append("\n");
             }
-
-            // Sprints
-            if (catalog.sprintDetails() != null && !catalog.sprintDetails().isEmpty()) {
-                sb.append("SPRINTS:\n");
-                for (var s : catalog.sprintDetails()) {
-                    sb.append("  - ").append(s.name()).append(" | ").append(s.startDate())
-                            .append(" to ").append(s.endDate())
-                            .append(" | Status: ").append(s.status())
-                            .append("\n");
-                }
-                sb.append("\n");
+            if (catalog.sprints() != null && !catalog.sprints().isEmpty()) {
+                sb.append("Sprints: ").append(String.join(", ", catalog.sprints())).append("\n");
             }
-
-            // Releases
-            if (catalog.releaseDetails() != null && !catalog.releaseDetails().isEmpty()) {
-                sb.append("RELEASES:\n");
-                for (var r : catalog.releaseDetails()) {
-                    sb.append("  - ").append(r.name()).append(" | Release: ").append(r.releaseDate())
-                            .append(" | Freeze: ").append(r.codeFreezeDate())
-                            .append(" | Type: ").append(r.type())
-                            .append("\n");
-                }
-                sb.append("\n");
+            if (catalog.releases() != null && !catalog.releases().isEmpty()) {
+                sb.append("Releases: ").append(String.join(", ", catalog.releases())).append("\n");
             }
+            sb.append("\n");
 
-            // Cost rates
-            if (catalog.costRates() != null && !catalog.costRates().isEmpty()) {
-                sb.append("COST RATES:\n");
-                for (var cr : catalog.costRates()) {
-                    sb.append("  - ").append(cr.role()).append(" (").append(cr.location())
-                            .append("): $").append(cr.hourlyRate()).append("/hr\n");
-                }
-                sb.append("\n");
-            }
-
-            // T-shirt sizes
-            if (catalog.tshirtSizes() != null && !catalog.tshirtSizes().isEmpty()) {
-                sb.append("T-SHIRT SIZES:\n");
-                for (var ts : catalog.tshirtSizes()) {
-                    sb.append("  - ").append(ts.name()).append(": ").append(ts.baseHours())
-                            .append(" base hours\n");
-                }
-                sb.append("\n");
-            }
-
-            // Page routes
+            // Page routes (compact — needed for NAVIGATE intent)
             if (catalog.pages() != null && !catalog.pages().isEmpty()) {
                 sb.append("PAGE ROUTES (for NAVIGATE intent):\n");
                 for (var page : catalog.pages()) {
@@ -885,7 +959,7 @@ public class LocalLlmStrategy implements NlpStrategy {
                 sb.append("\n");
             }
 
-            // Enums
+            // Enums (always needed for field values)
             sb.append("ENUMS:\n");
             sb.append("  Priorities: P0 (Critical), P1 (High), P2 (Medium), P3 (Low)\n");
             sb.append("  Roles: DEVELOPER, QA, BSA, TECH_LEAD\n");

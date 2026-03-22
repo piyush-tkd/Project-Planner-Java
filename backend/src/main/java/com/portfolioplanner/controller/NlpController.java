@@ -12,8 +12,10 @@ import com.portfolioplanner.dto.response.NlpConfigResponse;
 import com.portfolioplanner.dto.response.NlpQueryResponse;
 import com.portfolioplanner.service.nlp.NlpCatalogService;
 import com.portfolioplanner.service.nlp.NlpConfigService;
+import com.portfolioplanner.service.nlp.NlpEmbeddingSyncService;
 import com.portfolioplanner.service.nlp.NlpLearnerService;
 import com.portfolioplanner.service.nlp.NlpService;
+import com.portfolioplanner.service.nlp.NlpVectorSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,8 @@ public class NlpController {
     private final NlpCatalogService catalogService;
     private final NlpConfigService configService;
     private final NlpLearnerService learnerService;
+    private final NlpEmbeddingSyncService embeddingSyncService;
+    private final NlpVectorSearchService vectorSearchService;
     private final AppUserRepository userRepo;
 
     /** Process a natural language query. */
@@ -131,6 +135,24 @@ public class NlpController {
     @GetMapping("/learner/history")
     public ResponseEntity<List<NlpLearnerRun>> getRunHistory() {
         return ResponseEntity.ok(learnerService.getRunHistory());
+    }
+
+    // ── Embeddings / Vector Search ────────────────────────────────────────
+
+    /** Trigger embedding sync (admin). */
+    @PostMapping("/embeddings/sync")
+    public ResponseEntity<Map<String, Object>> syncEmbeddings() {
+        embeddingSyncService.syncNow();
+        return ResponseEntity.ok(Map.of(
+                "status", "synced",
+                "stats", vectorSearchService.getEmbeddingStats()
+        ));
+    }
+
+    /** Get embedding statistics (admin). */
+    @GetMapping("/embeddings/stats")
+    public ResponseEntity<Map<String, Long>> getEmbeddingStats() {
+        return ResponseEntity.ok(vectorSearchService.getEmbeddingStats());
     }
 
     private Long resolveUserId(Authentication auth) {
