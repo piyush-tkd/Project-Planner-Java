@@ -231,7 +231,7 @@ public class NlpToolRegistry {
         return ToolResult.ok(String.format(
                 "Project: %s | Priority: %s | Owner: %s | Status: %s | Pods: %s | Timeline: %s | Duration: %s | Client: %s",
                 match.name(), match.priority(), match.owner(), match.status(),
-                match.assignedPods(), match.timeline(), match.duration(),
+                match.assignedPods(), match.timeline(), match.durationMonths(),
                 match.client() != null ? match.client() : "N/A"));
     }
 
