@@ -11,6 +11,7 @@ import apiClient from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import PageError from '../components/common/PageError';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { availabilityColumns } from '../utils/csvColumns';
 import { formatResourceName } from '../utils/formatting';
@@ -221,7 +222,7 @@ export default function AvailabilityPage() {
   };
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading availability..." />;
-  if (error) return <Text c="red">Error loading availability</Text>;
+  if (error) return <PageError context="loading availability" error={error} />;
 
   const sourceOptions = resourceList.map(r => ({
     value: String(r.resourceId),
@@ -229,8 +230,8 @@ export default function AvailabilityPage() {
   }));
 
   return (
-    <Stack>
-      <Group justify="space-between">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" className="slide-in-left">
         <Group gap="sm">
           <Title order={2}>Availability (Hours per Month)</Title>
           {warningCount > 0 && (

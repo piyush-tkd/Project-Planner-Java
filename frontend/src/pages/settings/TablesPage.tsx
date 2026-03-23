@@ -279,8 +279,8 @@ export default function TablesPage() {
   };
 
   return (
-    <Box h="100%">
-      <Group justify="space-between" mb="md" align="flex-start">
+    <Box h="100%" className="page-enter stagger-children">
+      <Group justify="space-between" mb="md" align="flex-start" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size="xl" radius="md" color="indigo" variant="light">
             <IconDatabase size={22} />

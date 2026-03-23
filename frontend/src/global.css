@@ -1,9 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════
-   Global Style Enhancements — Baylor Genetics Brand (v01.1)
+   Global Style Enhancements — Baylor Genetics Brand (v02.0 — Modern)
    Deep Blue: #0C2340  |  Aqua: #2DCCD3  |  Font: DIN Next LT Pro / Arial
    ══════════════════════════════════════════════════════════════════════ */
-
-/* ── Web-font import (DIN Next LT Pro is licensed; Arial fallback auto) ── */
 
 /* ── Table improvements ─────────────────────────────────────────────── */
 .mantine-Table-thead th {
@@ -18,7 +16,6 @@
   border-bottom: 1px solid #0C2340 !important;
 }
 
-/* Alternate row fill — Deep Blue 10% tint per brand spec */
 .mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
 .mantine-Table-tr[data-striped="even"]:nth-of-type(even) {
   background-color: #E7E9EC;
@@ -29,7 +26,6 @@
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-/* Hover — Aqua 10% tint */
 .mantine-Table-tr[data-hover]:hover {
   background-color: #EAFAFB !important;
 }
@@ -38,7 +34,7 @@
   background-color: rgba(45, 204, 211, 0.08) !important;
 }
 
-/* ── Focus-visible outlines for accessibility ─────────────────────── */
+/* ── Focus-visible outlines ─────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid #2DCCD3;
   outline-offset: 2px;
@@ -53,36 +49,1017 @@
   box-shadow: 0 0 0 4px rgba(45, 204, 211, 0.15);
 }
 
-/* ── Card surface improvements ────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   MODERN CARD SYSTEM — Glassmorphism + Depth
+   ══════════════════════════════════════════════════════════════════════ */
+
 .mantine-Card-root,
 .mantine-Paper-root[data-with-border] {
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 300ms ease;
 }
 
 .mantine-Card-root:hover {
-  box-shadow: 0 6px 20px rgba(12, 35, 64, 0.10);
+  box-shadow: 0 12px 40px rgba(12, 35, 64, 0.12), 0 4px 12px rgba(45, 204, 211, 0.06);
+  transform: translateY(-2px);
 }
 
-/* ── Page transition animation ────────────────────────────────────── */
+/* Dark mode glass cards */
+[data-mantine-color-scheme="dark"] .mantine-Card-root {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Card-root:hover {
+  box-shadow: 0 12px 40px rgba(45, 204, 211, 0.15), 0 0 1px rgba(45, 204, 211, 0.4);
+  border: 1px solid rgba(45, 204, 211, 0.25);
+}
+
+/* Dark mode sidebar */
+[data-mantine-color-scheme="dark"] .mantine-AppShell-navbar {
+  background: linear-gradient(180deg, rgba(12, 35, 64, 0.4), rgba(0, 0, 0, 0.6));
+  backdrop-filter: blur(20px);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Text-root {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DARK MODE — Global Contrast & Readability Fixes
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Page titles — ensure white in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Title-root {
+  color: #fff !important;
+}
+
+/* Paper/Card borders — subtle teal tint in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[data-with-border] {
+  border-color: rgba(45, 204, 211, 0.12);
+}
+
+/* Links inside dark mode cards */
+[data-mantine-color-scheme="dark"] a {
+  color: rgba(45, 204, 211, 0.9);
+}
+
+/* Table header text in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Table-thead th {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Badge text readability in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Badge-root {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Input fields in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Input-input {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Input-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* NavLink active state in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-NavLink-root[data-active] {
+  background: linear-gradient(90deg, rgba(45, 204, 211, 0.12), transparent) !important;
+  color: #fff !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-NavLink-root:hover {
+  background: rgba(45, 204, 211, 0.06) !important;
+}
+
+/* Dimmed text — ensure decent contrast in dark mode */
+[data-mantine-color-scheme="dark"] [data-mantine-color="dimmed"],
+[data-mantine-color-scheme="dark"] .mantine-Text-root[data-c="dimmed"] {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Segmented control in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-root {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Tooltip in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background: rgba(12, 35, 64, 0.95);
+  border: 1px solid rgba(45, 204, 211, 0.15);
+  color: #e0e0e0;
+}
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-arrow {
+  background: rgba(12, 35, 64, 0.95);
+  border-color: rgba(45, 204, 211, 0.15);
+}
+
+/* Accordion / Collapse content in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Accordion-control {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Progress bar track in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Progress-root {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ThemeIcon — ensure visibility in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-ThemeIcon-root[data-variant="light"] {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Divider in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Divider-root {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Widget section titles in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Paper-root .mantine-Title-root,
+[data-mantine-color-scheme="dark"] .mantine-Card-root .mantine-Title-root {
+  color: #fff !important;
+}
+
+/* ── Fix hardcoded DEEP_BLUE (#0C2340) text — invisible in dark mode ── */
+/* Override inline color styles that use dark blue on dark backgrounds.
+   Browsers serialize #0C2340 → rgb(12, 35, 64).
+   Also catch DEEP_BLUE_TINTS which are various lighter shades. */
+[data-mantine-color-scheme="dark"] [style*="color: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] [style*="color:#0C2340"],
+[data-mantine-color-scheme="dark"] [style*="color: #0C2340"] {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+/* DEEP_BLUE_TINTS — mid shades that are also too dark for dark mode */
+[data-mantine-color-scheme="dark"] [style*="color: rgb(61, 78, 100)"],
+[data-mantine-color-scheme="dark"] [style*="color: rgb(86, 100, 118)"],
+[data-mantine-color-scheme="dark"] [style*="color: rgb(110, 122, 136)"],
+[data-mantine-color-scheme="dark"] [style*="color: rgb(134, 145, 155)"] {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Headings and large text — always white in dark mode */
+[data-mantine-color-scheme="dark"] h1,
+[data-mantine-color-scheme="dark"] h2,
+[data-mantine-color-scheme="dark"] h3,
+[data-mantine-color-scheme="dark"] h4 {
+  color: #fff !important;
+}
+
+/* KPI large numbers — ensure visibility */
+[data-mantine-color-scheme="dark"] .kpi-card-modern .mantine-Text-root[style*="font-size"] {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Sprint names and key data points — use AQUA for contrast */
+[data-mantine-color-scheme="dark"] .mantine-Card-root a,
+[data-mantine-color-scheme="dark"] .mantine-Paper-root a {
+  color: #2DCCD3;
+}
+
+/* Table headers and cells with hardcoded dark backgrounds */
+[data-mantine-color-scheme="dark"] table th[style*="background-color: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] table td[style*="background-color: rgb(12, 35, 64)"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Light-mode pastel cell backgrounds — darken for dark mode */
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(211, 249, 216)"] { background-color: rgba(47, 158, 68, 0.18) !important; }
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(235, 251, 238)"] { background-color: rgba(64, 192, 87, 0.12) !important; }
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(248, 249, 250)"] { background-color: rgba(255, 255, 255, 0.04) !important; }
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 243, 191)"] { background-color: rgba(230, 119, 0, 0.15) !important; }
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 227, 227)"] { background-color: rgba(201, 42, 42, 0.18) !important; }
+
+/* Light borders in dark mode */
+[data-mantine-color-scheme="dark"] td[style*="border-bottom: 1px solid rgb(233, 236, 239)"] {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+[data-mantine-color-scheme="dark"] td[style*="border-right: 1px solid rgb(233, 236, 239)"],
+[data-mantine-color-scheme="dark"] td[style*="border-right: 1px solid #e9ecef"] {
+  border-right-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── White / light row backgrounds → dark transparent in dark mode ── */
+/* Rows with hardcoded white or near-white backgrounds */
+[data-mantine-color-scheme="dark"] tr[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] tr[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] tr[style*="background: #fff"],
+[data-mantine-color-scheme="dark"] tr[style*="background:#fff"] {
+  background: transparent !important;
+}
+[data-mantine-color-scheme="dark"] tr[style*="background: rgb(248, 249, 250)"],
+[data-mantine-color-scheme="dark"] tr[style*="background-color: rgb(248, 249, 250)"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+/* Cells with hardcoded white or near-white backgrounds (sticky cols) */
+[data-mantine-color-scheme="dark"] td[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] td[style*="background: #fff"],
+[data-mantine-color-scheme="dark"] td[style*="background:#fff"],
+[data-mantine-color-scheme="dark"] th[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] th[style*="background-color: rgb(255, 255, 255)"] {
+  background: var(--mantine-color-body, #1a1b1e) !important;
+}
+[data-mantine-color-scheme="dark"] td[style*="background: rgb(248, 249, 250)"],
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(248, 249, 250)"],
+[data-mantine-color-scheme="dark"] th[style*="background: rgb(248, 249, 250)"],
+[data-mantine-color-scheme="dark"] th[style*="background-color: rgb(248, 249, 250)"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Table header cells with DEEP_BLUE bg — keep as subtle dark panel */
+[data-mantine-color-scheme="dark"] th[style*="background: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] th[style*="background-color: rgb(12, 35, 64)"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Mantine color-0 shades used as row/cell highlights — too light in dark mode.
+   Override the CSS variables so var(--mantine-color-X-0) resolves to dark-friendly values. */
+[data-mantine-color-scheme="dark"] {
+  --mantine-color-teal-0: rgba(45, 204, 211, 0.1);
+  --mantine-color-grape-0: rgba(190, 75, 219, 0.1);
+  --mantine-color-blue-0: rgba(34, 139, 230, 0.1);
+  --mantine-color-green-0: rgba(64, 192, 87, 0.1);
+  --mantine-color-yellow-0: rgba(252, 196, 25, 0.1);
+  --mantine-color-red-0: rgba(250, 82, 82, 0.1);
+  --mantine-color-orange-0: rgba(255, 146, 43, 0.1);
+  --mantine-color-violet-0: rgba(121, 80, 242, 0.1);
+  --mantine-color-indigo-0: rgba(76, 110, 245, 0.1);
+  --mantine-color-cyan-0: rgba(21, 170, 191, 0.1);
+  --mantine-color-pink-0: rgba(230, 73, 128, 0.1);
+  --mantine-color-gray-0: rgba(255, 255, 255, 0.04);
+}
+
+/* Generic light backgrounds — catch #fafafa and other near-whites */
+[data-mantine-color-scheme="dark"] [style*="background: rgb(250, 250, 250)"],
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(250, 250, 250)"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COMPREHENSIVE DARK MODE: Buttons, Cards, Alerts, Sections, Inputs
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Buttons with DEEP_BLUE background — nearly invisible in dark mode ── */
+[data-mantine-color-scheme="dark"] button[style*="background-color: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] button[style*="background: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] .mantine-Button-root[style*="background-color: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] .mantine-Button-root[style*="background: rgb(12, 35, 64)"] {
+  background: #2DCCD3 !important;
+  background-color: #2DCCD3 !important;
+  color: #0C2340 !important;
+  border-color: #2DCCD3 !important;
+}
+[data-mantine-color-scheme="dark"] button[style*="background-color: rgb(12, 35, 64)"] *,
+[data-mantine-color-scheme="dark"] button[style*="background: rgb(12, 35, 64)"] * {
+  color: #0C2340 !important;
+}
+
+/* ── Light-bg alert/info boxes (teal-0, green-0, blue-light, etc.) ── */
+/* Catch Mantine Alert with light backgrounds */
+[data-mantine-color-scheme="dark"] .mantine-Alert-root[data-variant="light"] {
+  background-color: rgba(45, 204, 211, 0.08) !important;
+  border-color: rgba(45, 204, 211, 0.15) !important;
+}
+
+/* ── Light pastel section/div backgrounds ── */
+/* Catch inline bg colors that are light pastels: mint, light-green, light-blue, cream */
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(232, 245, 233)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(232, 245, 233)"] {
+  background-color: rgba(64, 192, 87, 0.08) !important;
+  background: rgba(64, 192, 87, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(227, 242, 253)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(227, 242, 253)"] {
+  background-color: rgba(34, 139, 230, 0.08) !important;
+  background: rgba(34, 139, 230, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(232, 248, 243)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(232, 248, 243)"] {
+  background-color: rgba(45, 204, 211, 0.08) !important;
+  background: rgba(45, 204, 211, 0.08) !important;
+}
+/* Mantine light variants: teal-0 (#E6FCF5), blue-0 (#E7F5FF), green-0 (#EBFBEE) */
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(230, 252, 245)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(230, 252, 245)"] {
+  background: rgba(45, 204, 211, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(231, 245, 255)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(231, 245, 255)"] {
+  background: rgba(34, 139, 230, 0.08) !important;
+}
+/* #f0fdf4 = rgb(240, 253, 244) — light green section bg */
+[data-mantine-color-scheme="dark"] [style*="background: rgb(240, 253, 244)"],
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(240, 253, 244)"] {
+  background: rgba(45, 204, 211, 0.08) !important;
+}
+/* #f0f9ff = rgb(240, 249, 255) — light blue section bg */
+[data-mantine-color-scheme="dark"] [style*="background: rgb(240, 249, 255)"],
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(240, 249, 255)"] {
+  background: rgba(34, 139, 230, 0.08) !important;
+}
+/* #fffbeb = rgb(255, 251, 235) — light yellow/amber section bg */
+[data-mantine-color-scheme="dark"] [style*="background: rgb(255, 251, 235)"],
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(255, 251, 235)"] {
+  background: rgba(252, 196, 25, 0.08) !important;
+}
+/* #fef2f2 = rgb(254, 242, 242) — light red section bg */
+[data-mantine-color-scheme="dark"] [style*="background: rgb(254, 242, 242)"],
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(254, 242, 242)"] {
+  background: rgba(250, 82, 82, 0.08) !important;
+}
+
+/* ── Card / Paper with white or near-white background in dark mode ── */
+/* Cross-POD Dependencies and similar card-based layouts */
+[data-mantine-color-scheme="dark"] .mantine-Card-root[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] .mantine-Card-root[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] div[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="dark"] div[style*="background: rgb(255, 255, 255)"] {
+  background: var(--mantine-color-body, #1a1b1e) !important;
+  background-color: var(--mantine-color-body, #1a1b1e) !important;
+}
+[data-mantine-color-scheme="dark"] div[style*="background-color: white"],
+[data-mantine-color-scheme="dark"] div[style*="background: white"] {
+  background: var(--mantine-color-body, #1a1b1e) !important;
+  background-color: var(--mantine-color-body, #1a1b1e) !important;
+}
+
+/* ── More heatmap-style pastel cell backgrounds ── */
+/* Orange-yellow heatmap cells */
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 249, 219)"] { background-color: rgba(252, 196, 25, 0.12) !important; }
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 244, 230)"] { background-color: rgba(255, 146, 43, 0.12) !important; }
+/* Red heatmap cells */
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(255, 245, 245)"] { background-color: rgba(250, 82, 82, 0.08) !important; }
+/* Blue heatmap cells */
+[data-mantine-color-scheme="dark"] td[style*="background-color: rgb(231, 245, 255)"] { background-color: rgba(34, 139, 230, 0.12) !important; }
+
+/* ── Catch-all for any element with #fff or white bg inside data cells ── */
+[data-mantine-color-scheme="dark"] td[style*="background: white"],
+[data-mantine-color-scheme="dark"] td[style*="background-color: white"],
+[data-mantine-color-scheme="dark"] th[style*="background: white"],
+[data-mantine-color-scheme="dark"] th[style*="background-color: white"] {
+  background: var(--mantine-color-body, #1a1b1e) !important;
+}
+
+/* ── Light gray backgrounds (#f1f3f5, #f8f9fa, #e9ecef) on divs/sections ── */
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(241, 243, 245)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(241, 243, 245)"] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(233, 236, 239)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(233, 236, 239)"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Light border overrides ── */
+[data-mantine-color-scheme="dark"] [style*="border-color: rgb(233, 236, 239)"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="border: 1px solid rgb(233, 236, 239)"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] [style*="border: 1px solid #e9ecef"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── DEEP_BLUE_TINTS backgrounds ── */
+/* TINTS[10] = #E7E9EC = rgb(231, 233, 236) — used for table stripes, section bgs */
+[data-mantine-color-scheme="dark"] [style*="background-color: rgb(231, 233, 236)"],
+[data-mantine-color-scheme="dark"] [style*="background: rgb(231, 233, 236)"],
+[data-mantine-color-scheme="dark"] tr[style*="background-color: rgb(231, 233, 236)"],
+[data-mantine-color-scheme="dark"] tr[style*="background: rgb(231, 233, 236)"] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+/* TINTS[10] with alpha — e.g. DEEP_BLUE_TINTS[10] + '44' = #E7E9EC44 = rgba(231, 233, 236, 0.267) */
+[data-mantine-color-scheme="dark"] [style*="background: rgba(231, 233, 236"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+/* TINTS[20] = #CED3D9 = rgb(206, 211, 217) — borders */
+[data-mantine-color-scheme="dark"] [style*="border-color: rgb(206, 211, 217)"],
+[data-mantine-color-scheme="dark"] [style*="border: 1px solid rgb(206, 211, 217)"],
+[data-mantine-color-scheme="dark"] [style*="border: 2px solid rgb(206, 211, 217)"],
+[data-mantine-color-scheme="dark"] [style*="border-top: 2px solid rgb(206, 211, 217)"],
+[data-mantine-color-scheme="dark"] [style*="border-bottom: 1px solid rgb(206, 211, 217)"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+/* DEEP_BLUE_TINTS[10] borders */
+[data-mantine-color-scheme="dark"] [style*="border-bottom: 1px solid rgb(231, 233, 236)"],
+[data-mantine-color-scheme="dark"] [style*="border-top: 2px solid rgb(231, 233, 236)"] {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Mantine Table: ensure Mantine-based thead headers are dark ── */
+[data-mantine-color-scheme="dark"] .mantine-Table-thead {
+  background: rgba(255, 255, 255, 0.04);
+}
+[data-mantine-color-scheme="dark"] .mantine-Table-th {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Table-td {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Recharts / Chart dark mode overrides ── */
+[data-mantine-color-scheme="dark"] .recharts-wrapper,
+[data-mantine-color-scheme="dark"] .recharts-surface {
+  background: transparent !important;
+}
+
+/* Grid lines: DEEP_BLUE_TINTS[10] (#E7E9EC) → subtle white */
+[data-mantine-color-scheme="dark"] .recharts-cartesian-grid line,
+[data-mantine-color-scheme="dark"] .recharts-cartesian-grid-horizontal line,
+[data-mantine-color-scheme="dark"] .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Axis tick labels: DEEP_BLUE_TINTS[60] → readable white */
+[data-mantine-color-scheme="dark"] .recharts-cartesian-axis-tick text,
+[data-mantine-color-scheme="dark"] .recharts-xAxis .recharts-cartesian-axis-tick-value,
+[data-mantine-color-scheme="dark"] .recharts-yAxis .recharts-cartesian-axis-tick-value {
+  fill: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Axis lines */
+[data-mantine-color-scheme="dark"] .recharts-cartesian-axis-line,
+[data-mantine-color-scheme="dark"] .recharts-cartesian-axis-tick-line {
+  stroke: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Axis labels (e.g. "Hours" on X axis) */
+[data-mantine-color-scheme="dark"] .recharts-label {
+  fill: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Legend text */
+[data-mantine-color-scheme="dark"] .recharts-legend-item-text {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Tooltip container */
+[data-mantine-color-scheme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(30, 30, 35, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+[data-mantine-color-scheme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+[data-mantine-color-scheme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Tooltip hover cursor — the white rectangle behind hovered bars */
+[data-mantine-color-scheme="dark"] .recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.06) !important;
+  stroke: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Pie chart labels */
+[data-mantine-color-scheme="dark"] .recharts-pie-label-text {
+  fill: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ReferenceLine labels */
+[data-mantine-color-scheme="dark"] .recharts-reference-line text {
+  fill: currentColor !important;
+}
+
+/* SVG text with DEEP_BLUE fill (#0C2340 → rgb(12, 35, 64)) */
+[data-mantine-color-scheme="dark"] svg text[fill="rgb(12, 35, 64)"],
+[data-mantine-color-scheme="dark"] svg text[fill="#0C2340"],
+[data-mantine-color-scheme="dark"] svg text[fill="#0c2340"] {
+  fill: rgba(255, 255, 255, 0.92) !important;
+}
+/* SVG text with DEEP_BLUE_TINTS[60] fill (#6D7B8C) */
+[data-mantine-color-scheme="dark"] svg text[fill="rgb(109, 123, 140)"],
+[data-mantine-color-scheme="dark"] svg text[fill="#6D7B8C"],
+[data-mantine-color-scheme="dark"] svg text[fill="#6d7b8c"] {
+  fill: rgba(255, 255, 255, 0.6) !important;
+}
+/* SVG circles with DEEP_BLUE_TINTS[10] stroke (#E7E9EC) — gauge backgrounds */
+[data-mantine-color-scheme="dark"] svg circle[stroke="rgb(231, 233, 236)"],
+[data-mantine-color-scheme="dark"] svg circle[stroke="#E7E9EC"],
+[data-mantine-color-scheme="dark"] svg circle[stroke="#e7e9ec"] {
+  stroke: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Bar fills: DEEP_BLUE_TINTS[30] (#B6BDC6) — low contrast gray bars → brighter */
+[data-mantine-color-scheme="dark"] .recharts-bar-rectangle path[fill="#B6BDC6"],
+[data-mantine-color-scheme="dark"] .recharts-bar-rectangle path[fill="#b6bdc6"] {
+  fill: rgba(255, 255, 255, 0.35) !important;
+}
+/* Bar/Pie fills: DEEP_BLUE (#0C2340) — invisible in dark mode → use AQUA */
+[data-mantine-color-scheme="dark"] .recharts-bar-rectangle path[fill="#0C2340"],
+[data-mantine-color-scheme="dark"] .recharts-bar-rectangle path[fill="#0c2340"] {
+  fill: #4A90A4 !important;
+}
+[data-mantine-color-scheme="dark"] .recharts-pie-sector path[fill="#0C2340"],
+[data-mantine-color-scheme="dark"] .recharts-pie-sector path[fill="#0c2340"],
+[data-mantine-color-scheme="dark"] .recharts-sector[fill="#0C2340"],
+[data-mantine-color-scheme="dark"] .recharts-sector[fill="#0c2340"],
+[data-mantine-color-scheme="dark"] path.recharts-sector[fill="#0C2340"],
+[data-mantine-color-scheme="dark"] path.recharts-sector[fill="#0c2340"] {
+  fill: #4A90A4 !important;
+}
+/* Area fills: DEEP_BLUE_TINTS[20] (#CED3D9) — barely visible area */
+[data-mantine-color-scheme="dark"] .recharts-area path[fill="#CED3D9"],
+[data-mantine-color-scheme="dark"] .recharts-area path[fill="#ced3d9"] {
+  fill: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Heatmap cells: white borders → dark borders */
+[data-mantine-color-scheme="dark"] td[style*="border: 1px solid white"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── Modal title fix ── */
+[data-mantine-color-scheme="dark"] .mantine-Modal-title {
+  color: #fff !important;
+}
+
+/* ── Mantine Card/Paper default backgrounds in dark mode ── */
+/* Ensure cards don't retain white backgrounds from light-mode defaults */
+[data-mantine-color-scheme="dark"] .mantine-Card-root {
+  background-color: var(--mantine-color-dark-6, #25262b);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  background-color: var(--mantine-color-dark-6, #25262b);
+}
+
+/* ── Mantine Alert backgrounds ── */
+[data-mantine-color-scheme="dark"] .mantine-Alert-root {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── Cross-POD Deps: project name text inside cards ── */
+[data-mantine-color-scheme="dark"] .mantine-Card-root .mantine-Text-root {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── All Mantine inputs ── */
+[data-mantine-color-scheme="dark"] .mantine-Input-input,
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Widget / Section headers with light bg ── */
+[data-mantine-color-scheme="dark"] .mantine-Accordion-control,
+[data-mantine-color-scheme="dark"] .mantine-Tabs-tab {
+  color: rgba(255, 255, 255, 0.85);
+}
+[data-mantine-color-scheme="dark"] .mantine-Tabs-tab[data-active] {
+  border-bottom-color: #2DCCD3;
+  color: #fff;
+}
+
+/* SegmentedControl dark mode */
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-root {
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-label[data-active] {
+  color: #fff !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ══════════════════════════════════════════════════════════════════════ */
+
 @keyframes page-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-transition {
   animation: page-fade-in 250ms ease-out;
 }
 
-/* ── Smooth scrollbar ─────────────────────────────────────────────── */
+@keyframes subtle-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(45, 204, 211, 0.3), inset 0 0 8px rgba(45, 204, 211, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(45, 204, 211, 0.6), inset 0 0 12px rgba(45, 204, 211, 0.2); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(45, 204, 211, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(45, 204, 211, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(45, 204, 211, 0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(45, 204, 211, 0.6); }
+  50% { opacity: 0.5; box-shadow: 0 0 8px rgba(45, 204, 211, 0.3); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(10px, -15px) scale(1.05); }
+  66% { transform: translate(-8px, -8px) scale(0.98); }
+}
+
+@keyframes orb-drift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(30px, -20px) rotate(90deg); }
+  50% { transform: translate(0px, -40px) rotate(180deg); }
+  75% { transform: translate(-30px, -20px) rotate(270deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes breathing {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+@keyframes border-flow {
+  0% { border-image-source: linear-gradient(0deg, #2DCCD3, #0C2340, #2DCCD3); }
+  50% { border-image-source: linear-gradient(180deg, #2DCCD3, #0C2340, #2DCCD3); }
+  100% { border-image-source: linear-gradient(360deg, #2DCCD3, #0C2340, #2DCCD3); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(45, 204, 211, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(45, 204, 211, 0.25); }
+}
+
+/* ── Navigation ────────────────────────────────────────────────────── */
+
+.nav-item-enter {
+  animation: slide-in-left 300ms ease-out;
+}
+
+.nav-active-indicator {
+  position: relative;
+  border-left: 3px solid #2DCCD3;
+  padding-left: 12px !important;
+  background: linear-gradient(90deg, rgba(45, 204, 211, 0.12), transparent);
+}
+
+.logo-mark-animated {
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), filter 300ms ease;
+  transform-origin: center;
+}
+
+.logo-mark-animated:hover {
+  animation: subtle-glow 2s ease-in-out infinite;
+  transform: rotate(2deg) scale(1.08);
+  filter: drop-shadow(0 0 8px rgba(45, 204, 211, 0.5));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODERN HERO — NLP Landing Page
+   ══════════════════════════════════════════════════════════════════════ */
+
+.nlp-hero {
+  position: relative;
+  border-radius: 24px;
+  padding: 48px 24px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f7fa 30%, #f5f5ff 70%, #fff 100%);
+}
+
+[data-mantine-color-scheme="dark"] .nlp-hero {
+  background: linear-gradient(135deg, rgba(12, 35, 64, 0.6) 0%, rgba(45, 204, 211, 0.08) 30%, rgba(12, 35, 64, 0.4) 70%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.nlp-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(45, 204, 211, 0.04) 60deg, transparent 120deg, rgba(12, 35, 64, 0.03) 200deg, transparent 280deg);
+  animation: spin-slow 25s linear infinite;
+  pointer-events: none;
+}
+
+.nlp-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.nlp-orb-1 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(45, 204, 211, 0.3), transparent 70%);
+  top: -30px;
+  right: -30px;
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.nlp-orb-2 {
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(12, 35, 64, 0.15), transparent 70%);
+  bottom: -20px;
+  left: -20px;
+  animation: float-slow 10s ease-in-out infinite reverse;
+}
+
+.nlp-orb-3 {
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(45, 204, 211, 0.2), transparent 70%);
+  top: 40%;
+  left: 20%;
+  animation: breathing 6s ease-in-out infinite;
+}
+
+/* ── NLP Insight cards ─────────────────────────────────────────────── */
+
+.nlp-insight-card {
+  backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.nlp-insight-card:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow: 0 16px 40px rgba(45, 204, 211, 0.15), 0 0 0 1px rgba(45, 204, 211, 0.2) !important;
+}
+
+.nlp-insight-card:hover .nlp-insight-arrow {
+  opacity: 1 !important;
+}
+
+.nlp-insight-card:hover .nlp-insight-icon {
+  transform: scale(1.15);
+  transition: transform 0.3s ease;
+}
+
+/* ── NLP Search container ──────────────────────────────────────────── */
+
+.nlp-search-container {
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.nlp-search-container:hover {
+  box-shadow: 0 8px 32px rgba(45, 204, 211, 0.12), 0 0 0 1px rgba(45, 204, 211, 0.15) !important;
+}
+
+/* ── Quick action buttons ──────────────────────────────────────────── */
+
+.quick-action-btn {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(45, 204, 211, 0.08), transparent);
+  transition: left 0.5s ease;
+}
+
+.quick-action-btn:hover::before {
+  left: 100%;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(45, 204, 211, 0.12) !important;
+  border-color: rgba(45, 204, 211, 0.3) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODERN DASHBOARD
+   ══════════════════════════════════════════════════════════════════════ */
+
+.dashboard-page {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.dashboard-page > * {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.dashboard-page > *:nth-child(1) { animation-delay: 0s; }
+.dashboard-page > *:nth-child(2) { animation-delay: 0.1s; }
+.dashboard-page > *:nth-child(3) { animation-delay: 0.15s; }
+.dashboard-page > *:nth-child(4) { animation-delay: 0.2s; }
+.dashboard-page > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* ── Modern KPI cards ──────────────────────────────────────────────── */
+
+.kpi-card-modern {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px !important;
+  backdrop-filter: blur(12px);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid rgba(45, 204, 211, 0.1) !important;
+}
+
+.kpi-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2DCCD3, #0C2340, #2DCCD3);
+  background-size: 200% 100%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.kpi-card-modern:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow: 0 20px 50px rgba(12, 35, 64, 0.12), 0 0 0 1px rgba(45, 204, 211, 0.2) !important;
+  border-color: rgba(45, 204, 211, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .kpi-card-modern {
+  background: linear-gradient(135deg, rgba(45, 204, 211, 0.05), rgba(12, 35, 64, 0.3)) !important;
+  border: 1px solid rgba(45, 204, 211, 0.1) !important;
+}
+
+[data-mantine-color-scheme="dark"] .kpi-card-modern:hover {
+  box-shadow: 0 20px 50px rgba(45, 204, 211, 0.1), 0 0 0 1px rgba(45, 204, 211, 0.3) !important;
+  background: linear-gradient(135deg, rgba(45, 204, 211, 0.08), rgba(12, 35, 64, 0.4)) !important;
+}
+
+/* ── Section header modern ─────────────────────────────────────────── */
+
+.section-header-modern {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.section-header-modern::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(45, 204, 211, 0.4), transparent);
+  border-radius: 1px;
+}
+
+/* ── Jira integration cards ────────────────────────────────────────── */
+
+.jira-card-modern {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.jira-card-modern::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 60%, rgba(45, 204, 211, 0.05) 100%);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.jira-card-modern:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 16px 40px rgba(12, 35, 64, 0.12) !important;
+}
+
+.jira-card-modern:hover::after {
+  background: linear-gradient(135deg, transparent 40%, rgba(45, 204, 211, 0.1) 100%);
+}
+
+/* ── Quick link pills ──────────────────────────────────────────────── */
+
+.quick-link-pill {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px !important;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  backdrop-filter: blur(4px);
+}
+
+.quick-link-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(45, 204, 211, 0.08), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.quick-link-pill:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 8px 24px rgba(45, 204, 211, 0.15), 0 0 0 1px rgba(45, 204, 211, 0.2) !important;
+  border-color: rgba(45, 204, 211, 0.3) !important;
+}
+
+.quick-link-pill:hover::before {
+  opacity: 1;
+}
+
+.quick-link-pill:hover .quick-link-icon {
+  transform: rotate(8deg) scale(1.15);
+  transition: transform 0.3s ease;
+}
+
+/* ── Portfolio health card ─────────────────────────────────────────── */
+
+.health-card-modern {
+  border-radius: 20px !important;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.35s ease !important;
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+.health-card-modern:hover {
+  transform: translateY(-2px) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ══════════════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -90,8 +1067,8 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(12, 35, 64, 0.15);
-  border-radius: 4px;
+  background: rgba(12, 35, 64, 0.12);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -99,26 +1076,248 @@
 }
 
 [data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 [data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ── NLP Breadcrumb hover ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ══════════════════════════════════════════════════════════════════════ */
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+[data-mantine-color-scheme="dark"] .glass-effect {
+  background: rgba(12, 35, 64, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+}
+
+[data-mantine-color-scheme="dark"] .glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gradient-border {
+  position: relative;
+  background: linear-gradient(135deg, #0C2340, #2DCCD3);
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.hover-lift {
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(12, 35, 64, 0.15);
+}
+
+.accent-glow {
+  box-shadow: 0 0 20px rgba(45, 204, 211, 0.4), 0 0 60px rgba(45, 204, 211, 0.1);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #0C2340, #2DCCD3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PAGE-LEVEL ANIMATIONS
+   Reusable animation classes inspired by the NLP landing page.
+   Apply these class names to page wrappers and child elements for
+   consistent staggered entrance animations across the app.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Page enter — the whole page fades up ───────────────────────────── */
+.page-enter {
+  animation: fadeInUp 0.45s ease-out both;
+}
+
+/* ── Staggered children — add to a parent container ────────────────── */
+.stagger-children > * {
+  animation: fadeInUp 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1)  { animation-delay: 0s; }
+.stagger-children > *:nth-child(2)  { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(3)  { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(4)  { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(5)  { animation-delay: 0.22s; }
+.stagger-children > *:nth-child(6)  { animation-delay: 0.26s; }
+.stagger-children > *:nth-child(7)  { animation-delay: 0.30s; }
+.stagger-children > *:nth-child(8)  { animation-delay: 0.34s; }
+.stagger-children > *:nth-child(9)  { animation-delay: 0.38s; }
+.stagger-children > *:nth-child(10) { animation-delay: 0.42s; }
+
+/* ── Slide-in from left — for sidebars, filters, breadcrumbs ──────── */
+.slide-in-left {
+  animation: slideInRight 0.4s ease-out both;
+}
+
+/* ── Scale-in — for cards and modals ──────────────────────────────── */
+.scale-in {
+  animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Count-up animation for KPI values ─────────────────────────────── */
+.count-animate {
+  animation: countUp 0.5s ease-out both;
+}
+
+/* ── Staggered grid — for SimpleGrid / card grids ─────────────────── */
+.stagger-grid > * {
+  animation: fadeInUp 0.4s ease-out both;
+}
+.stagger-grid > *:nth-child(1)  { animation-delay: 0s; }
+.stagger-grid > *:nth-child(2)  { animation-delay: 0.05s; }
+.stagger-grid > *:nth-child(3)  { animation-delay: 0.10s; }
+.stagger-grid > *:nth-child(4)  { animation-delay: 0.15s; }
+.stagger-grid > *:nth-child(5)  { animation-delay: 0.18s; }
+.stagger-grid > *:nth-child(6)  { animation-delay: 0.21s; }
+.stagger-grid > *:nth-child(7)  { animation-delay: 0.24s; }
+.stagger-grid > *:nth-child(8)  { animation-delay: 0.27s; }
+
+/* ── Table row stagger — for data tables ──────────────────────────── */
+.stagger-rows tbody tr {
+  animation: fade-up 0.3s ease-out both;
+}
+.stagger-rows tbody tr:nth-child(1)  { animation-delay: 0.02s; }
+.stagger-rows tbody tr:nth-child(2)  { animation-delay: 0.04s; }
+.stagger-rows tbody tr:nth-child(3)  { animation-delay: 0.06s; }
+.stagger-rows tbody tr:nth-child(4)  { animation-delay: 0.08s; }
+.stagger-rows tbody tr:nth-child(5)  { animation-delay: 0.10s; }
+.stagger-rows tbody tr:nth-child(6)  { animation-delay: 0.12s; }
+.stagger-rows tbody tr:nth-child(7)  { animation-delay: 0.14s; }
+.stagger-rows tbody tr:nth-child(8)  { animation-delay: 0.16s; }
+.stagger-rows tbody tr:nth-child(9)  { animation-delay: 0.18s; }
+.stagger-rows tbody tr:nth-child(10) { animation-delay: 0.20s; }
+
+/* ── Chart reveal — for Recharts containers ──────────────────────── */
+.chart-reveal {
+  animation: chartReveal 0.6s ease-out both;
+}
+
+@keyframes chartReveal {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Hover glow card — generic card hover with AQUA glow ──────────── */
+.hover-glow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-glow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(12, 35, 64, 0.1), 0 0 0 1px rgba(45, 204, 211, 0.15);
+}
+
+[data-mantine-color-scheme="dark"] .hover-glow:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(45, 204, 211, 0.2);
+}
+
+/* ── Metric badge pop — for badges/pills that appear ─────────────── */
+.badge-pop {
+  animation: badgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes badgePop {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Simulator result transition ─────────────────────────────────── */
+.sim-result-enter {
+  animation: simResultEnter 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes simResultEnter {
+  from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* ── Detail page header — for Pod/Project detail headers ──────────── */
+.detail-header {
+  animation: slideInRight 0.45s ease-out both;
+}
+
+.detail-header .detail-stats {
+  animation: fadeInUp 0.4s ease-out 0.15s both;
+}
+
+/* ── Subtle pulse for live/active indicators ─────────────────────── */
+.pulse-live {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Prefers reduced motion — respect accessibility ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .stagger-children > *,
+  .stagger-grid > *,
+  .stagger-rows tbody tr,
+  .slide-in-left,
+  .scale-in,
+  .count-animate,
+  .chart-reveal,
+  .badge-pop,
+  .sim-result-enter,
+  .detail-header,
+  .detail-header .detail-stats,
+  .dashboard-page,
+  .dashboard-page > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .hover-glow,
+  .hover-lift,
+  .kpi-card-modern,
+  .jira-card-modern,
+  .quick-link-pill,
+  .nlp-insight-card,
+  .nlp-search-container {
+    transition: none !important;
+  }
+}
+
+/* ── Misc ──────────────────────────────────────────────────────────── */
+
 .nlp-breadcrumb-btn:hover {
   background-color: #EAFAFB !important;
   box-shadow: 0 0 0 1px #2DCCD3;
 }
 
-/* ── Selection colour ─────────────────────────────────────────────── */
 ::selection {
   background: rgba(45, 204, 211, 0.20);
   color: #0C2340;
 }
 
-/* ── Print-friendly styles ────────────────────────────────────────── */
+/* ── Print ─────────────────────────────────────────────────────────── */
 @media print {
   .mantine-AppShell-navbar,
   .mantine-AppShell-header,
@@ -137,8 +1336,7 @@
     border: none !important;
   }
 
-  body,
-  html {
+  body, html {
     background: white !important;
     color: black !important;
   }

@@ -47,8 +47,10 @@ export default function TimelineSettingsPage() {
   if (isLoading) return <LoadingSpinner variant="form" message="Loading settings..." />;
 
   return (
-    <Stack>
-      <Title order={2}>Timeline Settings</Title>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <Title order={2}>Timeline Settings</Title>
+      </Group>
 
       <Card withBorder padding="md">
         <Group grow>

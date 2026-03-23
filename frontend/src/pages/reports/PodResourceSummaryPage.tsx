@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Title, Stack, Table, Text, Badge, Tooltip } from '@mantine/core';
+import { Title, Stack, Table, Text, Badge, Tooltip, Group } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { usePodResourceSummary } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const ROLES = ['DEVELOPER', 'QA', 'BSA', 'TECH_LEAD'];
@@ -36,11 +37,13 @@ export default function PodResourceSummaryPage() {
   const pods = useMemo(() => data ?? [], [data]);
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading POD resources..." />;
-  if (error) return <Text c="red">Error loading POD resource summary</Text>;
+  if (error) return <PageError context="loading POD resource summary" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>POD Resources</Title>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <Title order={2}>POD Resources</Title>
+      </Group>
 
       <Title order={4}>Home Assignments</Title>
       <Table.ScrollContainer minWidth={800}>

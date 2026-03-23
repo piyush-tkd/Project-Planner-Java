@@ -11,6 +11,7 @@ export interface UserFeedback {
   status: string;
   adminNotes: string | null;
   priority: string;
+  rating: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +22,7 @@ export interface SubmitFeedbackPayload {
   pageUrl?: string;
   screenshot?: string;
   priority?: string;
+  rating?: number;
 }
 
 export function useAllFeedback() {

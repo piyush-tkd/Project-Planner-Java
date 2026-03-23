@@ -70,6 +70,7 @@ import {
   IconPackage,
   IconBrain,
   IconMessageReport,
+  IconLayoutDashboard,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ExcelUploadModal from '../common/ExcelUploadModal';
@@ -138,6 +139,9 @@ const navGroups: NavGroup[] = [
       { label: 'Project Gantt',       path: '/reports/gantt',              icon: <IconCalendar size={17} />,         pageKey: 'project_gantt' },
       { label: 'Budget & Cost',       path: '/reports/budget',             icon: <IconCurrencyDollar size={17} />,   pageKey: 'budget' },
       { label: 'Resource ROI',        path: '/reports/resource-roi',       icon: <IconCoin size={17} />,             pageKey: 'resource_roi' },
+      { label: 'DORA Metrics',        path: '/reports/dora',               icon: <IconRocket size={17} />,           pageKey: 'dora_metrics' },
+      { label: 'Jira Analytics',      path: '/reports/jira-analytics',     icon: <IconChartInfographic size={17} />, pageKey: 'jira_analytics' },
+      { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={17} />, pageKey: 'jira_dashboard_builder' },
     ],
   },
   {
@@ -297,9 +301,10 @@ export default function AppShellLayout() {
       {/* ── Header ── */}
       <MantineAppShell.Header
         style={{
-          backgroundColor: DEEP_BLUE,
-          borderBottom: 'none',
-          boxShadow: SHADOW.header,
+          background: `linear-gradient(135deg, ${DEEP_BLUE} 0%, #0a1c33 40%, ${DEEP_BLUE} 100%)`,
+          borderBottom: `2px solid ${AQUA}`,
+          boxShadow: `0 4px 24px rgba(12, 35, 64, 0.3), 0 0 0 1px ${AQUA}15`,
+          backdropFilter: 'blur(20px)',
         }}
       >
         <Group h="100%" px="md" justify="space-between">
@@ -313,7 +318,13 @@ export default function AppShellLayout() {
               color="white"
             />
             {/* Baylor Genetics logo mark — Aqua triangle */}
-            <svg width="28" height="26" viewBox="0 0 28 26" fill="none">
+            <svg
+              width="28"
+              height="26"
+              viewBox="0 0 28 26"
+              fill="none"
+              className="logo-mark-animated"
+            >
               <polygon points="14,1 27,25 1,25" fill="none" stroke={AQUA} strokeWidth="2.5" />
               <polygon points="14,7 23,23 5,23"  fill={AQUA} opacity="0.3" />
             </svg>
@@ -353,7 +364,10 @@ export default function AppShellLayout() {
                 }}
                 visibleFrom="sm"
               >
-                <IconSearch size={14} />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <IconSearch size={14} />
+                  <div className="search-ready-indicator" style={{ position: 'absolute', bottom: -2, right: -3, width: 5, height: 5, backgroundColor: AQUA, borderRadius: '50%', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                </div>
                 <Text size="sm" style={{ flex: 1, color: 'rgba(255,255,255,0.55)', fontFamily: FONT_FAMILY }}>Search…</Text>
                 <Kbd size="xs" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', border: 'none', fontFamily: FONT_FAMILY }}>⌘K</Kbd>
               </UnstyledButton>
@@ -467,11 +481,12 @@ export default function AppShellLayout() {
         p="xs"
         style={{
           backgroundColor: isDark ? undefined : SURFACE_SIDEBAR,
-          borderRight: `1px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
+          borderRight: `1px solid ${isDark ? 'rgba(45, 204, 211, 0.08)' : BORDER_DEFAULT}`,
+          boxShadow: isDark ? `1px 0 20px rgba(0, 0, 0, 0.3)` : `1px 0 12px rgba(12, 35, 64, 0.04)`,
         }}
       >
         <MantineAppShell.Section grow component={ScrollArea}>
-          {visibleGroups.map(group => {
+          {visibleGroups.map((group) => {
             const collapsed = isGroupCollapsed(group);
             const hasActive = group.items.some(item =>
               item.path === '/' ? location.pathname === '/' :
@@ -479,11 +494,19 @@ export default function AppShellLayout() {
             );
             const allLabels = visibleGroups.map(g => g.label);
             return (
-              <div key={group.label}>
+              <div key={group.label} className="nav-group-container">
                 {/* Group header — clickable to collapse/expand */}
                 <UnstyledButton
                   onClick={() => group.label !== 'Dashboard' && toggleGroup(group.label, allLabels)}
-                  style={{ width: '100%', padding: '10px 8px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 8px 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: hasActive ? `1px solid ${AQUA_TINTS[30]}` : 'none',
+                    transition: 'border-color 200ms ease',
+                  }}
                 >
                   <Text
                     size="xs" fw={600} tt="uppercase"
@@ -501,7 +524,7 @@ export default function AppShellLayout() {
                       size={12}
                       style={{
                         color: DEEP_BLUE_TINTS[50],
-                        transition: 'transform 150ms ease',
+                        transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                         transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
                       }}
                     />
@@ -509,7 +532,14 @@ export default function AppShellLayout() {
                 </UnstyledButton>
 
                 {/* Nav items — hidden when collapsed */}
-                {!collapsed && group.items.map(item => {
+                <div
+                  style={{
+                    overflow: 'hidden',
+                    maxHeight: !collapsed ? '1000px' : '0',
+                    transition: 'max-height 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  }}
+                >
+                  {group.items.map(item => {
                   const isActive = item.path === '/'
                     ? location.pathname === '/'
                     : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
@@ -522,9 +552,9 @@ export default function AppShellLayout() {
                         <Group gap={6} justify="space-between" wrap="nowrap">
                           <span>{item.label}</span>
                           {alertCount > 0 && (
-                            <Badge size="xs" variant="filled"
-                              color={item.alertKey === 'supportStale' ? 'orange' : 'red'}
-                              style={{ fontSize: 10, minWidth: 18, padding: '0 4px' }}>
+                            <Badge size="xs" variant="gradient"
+                              gradient={{ from: item.alertKey === 'supportStale' ? 'orange' : 'red', to: item.alertKey === 'supportStale' ? 'yellow' : 'pink' }}
+                              style={{ fontSize: 10, minWidth: 18, padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}>
                               {alertCount}
                             </Badge>
                           )}
@@ -533,25 +563,64 @@ export default function AppShellLayout() {
                       leftSection={item.icon}
                       active={isActive}
                       onClick={() => navigate(item.path)}
+                      className="nav-item-enter"
                       style={{
-                        borderRadius: 6,
+                        borderRadius: 10,
                         fontFamily: FONT_FAMILY,
                         fontWeight: isActive ? 600 : 400,
-                        fontSize: 14,
+                        fontSize: 13,
+                        borderLeft: isActive ? `3px solid ${AQUA}` : 'none',
+                        paddingLeft: isActive ? 12 : 15,
+                        transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: isActive ? 'translateX(2px)' : 'translateX(0)',
+                        background: isActive
+                          ? `linear-gradient(90deg, ${AQUA}15, transparent)`
+                          : undefined,
+                        boxShadow: isActive
+                          ? `inset 3px 0 0 ${AQUA}, 0 2px 8px ${AQUA}10`
+                          : undefined,
                       }}
                       styles={{
                         root: {
-                          '--nav-active-bg': AQUA_TINTS[10],
+                          '--nav-active-bg': `linear-gradient(90deg, ${AQUA_TINTS[10]}, transparent)`,
                           '--nav-active-color': DEEP_BLUE,
+                          '&:hover': {
+                            backgroundColor: AQUA_TINTS[10],
+                            transform: 'translateX(2px)',
+                          },
                         },
                       }}
                       color="deepBlue"
                     />
                   );
                 })}
+                </div>
               </div>
             );
           })}
+        </MantineAppShell.Section>
+
+        {/* Sidebar footer — branding */}
+        <MantineAppShell.Section>
+          <div style={{
+            padding: '12px 8px',
+            borderTop: `1px solid ${isDark ? 'rgba(45, 204, 211, 0.08)' : BORDER_DEFAULT}`,
+            textAlign: 'center',
+            background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(12, 35, 64, 0.02)',
+          }}>
+            <Text size="xs" c="dimmed" style={{
+              fontFamily: FONT_FAMILY,
+              fontSize: 9,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              background: `linear-gradient(90deg, ${DEEP_BLUE_TINTS[50]}, ${AQUA})`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 700,
+            }}>
+              Portfolio Planner v2.8
+            </Text>
+          </div>
         </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 

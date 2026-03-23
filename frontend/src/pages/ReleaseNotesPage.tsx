@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Badge, Alert, Loader, Anchor, Paper,
   Collapse, ActionIcon, Divider, SimpleGrid, ThemeIcon, Tooltip,
-  ScrollArea, Table, Box, SegmentedControl, MultiSelect, TextInput,
+  ScrollArea, Table, Box, SegmentedControl, MultiSelect, TextInput, Button,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   IconPackage, IconAlertTriangle, IconChevronDown, IconChevronUp,
   IconExternalLink, IconSearch, IconCheck, IconTag,
-  IconCalendarEvent, IconBookmark,
+  IconCalendarEvent, IconBookmark, IconRefresh,
 } from '@tabler/icons-react';
 import { useJiraStatus, useReleaseMetrics, useSearchReleaseVersion, useAllFixVersions, type IssueRow, type ReleaseMetrics } from '../api/jira';
 import { useReleases } from '../api/releases';
@@ -404,9 +404,11 @@ function ReleaseSection({
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ReleaseNotesPage() {
   const { data: jiraStatus } = useJiraStatus();
-  const { data: releaseMetrics, isLoading: metricsLoading } = useReleaseMetrics();
+  const { data: releaseMetrics, isLoading: metricsLoading, isFetching: metricsFetching, refetch: refetchMetrics } = useReleaseMetrics();
   const { data: calendarReleases } = useReleases();
-  const { data: allFixVersions, isLoading: versionsLoading } = useAllFixVersions();
+  const { data: allFixVersions, isLoading: versionsLoading, refetch: refetchVersions } = useAllFixVersions();
+
+  const handleRefresh = () => { refetchMetrics(); refetchVersions(); };
 
   const jiraBaseUrl = jiraStatus?.baseUrl ?? '';
 
@@ -470,9 +472,9 @@ export default function ReleaseNotesPage() {
   const hasAnyResults = selectedVersions.length > 0;
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" className="page-enter stagger-children">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <Group justify="space-between" wrap="wrap">
+      <Group justify="space-between" wrap="wrap" className="slide-in-left">
         <Group gap="sm" align="center">
           <ThemeIcon size={36} radius="md" style={{ background: DEEP_BLUE }}>
             <IconPackage size={20} color="white" />
@@ -486,13 +488,24 @@ export default function ReleaseNotesPage() {
             </Text>
           </div>
         </Group>
-        {visibleTracked.length > 0 && (
-          <Group gap="sm">
-            <Badge size="lg" variant="light" color="violet">{totalStories} Stories</Badge>
-            <Badge size="lg" variant="light" color="red">{totalBugs} Bugs</Badge>
-            <Badge size="lg" variant="light" color="blue">{totalIssues} Total</Badge>
-          </Group>
-        )}
+        <Group gap="sm">
+          {visibleTracked.length > 0 && (
+            <>
+              <Badge size="lg" variant="light" color="violet">{totalStories} Stories</Badge>
+              <Badge size="lg" variant="light" color="red">{totalBugs} Bugs</Badge>
+              <Badge size="lg" variant="light" color="blue">{totalIssues} Total</Badge>
+            </>
+          )}
+          <Button
+            variant="light"
+            size="sm"
+            leftSection={<IconRefresh size={15} />}
+            loading={metricsFetching}
+            onClick={handleRefresh}
+          >
+            Refresh
+          </Button>
+        </Group>
       </Group>
 
       {/* ── Version picker ────────────────────────────────────────────── */}

@@ -20,6 +20,7 @@ import { IconBriefcase, IconUsers, IconFlame, IconChartBar } from '@tabler/icons
 import { useProjectPodMatrix } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
@@ -141,7 +142,7 @@ export default function OwnerDemandPage() {
   }, [selectedOwnerDetail, projectPodMatrix]);
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading owner demand..." />;
-  if (error) return <Text c="red">Error loading project data</Text>;
+  if (error) return <PageError context="loading project data" error={error} />;
 
   const tableRows = filteredOwners.map((owner) => (
     <Table.Tr key={owner}>
@@ -190,19 +191,21 @@ export default function OwnerDemandPage() {
   ));
 
   return (
-    <Container size="xl" py="xl">
+    <Container size="xl" py="xl" className="page-enter stagger-children">
       <Stack gap="lg">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
-            Owner Demand
-          </Title>
-          <Text c="dimmed" size="sm">
-            Active projects per owner per month
-          </Text>
-        </div>
+        <Group className="slide-in-left">
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+              Owner Demand
+            </Title>
+            <Text c="dimmed" size="sm">
+              Active projects per owner per month
+            </Text>
+          </div>
+        </Group>
 
         {/* ── Summary widgets ── */}
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" className="stagger-grid">
           <Paper p="md" radius="md" withBorder style={{ cursor: 'default' }}>
             <Group gap="sm" wrap="nowrap">
               <ThemeIcon size={40} radius="md" variant="light" color="blue">

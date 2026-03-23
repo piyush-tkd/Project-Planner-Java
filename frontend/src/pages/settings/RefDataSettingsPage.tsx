@@ -196,8 +196,8 @@ export default function RefDataSettingsPage() {
   if (isLoading) return <LoadingSpinner variant="form" message="Loading reference data..." />;
 
   return (
-    <Container size="xl" py="md">
-      <Group justify="space-between" align="flex-start" mb="lg">
+    <Container size="xl" py="md" className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
         <div>
           <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Reference Data
@@ -209,7 +209,7 @@ export default function RefDataSettingsPage() {
       </Group>
 
       {/* ── Summary Cards ── */}
-      <SimpleGrid cols={{ base: 2, sm: 3 }} mb="lg">
+      <SimpleGrid cols={{ base: 2, sm: 3 }} mb="lg" className="stagger-grid">
         <Paper shadow="xs" radius="md" p="md" withBorder>
           <Group gap="sm" align="flex-start">
             <ThemeIcon size={36} radius="md" variant="light" style={{ color: DEEP_BLUE, backgroundColor: `${DEEP_BLUE}15` }}>

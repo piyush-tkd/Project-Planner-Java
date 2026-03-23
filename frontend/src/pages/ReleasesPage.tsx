@@ -733,7 +733,7 @@ export default function ReleasesPage() {
   const totalHours     = releases.reduce((s, r) => s + (r.totalHoursLogged ?? 0), 0);
 
   return (
-    <Box p="md">
+    <Box p="md" className="page-enter stagger-children">
       {/* Global cross-release issue modal */}
       <IssueModal
         opened={globalModal.open}
@@ -744,7 +744,7 @@ export default function ReleasesPage() {
       />
 
       {/* ── Header ── */}
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" mb="lg" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
             <IconTag size={22} color="white" />

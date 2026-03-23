@@ -9,6 +9,7 @@ export interface NlpResponsePayload {
   formData: Record<string, unknown> | null;
   data: Record<string, unknown> | null;
   drillDown: string | null;
+  shape?: string | null;
 }
 
 export interface NlpQueryResponse {
@@ -18,6 +19,7 @@ export interface NlpQueryResponse {
   response: NlpResponsePayload;
   suggestions: string[];
   queryLogId: number | null;
+  debug?: Record<string, unknown> | null;
 }
 
 export interface NlpCatalogPageInfo {
@@ -149,11 +151,130 @@ export interface NlpConfigRequest {
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 
-/** Fire a natural-language query. Use as a mutation so the caller controls when it fires. */
+/** Fire a natural-language query with optional session context. */
 export function useNlpQuery() {
-  return useMutation<NlpQueryResponse, Error, string>({
-    mutationFn: (query: string) =>
-      apiClient.post('/nlp/query', { query }, { timeout: 90000 }).then(r => r.data),
+  return useMutation<NlpQueryResponse, Error, { query: string; sessionContext?: string }>({
+    mutationFn: ({ query, sessionContext }) =>
+      apiClient.post('/nlp/query', { query, sessionContext }, { timeout: 90000 }).then(r => r.data),
+  });
+}
+
+/** Execute a tool directly, bypassing the NLP pipeline (Phase 0.2 — insight cards). */
+export async function directToolCall(toolName: string, params: Record<string, string>): Promise<NlpQueryResponse> {
+  const response = await apiClient.post('/nlp/direct-tool', { toolName, params });
+  return response.data;
+}
+
+// ── SSE Streaming Types ──────────────────────────────────────────────────────
+
+export interface NlpStreamPhase {
+  phase: string;
+  message: string;
+  detail: string;
+}
+
+export interface NlpStreamCallbacks {
+  onPhase: (phase: NlpStreamPhase) => void;
+  onResult: (result: NlpQueryResponse) => void;
+  onError: (error: Error) => void;
+}
+
+/**
+ * Stream an NLP query with real-time progress events via SSE.
+ * Returns an abort function to cancel the stream.
+ */
+export function streamNlpQuery(query: string, callbacks: NlpStreamCallbacks, sessionContext?: string): () => void {
+  const controller = new AbortController();
+  const token = localStorage.getItem('pp_token');
+
+  fetch('/api/nlp/query/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ query, sessionContext }),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let gotResult = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        let eventName = '';
+        let eventData = '';
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            eventData = line.slice(5).trim();
+          } else if (line === '' && eventName && eventData) {
+            try {
+              const parsed = JSON.parse(eventData);
+              if (eventName === 'phase') {
+                callbacks.onPhase(parsed);
+              } else if (eventName === 'result') {
+                gotResult = true;
+                callbacks.onResult(parsed);
+              }
+            } catch {
+              // Ignore parse errors for non-JSON events
+            }
+            eventName = '';
+            eventData = '';
+          }
+        }
+      }
+
+      // Stream ended without a result event — fall back to POST
+      if (!gotResult) {
+        throw new Error('SSE stream completed without result');
+      }
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') {
+        callbacks.onError(err);
+      }
+    });
+
+  return () => controller.abort();
+}
+
+// ── Proactive Insights ──────────────────────────────────────────────────────
+
+export interface NlpInsightCard {
+  id: string;
+  icon: string;
+  color: string;
+  title: string;
+  description: string;
+  query: string;
+  toolName?: string;
+  toolParams?: Record<string, string>;
+  filters?: Record<string, string>;
+  drillDownRoute?: string;
+}
+
+/** Fetch proactive insight cards for the Ask AI landing page. */
+export function useNlpInsights() {
+  return useQuery<NlpInsightCard[]>({
+    queryKey: ['nlp-insights'],
+    queryFn: () => apiClient.get('/nlp/insights').then(r => r.data),
+    staleTime: 2 * 60 * 1000, // Refresh every 2 min
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -340,5 +461,86 @@ export function useNlpLearnerRunHistory() {
   return useQuery<NlpLearnerRunHistory[]>({
     queryKey: ['nlp-learner-history'],
     queryFn: () => apiClient.get('/nlp/learner/history').then(r => r.data),
+  });
+}
+
+// ── Conversation Types ─────────────────────────────────────────────────────
+
+export interface NlpConversationMessage {
+  id: number;
+  role: string;
+  content: string;
+  intent: string | null;
+  confidence: number | null;
+  resolvedBy: string | null;
+  response: NlpResponsePayload | null;
+  suggestions: string[];
+  toolCalls: Array<Record<string, unknown>>;
+  responseMs: number | null;
+  createdAt: string;
+}
+
+export interface NlpConversationSummary {
+  id: number;
+  title: string;
+  pinned: boolean;
+  messageCount: number;
+  lastMessageAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NlpConversationDetail extends NlpConversationSummary {
+  messages: NlpConversationMessage[];
+}
+
+// ── Conversation Hooks ─────────────────────────────────────────────────────
+
+/** Get all conversations for the user. */
+export function useNlpConversations() {
+  return useQuery<NlpConversationSummary[]>({
+    queryKey: ['nlp-conversations'],
+    queryFn: () => apiClient.get('/nlp/conversations').then(r => r.data),
+  });
+}
+
+/** Get a specific conversation with all its messages. */
+export function useNlpConversation(id: number | null) {
+  return useQuery<NlpConversationDetail>({
+    queryKey: ['nlp-conversation', id],
+    queryFn: () => apiClient.get(`/nlp/conversations/${id}`).then(r => r.data),
+    enabled: !!id,
+  });
+}
+
+/** Create a new conversation. */
+export function useCreateNlpConversation() {
+  return useMutation<NlpConversationSummary, Error, { title?: string }>({
+    mutationFn: (data) =>
+      apiClient.post('/nlp/conversations', data).then(r => r.data),
+  });
+}
+
+/** Send a message to a conversation. */
+export function useSendNlpMessage() {
+  return useMutation<NlpConversationMessage, Error, { conversationId: number; message: string }>({
+    mutationFn: (data) =>
+      apiClient.post(`/nlp/conversations/${data.conversationId}/messages`, { message: data.message }).then(r => r.data),
+  });
+}
+
+/** Delete a conversation. */
+export function useDeleteNlpConversation() {
+  return useMutation<void, Error, number>({
+    mutationFn: (id) =>
+      apiClient.delete(`/nlp/conversations/${id}`).then(r => r.data),
+  });
+}
+
+/** Toggle pin status on a conversation. */
+export function useToggleNlpPin() {
+  return useMutation<NlpConversationSummary, Error, number>({
+    mutationFn: (id) =>
+      apiClient.put(`/nlp/conversations/${id}/pin`).then(r => r.data),
   });
 }

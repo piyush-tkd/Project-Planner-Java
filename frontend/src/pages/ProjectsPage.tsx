@@ -18,6 +18,7 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import PageError from '../components/common/PageError';
 import TablePagination from '../components/common/TablePagination';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
@@ -51,14 +52,36 @@ export default function ProjectsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
   const [nameError, setNameError] = useState<string>('');
-  const [statusFilter, setStatusFilter]   = useState<string>('ALL');
-  const [cardFilter, setCardFilter]       = useState<string | null>(null);
+  // URL search params — used for both NLP navigation filters and highlight
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read initial filter values from URL query params (e.g., /projects?priority=P0&status=ACTIVE)
+  const urlPriority = searchParams.get('priority');
+  const urlStatus = searchParams.get('status');
+  const urlOwner = searchParams.get('owner');
+
+  const [statusFilter, setStatusFilter]   = useState<string>(urlStatus ?? 'ALL');
+  const [cardFilter, setCardFilter]       = useState<string | null>(
+    urlPriority === 'P0' || urlPriority === 'P1' ? 'P0P1' : urlStatus && urlStatus !== 'ALL' ? urlStatus : null
+  );
   const [search, setSearch]               = useState('');
-  const [ownerFilter, setOwnerFilter]     = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [ownerFilter, setOwnerFilter]     = useState<string | null>(urlOwner ?? null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(urlPriority ?? null);
+
+  // Clean up filter params from URL after applying them (keep URL tidy)
+  useEffect(() => {
+    if (urlPriority || urlStatus || urlOwner) {
+      const cleaned = new URLSearchParams(searchParams);
+      cleaned.delete('priority');
+      cleaned.delete('status');
+      cleaned.delete('owner');
+      setSearchParams(cleaned, { replace: true });
+    }
+    // Run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Highlight support from NLP drill-down (?highlight=id)
-  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight') ? Number(searchParams.get('highlight')) : null;
   const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
   const [flashId, setFlashId] = useState<number | null>(null);
@@ -151,11 +174,11 @@ export default function ProjectsPage() {
   };
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading projects..." />;
-  if (error) return <Text c="red">Error loading projects</Text>;
+  if (error) return <PageError context="loading projects" error={error} />;
 
   return (
-    <Stack>
-      <Group justify="space-between">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" className="slide-in-left">
         <Title order={2}>Projects</Title>
         <Group gap="sm">
           <CsvToolbar
@@ -183,7 +206,7 @@ export default function ProjectsPage() {
         </Group>
       </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
+      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} className="stagger-grid">
         <SummaryCard
           title="Total Projects"
           value={stats.total}

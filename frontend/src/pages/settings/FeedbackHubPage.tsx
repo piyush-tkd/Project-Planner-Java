@@ -8,7 +8,7 @@ import { notifications } from '@mantine/notifications';
 import {
   IconMessageReport, IconBug, IconBulb, IconTrendingUp, IconDots,
   IconCheck, IconClock, IconPlayerPlay, IconX, IconTrash,
-  IconPhoto, IconExternalLink,
+  IconPhoto, IconExternalLink, IconStarFilled, IconStar,
 } from '@tabler/icons-react';
 import {
   useAllFeedback, useUpdateFeedback, useDeleteFeedback, UserFeedback,
@@ -95,8 +95,8 @@ export default function FeedbackHubPage() {
   };
 
   return (
-    <Container size="xl" py="md">
-      <Group justify="space-between" align="flex-start" mb="lg">
+    <Container size="xl" py="md" className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
         <div>
           <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Feedback Hub
@@ -108,7 +108,7 @@ export default function FeedbackHubPage() {
       </Group>
 
       {/* ── Summary Cards ── */}
-      <SimpleGrid cols={{ base: 2, sm: 4, md: 6 }} mb="lg">
+      <SimpleGrid cols={{ base: 2, sm: 4, md: 6 }} mb="lg" className="stagger-grid">
         <SummaryCard label="Total" value={counts.all} color={DEEP_BLUE} icon={<IconMessageReport size={18} />} />
         <SummaryCard label="New" value={counts.new} color="#1c7ed6" icon={<IconMessageReport size={18} />} />
         <SummaryCard label="In Progress" value={counts.inProgress} color="#e67700" icon={<IconPlayerPlay size={18} />} />
@@ -154,6 +154,7 @@ export default function FeedbackHubPage() {
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>Screenshot</Table.Th>
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>By</Table.Th>
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>Priority</Table.Th>
+                      <Table.Th style={{ fontFamily: FONT_FAMILY }}>Rating</Table.Th>
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>Date</Table.Th>
                       <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
@@ -189,6 +190,17 @@ export default function FeedbackHubPage() {
                           <Table.Td><Text size="xs" c="dimmed">{fb.submittedBy ?? '—'}</Text></Table.Td>
                           <Table.Td>
                             <Badge size="xs" variant="filled" color={pri.color}>{fb.priority}</Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap={2}>
+                              {fb.rating ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                  i < fb.rating! ? <IconStarFilled key={i} size={12} color="#F5A623" /> : <IconStar key={i} size={12} color="#CED4DA" />
+                                ))
+                              ) : (
+                                <Text size="xs" c="dimmed">—</Text>
+                              )}
+                            </Group>
                           </Table.Td>
                           <Table.Td>
                             <Badge size="xs" variant="light" color={st.color} leftSection={st.icon}>

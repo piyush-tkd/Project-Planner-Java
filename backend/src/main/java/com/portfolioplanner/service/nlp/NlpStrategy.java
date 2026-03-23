@@ -28,14 +28,15 @@ public interface NlpStrategy {
             java.util.Map<String, Object> formData,
             java.util.Map<String, Object> data,
             String drillDown,
-            java.util.List<String> suggestions
+            java.util.List<String> suggestions,
+            String shape
     ) {
         public NlpQueryResponse toResponse(String resolvedBy) {
             return new NlpQueryResponse(
                     intent, confidence, resolvedBy,
-                    new NlpQueryResponse.NlpResponsePayload(message, route, formData, data, drillDown),
+                    new NlpQueryResponse.NlpResponsePayload(message, route, formData, data, drillDown, shape),
                     suggestions != null ? suggestions : java.util.List.of(),
-                    null
+                    null, null
             );
         }
     }

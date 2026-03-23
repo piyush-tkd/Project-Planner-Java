@@ -159,9 +159,9 @@ export default function JiraWorklogPage() {
   }
 
   return (
-    <Box p="md">
+    <Box p="md" className="page-enter stagger-children">
       {/* Header */}
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" mb="lg" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
             <IconClock size={22} color="white" />

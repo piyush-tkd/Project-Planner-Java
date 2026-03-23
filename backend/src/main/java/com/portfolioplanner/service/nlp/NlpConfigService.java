@@ -41,7 +41,7 @@ public class NlpConfigService {
     /** Load config from DB and push into strategy engine + strategy implementations. */
     private void loadAndApplyConfig() {
         try {
-            List<String> chain = getListValue("strategy_chain", List.of("RULE_BASED"));
+            List<String> chain = getListValue("strategy_chain", List.of("DETERMINISTIC", "LOCAL_LLM", "RULE_BASED"));
             double threshold = getDoubleValue("confidence_threshold", 0.75);
             engine.configure(chain, threshold);
 
@@ -68,7 +68,7 @@ public class NlpConfigService {
                     chain, threshold, embeddingService.isAvailable() ? "available" : "not available");
         } catch (Exception e) {
             log.error("Failed to load NLP config, using defaults", e);
-            engine.configure(List.of("RULE_BASED"), 0.75);
+            engine.configure(List.of("DETERMINISTIC", "LOCAL_LLM", "RULE_BASED"), 0.75);
         }
     }
 
@@ -79,7 +79,7 @@ public class NlpConfigService {
                         avail ? "Connected" : "Not available", null)));
 
         return new NlpConfigResponse(
-                getListValue("strategy_chain", List.of("RULE_BASED")),
+                getListValue("strategy_chain", List.of("DETERMINISTIC", "LOCAL_LLM", "RULE_BASED")),
                 getDoubleValue("confidence_threshold", 0.75),
                 getStringValue("cloud_provider", "ANTHROPIC"),
                 getStringValue("cloud_model", "claude-haiku-4-5-20251001"),

@@ -1,0 +1,1163 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "generated": "2026-03-22",
+    "description": "Comprehensive NLP prompt catalog for end-to-end testing of the Ask AI system. Covers every intent, entity type, tool, route, and edge case.",
+    "totalPrompts": 1050,
+    "categories": 55,
+    "usage": "Import in test runner or NLP settings page to batch-test query classification, tool routing, and response quality."
+  },
+
+  "categories": [
+
+    {
+      "id": "greeting",
+      "name": "Greetings & Small Talk",
+      "expectedIntent": "HELP",
+      "expectedStrategy": "RULE_BASED",
+      "prompts": [
+        { "q": "hello", "expect": { "intent": "HELP", "minConfidence": 0.85 } },
+        { "q": "hi there", "expect": { "intent": "HELP" } },
+        { "q": "hey", "expect": { "intent": "HELP" } },
+        { "q": "good morning", "expect": { "intent": "HELP" } },
+        { "q": "good afternoon", "expect": { "intent": "HELP" } },
+        { "q": "good evening", "expect": { "intent": "HELP" } },
+        { "q": "thanks", "expect": { "intent": "HELP" } },
+        { "q": "thank you", "expect": { "intent": "HELP" } },
+        { "q": "thanks for the help", "expect": { "intent": "HELP" } },
+        { "q": "bye", "expect": { "intent": "HELP" } }
+      ]
+    },
+
+    {
+      "id": "capabilities",
+      "name": "Capability Discovery",
+      "expectedIntent": "HELP",
+      "expectedStrategy": "RULE_BASED",
+      "prompts": [
+        { "q": "what can you do?", "expect": { "intent": "HELP", "dataType": "CAPABILITIES" } },
+        { "q": "what are your capabilities?", "expect": { "intent": "HELP" } },
+        { "q": "help me", "expect": { "intent": "HELP" } },
+        { "q": "how can you help?", "expect": { "intent": "HELP" } },
+        { "q": "what features do you support?", "expect": { "intent": "HELP" } },
+        { "q": "show me what you can do", "expect": { "intent": "HELP" } },
+        { "q": "what kind of questions can I ask?", "expect": { "intent": "HELP" } },
+        { "q": "give me some examples", "expect": { "intent": "HELP" } },
+        { "q": "I need help", "expect": { "intent": "HELP" } },
+        { "q": "what do you know about?", "expect": { "intent": "HELP" } }
+      ]
+    },
+
+    {
+      "id": "nav-core-pages",
+      "name": "Navigation — Core Pages",
+      "expectedIntent": "NAVIGATE",
+      "expectedStrategy": "RULE_BASED",
+      "prompts": [
+        { "q": "go to dashboard", "expect": { "route": "/" } },
+        { "q": "open the dashboard", "expect": { "route": "/" } },
+        { "q": "show me the dashboard", "expect": { "route": "/" } },
+        { "q": "take me to projects", "expect": { "route": "/projects" } },
+        { "q": "open projects page", "expect": { "route": "/projects" } },
+        { "q": "go to portfolio", "expect": { "route": "/projects" } },
+        { "q": "navigate to resources", "expect": { "route": "/resources" } },
+        { "q": "show resources", "expect": { "route": "/resources" } },
+        { "q": "go to the team page", "expect": { "route": "/resources" } },
+        { "q": "open pods", "expect": { "route": "/pods" } },
+        { "q": "go to teams", "expect": { "route": "/pods" } },
+        { "q": "show availability", "expect": { "route": "/availability" } },
+        { "q": "open capacity page", "expect": { "route": "/availability" } },
+        { "q": "go to overrides", "expect": { "route": "/overrides" } },
+        { "q": "show temporary allocations", "expect": { "route": "/overrides" } },
+        { "q": "open team calendar", "expect": { "route": "/team-calendar" } },
+        { "q": "go to sprint calendar", "expect": { "route": "/sprint-calendar" } },
+        { "q": "show sprints", "expect": { "route": "/sprint-calendar" } },
+        { "q": "open release calendar", "expect": { "route": "/release-calendar" } },
+        { "q": "show releases", "expect": { "route": "/release-calendar" } },
+        { "q": "open sprint planner", "expect": { "route": "/sprint-planner" } },
+        { "q": "go to sprint recommender", "expect": { "route": "/sprint-planner" } },
+        { "q": "show me the NLP settings", "expect": { "route": "/settings/nlp" } },
+        { "q": "open settings", "expect": { "route": "/settings" } },
+        { "q": "go to release notes", "expect": { "route": "/release-notes" } },
+        { "q": "navigate to Ask AI", "expect": { "route": "/nlp" } }
+      ]
+    },
+
+    {
+      "id": "nav-reports",
+      "name": "Navigation — Reports",
+      "expectedIntent": "NAVIGATE",
+      "prompts": [
+        { "q": "show capacity gap report", "expect": { "route": "/reports/capacity-gap" } },
+        { "q": "open the gap report", "expect": { "route": "/reports/capacity-gap" } },
+        { "q": "go to utilization heatmap", "expect": { "route": "/reports/utilization" } },
+        { "q": "show the heatmap", "expect": { "route": "/reports/utilization" } },
+        { "q": "open capacity vs demand report", "expect": { "route": "/reports/capacity-demand" } },
+        { "q": "show supply demand", "expect": { "route": "/reports/capacity-demand" } },
+        { "q": "go to concurrency risk", "expect": { "route": "/reports/concurrency" } },
+        { "q": "open hiring forecast", "expect": { "route": "/reports/hiring-forecast" } },
+        { "q": "show hiring needs", "expect": { "route": "/reports/hiring-forecast" } },
+        { "q": "go to project health", "expect": { "route": "/reports/project-health" } },
+        { "q": "open cross-pod dependencies", "expect": { "route": "/reports/cross-pod" } },
+        { "q": "show gantt chart", "expect": { "route": "/reports/gantt" } },
+        { "q": "open project timeline", "expect": { "route": "/reports/gantt" } },
+        { "q": "go to budget report", "expect": { "route": "/reports/budget" } },
+        { "q": "show cost report", "expect": { "route": "/reports/budget" } },
+        { "q": "open resource ROI", "expect": { "route": "/reports/resource-roi" } },
+        { "q": "show slack buffer report", "expect": { "route": "/reports/slack-buffer" } },
+        { "q": "open owner demand", "expect": { "route": "/reports/owner-demand" } },
+        { "q": "go to deadline gap", "expect": { "route": "/reports/deadline-gap" } }
+      ]
+    },
+
+    {
+      "id": "nav-jira",
+      "name": "Navigation — Jira Pages",
+      "expectedIntent": "NAVIGATE",
+      "prompts": [
+        { "q": "go to jira pod dashboard", "expect": { "route": "/jira-pods" } },
+        { "q": "open jira support queue", "expect": { "route": "/jira-support" } },
+        { "q": "show support tickets", "expect": { "route": "/jira-support" } },
+        { "q": "go to jira worklog", "expect": { "route": "/jira-worklog" } },
+        { "q": "open time tracking", "expect": { "route": "/jira-worklog" } },
+        { "q": "show capex opex report", "expect": { "route": "/jira-capex" } },
+        { "q": "open jira actuals", "expect": { "route": "/jira-actuals" } },
+        { "q": "go to jira releases", "expect": { "route": "/jira-releases" } }
+      ]
+    },
+
+    {
+      "id": "nav-simulators",
+      "name": "Navigation — Simulators",
+      "expectedIntent": "NAVIGATE",
+      "prompts": [
+        { "q": "open the simulator", "expect": { "route": "/simulator/scenario" } },
+        { "q": "go to what-if analysis", "expect": { "route": "/simulator/timeline" } },
+        { "q": "show timeline simulator", "expect": { "route": "/simulator/timeline" } },
+        { "q": "open scenario planner", "expect": { "route": "/simulator/scenario" } },
+        { "q": "I want to run a simulation", "expect": { "intent": "NAVIGATE" } },
+        { "q": "take me to the what-if tool", "expect": { "intent": "NAVIGATE" } }
+      ]
+    },
+
+    {
+      "id": "resource-lookup-exact",
+      "name": "Resource Lookup — Direct Name",
+      "expectedIntent": "DATA_QUERY",
+      "expectedDataType": "RESOURCE_PROFILE",
+      "expectedTool": "get_resource_profile",
+      "prompts": [
+        { "q": "who is Piyush?", "expect": { "intent": "DATA_QUERY", "dataType": "RESOURCE_PROFILE" } },
+        { "q": "tell me about Ojas", "expect": { "dataType": "RESOURCE_PROFILE" } },
+        { "q": "Piyush Baheti", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me details for Piyush", "expect": { "dataType": "RESOURCE_PROFILE" } },
+        { "q": "what role is Ojas?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "info on Piyush", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find Piyush", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "details for Ojas", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is Piyush Baheti?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "look up Piyush", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "resource-lookup-exists",
+      "name": "Resource Lookup — Existence Check",
+      "expectedIntent": "DATA_QUERY",
+      "notes": "Tests the tricky 'is there anyone named X' patterns — these were buggy before",
+      "prompts": [
+        { "q": "is there anyone named Piyush?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there any one named Piyush in any of the PODs?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "do we have someone named Ojas?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "does any team have a person called Piyush?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there a developer named Piyush?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "can you find anyone named Ojas?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there anybody named John in the team?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "do we have any one named Jane in any pod?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there someone called Mike across all pods?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "does the team have someone named Sarah?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "resource-lookup-notfound",
+      "name": "Resource Lookup — Not Found (should return clean 'not found')",
+      "notes": "Tests that non-existent names return proper not-found messages, not empty cards",
+      "prompts": [
+        { "q": "is there anyone named ZZZZZ?", "expect": { "intent": "DATA_QUERY", "hasData": true, "dataType": "LIST" } },
+        { "q": "who is Nonexistent Person?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "tell me about Fakename McFake", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there anyone named Xyzzy in any of the pods?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find someone called Abcdef", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "resource-list-role",
+      "name": "Resource List — By Role",
+      "expectedIntent": "DATA_QUERY",
+      "expectedDataType": "LIST",
+      "expectedTool": "list_resources",
+      "prompts": [
+        { "q": "show all developers", "expect": { "dataType": "LIST" } },
+        { "q": "list QA engineers", "expect": { "dataType": "LIST" } },
+        { "q": "show me all the BSAs", "expect": { "dataType": "LIST" } },
+        { "q": "who are the tech leads?", "expect": { "dataType": "LIST" } },
+        { "q": "list all devs", "expect": { "dataType": "LIST" } },
+        { "q": "show testers", "expect": { "dataType": "LIST" } },
+        { "q": "get all QAs", "expect": { "dataType": "LIST" } },
+        { "q": "how many developers do we have?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who are our business analysts?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find all tech leads", "expect": { "dataType": "LIST" } }
+      ]
+    },
+
+    {
+      "id": "resource-list-location",
+      "name": "Resource List — By Location",
+      "prompts": [
+        { "q": "show all resources in India", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who works in the US?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list onshore team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show offshore resources", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "India team members", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many people are in India?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "US-based developers", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "India QA engineers", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is working from US?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list people in India", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "resource-list-pod",
+      "name": "Resource List — By Pod",
+      "prompts": [
+        { "q": "who is in the BD pod?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "members of Platform team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show resources in Accessioning pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list people in the API team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who works in the Data pod?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the BD team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "team members in Platform", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "developers in the BD pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "QA engineers in Accessioning team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find all members of BD", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-lookup",
+      "name": "Project Lookup — Direct",
+      "expectedTool": "get_project_profile",
+      "prompts": [
+        { "q": "tell me about project SgNIPT", "expect": { "dataType": "PROJECT_PROFILE" } },
+        { "q": "what is the status of SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me project details for CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project SgNIPT overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who owns the SgNIPT project?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "details about NIPT Billing", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there a project named ABC?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find project SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "look up project CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "SgNIPT project info", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-list-filters",
+      "name": "Project List — Filtered",
+      "expectedTool": "list_projects",
+      "prompts": [
+        { "q": "show all active projects", "expect": { "dataType": "LIST" } },
+        { "q": "list P0 projects", "expect": { "dataType": "LIST" } },
+        { "q": "show P1 projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what projects are on hold?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show completed projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which projects are not started?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list cancelled projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "projects in discovery", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show critical projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what are the highest priority projects?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-list-owner",
+      "name": "Project List — By Owner",
+      "prompts": [
+        { "q": "projects owned by Piyush", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what projects does Piyush own?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Piyush's projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me projects under Ojas", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which projects is Piyush managing?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list all projects for Piyush", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is Piyush working on?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show projects managed by Ojas", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "pod-lookup",
+      "name": "Pod/Team Lookup",
+      "expectedTool": "get_pod_profile",
+      "prompts": [
+        { "q": "tell me about BD pod", "expect": { "dataType": "POD_PROFILE" } },
+        { "q": "show Platform team details", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is the BD team?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Accessioning pod info", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many members does BD have?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what projects is BD pod working on?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the Platform pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "details for the Data team", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "BD pod overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "tell me about the Accessioning team", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "cross-entity",
+      "name": "Cross-Entity Queries",
+      "prompts": [
+        { "q": "who works on project SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what projects is Piyush assigned to?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pods are working on SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what projects are in the BD pod?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is the tech lead for BD?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pod does Piyush belong to?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "resources allocated to SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which team is SgNIPT assigned to?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "projects and members of BD pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me who is working on what", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "sprint-queries",
+      "name": "Sprint Queries",
+      "expectedTool": "get_sprint_info",
+      "prompts": [
+        { "q": "what is the current sprint?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the active sprint", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "when does the sprint end?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "next sprint details", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "upcoming sprints", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint 25-03 details", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many days left in the current sprint?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is the sprint locked?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "when is the sprint lock-in date?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show sprint calendar", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "release-queries",
+      "name": "Release Queries",
+      "expectedTool": "get_release_info",
+      "prompts": [
+        { "q": "when is the next release?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show upcoming releases", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "release R3.0 details", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "when is the code freeze?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "releases in March", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "releases in March 2026", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what releases are coming up?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is there a release this month?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "next code freeze date", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show release schedule", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "sprint-allocations",
+      "name": "Sprint Allocations",
+      "expectedTool": "get_sprint_allocations",
+      "prompts": [
+        { "q": "show sprint allocations", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what's allocated for the current sprint?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint hours for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "BD pod sprint allocations", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many hours are planned this sprint?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint capacity for Platform pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the sprint plan", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what work is planned for this sprint?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "allocations for sprint 25-03", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint workload by pod", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "resource-availability",
+      "name": "Resource Availability",
+      "expectedTool": "get_resource_availability",
+      "prompts": [
+        { "q": "is Piyush available next month?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Piyush's availability", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "when is Piyush free?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me Ojas availability", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who has capacity in April?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which resources are free next month?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "check Piyush's calendar", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Piyush FTE for April", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how loaded is Piyush?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is anyone free in May?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-estimates",
+      "name": "Project Estimates & Effort",
+      "expectedTool": "get_project_estimates",
+      "prompts": [
+        { "q": "estimates for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many hours for project SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "effort breakdown for CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "dev hours for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "QA effort for CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pods are working on SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total effort for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show estimate for NIPT Billing", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project SgNIPT pod breakdown", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much BSA effort for SgNIPT?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-dependencies",
+      "name": "Project Dependencies & Blockers",
+      "expectedTool": "get_project_dependencies",
+      "prompts": [
+        { "q": "what blocks SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "dependencies for project SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is SgNIPT blocked by anything?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show all blockers", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which projects have dependencies?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project blockers", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me blocked projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is SgNIPT waiting on?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "cross-pod dependencies", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list all project dependencies", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "project-actuals",
+      "name": "Project Actuals (Planned vs Actual)",
+      "expectedTool": "get_project_actuals",
+      "prompts": [
+        { "q": "actual hours for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much time was spent on SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "planned vs actual for CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is SgNIPT over budget?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "budget burn for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "actuals vs estimates for CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the actual effort on SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which projects are over budget?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "cost-rates",
+      "name": "Cost Rates & Billing",
+      "expectedTool": "get_cost_rates",
+      "prompts": [
+        { "q": "show cost rates", "expect": { "intent": "DATA_QUERY", "dataType": "COST_RATE" } },
+        { "q": "what is the billing rate for developers?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "rate for QA in India", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "developer rate in US", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show all billing rates", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much does a developer cost?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "cost comparison US vs India", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "rate card", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hourly rates", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what's the QA billing rate?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "analytics-utilization",
+      "name": "Utilization Analytics",
+      "expectedTool": "get_utilization_summary",
+      "prompts": [
+        { "q": "show utilization summary", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is overallocated?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pods are over capacity?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "underutilized resources", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "utilization rate by pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is BD pod over-allocated?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who can take more work?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which team has the highest utilization?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me over-utilized resources", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is at full capacity?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "analytics-capacity",
+      "name": "Capacity Analytics",
+      "expectedTool": "get_capacity_summary",
+      "prompts": [
+        { "q": "show capacity summary", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total available capacity", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "developer capacity next month", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much QA capacity in Q2?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "India team capacity", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "capacity forecast", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many hours are available?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "BD pod capacity", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "capacity vs demand gap", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "do we have enough capacity?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "analytics-team-comp",
+      "name": "Team Composition Analytics",
+      "expectedTool": "get_team_composition",
+      "prompts": [
+        { "q": "show team composition", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "headcount breakdown", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "dev to QA ratio", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "role mix per pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many people do we have by role?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "India vs US split", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "location distribution", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "team structure overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is our offshore percentage?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "role distribution across pods", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "analytics-portfolio",
+      "name": "Portfolio Summary",
+      "expectedTool": "get_portfolio_summary",
+      "prompts": [
+        { "q": "give me a portfolio overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "portfolio summary", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "executive summary", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what needs attention?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "portfolio health check", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "give me the big picture", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "current state of things", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "key metrics overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what should I focus on today?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project summary across all pods", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "overrides",
+      "name": "Temporary Overrides / Resource Transfers",
+      "expectedTool": "get_overrides",
+      "prompts": [
+        { "q": "show active overrides", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is loaned out?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "resource transfers", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me temporary allocations", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "cross-pod assignments", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is Piyush being shared?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which resources are on loan?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "overrides for BD pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "shared resources", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show all active transfers", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "config-effort-patterns",
+      "name": "Effort Patterns & Role Mix",
+      "prompts": [
+        { "q": "what effort patterns are available?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "explain the front-loaded pattern", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show role effort mix", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what percentage goes to dev vs QA?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "distribution patterns", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is the bell curve pattern?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show T-shirt sizes", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is an XL project?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project sizing configuration", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how are projects sized?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "create-entities",
+      "name": "Entity Creation (Form Pre-fill)",
+      "expectedIntent": "FORM_PREFILL",
+      "prompts": [
+        { "q": "create a new project", "expect": { "intent": "FORM_PREFILL", "route": "/projects" } },
+        { "q": "add a new resource", "expect": { "intent": "FORM_PREFILL", "route": "/resources" } },
+        { "q": "create a project called Alpha", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "add a developer named John", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "create a P0 project", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "add a QA engineer from India", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "create a new pod called Analytics", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "I want to add a new project", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "new resource in BD pod", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "add someone to the team", "expect": { "intent": "FORM_PREFILL" } }
+      ]
+    },
+
+    {
+      "id": "status-updates",
+      "name": "Status Updates",
+      "expectedIntent": "FORM_PREFILL",
+      "prompts": [
+        { "q": "mark SgNIPT as completed", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "put SgNIPT on hold", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "set project CEP to active", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "change SgNIPT status to in discovery", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "cancel project Test", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "start project Alpha", "expect": { "intent": "FORM_PREFILL" } }
+      ]
+    },
+
+    {
+      "id": "comparison",
+      "name": "Comparison Queries",
+      "expectedDataType": "COMPARISON",
+      "prompts": [
+        { "q": "compare BD pod vs Platform pod", "expect": { "intent": "DATA_QUERY", "dataType": "COMPARISON" } },
+        { "q": "BD versus Platform", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "compare SgNIPT and CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how does BD pod compare to Accessioning?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Pod A vs Pod B", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "side by side BD and Platform", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "BD pod versus Accessioning pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "compare India team with US team", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "risk-alerts",
+      "name": "Risk & Alert Queries",
+      "expectedIntent": "INSIGHT",
+      "prompts": [
+        { "q": "are there any red flags?", "expect": { "intent": "INSIGHT" } },
+        { "q": "what are the top risks?", "expect": { "intent": "INSIGHT" } },
+        { "q": "health check across all projects", "expect": { "intent": "INSIGHT" } },
+        { "q": "anything at risk right now?", "expect": { "intent": "INSIGHT" } },
+        { "q": "show me the biggest concerns", "expect": { "intent": "INSIGHT" } },
+        { "q": "top priority issues", "expect": { "intent": "INSIGHT" } },
+        { "q": "which pods are in trouble?", "expect": { "intent": "INSIGHT" } },
+        { "q": "show me bottlenecks", "expect": { "intent": "INSIGHT" } },
+        { "q": "are there any blockers I should know about?", "expect": { "intent": "INSIGHT" } },
+        { "q": "risk summary", "expect": { "intent": "INSIGHT" } }
+      ]
+    },
+
+    {
+      "id": "aggregation",
+      "name": "Aggregation / Counting Queries",
+      "prompts": [
+        { "q": "how many resources do we have?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total number of projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many pods are there?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "count of active projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total headcount", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many developers are in India?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "number of P0 projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total team size", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-ticket-lookup",
+      "name": "Jira Ticket Lookup — Direct",
+      "prompts": [
+        { "q": "CEP-1234", "expect": { "intent": "DATA_QUERY", "dataType": "JIRA_ISSUE_PROFILE" } },
+        { "q": "tell me about TAT-456", "expect": { "dataType": "JIRA_ISSUE_PROFILE" } },
+        { "q": "summarize CEP-789", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what is CEP-100?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "status of TAT-200", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "details for NIPT-300", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "look up CEP-999", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me TAT-123", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "info on CEP-456", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "describe CEP-789", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-search",
+      "name": "Jira Issue Search",
+      "prompts": [
+        { "q": "open bugs in CEP", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "tickets assigned to Piyush", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "high priority Jira issues", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show critical bugs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "unresolved issues in SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "search for tickets with label 'regression'", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "in-progress tickets for BD", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "Jira issues created this week", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "blocked Jira stories", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "find all open stories in CEP", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-contributors",
+      "name": "Jira Contributors / Worklog",
+      "prompts": [
+        { "q": "who worked on CEP-1234?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hours logged on TAT-456", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "contributors to CEP-789", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who has logged time on this ticket?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "worklog for TAT-100", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-sprint-health",
+      "name": "Jira Sprint Health",
+      "prompts": [
+        { "q": "sprint health", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint velocity", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "burndown chart data", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "blocked stories in the sprint", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint completion percentage", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "remaining work in sprint", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how is the sprint going?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprint progress", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-bugs",
+      "name": "Jira Bug Metrics",
+      "prompts": [
+        { "q": "bug count", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "bug summary", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "open bugs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "bug resolution time", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "bugs created this month", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "critical bugs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "bug trends", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "are we creating more bugs than fixing?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-workload",
+      "name": "Jira Workload Distribution",
+      "prompts": [
+        { "q": "workload distribution", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who has the most tickets?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is anyone overloaded?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "ticket count by assignee", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the Jira workload", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "jira-analytics",
+      "name": "Jira Analytics & Trends",
+      "prompts": [
+        { "q": "Jira analytics", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "created vs resolved trend", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "cycle time", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "lead time for issues", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "ticket throughput", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "issue aging analysis", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "dora-metrics",
+      "name": "DORA Metrics",
+      "prompts": [
+        { "q": "show DORA metrics", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "deployment frequency", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "lead time for changes", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "change failure rate", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "mean time to recovery", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "MTTR", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how often do we deploy?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "DORA performance", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "budget-queries",
+      "name": "Budget & Cost Queries",
+      "prompts": [
+        { "q": "total budget", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "budget for SgNIPT", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "most expensive projects", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "project cost breakdown", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much have we spent?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "budget burn rate", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "cost by pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the budget dashboard", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "bau-queries",
+      "name": "BAU (Business as Usual) Queries",
+      "prompts": [
+        { "q": "BAU for BD pod", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what's the BAU percentage?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "list all BAU allocations", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show BAU across pods", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pod has the highest BAU?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "BAU percentage for Platform", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "hiring-forecast",
+      "name": "Hiring Forecast Queries",
+      "prompts": [
+        { "q": "do we need to hire?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hiring forecast", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what roles do we need to fill?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hiring needs for next quarter", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "staffing gaps", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pods need more people?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "predicted hiring needs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "should we hire more QAs?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "concurrency-risk",
+      "name": "Concurrency / Multi-Project Risk",
+      "prompts": [
+        { "q": "concurrency risk", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "is anyone double-booked?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "resource conflicts", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who is working on multiple projects?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "simultaneous project count by pod", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "capex-opex",
+      "name": "CapEx / OpEx Queries",
+      "prompts": [
+        { "q": "capex vs opex breakdown", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "capitalized hours", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "capitalization rate", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what percentage is CapEx?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show capex opex report", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "slack-buffer",
+      "name": "Slack / Buffer Queries",
+      "prompts": [
+        { "q": "slack buffer analysis", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how much cushion do we have?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "breathing room in capacity", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "slack buffer by pod", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "owner-demand",
+      "name": "Owner / PM Demand Queries",
+      "prompts": [
+        { "q": "owner demand report", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "demand by project manager", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "PM workload distribution", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which PM has the most projects?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "support-queue",
+      "name": "Support Queue Queries",
+      "prompts": [
+        { "q": "open support tickets", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "stale support tickets", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "support queue health", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "how many tickets are aging?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "support ticket count", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "export",
+      "name": "Export / Download Queries",
+      "expectedIntent": "DATA_QUERY",
+      "prompts": [
+        { "q": "export projects as CSV", "expect": { "intent": "DATA_QUERY", "dataType": "EXPORT" } },
+        { "q": "download resources data", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "export capacity report", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "download budget as Excel", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "export reconciliation data", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "help-topics",
+      "name": "Help / Explanation Queries",
+      "expectedIntent": "HELP",
+      "prompts": [
+        { "q": "what is BAU?", "expect": { "intent": "HELP" } },
+        { "q": "explain capacity gap", "expect": { "intent": "HELP" } },
+        { "q": "what does FTE mean?", "expect": { "intent": "HELP" } },
+        { "q": "how does the sprint planner work?", "expect": { "intent": "HELP" } },
+        { "q": "what is a T-shirt size?", "expect": { "intent": "HELP" } },
+        { "q": "explain utilization", "expect": { "intent": "HELP" } },
+        { "q": "what are overrides?", "expect": { "intent": "HELP" } },
+        { "q": "how does effort distribution work?", "expect": { "intent": "HELP" } },
+        { "q": "what is concurrency risk?", "expect": { "intent": "HELP" } },
+        { "q": "explain DORA metrics", "expect": { "intent": "HELP" } },
+        { "q": "what is a code freeze?", "expect": { "intent": "HELP" } },
+        { "q": "what is the complexity multiplier?", "expect": { "intent": "HELP" } },
+        { "q": "what does ROI mean here?", "expect": { "intent": "HELP" } },
+        { "q": "how do budget calculations work?", "expect": { "intent": "HELP" } },
+        { "q": "explain capex vs opex", "expect": { "intent": "HELP" } }
+      ]
+    },
+
+    {
+      "id": "add-member",
+      "name": "Add Member to Pod/Team",
+      "expectedIntent": "FORM_PREFILL",
+      "prompts": [
+        { "q": "add Piyush to BD pod", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "assign John to Accessioning team", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "move Piyush to Platform pod", "expect": { "intent": "FORM_PREFILL" } },
+        { "q": "add a developer to BD", "expect": { "intent": "FORM_PREFILL" } }
+      ]
+    },
+
+    {
+      "id": "scenario-whatif",
+      "name": "What-If / Scenario Queries",
+      "prompts": [
+        { "q": "what if we add 2 more developers?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "simulate removing a resource from BD", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "run a what-if scenario", "expect": { "intent": "NAVIGATE" } },
+        { "q": "what happens if we delay SgNIPT by a month?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hypothetical: move 2 devs from BD to Platform", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "timeline-deadlines",
+      "name": "Timeline & Deadline Queries",
+      "prompts": [
+        { "q": "releases in March 2026", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "sprints in April", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "when is the next deadline?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what's coming up this month?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "upcoming deadlines", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "any releases this week?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me the March release schedule", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what sprints are in Q2?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "audit-log",
+      "name": "Audit / Change History Queries",
+      "prompts": [
+        { "q": "who changed SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show recent changes", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "audit log for today", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who made the last edit?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "edge-case-typos",
+      "name": "Edge Cases — Typos & Misspellings",
+      "notes": "Tests fuzzy matching and vector-based entity resolution",
+      "prompts": [
+        { "q": "tell me about Piysh", "expect": { "intent": "DATA_QUERY" }, "notes": "misspelled name" },
+        { "q": "show projct SgNIPT", "expect": { "intent": "DATA_QUERY" }, "notes": "misspelled 'project'" },
+        { "q": "devlopers in BD pod", "expect": { "intent": "DATA_QUERY" }, "notes": "misspelled 'developers'" },
+        { "q": "utiliztion heatmap", "expect": { "intent": "DATA_QUERY" }, "notes": "misspelled 'utilization'" },
+        { "q": "capicity summary", "expect": { "intent": "DATA_QUERY" }, "notes": "misspelled 'capacity'" }
+      ]
+    },
+
+    {
+      "id": "edge-case-ambiguous",
+      "name": "Edge Cases — Ambiguous Queries",
+      "notes": "Tests how the system handles queries that could match multiple intents",
+      "prompts": [
+        { "q": "SgNIPT", "expect": { "intent": "DATA_QUERY" }, "notes": "just a project name, no verb" },
+        { "q": "BD", "expect": { "intent": "DATA_QUERY" }, "notes": "just a pod name" },
+        { "q": "Piyush", "expect": { "intent": "DATA_QUERY" }, "notes": "just a person name" },
+        { "q": "March 2026", "expect": { "intent": "DATA_QUERY" }, "notes": "just a date" },
+        { "q": "P0", "expect": { "intent": "DATA_QUERY" }, "notes": "just a priority" },
+        { "q": "active", "expect": { "intent": "DATA_QUERY" }, "notes": "just a status word" },
+        { "q": "sprint", "expect": { "intent": "DATA_QUERY" }, "notes": "generic keyword" },
+        { "q": "help", "expect": { "intent": "HELP" }, "notes": "single word" }
+      ]
+    },
+
+    {
+      "id": "edge-case-conversational",
+      "name": "Edge Cases — Conversational / Natural Language",
+      "notes": "Tests natural phrasing that doesn't follow rigid patterns",
+      "prompts": [
+        { "q": "I'm trying to figure out if we have enough QAs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "can you help me understand our capacity situation?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "I need to know who's available for the next sprint", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what's the deal with project SgNIPT?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "hmm, are we on track for the release?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who should I talk to about the BD pod?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "I'm worried about our delivery timeline", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "any concerns I should be aware of?", "expect": { "intent": "INSIGHT" } },
+        { "q": "what would you recommend I look at today?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "give me a quick status on everything", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "edge-case-followup",
+      "name": "Edge Cases — Follow-up Queries (Context Required)",
+      "notes": "Tests session memory — these need prior context to work properly",
+      "prompts": [
+        { "q": "what about their availability?", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "and the QA team?", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "how about Platform pod?", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "same for India", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "show me more details", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "and the budget for that?", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "what else should I know?", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true },
+        { "q": "drill down into that", "expect": { "intent": "DATA_QUERY" }, "requiresContext": true }
+      ]
+    },
+
+    {
+      "id": "edge-case-negative",
+      "name": "Edge Cases — Negative / Out-of-Scope",
+      "notes": "Tests graceful handling of unsupported queries",
+      "prompts": [
+        { "q": "what's the weather?", "expect": { "intent": "UNKNOWN" } },
+        { "q": "tell me a joke", "expect": { "intent": "HELP" } },
+        { "q": "write me a poem", "expect": { "intent": "UNKNOWN" } },
+        { "q": "what is 2+2?", "expect": { "intent": "HELP" } },
+        { "q": "who won the Super Bowl?", "expect": { "intent": "UNKNOWN" } },
+        { "q": "", "expect": { "error": true }, "notes": "empty query" },
+        { "q": "   ", "expect": { "error": true }, "notes": "whitespace only" },
+        { "q": "asdfghjkl", "expect": { "intent": "UNKNOWN" }, "notes": "gibberish" }
+      ]
+    },
+
+    {
+      "id": "edge-case-long",
+      "name": "Edge Cases — Long / Complex Queries",
+      "prompts": [
+        { "q": "show me all the P0 and P1 projects that are active and assigned to the BD pod with their estimates and timeline", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "I need a comprehensive overview of the current sprint including allocations by pod and any blocked issues", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "compare the capacity and utilization of BD pod versus Platform pod for the next three months", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "give me a full breakdown of all resources in India including their roles, pods, rates, and current utilization", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "what are the top 3 risks across all projects and pods right now and what should we do about them?", "expect": { "intent": "INSIGHT" } }
+      ]
+    },
+
+    {
+      "id": "edge-case-special-chars",
+      "name": "Edge Cases — Special Characters & Formatting",
+      "prompts": [
+        { "q": "who is Piyush?", "expect": { "intent": "DATA_QUERY" }, "notes": "with question mark" },
+        { "q": "show SgNIPT...", "expect": { "intent": "DATA_QUERY" }, "notes": "with ellipsis" },
+        { "q": "SHOW ALL DEVELOPERS", "expect": { "intent": "DATA_QUERY" }, "notes": "all caps" },
+        { "q": "  who is piyush  ", "expect": { "intent": "DATA_QUERY" }, "notes": "extra whitespace" },
+        { "q": "WHO IS PIYUSH", "expect": { "intent": "DATA_QUERY" }, "notes": "all caps name" }
+      ]
+    },
+
+    {
+      "id": "pre-computed-route-hits",
+      "name": "Pre-Computed Tool Route Verification",
+      "notes": "These should hit pre-computed routes and SKIP the first LLM call for speed",
+      "prompts": [
+        { "q": "who is Piyush Baheti?", "expect": { "tool": "get_resource_profile", "skipFirstLlm": true } },
+        { "q": "show all developers", "expect": { "tool": "list_resources", "skipFirstLlm": true } },
+        { "q": "show all QA", "expect": { "tool": "list_resources", "skipFirstLlm": true } },
+        { "q": "list all BSAs", "expect": { "tool": "list_resources", "skipFirstLlm": true } },
+        { "q": "find all tech leads", "expect": { "tool": "list_resources", "skipFirstLlm": true } },
+        { "q": "tell me about project SgNIPT", "expect": { "tool": "get_project_profile", "skipFirstLlm": true } },
+        { "q": "show P0 projects", "expect": { "tool": "list_projects", "skipFirstLlm": true } },
+        { "q": "show active projects", "expect": { "tool": "list_projects", "skipFirstLlm": true } },
+        { "q": "tell me about pod BD", "expect": { "tool": "get_pod_profile", "skipFirstLlm": true } },
+        { "q": "show team composition", "expect": { "tool": "get_team_composition", "skipFirstLlm": true } },
+        { "q": "show utilization summary", "expect": { "tool": "get_utilization_summary", "skipFirstLlm": true } },
+        { "q": "show capacity summary", "expect": { "tool": "get_capacity_summary", "skipFirstLlm": true } },
+        { "q": "show portfolio overview", "expect": { "tool": "get_portfolio_summary", "skipFirstLlm": true } },
+        { "q": "show current sprint", "expect": { "tool": "get_sprint_info", "skipFirstLlm": true } },
+        { "q": "show upcoming releases", "expect": { "tool": "get_release_info", "skipFirstLlm": true } },
+        { "q": "show cost rates", "expect": { "tool": "get_cost_rates", "skipFirstLlm": true } },
+        { "q": "show sprint allocations", "expect": { "tool": "get_sprint_allocations", "skipFirstLlm": true } },
+        { "q": "show all overrides", "expect": { "tool": "get_overrides", "skipFirstLlm": true } },
+        { "q": "estimates for SgNIPT", "expect": { "tool": "get_project_estimates", "skipFirstLlm": true } },
+        { "q": "show resources in BD pod", "expect": { "tool": "list_resources", "skipFirstLlm": true } }
+      ]
+    },
+
+    {
+      "id": "vector-search-test",
+      "name": "Vector Search / Semantic Matching",
+      "notes": "Tests that vector-based entity resolution catches what regex misses",
+      "prompts": [
+        { "q": "the SgNIPT thing", "expect": { "intent": "DATA_QUERY" }, "notes": "informal reference to a project" },
+        { "q": "that testing project", "expect": { "intent": "DATA_QUERY" }, "notes": "vague but should vector-match" },
+        { "q": "people who do quality assurance", "expect": { "intent": "DATA_QUERY" }, "notes": "verbose role reference" },
+        { "q": "the billing project", "expect": { "intent": "DATA_QUERY" }, "notes": "partial name via semantics" },
+        { "q": "offshore QA capacity", "expect": { "intent": "DATA_QUERY" }, "notes": "composite semantic query" }
+      ]
+    },
+
+    {
+      "id": "auto-learn-candidates",
+      "name": "Auto-Learn Candidate Queries",
+      "notes": "These should trigger auto-learning if resolved with >= 0.90 confidence",
+      "prompts": [
+        { "q": "show all QA engineers in India in the BD pod", "expect": { "minConfidence": 0.85 } },
+        { "q": "which projects have the most hours allocated?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "give me the capacity gap for next month", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "show me resources with the highest billing rates", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "which pods have the most active projects?", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "dashboard-overview",
+      "name": "Dashboard / Overview Queries",
+      "prompts": [
+        { "q": "show me the overview", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "portfolio snapshot", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "give me a status update", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "executive summary of everything", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "high level view", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    },
+
+    {
+      "id": "gantt-timeline",
+      "name": "Gantt / Timeline Visualization Queries",
+      "prompts": [
+        { "q": "show project Gantt chart", "expect": { "intent": "NAVIGATE" } },
+        { "q": "project timeline view", "expect": { "intent": "NAVIGATE" } },
+        { "q": "roadmap visualization", "expect": { "intent": "NAVIGATE" } },
+        { "q": "show me the project timeline", "expect": { "intent": "NAVIGATE" } }
+      ]
+    },
+
+    {
+      "id": "resource-analytics-advanced",
+      "name": "Resource Analytics — Advanced",
+      "prompts": [
+        { "q": "average billing rate of QAs", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "capacity of tech leads", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "FTE breakdown by location", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "developer cost per hour in India", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "resource count by role and location", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "who are the most expensive resources?", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "average FTE across all pods", "expect": { "intent": "DATA_QUERY" } },
+        { "q": "total developer hours available", "expect": { "intent": "DATA_QUERY" } }
+      ]
+    }
+  ]
+}

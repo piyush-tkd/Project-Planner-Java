@@ -21,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+import jakarta.servlet.DispatcherType;
 
 @Configuration
 @EnableWebSecurity
@@ -36,6 +37,8 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                // Allow async dispatches (SSE streaming completion) — security was already checked on initial request
+                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 // Login endpoint is always public
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 // H2 console (useful in dev, harmless in prod since H2 isn't on classpath)

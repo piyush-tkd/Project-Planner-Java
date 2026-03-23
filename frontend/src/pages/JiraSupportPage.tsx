@@ -175,12 +175,14 @@ function DonutChart({ data, colorMap, onSliceClick }: {
   onSliceClick?: (name: string) => void;
 }) {
   if (!data.length) return <Center h={180}><Text size="sm" c="dimmed">No data</Text></Center>;
+  // Dynamic height: base 200 for donut + ~22px per legend row (assume ~3 items per row)
+  const legendRows = Math.ceil(data.length / 3);
+  const chartHeight = Math.max(240, 200 + legendRows * 28);
   return (
-    // height 290 ensures the legend below the donut is never clipped
-    <ResponsiveContainer width="100%" height={290}>
+    <ResponsiveContainer width="100%" height={chartHeight}>
       <PieChart>
         <Pie
-          data={data} cx="50%" cy="38%" innerRadius={52} outerRadius={80} paddingAngle={2}
+          data={data} cx="50%" cy={90} innerRadius={48} outerRadius={76} paddingAngle={2}
           dataKey="value"
           cursor={onSliceClick ? 'pointer' : undefined}
           onClick={onSliceClick ? (entry: { name: string }) => onSliceClick(entry.name) : undefined}
@@ -197,12 +199,17 @@ function DonutChart({ data, colorMap, onSliceClick }: {
           formatter={(v: number, n: string) => [v, n]}
           contentStyle={{ fontSize: 12 }}
         />
-        <Legend iconType="circle" iconSize={8} formatter={(v: string) => (
-          <span
-            style={{ fontSize: 11, cursor: onSliceClick ? 'pointer' : undefined }}
-            onClick={onSliceClick ? () => onSliceClick(v) : undefined}
-          >{v}</span>
-        )} />
+        <Legend
+          iconType="circle"
+          iconSize={7}
+          wrapperStyle={{ fontSize: 10, lineHeight: '18px', paddingTop: 4 }}
+          formatter={(v: string) => (
+            <span
+              style={{ fontSize: 10, cursor: onSliceClick ? 'pointer' : undefined }}
+              onClick={onSliceClick ? () => onSliceClick(v) : undefined}
+            >{v}</span>
+          )}
+        />
       </PieChart>
     </ResponsiveContainer>
   );
@@ -1388,9 +1395,9 @@ export default function JiraSupportPage() {
         onOpen={t => { setKpiModal(null); setDetailTicket(t); }}
       />
 
-      <Stack gap="lg">
+      <Stack gap="lg" className="page-enter stagger-children">
         {/* ── Header ── */}
-        <Group justify="space-between" wrap="nowrap">
+        <Group justify="space-between" wrap="nowrap" className="slide-in-left">
           <div>
             <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Support Queue</Title>
             <Text size="sm" c="dimmed" mt={2}>

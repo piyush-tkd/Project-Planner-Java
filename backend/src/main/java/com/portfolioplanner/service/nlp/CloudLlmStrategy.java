@@ -176,7 +176,7 @@ public class CloudLlmStrategy implements NlpStrategy {
                 }
             }
 
-            return new NlpResult(intent, confidence, message, route, formData, data, drillDown, suggestions);
+            return new NlpResult(intent, confidence, message, route, formData, data, drillDown, suggestions, null);
         } catch (Exception e) {
             log.warn("Failed to parse CLOUD_LLM JSON: {}", e.getMessage());
             return lowConfidenceResult();
@@ -529,7 +529,7 @@ public class CloudLlmStrategy implements NlpStrategy {
     }
 
     private NlpResult lowConfidenceResult() {
-        return new NlpResult("UNKNOWN", 0.0, null, null, null, null, null, null);
+        return new NlpResult("UNKNOWN", 0.0, null, null, null, null, null, null, null);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -623,6 +623,15 @@ public class CloudLlmStrategy implements NlpStrategy {
                   data: { "_type": "EFFORT_PATTERN", "entityName": "Front-loaded" }
                 - "ROLE_EFFORT_MIX" — Standard role effort percentages.
                   data: { "_type": "ROLE_EFFORT_MIX" }
+                - "JIRA_ISSUE_PROFILE" — Single Jira issue lookup by key (e.g. PROJ-123).
+                  data: { "_type": "JIRA_ISSUE_PROFILE", "Key": "PROJ-123", "Summary": "...", ... }
+                  Use when user asks about a specific Jira ticket by its key.
+
+                JIRA TICKET LOOKUP:
+                When the user asks about a specific Jira ticket (e.g. "TAT-123", "tell me about PROJ-456",
+                "what is the status of BGENG-789", "summarize TAT-100"), use the get_jira_issue tool
+                with the ticket key. After getting the result, synthesize a helpful summary with
+                intent=DATA_QUERY and data._type=JIRA_ISSUE_PROFILE.
 
                 """);
 

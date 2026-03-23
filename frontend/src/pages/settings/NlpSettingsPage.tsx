@@ -136,9 +136,9 @@ export default function NlpSettingsPage() {
   const availableToAdd = STRATEGY_OPTIONS.filter(s => !chain.includes(s.value));
 
   return (
-    <Stack gap="lg" maw={800} mx="auto" py="md">
+    <Stack gap="lg" maw={800} mx="auto" py="md" className="page-enter stagger-children">
       {/* ── Header ── */}
-      <Group justify="space-between">
+      <Group justify="space-between" className="slide-in-left">
         <Group gap="xs">
           <ThemeIcon size={36} variant="gradient" gradient={{ from: 'teal', to: 'blue', deg: 135 }} radius="md">
             <IconBrain size={22} />

@@ -37,6 +37,13 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    connection-timeout: 120000   # 2 min for slow Jira API calls
+  servlet:
+    session:
+      timeout: 30m
+
+spring.mvc.async.request-timeout: 120000
 
 jira:
   base-url: ${JIRA_BASE_URL:}
@@ -50,6 +57,9 @@ app:
     from:       ${DIGEST_FROM:noreply@portfolioplanner}
     # cron: every Monday 08:00 (server local time)
     cron:       ${DIGEST_CRON:0 0 8 * * MON}
+  jira-sync:
+    interval-ms:      ${JIRA_SYNC_INTERVAL_MS:1800000}        # 30 min default
+    initial-delay-ms: ${JIRA_SYNC_INITIAL_DELAY_MS:120000}    # 2 min after boot
   nlp:
     learner:
       interval-ms:      ${NLP_LEARNER_INTERVAL_MS:21600000}    # 6 hours default

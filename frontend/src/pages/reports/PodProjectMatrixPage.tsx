@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface ProjectPodMatrixResponse {
   planningId: number;
@@ -64,6 +65,8 @@ const TSHIRT_BADGE_COLORS: Record<string, string> = {
 export default function PodProjectMatrixPage() {
   const { data: matrixData = [], isLoading, isError } = useProjectPodMatrix();
   const navigate = useNavigate();
+  const dark = useDarkMode();
+  const headingColor = dark ? '#e0e0e0' : DEEP_BLUE;
 
   const [selectedPods, setSelectedPods] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -147,15 +150,17 @@ export default function PodProjectMatrixPage() {
   };
 
   return (
-    <Stack gap="md" p="md">
-      <div>
-        <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>POD-Project Matrix</Title>
-        <Text size="sm" c="dimmed">
-          Assign PODs to projects and track allocation by timeline
-        </Text>
-      </div>
+    <Stack gap="md" p="md" className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2} style={{ color: headingColor, fontFamily: FONT_FAMILY, fontWeight: 700 }}>POD-Project Matrix</Title>
+          <Text size="sm" c="dimmed">
+            Assign PODs to projects and track allocation by timeline
+          </Text>
+        </div>
+      </Group>
 
-      <Group gap="md">
+      <Group gap="md" align="flex-end" className="stagger-children">
         <MultiSelect
           label="Filter PODs"
           placeholder="Select PODs..."
@@ -165,7 +170,6 @@ export default function PodProjectMatrixPage() {
           style={{ flex: 1, maxWidth: 300 }}
         />
         <SegmentedControl
-          label="Status"
           data={statusOptions}
           value={selectedStatus}
           onChange={setSelectedStatus}

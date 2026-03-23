@@ -14,6 +14,7 @@ import SummaryCard from '../../components/charts/SummaryCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 
 export default function ProjectPodMatrixPage() {
   const { data, isLoading, error } = useProjectPodMatrix();
@@ -79,16 +80,20 @@ export default function ProjectPodMatrixPage() {
   const { sorted, sortKey, sortDir, onSort } = useTableSort(filtered);
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading project-POD matrix..." />;
-  if (error) return <Text c="red">Error loading project-POD matrix</Text>;
+  if (error) return <PageError context="loading project-POD matrix" error={error} />;
 
   const hasActiveFilters = search.trim() || podFilter.length > 0 || ownerFilter.length > 0 || priorityFilter.length > 0 || sizeFilter;
 
   return (
-    <Stack>
-      <Title order={2}>Project-POD Matrix</Title>
-      <Text size="sm" c="dimmed">All project-to-POD assignments in one view</Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>Project-POD Matrix</Title>
+          <Text size="sm" c="dimmed">All project-to-POD assignments in one view</Text>
+        </div>
+      </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }}>
+      <SimpleGrid cols={{ base: 2, sm: 4 }} className="stagger-grid">
         <SummaryCard title="Total Assignments" value={stats.totalAssignments} icon={<IconLink size={20} color="#339af0" />} />
         <SummaryCard title="Projects" value={stats.uniqueProjects} icon={<IconBriefcase size={20} color="#845ef7" />} />
         <SummaryCard title="PODs Involved" value={stats.uniquePods} icon={<IconHexagons size={20} color="#40c057" />} />

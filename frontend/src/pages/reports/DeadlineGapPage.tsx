@@ -124,13 +124,17 @@ export default function DeadlineGapPage() {
   if (projLoading || gapLoading) return <LoadingSpinner variant="table" message="Loading deadline analysis..." />;
 
   return (
-    <Stack>
-      <Title order={2}>Deadline Gap</Title>
-      <Text size="sm" c="dimmed">
-        How much of each project's demand can be served by available capacity during its window — lower load % = more headroom
-      </Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>Deadline Gap</Title>
+          <Text size="sm" c="dimmed">
+            How much of each project's demand can be served by available capacity during its window — lower load % = more headroom
+          </Text>
+        </div>
+      </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} className="stagger-grid">
         <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red"
           onClick={() => setRiskFilter(prev => prev === 'High' ? null : 'High')} active={riskFilter === 'High'} />
         <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color="#fd7e14" />} color="orange"

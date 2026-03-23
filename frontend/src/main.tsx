@@ -140,7 +140,16 @@ const queryClient = new QueryClient({
 });
 
 // ── Global error capture: unhandled JS errors + promise rejections ──
+// Suppress harmless ResizeObserver loop errors (browser noise, not real bugs)
+const SUPPRESSED_ERRORS = [
+  'ResizeObserver loop',
+  'ResizeObserver loop completed with undelivered notifications',
+];
+
 window.addEventListener('error', (event) => {
+  // Skip harmless browser-internal errors
+  if (SUPPRESSED_ERRORS.some(s => event.message?.includes(s))) return;
+
   logErrorToServer({
     source: 'FRONTEND',
     severity: 'ERROR',

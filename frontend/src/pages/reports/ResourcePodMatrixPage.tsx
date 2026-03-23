@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResourceAllocation } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ResourceAllocationData {
@@ -127,7 +128,7 @@ export default function ResourcePodMatrixPage() {
   }, [groupedData, selectedPods, pods, sortBy]);
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading resource-POD matrix..." />;
-  if (error) return <Text c="red">Error loading resource allocations</Text>;
+  if (error) return <PageError context="loading resource allocations" error={error} />;
 
   const tableRows = Object.entries(filteredAndSorted).flatMap(([podName, resources]) => {
     const getMonthData = (resourceId: number, monthIndex: number) => {
@@ -238,18 +239,20 @@ export default function ResourcePodMatrixPage() {
   });
 
   return (
-    <Container size="xl" py="xl">
+    <Container size="xl" py="xl" className="page-enter stagger-children">
       <Stack gap="lg">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
-            Resource · POD Matrix
-          </Title>
-          <Text c="dimmed" size="sm">
-            Resource allocation and utilization by POD across planning periods
-          </Text>
-        </div>
+        <Group className="slide-in-left">
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+              Resource · POD Matrix
+            </Title>
+            <Text c="dimmed" size="sm">
+              Resource allocation and utilization by POD across planning periods
+            </Text>
+          </div>
+        </Group>
 
-        <Group justify="space-between">
+        <Group justify="space-between" className="stagger-children">
           <MultiSelect
             label="Filter by POD"
             placeholder="Select PODs..."

@@ -740,8 +740,10 @@ export function useSupportSnapshot(enabled = true) {
     queryKey: ['jira', 'support', 'snapshot'],
     queryFn: () => apiClient.get('/jira/support/snapshot').then(r => r.data),
     enabled,
-    staleTime: 60_000,        // re-fetch after 1 min
+    staleTime: 30 * 60_000,   // 30 min — use Refresh button for fresh data
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -749,6 +751,10 @@ export function useSupportBoards() {
   return useQuery<SupportBoard[]>({
     queryKey: ['jira', 'support', 'boards'],
     queryFn: () => apiClient.get('/jira/support/boards').then(r => r.data),
+    staleTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -765,8 +771,10 @@ export function useSupportHistory(days = 30) {
   return useQuery<BoardHistory[]>({
     queryKey: ['jira', 'support', 'history', days],
     queryFn: () => apiClient.get(`/jira/support/history?days=${days}`).then(r => r.data),
-    staleTime: 60_000,
+    staleTime: 30 * 60_000,   // 30 min — use Refresh button for fresh data
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -906,5 +914,223 @@ export function useWorklogUserHistory(author: string | null, months = 6) {
         .then(r => r.data),
     enabled: !!author,
     ...JIRA_LIVE_OPTS,
+  });
+}
+
+// ── Jira Analytics Dashboard ──────────────────────────────────────────────
+
+export interface AnalyticsBreakdown {
+  name: string;
+  count: number;
+  sp?: number;
+  hours?: number;
+}
+
+export interface AnalyticsWorkload {
+  assignee: string;
+  total: number;
+  bugs: number;
+  highPriority: number;
+  sp: number;
+}
+
+export interface AnalyticsTrend {
+  week: string;
+  created: number;
+  resolved: number;
+}
+
+export interface AnalyticsBugTrend {
+  month: string;
+  bugs: number;
+  total: number;
+  bugRate: number;
+}
+
+export interface AnalyticsBucket {
+  bucket: string;
+  count: number;
+}
+
+export interface AnalyticsKpis {
+  totalOpen: number;
+  totalCreated: number;
+  totalResolved: number;
+  bugCount: number;
+  bugRatio: number;
+  avgCycleTimeDays: number;
+  throughputPerWeek: number;
+  totalSPResolved: number;
+  totalHoursLogged: number;
+}
+
+export interface JiraAnalyticsData {
+  lookbackMonths: number;
+  projectKeys: string[];
+  podNames: string[];
+  totalResolved: number;
+  totalCreated: number;
+  totalOpen: number;
+  kpis: AnalyticsKpis;
+  byType: AnalyticsBreakdown[];
+  byStatus: AnalyticsBreakdown[];
+  byPriority: AnalyticsBreakdown[];
+  byAssignee: AnalyticsBreakdown[];
+  byLabel: AnalyticsBreakdown[];
+  byComponent: AnalyticsBreakdown[];
+  byPod: AnalyticsBreakdown[];
+  byFixVersion: AnalyticsBreakdown[];
+  createdVsResolved: AnalyticsTrend[];
+  workload: AnalyticsWorkload[];
+  aging: AnalyticsBucket[];
+  cycleTime: AnalyticsBucket[];
+  bugTrend: AnalyticsBugTrend[];
+  statusCategoryBreakdown: Record<string, number>;
+  byWorklogAuthor?: { name: string; hours: number }[];
+  lastSyncAt?: string;
+  needsSync?: boolean;
+  error?: string;
+}
+
+export interface AnalyticsFilterPod {
+  id: number;
+  name: string;
+  projectKeys: string[];
+}
+
+export interface AnalyticsFilters {
+  pods: AnalyticsFilterPod[];
+}
+
+export function useJiraAnalytics(months?: number, pods?: string) {
+  return useQuery<JiraAnalyticsData>({
+    queryKey: ['jira', 'analytics', months ?? 3, pods ?? 'all'],
+    queryFn: () => apiClient.get('/jira/analytics', {
+      params: { ...(months ? { months } : {}), ...(pods ? { pods } : {}) },
+    }).then(r => r.data),
+    staleTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+}
+
+export function useJiraAnalyticsFilters() {
+  return useQuery<AnalyticsFilters>({
+    queryKey: ['jira', 'analytics', 'filters'],
+    queryFn: () => apiClient.get('/jira/analytics/filters').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+// ── Custom Jira Dashboards ────────────────────────────────────────────────
+
+export interface DashboardWidget {
+  id: string;
+  type: string;
+  title: string;
+  dataKey?: string;
+  size: 'full' | 'half' | 'third' | 'quarter';
+  enabled: boolean;
+  chartType?: string;       // for custom widgets: bar | donut | line | area | horizontalBar | table
+  groupBy?: string;         // for custom widgets: the data field to chart
+}
+
+export interface JiraDashboardConfig {
+  id: number;
+  name: string;
+  description?: string;
+  username: string;
+  isDefault: boolean;
+  widgetsJson: string;
+  filtersJson: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useJiraDashboards() {
+  return useQuery<JiraDashboardConfig[]>({
+    queryKey: ['jira', 'dashboards'],
+    queryFn: () => apiClient.get('/jira/dashboards').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+export function useJiraDashboard(id: number | null) {
+  return useQuery<JiraDashboardConfig>({
+    queryKey: ['jira', 'dashboards', id],
+    queryFn: () => apiClient.get(`/jira/dashboards/${id}`).then(r => r.data),
+    enabled: id !== null,
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+export function useSaveDashboard() {
+  const qc = useQueryClient();
+  return useMutation<JiraDashboardConfig, Error, { id?: number; name?: string; description?: string; widgetsJson?: string; filtersJson?: string }>({
+    mutationFn: (data) => {
+      if (data.id) {
+        return apiClient.put(`/jira/dashboards/${data.id}`, data).then(r => r.data);
+      }
+      return apiClient.post('/jira/dashboards', data).then(r => r.data);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'dashboards'] }),
+  });
+}
+
+export function useDeleteDashboard() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, number>({
+    mutationFn: (id) => apiClient.delete(`/jira/dashboards/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'dashboards'] }),
+  });
+}
+
+export function useCloneDashboard() {
+  const qc = useQueryClient();
+  return useMutation<JiraDashboardConfig, Error, number>({
+    mutationFn: (id) => apiClient.post(`/jira/dashboards/${id}/clone`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jira', 'dashboards'] }),
+  });
+}
+
+// ── Jira Sync ────────────────────────────────────────────────────────────
+
+export interface JiraSyncProjectStatus {
+  projectKey: string;
+  boardType: string;
+  status: string;        // IDLE | RUNNING | FAILED
+  lastSyncAt: string | null;
+  lastFullSync: string | null;
+  issuesSynced: number;
+  errorMessage: string | null;
+}
+
+export interface JiraSyncStatus {
+  syncing: boolean;
+  projects: JiraSyncProjectStatus[];
+}
+
+export function useJiraSyncStatus() {
+  return useQuery<JiraSyncStatus>({
+    queryKey: ['jira', 'sync', 'status'],
+    queryFn: () => apiClient.get('/jira/sync/status').then(r => r.data),
+    refetchInterval: 10_000,   // poll every 10s while viewing sync page
+    staleTime: 5_000,
+  });
+}
+
+export function useTriggerJiraSync() {
+  const qc = useQueryClient();
+  return useMutation<{ status: string; message: string }, Error, boolean>({
+    mutationFn: (fullSync) =>
+      apiClient.post('/jira/sync/trigger', null, { params: { fullSync } }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jira', 'sync', 'status'] });
+      // After sync completes, analytics cache should be refreshed
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['jira', 'analytics'] });
+      }, 5000);
+    },
   });
 }

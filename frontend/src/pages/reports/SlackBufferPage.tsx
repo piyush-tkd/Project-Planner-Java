@@ -14,6 +14,7 @@ import {
   Paper,
   Center,
   Loader,
+  useComputedColorScheme,
 } from '@mantine/core';
 import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
@@ -38,8 +39,24 @@ interface CapacityGapData {
 
 // Color thresholds (in hours, assuming 160h per month full capacity)
 const getGapColors = (
-  gapHours: number
+  gapHours: number,
+  isDark = false,
 ): { bg: string; text: string } => {
+  if (isDark) {
+    if (gapHours > 160) {
+      return { bg: 'rgba(47, 158, 68, 0.35)', text: '#69db7c' };   // Strong green — clearly darker
+    }
+    if (gapHours > 0) {
+      return { bg: 'rgba(64, 192, 87, 0.12)', text: '#51cf66' };   // Light green — clearly lighter
+    }
+    if (Math.abs(gapHours) <= 8) {
+      return { bg: 'rgba(255, 255, 255, 0.04)', text: 'rgba(255,255,255,0.5)' };
+    }
+    if (gapHours < 0 && gapHours > -160) {
+      return { bg: 'rgba(230, 119, 0, 0.20)', text: '#ffc078' };
+    }
+    return { bg: 'rgba(201, 42, 42, 0.30)', text: '#ff8787' };
+  }
   if (gapHours > 160) {
     return { bg: '#d3f9d8', text: '#2f9e44' }; // Comfortable surplus
   }
@@ -56,6 +73,8 @@ const getGapColors = (
 };
 
 export default function SlackBufferPage() {
+  const computedColorScheme = useComputedColorScheme('light');
+  const isDark = computedColorScheme === 'dark';
   const { data: capacityData, isLoading, isError } = useCapacityGap();
   const { monthLabels, currentMonthIndex } = useMonthLabels();
 
@@ -142,9 +161,9 @@ export default function SlackBufferPage() {
   };
 
   return (
-    <Stack gap="md" p="md">
-      <div>
-        <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
+    <Stack gap="md" p="md" className="page-enter stagger-children">
+      <div className="slide-in-left">
+        <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
           Slack &amp; Buffer
         </Title>
         <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -160,7 +179,7 @@ export default function SlackBufferPage() {
           value={selectedPods}
           onChange={setSelectedPods}
           style={{ flex: '0 1 280px' }}
-          styles={{ label: { fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 } }}
+          styles={{ label: { fontFamily: FONT_FAMILY, color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE, fontWeight: 600 } }}
         />
         <SegmentedControl
           data={[
@@ -170,21 +189,38 @@ export default function SlackBufferPage() {
           value={viewMode}
           onChange={(value) => setViewMode(value as 'hours' | 'fte')}
           styles={{
-            root: { fontFamily: FONT_FAMILY },
+            root: {
+              fontFamily: FONT_FAMILY,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : undefined,
+              border: isDark ? '1px solid rgba(255,255,255,0.1)' : undefined,
+            },
             indicator: { background: AQUA },
-            label: { fontWeight: 600, '&[dataActive]': { color: 'white' } },
+            label: {
+              fontWeight: 600,
+              color: isDark ? 'rgba(255,255,255,0.8)' : undefined,
+              '&[dataActive]': { color: 'white' },
+            },
           }}
         />
 
         {/* Legend — inline to use whitespace on the right */}
         <Group gap="sm" ml="auto" style={{ flexShrink: 0 }}>
-          {[
-            { range: '>160h', color: '#d3f9d8', text: '#2f9e44' },
-            { range: '0–160h', color: '#ebfbee', text: '#40c057' },
-            { range: '±0–8h', color: '#f8f9fa', text: '#868e96' },
-            { range: '-160–0h', color: '#fff3bf', text: '#e67700' },
-            { range: '<-160h', color: '#ffe3e3', text: '#c92a2a' },
-          ].map((item) => (
+          {(isDark
+            ? [
+                { range: '>160h', color: 'rgba(47, 158, 68, 0.35)', text: '#69db7c' },
+                { range: '0–160h', color: 'rgba(64, 192, 87, 0.12)', text: '#51cf66' },
+                { range: '±0–8h', color: 'rgba(255,255,255,0.04)', text: 'rgba(255,255,255,0.5)' },
+                { range: '-160–0h', color: 'rgba(230, 119, 0, 0.20)', text: '#ffc078' },
+                { range: '<-160h', color: 'rgba(201, 42, 42, 0.30)', text: '#ff8787' },
+              ]
+            : [
+                { range: '>160h', color: '#d3f9d8', text: '#2f9e44' },
+                { range: '0–160h', color: '#ebfbee', text: '#40c057' },
+                { range: '±0–8h', color: '#f8f9fa', text: '#868e96' },
+                { range: '-160–0h', color: '#fff3bf', text: '#e67700' },
+                { range: '<-160h', color: '#ffe3e3', text: '#c92a2a' },
+              ]
+          ).map((item) => (
             <Group key={item.range} gap={4} wrap="nowrap">
               <Box
                 style={{
@@ -196,7 +232,7 @@ export default function SlackBufferPage() {
                   flexShrink: 0,
                 }}
               />
-              <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{item.range}</Text>
+              <Text size="xs" style={{ whiteSpace: 'nowrap', color: isDark ? 'rgba(255,255,255,0.7)' : undefined }} c={isDark ? undefined : 'dimmed'}>{item.range}</Text>
             </Group>
           ))}
         </Group>
@@ -215,8 +251,8 @@ export default function SlackBufferPage() {
             <tr>
               <th
                 style={{
-                  backgroundColor: DEEP_BLUE,
-                  color: 'white',
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE,
+                  color: isDark ? 'rgba(255,255,255,0.9)' : 'white',
                   padding: '12px',
                   textAlign: 'left',
                   fontWeight: 600,
@@ -224,6 +260,7 @@ export default function SlackBufferPage() {
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
+                  borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : undefined,
                 }}
               >
                 POD
@@ -234,20 +271,23 @@ export default function SlackBufferPage() {
                   <th
                     key={monthIdx}
                     style={{
-                      backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
-                      color: 'white',
+                      backgroundColor: isCurrentMonth
+                        ? (isDark ? 'rgba(45, 204, 211, 0.2)' : AQUA)
+                        : (isDark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE),
+                      color: isDark ? 'rgba(255,255,255,0.9)' : 'white',
                       padding: '12px',
                       textAlign: 'center',
                       fontWeight: 600,
                       minWidth: 90,
+                      borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : undefined,
                     }}
                   >
                     <Stack gap={0}>
-                      <Text size="xs" fw={600}>
+                      <Text size="xs" fw={600} style={{ color: isCurrentMonth && isDark ? AQUA : undefined }}>
                         {monthLabels[monthIdx] || `M${monthIdx}`}
                       </Text>
                       {isCurrentMonth && (
-                        <Badge size="xs" color="white" c={AQUA}>
+                        <Badge size="xs" color={isDark ? AQUA : 'white'} c={isDark ? 'white' : AQUA} variant={isDark ? 'filled' : 'filled'}>
                           Current
                         </Badge>
                       )}
@@ -262,13 +302,14 @@ export default function SlackBufferPage() {
               <tr key={podName}>
                 <td
                   style={{
-                    backgroundColor: DEEP_BLUE,
-                    color: 'white',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : DEEP_BLUE,
+                    color: isDark ? 'rgba(255,255,255,0.9)' : 'white',
                     padding: '12px',
                     fontWeight: 600,
                     position: 'sticky',
                     left: 0,
                     zIndex: 1,
+                    borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined,
                   }}
                 >
                   {podName}
@@ -283,10 +324,11 @@ export default function SlackBufferPage() {
                       <td
                         key={monthIdx}
                         style={{
-                          backgroundColor: '#f8f9fa',
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8f9fa',
                           padding: '12px',
                           textAlign: 'center',
-                          borderBottom: '1px solid #e9ecef',
+                          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
+                          color: isDark ? 'rgba(255,255,255,0.3)' : undefined,
                         }}
                       >
                         —
@@ -295,7 +337,7 @@ export default function SlackBufferPage() {
                   }
 
                   const gapValue = getGapValueForColor(gap);
-                  const colors = getGapColors(gapValue);
+                  const colors = getGapColors(gapValue, isDark);
 
                   return (
                     <td
@@ -305,7 +347,7 @@ export default function SlackBufferPage() {
                         backgroundColor: colors.bg,
                         padding: '12px',
                         textAlign: 'center',
-                        borderBottom: '1px solid #e9ecef',
+                        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
                         cursor: 'pointer',
                         transition: 'opacity 0.2s',
                       }}
@@ -343,13 +385,14 @@ export default function SlackBufferPage() {
             <tr>
               <td
                 style={{
-                  backgroundColor: DEEP_BLUE,
-                  color: 'white',
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE,
+                  color: isDark ? 'rgba(255,255,255,0.9)' : 'white',
                   padding: '12px',
                   fontWeight: 600,
                   position: 'sticky',
                   left: 0,
                   zIndex: 1,
+                  borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : undefined,
                 }}
               >
                 Total
@@ -360,7 +403,7 @@ export default function SlackBufferPage() {
                   fte: 0,
                 };
                 const gapValue = viewMode === 'hours' ? total.hours : total.fte * 160;
-                const colors = getGapColors(gapValue);
+                const colors = getGapColors(gapValue, isDark);
 
                 return (
                   <td
@@ -369,7 +412,7 @@ export default function SlackBufferPage() {
                       backgroundColor: colors.bg,
                       padding: '12px',
                       textAlign: 'center',
-                      borderBottom: '1px solid #e9ecef',
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
                       fontWeight: 600,
                     }}
                   >
@@ -407,7 +450,7 @@ export default function SlackBufferPage() {
         onClose={() => setModalOpened(false)}
         title="Capacity Detail"
         size="sm"
-        styles={{ title: { fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 } }}
+        styles={{ title: { fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 700 } }}
       >
         {selectedCell && (
           <Stack gap="lg">
@@ -455,7 +498,7 @@ export default function SlackBufferPage() {
               radius="md"
               withBorder
               style={{
-                backgroundColor: getGapColors(selectedCell.gapHours).bg,
+                backgroundColor: getGapColors(selectedCell.gapHours, isDark).bg,
               }}
             >
               <Stack gap="xs">
@@ -467,7 +510,7 @@ export default function SlackBufferPage() {
                     <Text
                       fw={700}
                       size="xl"
-                      c={getGapColors(selectedCell.gapHours).text}
+                      c={getGapColors(selectedCell.gapHours, isDark).text}
                     >
                       {formatGapHours(selectedCell.gapHours)}
                     </Text>
@@ -479,7 +522,7 @@ export default function SlackBufferPage() {
                     <Text
                       fw={700}
                       size="xl"
-                      c={getGapColors(selectedCell.gapHours).text}
+                      c={getGapColors(selectedCell.gapHours, isDark).text}
                     >
                       {formatGapFte(selectedCell.gapFte)}
                     </Text>

@@ -18,6 +18,7 @@ import type { ResourceRequest, ResourceResponse } from '../types';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import PageError from '../components/common/PageError';
 import CsvToolbar from '../components/common/CsvToolbar';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import TablePagination from '../components/common/TablePagination';
@@ -312,14 +313,14 @@ export default function ResourcesPage() {
   };
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading resources..." />;
-  if (error) return <Text c="red">Error loading resources</Text>;
+  if (error) return <PageError context="loading resources" error={error} />;
 
   const totalOverAlloc = Array.from(overAllocMap.values()).reduce((s, v) => s + v, 0);
 
   return (
-    <Stack>
+    <Stack className="page-enter stagger-children">
       <NlpBreadcrumb />
-      <Group justify="space-between">
+      <Group justify="space-between" className="slide-in-left">
         <Group gap="sm">
           <Title order={2}>Resources</Title>
           {totalOverAlloc > 0 && (

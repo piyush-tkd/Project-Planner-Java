@@ -896,9 +896,9 @@ export default function SprintPlanningRecommenderPage() {
   }, [allPods, podSearch, podHealthFilter, podSortBy, podUtilization, jiraByPod, gapByPod]);
 
   return (
-    <Stack>
+    <Stack className="page-enter stagger-children">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start">
+      <Group justify="space-between" align="flex-start" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size="xl" radius="md" color="violet" variant="light">
             <IconBrain size={22} />

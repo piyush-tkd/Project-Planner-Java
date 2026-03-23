@@ -42,6 +42,9 @@ public class UserFeedback {
     @Column(nullable = false)
     private String priority;           // LOW, MEDIUM, HIGH, CRITICAL
 
+    @Column
+    private Short rating;              // 1–5 stars (null = unrated)
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

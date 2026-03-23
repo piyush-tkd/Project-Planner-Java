@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Container, Title, Text, Paper, Group, Stack, Badge, Button,
   Table, ActionIcon, Tooltip, Tabs, Box, Loader, ScrollArea,
-  Modal, Code, SimpleGrid, ThemeIcon, Select,
+  Modal, Code, SimpleGrid, ThemeIcon, Select, useMantineColorScheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -34,6 +34,9 @@ export default function ErrorLogPage() {
   const clearResolved = useClearResolvedErrors();
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [detailModal, setDetailModal] = useState<AppErrorLog | null>(null);
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
+  const headingColor = isDark ? '#e0e0e0' : DEEP_BLUE;
 
   const filtered = logs?.filter(log => {
     if (activeTab === 'all') return true;
@@ -78,10 +81,10 @@ export default function ErrorLogPage() {
   };
 
   return (
-    <Container size="xl" py="md">
-      <Group justify="space-between" align="flex-start" mb="lg">
+    <Container size="xl" py="md" className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
             Error Log
           </Title>
           <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
@@ -242,7 +245,7 @@ export default function ErrorLogPage() {
         title={
           <Group gap={8}>
             <IconAlertTriangle size={20} color="#c92a2a" />
-            <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>Error Detail</Text>
+            <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: headingColor }}>Error Detail</Text>
           </Group>
         }
         size="lg"
@@ -274,8 +277,8 @@ export default function ErrorLogPage() {
 
             <div>
               <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Message</Text>
-              <Paper withBorder p="sm" radius="md" style={{ backgroundColor: '#fff5f5' }}>
-                <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{detailModal.message}</Text>
+              <Paper withBorder p="sm" radius="md" style={{ backgroundColor: isDark ? 'rgba(200, 42, 42, 0.1)' : '#fff5f5' }}>
+                <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: isDark ? '#e0e0e0' : undefined }}>{detailModal.message}</Text>
               </Paper>
             </div>
 
@@ -328,7 +331,7 @@ export default function ErrorLogPage() {
                 <Button
                   leftSection={<IconCheck size={16} />}
                   onClick={() => { handleResolve(detailModal.id); setDetailModal(null); }}
-                  style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}
+                  style={{ backgroundColor: isDark ? AQUA : DEEP_BLUE, color: isDark ? DEEP_BLUE : '#fff', fontFamily: FONT_FAMILY }}
                 >
                   Mark Resolved
                 </Button>

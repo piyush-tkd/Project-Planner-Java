@@ -212,9 +212,9 @@ export default function TeamCalendarPage() {
   const isMonthView = viewMode === 'month';
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" className="page-enter stagger-children">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <Group gap="sm" align="center">
+      <Group gap="sm" align="center" className="slide-in-left">
         <ThemeIcon size={36} radius="md" style={{ background: DEEP_BLUE }}>
           <IconCalendarEvent size={20} color="white" />
         </ThemeIcon>

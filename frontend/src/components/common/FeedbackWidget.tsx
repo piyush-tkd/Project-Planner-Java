@@ -7,6 +7,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import {
   IconMessageReport, IconSend, IconPhoto, IconTrash, IconCheck, IconUpload,
+  IconStar, IconStarFilled,
 } from '@tabler/icons-react';
 import { useSubmitFeedback } from '../../api/feedback';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
@@ -20,9 +21,45 @@ const CATEGORIES = [
 
 const MAX_SCREENSHOT_SIZE = 2 * 1024 * 1024; // 2 MB
 
+const STAR_LABELS = ['Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  const display = hover || value;
+
+  return (
+    <div>
+      <Text size="sm" fw={500} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+        Rating
+      </Text>
+      <Group gap={4}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <ActionIcon
+            key={star}
+            variant="transparent"
+            size={32}
+            onClick={() => onChange(star === value ? 0 : star)}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            style={{ color: star <= display ? '#F5A623' : '#CED4DA', transition: 'color 0.15s ease, transform 0.15s ease', transform: star <= display ? 'scale(1.15)' : 'scale(1)' }}
+          >
+            {star <= display ? <IconStarFilled size={22} /> : <IconStar size={22} />}
+          </ActionIcon>
+        ))}
+        {display > 0 && (
+          <Text size="xs" c="dimmed" ml={4} style={{ fontFamily: FONT_FAMILY }}>
+            {STAR_LABELS[display - 1]}
+          </Text>
+        )}
+      </Group>
+    </div>
+  );
+}
+
 export default function FeedbackWidget() {
   const [opened, setOpened] = useState(false);
   const [category, setCategory] = useState<string>('BUG');
+  const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [screenshotName, setScreenshotName] = useState<string | null>(null);
@@ -33,6 +70,7 @@ export default function FeedbackWidget() {
 
   const resetForm = useCallback(() => {
     setCategory('BUG');
+    setRating(0);
     setMessage('');
     setScreenshot(null);
     setScreenshotName(null);
@@ -98,6 +136,7 @@ export default function FeedbackWidget() {
         message: message.trim(),
         pageUrl: location.pathname,
         screenshot: screenshot ?? undefined,
+        rating: rating > 0 ? rating : undefined,
       },
       {
         onSuccess: () => {
@@ -176,6 +215,8 @@ export default function FeedbackWidget() {
             onChange={(v) => setCategory(v ?? 'BUG')}
             styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
           />
+
+          <StarRating value={rating} onChange={setRating} />
 
           <Textarea
             label="Your Feedback"

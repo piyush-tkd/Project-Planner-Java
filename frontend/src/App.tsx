@@ -54,10 +54,14 @@ import ReleaseCalendarPage from './pages/ReleaseCalendarPage';
 import ReleaseNotesPage from './pages/ReleaseNotesPage';
 import SprintPlanningRecommenderPage from './pages/SprintPlanningRecommenderPage';
 import NlpLandingPage from './pages/NlpLandingPage';
+
 import NlpSettingsPage from './pages/settings/NlpSettingsPage';
 import NlpOptimizerPage from './pages/settings/NlpOptimizerPage';
 import FeedbackHubPage from './pages/settings/FeedbackHubPage';
 import ErrorLogPage from './pages/settings/ErrorLogPage';
+import DoraMetricsPage from './pages/reports/DoraMetricsPage';
+import JiraAnalyticsPage from './pages/reports/JiraAnalyticsPage';
+import JiraDashboardBuilderPage from './pages/reports/JiraDashboardBuilderPage';
 
 export default function App() {
   return (
@@ -180,6 +184,18 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="resource_roi" />}>
             <Route path="/reports/resource-roi" element={<ResourceROIPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="dora_metrics" />}>
+            <Route path="/reports/dora" element={<DoraMetricsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="jira_analytics" />}>
+            <Route path="/reports/jira-analytics" element={<JiraAnalyticsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="jira_dashboard_builder" />}>
+            <Route path="/reports/jira-dashboard-builder" element={<JiraDashboardBuilderPage />} />
           </Route>
 
           {/* ── Integrations ─────────────────────────────────── */}

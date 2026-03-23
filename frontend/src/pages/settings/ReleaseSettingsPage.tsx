@@ -196,9 +196,9 @@ export default function ReleaseSettingsPage() {
   const totalTracked = Object.values(selections).reduce((s, vs) => s + vs.length, 0);
 
   return (
-    <Box p="md">
+    <Box p="md" className="page-enter stagger-children">
       {/* ── Header ── */}
-      <Group justify="space-between" mb="md">
+      <Group justify="space-between" mb="md" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
             <IconTag size={22} color="white" />

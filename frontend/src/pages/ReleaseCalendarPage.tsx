@@ -460,8 +460,8 @@ export default function ReleaseCalendarPage() {
     <>
       <ReleaseIssuesDrawer release={drawerRelease} onClose={() => setDrawerRelease(null)} />
 
-      <Stack>
-        <Group justify="space-between">
+      <Stack className="page-enter stagger-children">
+        <Group justify="space-between" className="slide-in-left">
           <Group gap="sm">
             <IconRocket size={28} />
             <Title order={2}>Release Calendar</Title>

@@ -83,9 +83,13 @@ export default function PodCapacityPage() {
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading POD capacity..." />;
 
   return (
-    <Stack>
-      <Title order={2}>POD Capacity</Title>
-      <Text size="sm" c="dimmed">Per-POD capacity vs demand detail — select a POD to drill in</Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>POD Capacity</Title>
+          <Text size="sm" c="dimmed">Per-POD capacity vs demand detail — select a POD to drill in</Text>
+        </div>
+      </Group>
 
       {pods.length > 0 && (
         <SegmentedControl

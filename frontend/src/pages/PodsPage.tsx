@@ -113,8 +113,8 @@ export default function PodsPage() {
   if (podsLoading || bauLoading) return <LoadingSpinner variant="table" message="Loading PODs..." />;
 
   return (
-    <Stack>
-      <Group justify="space-between">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" className="slide-in-left">
         <Title order={2}>PODs</Title>
         <Group gap="sm">
           <CsvToolbar

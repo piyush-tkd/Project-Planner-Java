@@ -709,7 +709,7 @@ export default function JiraCapexPage() {
     ? Math.round((report.taggedIssues / report.totalIssues) * 100) : 0;
 
   return (
-    <Box p="md">
+    <Box p="md" className="page-enter stagger-children">
       {/* Settings Modal */}
       <CapexSettingsModal opened={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
@@ -723,7 +723,7 @@ export default function JiraCapexPage() {
       />
 
       {/* ── Header ── */}
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" mb="lg" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
             <IconCurrencyDollar size={22} color="white" />

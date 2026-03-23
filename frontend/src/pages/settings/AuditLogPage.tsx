@@ -90,8 +90,8 @@ export default function AuditLogPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <Stack>
-      <Group justify="space-between" align="flex-end">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-end" className="slide-in-left">
         <Title order={2}>Audit Trail</Title>
         <CsvToolbar
           data={filtered as unknown as Record<string, unknown>[]}

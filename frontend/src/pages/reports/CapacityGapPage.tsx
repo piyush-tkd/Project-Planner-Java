@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Title, Stack, SegmentedControl, Text, Group, Badge } from '@mantine/core';
+import { SegmentedControl, Group, Badge } from '@mantine/core';
+import { IconTrendingUp, IconTrendingDown, IconUsers, IconChartBar } from '@tabler/icons-react';
 import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { getGapCellColor } from '../../utils/colors';
@@ -7,8 +8,9 @@ import { formatGapHours, formatGapFte } from '../../utils/formatting';
 import HeatmapChart from '../../components/charts/HeatmapChart';
 import CapacityBarChart from '../../components/charts/CapacityBarChart';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import ExportableChart from '../../components/common/ExportableChart';
+import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
+import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
 
 export default function CapacityGapPage() {
   const [unit, setUnit] = useState<'hours' | 'fte'>('hours');
@@ -71,28 +73,53 @@ export default function CapacityGapPage() {
       });
   }, [data, unit, monthLabels, workingHoursMap]);
 
+  // Summary stats
+  const summaryCards = useMemo<SummaryCardItem[]>(() => {
+    if (!data) return [];
+    const pods = new Set(data.gaps.map(g => g.podName));
+    const totalGap = data.gaps.reduce((s, g) => s + (unit === 'hours' ? g.gapHours : g.gapFte), 0);
+    const surplusPods = new Set<string>();
+    const deficitPods = new Set<string>();
+    data.gaps.forEach(g => {
+      const gap = unit === 'hours' ? g.gapHours : g.gapFte;
+      if (gap > 0) surplusPods.add(g.podName);
+      if (gap < 0) deficitPods.add(g.podName);
+    });
+    return [
+      { label: 'PODs', value: pods.size, icon: <IconUsers size={18} />, color: 'blue' },
+      { label: 'Net Gap', value: unit === 'hours' ? formatGapHours(totalGap) : formatGapFte(totalGap), icon: <IconChartBar size={18} />, color: totalGap >= 0 ? 'teal' : 'red' },
+      { label: 'Surplus PODs', value: surplusPods.size, icon: <IconTrendingUp size={18} />, color: 'teal' },
+      { label: 'Deficit PODs', value: deficitPods.size, icon: <IconTrendingDown size={18} />, color: 'red' },
+    ];
+  }, [data, unit]);
+
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading capacity gap..." />;
-  if (error) return <Text c="red">Error loading capacity gap data</Text>;
+  if (error) return <PageError context="loading capacity gap data" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>Capacity Gap Analysis</Title>
-      <SegmentedControl
-        value={unit}
-        onChange={v => setUnit(v as 'hours' | 'fte')}
-        data={[
-          { value: 'hours', label: 'Hours' },
-          { value: 'fte', label: 'FTE' },
-        ]}
-        style={{ maxWidth: 200 }}
-      />
-
-      <Group gap="md">
-        <Badge color="green" variant="light" size="sm">+ Surplus (capacity &gt; demand)</Badge>
-        <Badge color="red" variant="light" size="sm">− Deficit (hiring needed)</Badge>
-      </Group>
-
-      <ChartCard title="Capacity Gap Heatmap" minHeight={400}>
+    <ReportPageShell
+      title="Capacity Gap Analysis"
+      subtitle="Compare demand vs capacity across PODs and months"
+      summaryCards={summaryCards}
+      filters={
+        <>
+          <SegmentedControl
+            value={unit}
+            onChange={v => setUnit(v as 'hours' | 'fte')}
+            data={[
+              { value: 'hours', label: 'Hours' },
+              { value: 'fte', label: 'FTE' },
+            ]}
+            style={{ maxWidth: 200 }}
+          />
+          <Group gap="md">
+            <Badge color="green" variant="light" size="sm">+ Surplus (capacity &gt; demand)</Badge>
+            <Badge color="red" variant="light" size="sm">− Deficit (hiring needed)</Badge>
+          </Group>
+        </>
+      }
+    >
+      <ChartCard title="Capacity Gap Heatmap" minHeight={0}>
         <HeatmapChart
           rows={heatmapRows}
           monthLabels={monthLabels}
@@ -104,6 +131,6 @@ export default function CapacityGapPage() {
       <ChartCard title="Demand vs Capacity" minHeight={350}>
         <CapacityBarChart data={chartData} unit={unit} />
       </ChartCard>
-    </Stack>
+    </ReportPageShell>
   );
 }

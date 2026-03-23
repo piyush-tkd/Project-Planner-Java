@@ -169,9 +169,9 @@ export default function JiraCredentialsPage() {
   const isConfigured = status?.configured ?? false;
 
   return (
-    <Box p="md" maw={620}>
+    <Box p="md" maw={620} className="page-enter stagger-children">
       {/* Header */}
-      <Group mb="lg" gap="sm">
+      <Group mb="lg" gap="sm" className="slide-in-left">
         <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
           <IconKey size={22} color="white" />
         </ThemeIcon>

@@ -63,6 +63,9 @@ public class CacheConfig {
             jiraCache("jira-fix-versions",       30, 200),  // project fix/release versions — 30 min TTL
             jiraCache("jira-release-issues",     10, 200),  // issues per release version  — 10 min TTL
 
+            // ── DB-backed analytics ───────────────────────────────────────────
+            jiraCache("jira-analytics",           10, 50),   // aggregated analytics from synced DB — 10 min TTL
+
             // ── Support Queue ───────────────────────────────────────────────
             jiraCache("jira-all-boards",         15, 1),    // all Jira boards for picker   — 15 min TTL
             jiraCache("jira-support-issues",      2, 50),   // non-Done issues per board    —  2 min TTL

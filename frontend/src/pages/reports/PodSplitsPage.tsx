@@ -117,11 +117,15 @@ export default function PodSplitsPage() {
   if (overridesLoading || resourcesLoading) return <LoadingSpinner variant="table" message="Loading POD splits..." />;
 
   return (
-    <Stack>
-      <Title order={2}>POD Splits</Title>
-      <Text size="sm" c="dimmed">Permanent splits = always allocated across two PODs. Temporary = short-term loan.</Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>POD Splits</Title>
+          <Text size="sm" c="dimmed">Permanent splits = always allocated across two PODs. Temporary = short-term loan.</Text>
+        </div>
+      </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }}>
+      <SimpleGrid cols={{ base: 2, sm: 4 }} className="stagger-grid">
         <SummaryCard title="Permanent Splits" value={stats.permanentCount} icon={<IconArrowsShuffle size={20} color="#339af0" />} />
         <SummaryCard title="Temporary Loans" value={stats.temporaryCount} icon={<IconArrowsShuffle size={20} color="#fd7e14" />} />
         <SummaryCard title="People Affected" value={stats.peopleAffected} icon={<IconUsers size={20} color="#fa5252" />} />

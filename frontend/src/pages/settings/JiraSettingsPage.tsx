@@ -134,9 +134,9 @@ export default function JiraSettingsPage() {
   const allPodsAssigned = ppPods.length > 0 && rows.length >= ppPods.length;
 
   return (
-    <Box p="md" maw={900}>
+    <Box p="md" maw={900} className="page-enter stagger-children">
       {/* ── Page header ── */}
-      <Group mb="lg" gap="sm">
+      <Group mb="lg" gap="sm" className="slide-in-left">
         <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
           <IconTicket size={22} color="white" />
         </ThemeIcon>

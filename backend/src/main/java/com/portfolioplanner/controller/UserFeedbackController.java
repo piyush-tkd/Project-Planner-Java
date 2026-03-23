@@ -29,6 +29,9 @@ public class UserFeedbackController {
         fb.setScreenshot(body.get("screenshot") != null ? body.get("screenshot").toString() : null);
         fb.setSubmittedBy(auth != null ? auth.getName() : "anonymous");
         fb.setPriority(body.getOrDefault("priority", "MEDIUM").toString());
+        if (body.get("rating") != null) {
+            fb.setRating(Short.parseShort(body.get("rating").toString()));
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(feedbackRepo.save(fb));
     }
 

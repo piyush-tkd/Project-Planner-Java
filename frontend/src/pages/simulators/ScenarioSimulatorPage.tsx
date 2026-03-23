@@ -147,8 +147,8 @@ export default function ScenarioSimulatorPage() {
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading scenario simulator..." />;
 
   return (
-    <Stack>
-      <Group justify="space-between" align="flex-start">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" className="slide-in-left">
         <div>
           <Title order={2}>Scenario Simulator</Title>
           <Text size="sm" c="dimmed" mt={2}>

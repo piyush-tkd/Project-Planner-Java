@@ -5,6 +5,7 @@ import { useHiringForecast } from '../../api/reports';
 import { formatHours, formatFte } from '../../utils/formatting';
 import { formatRole } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 import SortableHeader from '../../components/common/SortableHeader';
@@ -53,13 +54,15 @@ export default function HiringForecastPage() {
   const hasFilters = podFilter !== null || roleFilter !== null;
 
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading hiring forecast..." />;
-  if (error) return <Text c="red">Error loading hiring forecast</Text>;
+  if (error) return <PageError context="loading hiring forecast" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>Hiring Forecast</Title>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <Title order={2}>Hiring Forecast</Title>
+      </Group>
 
-      <Group gap="sm" align="flex-end" wrap="wrap">
+      <Group gap="sm" align="flex-end" wrap="wrap" className="stagger-children">
         <Select
           placeholder="All PODs"
           data={allPods}

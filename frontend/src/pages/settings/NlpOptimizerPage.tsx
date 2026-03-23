@@ -3,6 +3,7 @@ import {
   Container, Title, Text, Paper, Group, Stack, Badge, Button,
   Table, ActionIcon, Tooltip, SimpleGrid, Box, Loader, Switch,
   Tabs, ThemeIcon, Progress, ScrollArea, Modal, Image,
+  useMantineColorScheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -22,6 +23,9 @@ import { DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS, DEEP_BLUE_TINTS } from '../..
 
 export default function NlpOptimizerPage() {
   const queryClient = useQueryClient();
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
+  const headingColor = isDark ? '#e0e0e0' : DEEP_BLUE;
   const [stats, setStats] = useState<NlpLearnerStats | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('low-confidence');
 
@@ -114,10 +118,10 @@ export default function NlpOptimizerPage() {
   };
 
   return (
-    <Container size="xl" py="md">
-      <Group justify="space-between" align="flex-start" mb="lg">
+    <Container size="xl" py="md" className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
             NLP Optimizer
           </Title>
           <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
@@ -182,7 +186,7 @@ export default function NlpOptimizerPage() {
           <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
             <IconBrain size={24} />
           </ThemeIcon>
-          <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>No Data Yet</Text>
+          <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: headingColor }}>No Data Yet</Text>
           <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
             Click "Run Learner" to analyze query logs and generate insights
           </Text>
@@ -192,7 +196,7 @@ export default function NlpOptimizerPage() {
       {/* ── Intent Distribution ── */}
       {displayStats && displayStats.intentDistribution && Object.keys(displayStats.intentDistribution).length > 0 && (
         <Paper shadow="xs" radius="md" p="md" mb="lg" withBorder>
-          <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+          <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: headingColor }}>
             Intent Distribution
           </Text>
           <Stack gap={6}>
@@ -215,7 +219,7 @@ export default function NlpOptimizerPage() {
       {/* ── Strategy Avg Confidence ── */}
       {displayStats && displayStats.strategyAvgConfidence && Object.keys(displayStats.strategyAvgConfidence).length > 0 && (
         <Paper shadow="xs" radius="md" p="md" mb="lg" withBorder>
-          <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+          <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: headingColor }}>
             Average Confidence by Strategy
           </Text>
           <Group gap="lg">
@@ -637,7 +641,7 @@ export default function NlpOptimizerPage() {
         title="Feedback Screenshot"
         size="lg"
         centered
-        styles={{ title: { fontFamily: FONT_FAMILY, fontWeight: 600, color: DEEP_BLUE } }}
+        styles={{ title: { fontFamily: FONT_FAMILY, fontWeight: 600, color: headingColor } }}
       >
         {screenshotModal && (
           <Image

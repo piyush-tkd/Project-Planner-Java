@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Title, Stack, Text, Group, MultiSelect, SegmentedControl } from '@mantine/core';
+import { Text, MultiSelect, SegmentedControl, Badge, Group } from '@mantine/core';
+import { IconFlame, IconUsers, IconChartBar, IconAlertTriangle } from '@tabler/icons-react';
 import { useUtilizationHeatmap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { getUtilizationBgColor } from '../../utils/colors';
 import { formatPercent } from '../../utils/formatting';
 import HeatmapChart from '../../components/charts/HeatmapChart';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import ExportableChart from '../../components/common/ExportableChart';
+import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
 
 export default function UtilizationHeatmapPage() {
   const { data, isLoading, error } = useUtilizationHeatmap();
@@ -34,7 +37,6 @@ export default function UtilizationHeatmapPage() {
     });
     const rows = Array.from(podMap.entries()).map(([label, values]) => ({ label, values }));
 
-    // Sort rows
     return rows.sort((a, b) => {
       if (sortBy === 'name') return a.label.localeCompare(b.label);
       const avgA = a.values.reduce((s, v) => s + v.value, 0) / (a.values.length || 1);
@@ -45,47 +47,62 @@ export default function UtilizationHeatmapPage() {
     });
   }, [data, selectedPods, sortBy]);
 
+  // Summary stats
+  const summaryCards = useMemo<SummaryCardItem[]>(() => {
+    if (!data) return [];
+    const allVals = data.map(u => u.utilizationPct);
+    const avg = allVals.reduce((s, v) => s + v, 0) / (allVals.length || 1);
+    const peak = Math.max(...allVals);
+    const overloaded = new Set(data.filter(u => u.utilizationPct > 100).map(u => u.podName)).size;
+    return [
+      { label: 'PODs', value: allPods.length, icon: <IconUsers size={18} />, color: 'blue' },
+      { label: 'Avg Utilization', value: formatPercent(avg), icon: <IconChartBar size={18} />, color: avg > 100 ? 'orange' : 'teal' },
+      { label: 'Peak', value: formatPercent(peak), icon: <IconFlame size={18} />, color: peak > 120 ? 'red' : 'orange' },
+      { label: 'Overloaded PODs', value: overloaded, icon: <IconAlertTriangle size={18} />, color: overloaded > 0 ? 'red' : 'teal' },
+    ];
+  }, [data, allPods]);
+
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading utilization data..." />;
-  if (error) return <Text c="red">Error loading utilization data</Text>;
+  if (error) return <PageError context="loading utilization data" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>Utilization Heatmap</Title>
-      <Text size="sm" c="dimmed">
-        Green (&lt;80%) | Yellow (80–100%) | Orange (100–120%) | Red (&gt;120%)
-      </Text>
-
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <MultiSelect
-          label="Filter PODs"
-          placeholder={selectedPods.length === 0 ? 'All PODs' : undefined}
-          data={allPods}
-          value={selectedPods}
-          onChange={setSelectedPods}
-          clearable
-          searchable
-          style={{ minWidth: 260, maxWidth: 480 }}
-          size="sm"
-        />
-        <div>
-          <Text size="xs" c="dimmed" mb={4}>Sort rows by</Text>
-          <SegmentedControl
-            value={sortBy}
-            onChange={v => setSortBy(v as 'name' | 'peak' | 'avg')}
-            data={[
-              { value: 'name', label: 'Name' },
-              { value: 'peak', label: 'Peak %' },
-              { value: 'avg', label: 'Avg %' },
-            ]}
+    <ReportPageShell
+      title="Utilization"
+      subtitle="Green (<80%) · Yellow (80–100%) · Orange (100–120%) · Red (>120%)"
+      summaryCards={summaryCards}
+      filters={
+        <>
+          <MultiSelect
+            label="Filter PODs"
+            placeholder={selectedPods.length === 0 ? 'All PODs' : undefined}
+            data={allPods}
+            value={selectedPods}
+            onChange={setSelectedPods}
+            clearable
+            searchable
+            style={{ minWidth: 260, maxWidth: 480 }}
             size="sm"
           />
-        </div>
-        <Text size="sm" c="dimmed" mt="lg">
-          Showing {heatmapRows.length} of {allPods.length} PODs
-        </Text>
-      </Group>
-
-      <ExportableChart title="Utilization Heatmap">
+          <div>
+            <Text size="xs" c="dimmed" mb={4}>Sort rows by</Text>
+            <SegmentedControl
+              value={sortBy}
+              onChange={v => setSortBy(v as 'name' | 'peak' | 'avg')}
+              data={[
+                { value: 'name', label: 'Name' },
+                { value: 'peak', label: 'Peak %' },
+                { value: 'avg', label: 'Avg %' },
+              ]}
+              size="sm"
+            />
+          </div>
+          <Text size="sm" c="dimmed">
+            Showing {heatmapRows.length} of {allPods.length} PODs
+          </Text>
+        </>
+      }
+    >
+      <ExportableChart title="Utilization">
         <HeatmapChart
           rows={heatmapRows}
           monthLabels={monthLabels}
@@ -93,6 +110,6 @@ export default function UtilizationHeatmapPage() {
           currentMonthIndex={currentMonthIndex}
         />
       </ExportableChart>
-    </Stack>
+    </ReportPageShell>
   );
 }

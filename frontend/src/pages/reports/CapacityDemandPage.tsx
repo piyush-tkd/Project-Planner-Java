@@ -12,6 +12,7 @@ import { formatHours, formatPercent, formatGapHours, formatFte, formatGapFte } f
 import { getUtilizationBgColor, getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 
@@ -163,17 +164,21 @@ export default function CapacityDemandPage() {
   }, [gapData, pods, monthLabels, months, workingHoursPerMonth]);
 
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading capacity vs demand..." />;
-  if (error) return <Text c="red">Error loading capacity demand data</Text>;
+  if (error) return <PageError context="loading capacity demand data" error={error} />;
 
   const fmtValWithWh = (v: number, wh: number) => unit === 'hours' ? formatHours(v) : formatFte(wh > 0 ? v / wh : 0);
   const fmtGapWithWh = (v: number, wh: number) => unit === 'hours' ? formatGapHours(v) : formatGapFte(wh > 0 ? v / wh : 0);
 
   return (
-    <Stack>
-      <Title order={2}>Capacity vs Demand</Title>
-      <Text size="sm" c="dimmed">Full-year capacity and demand analysis — total org + POD-level breakdown</Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>Capacity vs Demand</Title>
+          <Text size="sm" c="dimmed">Full-year capacity and demand analysis — total org + POD-level breakdown</Text>
+        </div>
+      </Group>
 
-      <Group gap="md" align="flex-end">
+      <Group gap="md" align="flex-end" className="stagger-children">
         <SegmentedControl
           value={unit}
           onChange={v => setUnit(v as 'hours' | 'fte')}

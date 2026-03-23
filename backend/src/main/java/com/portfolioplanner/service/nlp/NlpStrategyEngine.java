@@ -18,13 +18,18 @@ public class NlpStrategyEngine {
     private static final Logger log = LoggerFactory.getLogger(NlpStrategyEngine.class);
 
     private final Map<String, NlpStrategy> strategyMap;
-    private volatile List<String> chain = List.of("RULE_BASED");
+    // IMPORTANT: RULE_BASED must come BEFORE LOCAL_LLM.
+    // RULE_BASED is fast (~200ms, regex + keyword matching) and handles most queries.
+    // LOCAL_LLM calls Ollama (10+ seconds) and should only be the last resort.
+    private volatile List<String> chain = List.of("DETERMINISTIC", "RULE_BASED", "LOCAL_LLM");
     private volatile double confidenceThreshold = 0.75;
 
-    public NlpStrategyEngine(RuleBasedStrategy ruleBased,
+    public NlpStrategyEngine(DeterministicStrategy deterministic,
+                              RuleBasedStrategy ruleBased,
                               LocalLlmStrategy localLlm,
                               CloudLlmStrategy cloudLlm) {
         this.strategyMap = new LinkedHashMap<>();
+        strategyMap.put("DETERMINISTIC", deterministic);
         strategyMap.put("RULE_BASED", ruleBased);
         strategyMap.put("LOCAL_LLM", localLlm);
         strategyMap.put("CLOUD_LLM", cloudLlm);

@@ -108,8 +108,8 @@ export default function OverridesPage() {
   if (isLoading) return <LoadingSpinner variant="table" message="Loading overrides..." />;
 
   return (
-    <Stack>
-      <Group justify="space-between">
+    <Stack className="page-enter stagger-children">
+      <Group justify="space-between" className="slide-in-left">
         <Title order={2}>Temporary Overrides</Title>
         <Group gap="sm">
           <CsvToolbar

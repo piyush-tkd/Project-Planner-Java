@@ -10,6 +10,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import SummaryCard from '../../components/charts/SummaryCard';
 import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 
@@ -68,14 +69,18 @@ export default function ConcurrencyRiskPage() {
   }, [gapData, pods, monthLabels, months]);
 
   if (isLoading || gapLoading) return <LoadingSpinner variant="chart" message="Loading concurrency risk..." />;
-  if (error) return <Text c="red">Error loading concurrency data</Text>;
+  if (error) return <PageError context="loading concurrency data" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>Concurrency Risk</Title>
-      <Text size="sm" c="dimmed">Months where multiple projects compete for the same POD — hover cells for risk level</Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>Concurrency Risk</Title>
+          <Text size="sm" c="dimmed">Months where multiple projects compete for the same POD — hover cells for risk level</Text>
+        </div>
+      </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} className="stagger-grid">
         <SummaryCard title="High Risk POD-Months" value={stats.overloaded} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red" />
         <SummaryCard title="Medium Risk POD-Months" value={stats.tight} icon={<IconFlame size={20} color="#fd7e14" />} color="orange" />
         <SummaryCard title="Peak Concurrent Projects" value={stats.peakConcurrent} icon={<IconTrendingUp size={20} color="#339af0" />} />

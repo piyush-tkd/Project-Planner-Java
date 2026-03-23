@@ -2,8 +2,10 @@ package com.portfolioplanner.service.jira;
 
 import com.portfolioplanner.domain.model.JiraSupportBoard;
 import com.portfolioplanner.domain.model.JiraSupportSnapshot;
+import com.portfolioplanner.domain.model.JiraSyncedIssue;
 import com.portfolioplanner.domain.repository.JiraSupportBoardRepository;
 import com.portfolioplanner.domain.repository.JiraSupportSnapshotRepository;
+import com.portfolioplanner.domain.repository.JiraSyncedIssueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,6 +20,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Support queue service.
+ *
+ * <p>Queue-specific endpoints (getSnapshot, getAllTickets, getAvailableBoards)
+ * still use the live Jira Service Management API because JSM queues are not
+ * part of the standard issue sync. Monthly throughput is served from the
+ * locally synced issue table.</p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,6 +36,7 @@ public class JiraSupportService {
     private final JiraSupportBoardRepository   boardRepo;
     private final JiraSupportSnapshotRepository snapshotRepo;
     private final JiraClient                   jiraClient;
+    private final JiraSyncedIssueRepository    issueRepo;
 
     private static final DateTimeFormatter ISO_OUT = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -460,7 +471,7 @@ public class JiraSupportService {
     }
 
     private MonthlyThroughput buildMonthlyThroughput(JiraSupportBoard board, YearMonth now, int months) {
-        // Use configured project key first; fall back to resolving from service-desk ID
+        // Use configured project key; fall back to resolving from service-desk ID
         String projectKey = board.getProjectKey();
         if (projectKey == null || projectKey.isBlank()) {
             try {
@@ -475,34 +486,38 @@ public class JiraSupportService {
         }
 
         List<MonthPoint> points = new ArrayList<>();
+        if (projectKey == null) {
+            // No project key — return empty points
+            for (int i = months - 1; i >= 0; i--) {
+                points.add(new MonthPoint(now.minusMonths(i).toString(), 0, 0));
+            }
+            return new MonthlyThroughput(board.getId(), board.getName(), points);
+        }
+
+        // Load all issues for this project from DB once
+        List<JiraSyncedIssue> allIssues = issueRepo.findByProjectKey(projectKey);
+
         for (int i = months - 1; i >= 0; i--) {
             YearMonth ym = now.minusMonths(i);
-            // Use exclusive upper bound (first day of next month) so that issues
-            // created/resolved on the very last day of the month are not missed.
-            // Jira JQL: created >= "YYYY-MM-01" AND created < "YYYY-MM+1-01"
-            String start    = ym.atDay(1).toString();               // "YYYY-MM-01"
-            String endExcl  = ym.plusMonths(1).atDay(1).toString(); // "YYYY-MM+1-01"
+            LocalDateTime monthStart = ym.atDay(1).atStartOfDay();
+            LocalDateTime monthEnd   = ym.plusMonths(1).atDay(1).atStartOfDay();
 
-            int created = 0, closed = 0;
-            if (projectKey != null) {
-                try {
-                    created = jiraClient.countIssues(
-                            "project = \"" + projectKey + "\""
-                            + " AND created >= \"" + start + "\""
-                            + " AND created < \"" + endExcl + "\"");
-                } catch (Exception e) {
-                    log.warn("Failed to count created tickets for {} {}: {}", projectKey, ym, e.getMessage());
-                }
-                try {
-                    closed = jiraClient.countIssues(
-                            "project = \"" + projectKey + "\""
-                            + " AND statusCategory = Done"
-                            + " AND resolutiondate >= \"" + start + "\""
-                            + " AND resolutiondate < \"" + endExcl + "\"");
-                } catch (Exception e) {
-                    log.warn("Failed to count closed tickets for {} {}: {}", projectKey, ym, e.getMessage());
-                }
-            }
+            final LocalDateTime ms = monthStart;
+            final LocalDateTime me = monthEnd;
+
+            int created = (int) allIssues.stream()
+                    .filter(issue -> issue.getCreatedAt() != null
+                            && !issue.getCreatedAt().isBefore(ms)
+                            && issue.getCreatedAt().isBefore(me))
+                    .count();
+
+            int closed = (int) allIssues.stream()
+                    .filter(issue -> "done".equalsIgnoreCase(issue.getStatusCategory())
+                            && issue.getResolutionDate() != null
+                            && !issue.getResolutionDate().isBefore(ms)
+                            && issue.getResolutionDate().isBefore(me))
+                    .count();
+
             points.add(new MonthPoint(ym.toString(), created, closed));
         }
 

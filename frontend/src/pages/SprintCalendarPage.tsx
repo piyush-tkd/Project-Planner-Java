@@ -452,8 +452,8 @@ export default function SprintCalendarPage() {
 
   return (
     <>
-      <Stack>
-        <Group justify="space-between">
+      <Stack className="page-enter stagger-children">
+        <Group justify="space-between" className="slide-in-left">
           <Group gap="sm">
             <IconCalendarEvent size={28} />
             <Title order={2}>Sprint Calendar</Title>

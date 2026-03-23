@@ -106,15 +106,15 @@ export default function PodDashboardPage() {
     .map(([name, hours]) => ({ name: name.split(' ')[0], hours: Math.round(hours) }));
 
   return (
-    <Box p="md">
+    <Box p="md" className="page-enter">
       {/* ── Header ── */}
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" mb="lg" className="slide-in-left">
         <Group gap="sm">
           <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
             <IconChartBar size={22} color="white" />
           </ThemeIcon>
           <div>
-            <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+            <Title order={3} style={{ fontFamily: FONT_FAMILY }}>
               POD Performance Dashboard
             </Title>
             <Text size="sm" c="dimmed">
@@ -419,7 +419,7 @@ function PodCard({
             </ThemeIcon>
             <div>
               <Group gap={4}>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, lineHeight: 1.2 }}>
+                <Text fw={700} size="sm" style={{ lineHeight: 1.2 }}>
                   {pod.podDisplayName}
                 </Text>
                 <IconArrowRight size={12} color={GRAY} />
@@ -472,7 +472,7 @@ function PodCard({
                 {Math.round(sprint.spProgressPct)}% done
               </Badge>
             </Group>
-            <Text size="sm" fw={600} style={{ color: DEEP_BLUE }}>{sprint.name}</Text>
+            <Text size="sm" fw={600} c={AQUA}>{sprint.name}</Text>
             {sprint.startDate && (
               <Text size="xs" c="dimmed">
                 {fmt(sprint.startDate)} → {fmt(sprint.endDate)}

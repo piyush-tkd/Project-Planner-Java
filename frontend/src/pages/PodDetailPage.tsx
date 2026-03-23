@@ -74,14 +74,14 @@ export default function PodDetailPage() {
   if (!pod) return <Text c="red">POD not found</Text>;
 
   return (
-    <Stack>
+    <Stack className="page-enter stagger-children">
       <NlpBreadcrumb />
-      <Group>
+      <Group className="detail-header">
         <Title order={2}>{pod.name}</Title>
         {pod.active && <Badge color="green">Active</Badge>}
       </Group>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }}>
+      <SimpleGrid cols={{ base: 2, sm: 4 }} className="stagger-grid">
         <SummaryCard title="Projects" value={stats.totalProjects} icon={<IconBriefcase size={20} color="#339af0" />} />
         <SummaryCard title="Active Projects" value={stats.activeProjects} icon={<IconBriefcase size={20} color="#40c057" />} />
         <SummaryCard title="Members" value={stats.members} icon={<IconUsers size={20} color="#845ef7" />} />

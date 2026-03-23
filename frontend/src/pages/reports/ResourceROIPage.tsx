@@ -169,8 +169,8 @@ export default function ResourceROIPage() {
   if (errRes) return <Alert color="red" icon={<IconAlertCircle />}>Failed to load resources.</Alert>;
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between" wrap="nowrap">
+    <Stack gap="lg" className="page-enter stagger-children">
+      <Group justify="space-between" wrap="nowrap" className="slide-in-left">
         <div>
           <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
             Resource ROI
@@ -182,7 +182,7 @@ export default function ResourceROIPage() {
       </Group>
 
       {/* KPI cards */}
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" className="stagger-grid">
         <Card withBorder radius="md" p="md">
           <Group gap="sm" align="flex-start">
             <ThemeIcon size={36} radius="md" color="blue" variant="light">

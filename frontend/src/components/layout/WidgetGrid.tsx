@@ -165,7 +165,7 @@ export default function WidgetGrid({ pageKey, children }: WidgetGridProps) {
   const visibleOrder = order.filter(id => !hidden.has(id));
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" className="stagger-children">
 
       {/* ── top-right controls ───────────────────────────────────────────── */}
       <Group justify="flex-end" gap="xs">

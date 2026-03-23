@@ -10,17 +10,25 @@ import com.portfolioplanner.dto.request.NlpQueryRequest;
 import com.portfolioplanner.dto.response.NlpCatalogResponse;
 import com.portfolioplanner.dto.response.NlpConfigResponse;
 import com.portfolioplanner.dto.response.NlpQueryResponse;
+import com.portfolioplanner.dto.response.NlpConversationResponse;
 import com.portfolioplanner.service.nlp.NlpCatalogService;
+import com.portfolioplanner.service.nlp.NlpConversationService;
 import com.portfolioplanner.service.nlp.NlpConfigService;
 import com.portfolioplanner.service.nlp.NlpEmbeddingSyncService;
 import com.portfolioplanner.service.nlp.NlpLearnerService;
+import com.portfolioplanner.service.nlp.NlpInsightService;
 import com.portfolioplanner.service.nlp.NlpService;
 import com.portfolioplanner.service.nlp.NlpVectorSearchService;
+import com.portfolioplanner.service.nlp.NlpToolRegistry;
+import com.portfolioplanner.service.nlp.NlpResponseBuilder;
+import com.portfolioplanner.service.nlp.NlpStrategy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
@@ -36,21 +44,70 @@ public class NlpController {
     private final NlpLearnerService learnerService;
     private final NlpEmbeddingSyncService embeddingSyncService;
     private final NlpVectorSearchService vectorSearchService;
+    private final NlpConversationService conversationService;
+    private final NlpInsightService insightService;
     private final AppUserRepository userRepo;
+    private final NlpToolRegistry toolRegistry;
+    private final NlpResponseBuilder responseBuilder;
 
-    /** Process a natural language query. */
+    /** Process a natural language query, optionally with session context for follow-ups. */
     @PostMapping("/query")
     public ResponseEntity<NlpQueryResponse> query(@Valid @RequestBody NlpQueryRequest request,
                                                    Authentication auth) {
         Long userId = resolveUserId(auth);
-        NlpQueryResponse response = nlpService.query(request.query(), userId);
+        NlpQueryResponse response;
+        if (request.sessionContext() != null && !request.sessionContext().isBlank()) {
+            response = nlpService.queryWithContext(request.query(), request.sessionContext(), userId);
+        } else {
+            response = nlpService.query(request.query(), userId);
+        }
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Stream a natural language query with real-time progress events via SSE.
+     * Events: phase (progress updates), result (final answer), error (on failure).
+     */
+    @PostMapping(value = "/query/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter queryStream(@Valid @RequestBody NlpQueryRequest request,
+                                   Authentication auth) {
+        Long userId = resolveUserId(auth);
+        SseEmitter emitter = new SseEmitter(120_000L); // 2 min timeout
+        String queryText = request.query();
+        // If session context provided, build enhanced query
+        if (request.sessionContext() != null && !request.sessionContext().isBlank()) {
+            queryText = request.sessionContext() + "\n\nCurrent question: " + queryText;
+        }
+        nlpService.queryStreaming(queryText, userId, emitter);
+        return emitter;
     }
 
     /** Get the entity catalog (for autocomplete and LLM context). */
     @GetMapping("/catalog")
     public ResponseEntity<NlpCatalogResponse> getCatalog() {
         return ResponseEntity.ok(catalogService.getCatalog());
+    }
+
+    /** Get proactive insight cards for the Ask AI landing page. */
+    @GetMapping("/insights")
+    public ResponseEntity<List<NlpInsightService.InsightCard>> getInsights() {
+        return ResponseEntity.ok(insightService.getInsights());
+    }
+
+    /** Execute a tool directly (used by insight cards to bypass NLP pipeline). */
+    @PostMapping("/direct-tool")
+    public ResponseEntity<NlpQueryResponse> directTool(@RequestBody Map<String, Object> body) {
+        String toolName = (String) body.get("toolName");
+        @SuppressWarnings("unchecked")
+        Map<String, String> params = (Map<String, String>) body.getOrDefault("params", Map.of());
+
+        NlpCatalogResponse catalog = catalogService.getCatalog();
+        com.fasterxml.jackson.databind.JsonNode toolParams = new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(params);
+
+        NlpToolRegistry.ToolResult toolResult = toolRegistry.executeTool(toolName, toolParams, catalog);
+        NlpStrategy.NlpResult nlpResult = responseBuilder.buildFromToolResult(toolName, params, toolResult);
+
+        return ResponseEntity.ok(nlpResult.toResponse("DIRECT_TOOL"));
     }
 
     /** Get NLP configuration (admin). */
@@ -155,10 +212,59 @@ public class NlpController {
         return ResponseEntity.ok(vectorSearchService.getEmbeddingStats());
     }
 
+    // ── Conversations ─────────────────────────────────────────────────────
+
+    /** List user's conversations. */
+    @GetMapping("/conversations")
+    public ResponseEntity<List<NlpConversationResponse>> listConversations(Authentication auth) {
+        return ResponseEntity.ok(conversationService.listConversations(resolveUsername(auth)));
+    }
+
+    /** Get a single conversation with messages. */
+    @GetMapping("/conversations/{id}")
+    public ResponseEntity<NlpConversationResponse> getConversation(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(conversationService.getConversation(id, resolveUsername(auth)));
+    }
+
+    /** Create a new conversation. */
+    @PostMapping("/conversations")
+    public ResponseEntity<NlpConversationResponse> createConversation(@RequestBody Map<String, String> body, Authentication auth) {
+        String title = body.getOrDefault("title", null);
+        return ResponseEntity.ok(conversationService.createConversation(resolveUsername(auth), title));
+    }
+
+    /** Send a message in a conversation. */
+    @PostMapping("/conversations/{id}/messages")
+    public ResponseEntity<NlpConversationResponse.MessageResponse> sendMessage(
+            @PathVariable Long id, @RequestBody Map<String, String> body, Authentication auth) {
+        String message = body.get("message");
+        Long userId = resolveUserId(auth);
+        return ResponseEntity.ok(conversationService.sendMessage(id, resolveUsername(auth), message, userId));
+    }
+
+    /** Delete a conversation. */
+    @DeleteMapping("/conversations/{id}")
+    public ResponseEntity<Void> deleteConversation(@PathVariable Long id, Authentication auth) {
+        conversationService.deleteConversation(id, resolveUsername(auth));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Pin/unpin a conversation. */
+    @PutMapping("/conversations/{id}/pin")
+    public ResponseEntity<Void> togglePin(@PathVariable Long id, Authentication auth) {
+        conversationService.togglePin(id, resolveUsername(auth));
+        return ResponseEntity.ok().build();
+    }
+
     private Long resolveUserId(Authentication auth) {
         if (auth == null || auth.getName() == null) return null;
         return userRepo.findByUsername(auth.getName())
                 .map(AppUser::getId)
                 .orElse(null);
+    }
+
+    private String resolveUsername(Authentication auth) {
+        if (auth == null || auth.getName() == null) return null;
+        return auth.getName();
     }
 }

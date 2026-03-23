@@ -316,18 +316,20 @@ export default function ProjectHealthPage() {
   });
 
   return (
-    <Container size="xl" py="xl">
+    <Container size="xl" py="xl" className="page-enter stagger-children">
       <Stack gap="lg">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
-            Project Health Scorecard
-          </Title>
-          <Text c="dimmed" size="sm">
-            Health assessment based on status, blocking, activity, and resource utilization
-          </Text>
-        </div>
+        <Group className="slide-in-left">
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+              Project Health Scorecard
+            </Title>
+            <Text c="dimmed" size="sm">
+              Health assessment based on status, blocking, activity, and resource utilization
+            </Text>
+          </div>
+        </Group>
 
-        <Group justify="space-between" wrap="wrap">
+        <Group justify="space-between" wrap="wrap" className="stagger-children">
           <SegmentedControl
             label="Sort by"
             value={sortBy}

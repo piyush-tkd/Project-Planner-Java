@@ -10,7 +10,7 @@ import {
   IconChartBar, IconArrowLeft, IconExternalLink,
   IconAlertTriangle, IconTicket, IconClockHour4,
   IconCircleCheck, IconList, IconCircleDot,
-  IconSquareCheck, IconTrendingUp, IconSearch, IconX,
+  IconSquareCheck, IconTrendingUp, IconSearch, IconX, IconRefresh,
 } from '@tabler/icons-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -207,7 +207,7 @@ export default function JiraPodDetailPage() {
   const navigate = useNavigate();
 
   const { data: status } = useJiraStatus();
-  const { data: allPods = [], isLoading, error } = useJiraPods();
+  const { data: allPods = [], isLoading, isFetching, error, refetch } = useJiraPods();
 
   const podId = id ? parseInt(id, 10) : null;
   const pod = useMemo(
@@ -287,7 +287,7 @@ export default function JiraPodDetailPage() {
     : 0;
 
   return (
-    <Box p="md" maw={1200}>
+    <Box p="md" maw={1200} className="page-enter stagger-children">
       {/* Sprint Issues Modal */}
       <SprintIssueModal
         opened={modalOpen}
@@ -299,7 +299,7 @@ export default function JiraPodDetailPage() {
       />
 
       {/* Back + header */}
-      <Group mb="md" justify="space-between">
+      <Group mb="md" justify="space-between" className="slide-in-left">
         <Group gap="sm">
           <Button
             variant="subtle" size="sm"
@@ -324,6 +324,14 @@ export default function JiraPodDetailPage() {
           </div>
         </Group>
         <Group gap="xs">
+          <Button
+            size="xs" variant="light"
+            leftSection={<IconRefresh size={13} />}
+            loading={isFetching}
+            onClick={() => refetch()}
+          >
+            Refresh
+          </Button>
           {backlogUrl && (
             <Button
               size="xs" variant="light"

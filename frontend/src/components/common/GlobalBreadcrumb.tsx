@@ -6,6 +6,7 @@
  */
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useComputedColorScheme } from '@mantine/core';
 import { IconHome, IconChevronRight, IconArrowLeft } from '@tabler/icons-react';
 import {
   DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS,
@@ -104,83 +105,12 @@ function resolveTrail(pathname: string): Crumb[] {
   }));
 }
 
-/* ── Styles ────────────────────────────────────────────────────────── */
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 0,
-  marginBottom: 12,
-  padding: '8px 12px',
-  background: SURFACE_SIDEBAR,
-  borderRadius: 6,
-  border: `1px solid ${BORDER_DEFAULT}`,
-  fontFamily: FONT_FAMILY,
-  fontSize: 13,
-  lineHeight: '20px',
-  flexWrap: 'wrap',
-};
-
-const separatorStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  margin: '0 4px',
-  color: DEEP_BLUE_TINTS[20],
-  flexShrink: 0,
-};
-
-const linkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  color: DEEP_BLUE,
-  textDecoration: 'none',
-  cursor: 'pointer',
-  borderRadius: 3,
-  padding: '2px 4px',
-  transition: 'background-color 150ms ease, color 150ms ease',
-};
-
-const linkHoverBg = `rgba(45, 204, 211, 0.08)`;
-
-const groupLabelStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  color: DEEP_BLUE_TINTS[50],
-  padding: '2px 4px',
-  fontSize: 12,
-  fontWeight: 500,
-  textTransform: 'uppercase',
-  letterSpacing: '0.03em',
-};
-
-const activeStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  color: AQUA,
-  fontWeight: 600,
-  padding: '2px 4px',
-};
-
-const backBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  borderRadius: 6,
-  border: `1px solid ${BORDER_DEFAULT}`,
-  background: 'transparent',
-  color: DEEP_BLUE,
-  cursor: 'pointer',
-  marginRight: 8,
-  transition: 'background-color 150ms ease, color 150ms ease, border-color 150ms ease',
-  flexShrink: 0,
-};
-
 /* ── Component ─────────────────────────────────────────────────────── */
 export default function GlobalBreadcrumb() {
   const location = useLocation();
   const navigate = useNavigate();
+  const computedColorScheme = useComputedColorScheme('light');
+  const isDark = computedColorScheme === 'dark';
 
   const trail = useMemo(() => resolveTrail(location.pathname), [location.pathname]);
 
@@ -188,6 +118,82 @@ export default function GlobalBreadcrumb() {
   if (location.pathname === '/' || trail.length <= 1) return null;
 
   const crumbs: Crumb[] = trail;
+
+  /* ── Dark-mode aware styles ── */
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0,
+    marginBottom: 12,
+    padding: '8px 12px',
+    background: isDark
+      ? 'rgba(255, 255, 255, 0.04)'
+      : SURFACE_SIDEBAR,
+    borderRadius: 10,
+    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : BORDER_DEFAULT}`,
+    fontFamily: FONT_FAMILY,
+    fontSize: 13,
+    lineHeight: '20px',
+    flexWrap: 'wrap',
+    backdropFilter: isDark ? 'blur(8px)' : undefined,
+  };
+
+  const separatorStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    margin: '0 4px',
+    color: isDark ? 'rgba(255, 255, 255, 0.25)' : DEEP_BLUE_TINTS[20],
+    flexShrink: 0,
+  };
+
+  const linkStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    color: isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE,
+    textDecoration: 'none',
+    cursor: 'pointer',
+    borderRadius: 3,
+    padding: '2px 4px',
+    transition: 'background-color 150ms ease, color 150ms ease',
+  };
+
+  const linkHoverBg = isDark ? 'rgba(45, 204, 211, 0.12)' : 'rgba(45, 204, 211, 0.08)';
+
+  const groupLabelStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    color: isDark ? 'rgba(255, 255, 255, 0.45)' : DEEP_BLUE_TINTS[50],
+    padding: '2px 4px',
+    fontSize: 12,
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.03em',
+  };
+
+  const activeStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    color: AQUA,
+    fontWeight: 600,
+    padding: '2px 4px',
+  };
+
+  const backBtnStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : BORDER_DEFAULT}`,
+    background: 'transparent',
+    color: isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE,
+    cursor: 'pointer',
+    marginRight: 8,
+    transition: 'background-color 150ms ease, color 150ms ease, border-color 150ms ease',
+    flexShrink: 0,
+  };
 
   return (
     <nav aria-label="Breadcrumb" style={containerStyle}>
@@ -199,14 +205,14 @@ export default function GlobalBreadcrumb() {
         style={backBtnStyle}
         onClick={() => navigate(-1)}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = AQUA_TINTS[10];
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? 'rgba(45, 204, 211, 0.15)' : AQUA_TINTS[10];
           (e.currentTarget as HTMLButtonElement).style.borderColor = AQUA;
           (e.currentTarget as HTMLButtonElement).style.color = AQUA;
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-          (e.currentTarget as HTMLButtonElement).style.borderColor = BORDER_DEFAULT;
-          (e.currentTarget as HTMLButtonElement).style.color = DEEP_BLUE;
+          (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(255, 255, 255, 0.12)' : BORDER_DEFAULT;
+          (e.currentTarget as HTMLButtonElement).style.color = isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE;
         }}
       >
         <IconArrowLeft size={16} stroke={2} />

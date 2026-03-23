@@ -37,13 +37,17 @@ export default function ProjectGanttPage() {
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
 
   return (
-    <Stack>
-      <Title order={2}>Project Gantt</Title>
-      <Text size="sm" c="dimmed">
-        {activeProjects.length} active projects sorted by priority then start month
-      </Text>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <div>
+          <Title order={2}>Project Gantt</Title>
+          <Text size="sm" c="dimmed">
+            {activeProjects.length} active projects sorted by priority then start month
+          </Text>
+        </div>
+      </Group>
 
-      <Group gap="xs">
+      <Group gap="xs" className="stagger-children">
         <Text size="xs" fw={600} c="dimmed">Filter by priority:</Text>
         <Chip.Group multiple value={selectedPriorities} onChange={setSelectedPriorities}>
           <Group gap={6}>

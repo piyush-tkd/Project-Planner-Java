@@ -1,17 +1,15 @@
 package com.portfolioplanner.service.jira;
 
-import com.portfolioplanner.domain.model.JiraPod;
-import com.portfolioplanner.domain.model.JiraPodBoard;
-import com.portfolioplanner.domain.model.Resource;
+import com.portfolioplanner.domain.model.*;
 import com.portfolioplanner.domain.model.enums.Location;
-import com.portfolioplanner.domain.repository.JiraPodRepository;
-import com.portfolioplanner.domain.repository.ResourceRepository;
+import com.portfolioplanner.domain.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -38,10 +36,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JiraCapexService {
 
-    private final JiraClient             jiraClient;
-    private final JiraCredentialsService creds;
-    private final JiraPodRepository      podRepo;
-    private final ResourceRepository     resourceRepo;
+    private final JiraCredentialsService      creds;
+    private final JiraPodRepository           podRepo;
+    private final ResourceRepository          resourceRepo;
+    private final JiraSyncedIssueRepository   issueRepo;
+    private final JiraIssueWorklogRepository  worklogRepo;
+    private final JiraIssueCustomFieldRepository customFieldRepo;
 
     // Category constants
     public static final String CAT_UNTAGGED = "Untagged";
@@ -69,10 +69,11 @@ public class JiraCapexService {
                 : creds.getCapexFieldId();
 
         // Parse month → date range
-        YearMonth ym  = YearMonth.parse(month);
-        LocalDate from = ym.atDay(1);
-        LocalDate to   = ym.atEndOfMonth();
-        DateTimeFormatter jiraFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        YearMonth ym   = YearMonth.parse(month);
+        LocalDate fromDate = ym.atDay(1);
+        LocalDate toDate   = ym.atEndOfMonth();
+        LocalDateTime from = fromDate.atStartOfDay();
+        LocalDateTime to   = toDate.plusDays(1).atStartOfDay();  // exclusive upper bound
 
         // Collect all enabled POD project keys
         List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
@@ -87,40 +88,57 @@ public class JiraCapexService {
         }
 
         List<String> projectKeys = new ArrayList<>(keyToPod.keySet());
-        String projectList = projectKeys.stream()
-                .map(k -> "\"" + k + "\"")
-                .collect(Collectors.joining(","));
 
-        // JQL: issues with any worklog in the month.
-        // Use unquoted dates — Jira accepts bare yyyy-MM-dd in worklogDate comparisons
-        // and it avoids any quote-escaping / double-encoding issues in HTTP requests.
-        String jql = "project in (" + projectList + ")"
-                + " AND worklogDate >= " + from.format(jiraFmt)
-                + " AND worklogDate <= " + to.format(jiraFmt)
-                + " ORDER BY updated DESC";
+        log.info("CapEx report [{}]: querying issues for projects {} from {} to {}",
+                month, projectKeys, from, to);
 
-        // Fields to fetch as a list (used with POST to avoid URL-encoding problems)
-        List<String> fieldList = new ArrayList<>(List.of(
-                "summary", "status", "issuetype", "assignee",
-                "timespent", "worklog",
-                "customfield_10016", "customfield_10028", "project",
-                "story_points", "customfield_10015", "customfield_10034"));
-        if (resolvedField != null && !resolvedField.isBlank()) {
-            fieldList.add(resolvedField);
-        }
-
-        log.info("CapEx JQL [{}]: {}", month, jql);
-
-        List<Map<String, Object>> rawIssues;
+        // Query worklogs from DB for the month date range
+        List<JiraIssueWorklog> dbWorklogs;
         try {
-            // Use POST /search/jql to avoid URL-encoding issues with JQL date literals.
-            rawIssues = jiraClient.searchIssuesPost(jql, fieldList, 500);
+            dbWorklogs = worklogRepo.findByProjectKeysAndDateRange(projectKeys, from, to);
         } catch (Exception e) {
-            log.warn("CapEx query failed for month={}: {}", month, e.getMessage());
+            log.warn("CapEx worklog query failed for month={}: {}", month, e.getMessage());
             return CapexMonthReport.empty(month);
         }
 
-        log.info("CapEx query returned {} issues for month={}", rawIssues.size(), month);
+        if (dbWorklogs.isEmpty()) {
+            log.info("CapEx query returned 0 worklogs for month={}", month);
+            return CapexMonthReport.empty(month);
+        }
+
+        log.info("CapEx worklog query returned {} worklog entries for month={}", dbWorklogs.size(), month);
+
+        // Group worklogs by issueKey to find unique issues
+        Map<String, List<JiraIssueWorklog>> worklogsByIssue = dbWorklogs.stream()
+                .collect(Collectors.groupingBy(JiraIssueWorklog::getIssueKey));
+
+        Set<String> issueKeys = worklogsByIssue.keySet();
+
+        // Load issues from DB
+        List<JiraSyncedIssue> dbIssues;
+        try {
+            dbIssues = issueRepo.findByIssueKeyIn(new ArrayList<>(issueKeys));
+        } catch (Exception e) {
+            log.warn("CapEx issue query failed: {}", e.getMessage());
+            return CapexMonthReport.empty(month);
+        }
+
+        // Create a map for quick lookup
+        Map<String, JiraSyncedIssue> issueMap = dbIssues.stream()
+                .collect(Collectors.toMap(JiraSyncedIssue::getIssueKey, i -> i));
+
+        // Load custom fields if needed
+        Map<String, JiraIssueCustomField> capexFieldMap = new HashMap<>();
+        if (resolvedField != null && !resolvedField.isBlank()) {
+            try {
+                List<JiraIssueCustomField> customFields = customFieldRepo.findByFieldIdAndIssueKeyIn(
+                        resolvedField, new ArrayList<>(issueKeys));
+                capexFieldMap = customFields.stream()
+                        .collect(Collectors.toMap(JiraIssueCustomField::getIssueKey, f -> f));
+            } catch (Exception e) {
+                log.warn("CapEx custom field query failed: {}", e.getMessage());
+            }
+        }
 
         // Build name→location lookup from Resource table
         Map<String, String> nameToLocation = buildNameToLocation();
@@ -133,17 +151,14 @@ public class JiraCapexService {
         // Author-level aggregation: author → AuthorAgg
         Map<String, AuthorAgg> authorAgg = new LinkedHashMap<>();
 
-        for (Map<String, Object> raw : rawIssues) {
-            String issueKey = raw.get("key") instanceof String ? (String) raw.get("key") : "?";
-            @SuppressWarnings("unchecked")
-            Map<String, Object> fields = raw.get("fields") instanceof Map
-                    ? (Map<String, Object>) raw.get("fields") : Map.of();
+        for (String issueKey : issueKeys) {
+            JiraSyncedIssue dbIssue = issueMap.get(issueKey);
+            if (dbIssue == null) continue;
 
-            // Resolve worklogs once — shared by issue build and author breakdown
-            List<Map<?,?>> worklogs = resolveWorklogs(issueKey, fields);
+            List<JiraIssueWorklog> issueWorklogs = worklogsByIssue.get(issueKey);
 
-            CapexIssue issue = buildIssue(issueKey, fields, resolvedField,
-                    from, to, keyToPod, nameToLocation, worklogs);
+            CapexIssue issue = buildIssueFromDb(issueKey, dbIssue, resolvedField,
+                    fromDate, toDate, keyToPod, nameToLocation, issueWorklogs, capexFieldMap.get(issueKey));
             issueList.add(issue);
 
             String cat = issue.capexCategory() != null ? issue.capexCategory() : CAT_UNTAGGED;
@@ -155,8 +170,8 @@ public class JiraCapexService {
                         .merge(cat, issue.monthlyHours(), Double::sum);
             }
 
-            // Collect per-worklog-author hours (uses the already-resolved worklogs)
-            collectWorklogAuthorHours(cat, worklogs, from, to, nameToLocation, authorAgg);
+            // Collect per-worklog-author hours from DB entities
+            collectWorklogAuthorHoursFromDb(cat, issueWorklogs, fromDate, toDate, nameToLocation, authorAgg);
         }
 
         // Sort issues: untagged first (data quality), then by pod name
@@ -210,17 +225,15 @@ public class JiraCapexService {
     }
 
     /**
-     * Returns available custom fields from Jira so the user can pick the right
-     * IDS/NON-IDS field ID without guessing.
+     * Returns available custom fields from the database.
+     * This is a stub that returns an empty list since custom fields are now
+     * stored in the DB and managed via sync operations.
      */
     public List<Map<String, Object>> getCustomFields() {
         if (!creds.isConfigured()) return List.of();
-        try {
-            return jiraClient.getFields();
-        } catch (Exception e) {
-            log.warn("Could not fetch Jira fields: {}", e.getMessage());
-            return List.of();
-        }
+        // Custom fields are now synced to the DB via JiraIssueCustomField entities
+        // This method can be enhanced to return available field definitions if needed
+        return List.of();
     }
 
     // ── Internal helpers ──────────────────────────────────────────────
@@ -263,167 +276,90 @@ public class JiraCapexService {
         return LOC_INDIA; // default
     }
 
-    @SuppressWarnings("unchecked")
-    private CapexIssue buildIssue(
+    private CapexIssue buildIssueFromDb(
             String issueKey,
-            Map<String, Object> fields,
+            JiraSyncedIssue dbIssue,
             String fieldId,
             LocalDate from,
             LocalDate to,
             Map<String, String> keyToPod,
             Map<String, String> nameToLocation,
-            List<Map<?,?>> worklogs) {
+            List<JiraIssueWorklog> worklogs,
+            JiraIssueCustomField capexField) {
 
-        // Summary
-        String summary = fields.get("summary") instanceof String ? (String) fields.get("summary") : "";
+        // Summary from DB
+        String summary = dbIssue.getSummary() != null ? dbIssue.getSummary() : "";
 
-        // Issue type
-        String issueType = "Unknown";
-        if (fields.get("issuetype") instanceof Map) {
-            Object n = ((Map<?,?>) fields.get("issuetype")).get("name");
-            if (n instanceof String) issueType = (String) n;
-        }
+        // Issue type from DB
+        String issueType = dbIssue.getIssueType() != null ? dbIssue.getIssueType() : "Unknown";
 
-        // Status
-        String statusName = "Unknown";
-        String statusCat  = "Unknown";
-        if (fields.get("status") instanceof Map) {
-            Object sn = ((Map<?,?>) fields.get("status")).get("name");
-            if (sn instanceof String) statusName = (String) sn;
-            Object sc = ((Map<?,?>) fields.get("status")).get("statusCategory");
-            if (sc instanceof Map) {
-                Object scn = ((Map<?,?>) sc).get("name");
-                if (scn instanceof String) statusCat = (String) scn;
-            }
-        }
+        // Status from DB
+        String statusName = dbIssue.getStatusName() != null ? dbIssue.getStatusName() : "Unknown";
+        String statusCat = dbIssue.getStatusCategory() != null ? dbIssue.getStatusCategory() : "Unknown";
 
-        // Assignee
-        String assignee = "Unassigned";
-        if (fields.get("assignee") instanceof Map) {
-            Object dn = ((Map<?,?>) fields.get("assignee")).get("displayName");
-            if (dn instanceof String) assignee = (String) dn;
-        }
+        // Assignee from DB
+        String assignee = dbIssue.getAssigneeDisplayName() != null ? dbIssue.getAssigneeDisplayName() : "Unassigned";
 
         // Assignee location
         String assigneeLocation = resolveLocation(
                 "Unassigned".equals(assignee) ? null : assignee, nameToLocation);
 
-        // Story Points — try multiple common SP fields
-        double sp = extractStoryPoints(fields);
+        // Story Points from DB
+        double sp = dbIssue.getStoryPoints() != null ? dbIssue.getStoryPoints() : 0.0;
 
         // CapEx field value (IDS / NON-IDS / null)
-        String capexCategory = extractCapexCategory(fields, fieldId);
+        String capexCategory = null;
+        if (capexField != null && capexField.getFieldValue() != null) {
+            String val = capexField.getFieldValue().trim();
+            capexCategory = (!val.isBlank()) ? val : null;
+        }
 
         // Monthly hours — sum worklogs within the month date range
-        double monthlyHours = computeMonthlyHours(worklogs, fields, from, to);
+        double monthlyHours = computeMonthlyHoursFromDb(worklogs, dbIssue, from, to);
 
         // POD name from project key
-        String podName = null;
-        if (fields.get("project") instanceof Map) {
-            Object pk = ((Map<?,?>) fields.get("project")).get("key");
-            if (pk instanceof String) podName = keyToPod.get(pk);
-        }
+        String projectKey = dbIssue.getProjectKey();
+        String podName = projectKey != null ? keyToPod.get(projectKey) : null;
 
         return new CapexIssue(issueKey, summary, issueType, statusName, statusCat,
                 assignee, assigneeLocation, podName, capexCategory,
                 round2(monthlyHours), sp);
     }
 
-    /**
-     * Tries multiple common story-point field names and returns the first non-zero value.
-     * Jira instances vary in which custom field stores story points.
-     */
-    @SuppressWarnings("unchecked")
-    private double extractStoryPoints(Map<String, Object> fields) {
-        // Common SP field IDs across Jira Cloud / Server variants
-        List<String> spFields = List.of(
-                "story_points",
-                "customfield_10016",  // Story Points (most common on Cloud)
-                "customfield_10028",  // Story Points (older / Server)
-                "customfield_10015",  // Story point estimate
-                "customfield_10034"   // Another common variant
-        );
-        for (String key : spFields) {
-            Object v = fields.get(key);
-            if (v instanceof Number) {
-                double val = ((Number) v).doubleValue();
-                if (val > 0) return val;
-            }
-        }
-        return 0;
-    }
 
     /**
-     * Extracts the CapEx category (IDS / NON-IDS / null) from the configured
-     * custom field, handling String, Map (select), and List (multi-select) types.
-     */
-    @SuppressWarnings("unchecked")
-    private String extractCapexCategory(Map<String, Object> fields, String fieldId) {
-        if (fieldId == null || fieldId.isBlank()) return null;
-        Object cfVal = fields.get(fieldId);
-        String category = null;
-        if (cfVal instanceof String) {
-            category = ((String) cfVal).trim();
-        } else if (cfVal instanceof Map) {
-            // Select/dropdown field returns { id, value }
-            Object val = ((Map<?,?>) cfVal).get("value");
-            if (val instanceof String) category = ((String) val).trim();
-        } else if (cfVal instanceof List) {
-            // Multi-select: take first value
-            List<?> list = (List<?>) cfVal;
-            if (!list.isEmpty()) {
-                Object first = list.get(0);
-                if (first instanceof String) category = (String) first;
-                else if (first instanceof Map) {
-                    Object val = ((Map<?,?>) first).get("value");
-                    if (val instanceof String) category = (String) val;
-                }
-            }
-        }
-        return (category != null && !category.isBlank()) ? category : null;
-    }
-
-    /**
-     * Iterates resolved worklogs and accumulates per-author hours
+     * Iterates DB worklog entities and accumulates per-author hours
      * (filtered to the month window) into the aggregation map.
      */
-    private void collectWorklogAuthorHours(
+    private void collectWorklogAuthorHoursFromDb(
             String category,
-            List<Map<?,?>> worklogs,
+            List<JiraIssueWorklog> worklogs,
             LocalDate from,
             LocalDate to,
             Map<String, String> nameToLocation,
             Map<String, AuthorAgg> authorAgg) {
 
-        DateTimeFormatter fmt = DateTimeFormatter.ISO_LOCAL_DATE;
+        for (JiraIssueWorklog wl : worklogs) {
+            // Check if worklog date is within the month
+            if (wl.getStarted() == null) continue;
+            LocalDate wlDate = wl.getStarted().toLocalDate();
+            if (wlDate.isBefore(from) || wlDate.isAfter(to)) continue;
 
-        for (Map<?,?> wl : worklogs) {
-            Object started = wl.get("started");
-            if (!(started instanceof String)) continue;
-            try {
-                LocalDate wlDate = LocalDate.parse(((String) started).substring(0, 10), fmt);
-                if (wlDate.isBefore(from) || wlDate.isAfter(to)) continue;
+            // Get time spent in seconds and convert to hours
+            Long timeSpentSeconds = wl.getTimeSpentSeconds();
+            if (timeSpentSeconds == null || timeSpentSeconds <= 0) continue;
+            double hours = timeSpentSeconds.doubleValue() / 3600.0;
 
-                Object ts = wl.get("timeSpentSeconds");
-                if (!(ts instanceof Number)) continue;
-                double hours = ((Number) ts).doubleValue() / 3600.0;
-                if (hours <= 0) continue;
+            // Author from worklog entry
+            String author = wl.getAuthorDisplayName();
+            if (author == null || author.isBlank()) author = "Unknown";
 
-                // Author from worklog entry
-                String author = "Unknown";
-                if (wl.get("author") instanceof Map) {
-                    Object dn = ((Map<?,?>) wl.get("author")).get("displayName");
-                    if (dn instanceof String) author = (String) dn;
-                }
+            String location = resolveLocation(author, nameToLocation);
+            final String authorKey = author;
+            final String locKey    = location;
 
-                String location = resolveLocation(author, nameToLocation);
-                final String authorKey = author;
-                final String locKey    = location;
-
-                authorAgg.computeIfAbsent(authorKey, k -> new AuthorAgg(k, locKey))
-                        .add(category, hours);
-
-            } catch (Exception ignored) {}
+            authorAgg.computeIfAbsent(authorKey, k -> new AuthorAgg(k, locKey))
+                    .add(category, hours);
         }
     }
 
@@ -455,70 +391,31 @@ public class JiraCapexService {
     }
 
     /**
-     * Sums worklog hours within the month from the already-resolved worklog list.
-     * Falls back to timespent (total, not month-filtered) if no worklog hours found.
+     * Sums worklog hours within the month from the DB worklog list.
+     * Falls back to timeSpent field from the issue if no worklog hours found.
      */
-    private double computeMonthlyHours(List<Map<?,?>> worklogs,
-                                        Map<String, Object> fields,
-                                        LocalDate from, LocalDate to) {
+    private double computeMonthlyHoursFromDb(List<JiraIssueWorklog> worklogs,
+                                             JiraSyncedIssue issue,
+                                             LocalDate from, LocalDate to) {
         double hours = 0;
-        for (Map<?,?> wl : worklogs) {
-            Object started = wl.get("started");
-            if (started instanceof String) {
-                try {
-                    LocalDate wlDate = LocalDate.parse(
-                            ((String) started).substring(0, 10),
-                            DateTimeFormatter.ISO_LOCAL_DATE);
-                    if (!wlDate.isBefore(from) && !wlDate.isAfter(to)) {
-                        Object ts = wl.get("timeSpentSeconds");
-                        if (ts instanceof Number) hours += ((Number) ts).doubleValue() / 3600.0;
-                    }
-                } catch (Exception ignored) {}
+        for (JiraIssueWorklog wl : worklogs) {
+            if (wl.getStarted() == null) continue;
+            LocalDate wlDate = wl.getStarted().toLocalDate();
+            if (!wlDate.isBefore(from) && !wlDate.isAfter(to)) {
+                Long ts = wl.getTimeSpentSeconds();
+                if (ts != null && ts > 0) {
+                    hours += ts.doubleValue() / 3600.0;
+                }
             }
         }
         if (hours > 0) return hours;
-        // Fallback: use total timespent (issue-level, not filtered to month)
-        Object ts = fields.get("timespent");
-        if (ts instanceof Number) return ((Number) ts).doubleValue() / 3600.0;
-        return 0;
-    }
 
-    /**
-     * Returns the complete worklog list for an issue.
-     * Jira search embeds at most 20 worklogs; fetches the full list via
-     * /rest/api/3/issue/{key}/worklog when {@code worklog.total} exceeds
-     * the embedded count.
-     */
-    @SuppressWarnings("unchecked")
-    private List<Map<?,?>> resolveWorklogs(String issueKey, Map<String, Object> fields) {
-        Object wlObj = fields.get("worklog");
-        if (!(wlObj instanceof Map)) return List.of();
-        Map<?,?> wrapper = (Map<?,?>) wlObj;
-
-        Object logsObj = wrapper.get("worklogs");
-        List<Map<?,?>> embedded = logsObj instanceof List
-                ? ((List<?>) logsObj).stream()
-                        .filter(e -> e instanceof Map)
-                        .map(e -> (Map<?,?>) e)
-                        .collect(Collectors.toList())
-                : List.of();
-
-        Object totalObj = wrapper.get("total");
-        int total = totalObj instanceof Number ? ((Number) totalObj).intValue() : embedded.size();
-
-        if (total <= embedded.size()) return embedded;
-
-        // More worklogs exist — fetch the complete list
-        log.debug("Issue {} has {} worklogs but only {} embedded — fetching full list",
-                issueKey, total, embedded.size());
-        try {
-            List<Map<String, Object>> full = jiraClient.getWorklogs(issueKey);
-            if (!full.isEmpty()) return (List<Map<?,?>>) (List<?>) full;
-        } catch (Exception e) {
-            log.warn("Could not fetch full worklogs for {}: {} — using embedded subset",
-                    issueKey, e.getMessage());
+        // Fallback: use total timeSpent from the issue (issue-level, not filtered to month)
+        Long timeSpent = issue.getTimeSpent();
+        if (timeSpent != null && timeSpent > 0) {
+            return timeSpent.doubleValue() / 3600.0;
         }
-        return embedded;
+        return 0;
     }
 
     private static int categoryOrder(String cat) {

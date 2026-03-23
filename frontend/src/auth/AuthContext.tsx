@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import apiClient from '../api/client';
+import { onAuthExpired } from './authEvents';
 
 interface AuthState {
   token: string | null;
@@ -100,6 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(PAGES_KEY);
     setAuth({ token: null, username: null, displayName: null, role: null, allowedPages: null });
   }, []);
+
+  // Auto-logout when a 401 is received (JWT expired or invalid)
+  useEffect(() => onAuthExpired(logout), [logout]);
 
   const isAdmin = auth.role === 'ADMIN';
 

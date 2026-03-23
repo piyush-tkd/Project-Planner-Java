@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconMaximize, IconCamera } from '@tabler/icons-react';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SHADOW } from '../../brandTokens';
 
 interface ChartCardProps {
   title: string;
@@ -160,7 +160,24 @@ export default function ChartCard({
   return (
     <>
       {/* ── Inline card ── */}
-      <Paper withBorder={withBorder} p={padding} radius="md">
+      <Paper
+        withBorder={withBorder}
+        p={padding}
+        radius="md"
+        className="chart-reveal"
+        style={{
+          transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+          boxShadow: SHADOW.card,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = SHADOW.cardHover;
+          e.currentTarget.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = SHADOW.card;
+          e.currentTarget.style.transform = '';
+        }}
+      >
         <Group justify="space-between" mb="sm" wrap="nowrap" align="flex-start">
           <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
             {title}
@@ -181,11 +198,11 @@ export default function ChartCard({
             <Text fw={700} size="sm">{title}</Text>
           </Group>
         }
-        size="90vw"
+        size="80vw"
         centered
         radius="lg"
         overlayProps={{ blur: 2, backgroundOpacity: 0.3 }}
-        styles={{ body: { paddingTop: 4 } }}
+        styles={{ body: { paddingTop: 4, maxHeight: '80vh', overflow: 'auto' } }}
       >
         <Group justify="flex-end" mb="xs">
           <Tooltip label="Download snapshot" withArrow fz="xs">
@@ -194,7 +211,7 @@ export default function ChartCard({
             </ActionIcon>
           </Tooltip>
         </Group>
-        <Box ref={modalRef} style={{ minHeight: minHeight * 2.2 }}>
+        <Box ref={modalRef} style={{ minHeight: Math.min(minHeight * 1.8, 500) }}>
           {children}
         </Box>
       </Modal>

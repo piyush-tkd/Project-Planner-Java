@@ -76,6 +76,9 @@ const PAGE_KEYS = [
   { key: 'project_gantt',       label: 'Project Gantt',        group: 'Portfolio Analysis' },
   { key: 'budget',              label: 'Budget & Cost',        group: 'Portfolio Analysis' },
   { key: 'resource_roi',        label: 'Resource ROI',         group: 'Portfolio Analysis' },
+  { key: 'dora_metrics',        label: 'DORA Metrics',         group: 'Portfolio Analysis' },
+  { key: 'jira_analytics',      label: 'Jira Analytics',       group: 'Portfolio Analysis' },
+  { key: 'jira_dashboard_builder', label: 'Dashboard Builder', group: 'Portfolio Analysis' },
   // ── Integrations
   { key: 'jira_pods',           label: 'Jira POD Dashboard',   group: 'Integrations' },
   { key: 'jira_releases',       label: 'Jira Releases',        group: 'Integrations' },
@@ -193,8 +196,8 @@ export default function UserManagementPage() {
   }
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
+    <Stack gap="lg" className="page-enter stagger-children">
+      <Group justify="space-between" className="slide-in-left">
         <div>
           <Title order={2} style={{ fontFamily: FONT_FAMILY }}>
             User Management

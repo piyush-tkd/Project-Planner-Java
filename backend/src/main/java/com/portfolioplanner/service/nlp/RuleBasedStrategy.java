@@ -20,14 +20,37 @@ public class RuleBasedStrategy implements NlpStrategy {
     private final NlpQueryPreprocessor preprocessor;
     private final NlpLearnedPatternRepository learnedPatternRepo;
     private final NlpLearnerService learnerService;
+    private final NlpJiraToolExecutor jiraToolExecutor;
+    private final NlpVectorSearchService vectorSearchService;
+    private final AliasResolver aliasResolver;
+
+    /** Minimum similarity for a vector entity match to be considered valid. */
+    private static final double VECTOR_ENTITY_THRESHOLD = 0.65;
 
     public RuleBasedStrategy(NlpQueryPreprocessor preprocessor,
                              NlpLearnedPatternRepository learnedPatternRepo,
-                             NlpLearnerService learnerService) {
+                             NlpLearnerService learnerService,
+                             NlpJiraToolExecutor jiraToolExecutor,
+                             NlpVectorSearchService vectorSearchService,
+                             AliasResolver aliasResolver) {
         this.preprocessor = preprocessor;
         this.learnedPatternRepo = learnedPatternRepo;
         this.learnerService = learnerService;
+        this.jiraToolExecutor = jiraToolExecutor;
+        this.vectorSearchService = vectorSearchService;
+        this.aliasResolver = aliasResolver;
     }
+
+    // ── Jira Issue Key pattern (e.g. PROJ-123, TAT-456) ─────────────────────
+    private static final Pattern JIRA_ISSUE_KEY_PATTERN =
+            Pattern.compile("(?:^|\\s)([A-Z]{2,10}-\\d{1,6})(?:\\s|$|\\?|\\.|,)");
+
+    private static final List<Pattern> JIRA_TICKET_LOOKUP_PATTERNS = List.of(
+            // "tell me about TAT-123", "summarize PROJ-456", "what is PROJ-789"
+            Pattern.compile("(?i)(?:tell me about|summarize|summary of|details? (?:for|of|on)|what is|what's|show me|look up|lookup|describe|status of|info (?:on|about|for))\\s+([A-Z]{2,10}-\\d{1,6})"),
+            // Just the ticket key by itself: "TAT-123"
+            Pattern.compile("^\\s*([A-Z]{2,10}-\\d{1,6})\\s*\\??\\s*$")
+    );
 
     // ── Navigation patterns ────────────────────────────────────────────────
     private static final List<Pattern> NAV_PATTERNS = List.of(
@@ -47,10 +70,12 @@ public class RuleBasedStrategy implements NlpStrategy {
             Pattern.compile("(?i)^(?:which pod|what pod|what team)\\s+(?:is|does)\\s+(.+?)\\s+(?:in|on|belong|assigned|work)"),
             Pattern.compile("(?i)^(.+?)\\s+(?:details|info|profile|pod|role|location|rate|billing)"),
             Pattern.compile("(?i)^(?:where does|where is)\\s+(.+?)\\s+(?:sit|work|belong)"),
-            // "is there someone named Piyush", "is there a person called Ojas", "do we have someone named X"
-            Pattern.compile("(?i)^(?:is there|do we have|does)\\s+(?:a\\s+|someone\\s+|anybody\\s+|anyone\\s+)?(?:someone|person|resource|member|employee)?\\s*(?:named|called|by the name|with the name)\\s+(.+?)\\??$"),
-            // "is there anyone Piyush in the team", "is there a Piyush on the team", "do we have a John"
-            Pattern.compile("(?i)^(?:is there|do we have|does the team have)\\s+(?:a\\s+|an\\s+|someone\\s+|anybody\\s+|anyone\\s+)?(.+?)(?:\\s+(?:in|on|at)\\s+(?:the\\s+)?(?:team|org|company|group))?\\??$"),
+            // "is there someone named Piyush", "is there any one named Ojas", "do we have someone called X"
+            // Handles: anyone/any one, somebody/some one, etc.
+            Pattern.compile("(?i)^(?:is there|do we have|does|can you find|can you check)\\s+(?:a\\s+|an\\s+|some\\s*one\\s+|any\\s*one\\s+|any\\s*body\\s+|somebody\\s+)?(?:someone|person|resource|member|employee|developer|dev|engineer)?\\s*(?:named|called|by the name|with the name)\\s+(.+?)(?:\\s+(?:in|on|at|across|from)\\s+.+?)?\\??$"),
+            // "is there anyone Piyush in any of the pods", "is there a Piyush on the team", "do we have a John in any pod"
+            // Handles: in any of the pods/teams, on any team, across teams, etc.
+            Pattern.compile("(?i)^(?:is there|do we have|does the team have|does any (?:team|pod) have)\\s+(?:a\\s+|an\\s+|some\\s*one\\s+|any\\s*one\\s+|any\\s*body\\s+|somebody\\s+)?(.+?)(?:\\s+(?:in|on|at|across|from)\\s+(?:any\\s+(?:of\\s+)?(?:the\\s+)?|the\\s+|our\\s+|my\\s+)?(?:team|teams|pod|pods|org|organization|company|group|groups|department|departments)s?)?\\??$"),
             // "find Piyush", "search for Ojas"
             Pattern.compile("(?i)^(?:find|search|search for)\\s+(.+)$")
     );
@@ -128,8 +153,8 @@ public class RuleBasedStrategy implements NlpStrategy {
 
     // ── Status update patterns ───────────────────────────────────────────
     private static final List<Pattern> STATUS_UPDATE_PATTERNS = List.of(
-            Pattern.compile("(?i)^(?:mark|set|change|update)\\s+(?:project\\s+)?(.+?)\\s+(?:as|to|status to)\\s+(active|on hold|on_hold|completed|cancelled|not started|in discovery)$"),
-            Pattern.compile("(?i)^(?:put|move)\\s+(?:project\\s+)?(.+?)\\s+(?:on hold|to active|to completed)$")
+            Pattern.compile("(?i)^(?:mark|set|change|update)\\s+(?:project\\s+)?(.+?)\\s+(?:as|to|status to)\\s+(active|on[\\s\\-_]?hold|completed|cancelled|not[\\s\\-_]?started|in[\\s\\-_]?discovery)$"),
+            Pattern.compile("(?i)^(?:put|move)\\s+(?:project\\s+)?(.+?)\\s+(?:on[\\s\\-_]?hold|to active|to completed)$")
     );
 
     // ── Sprint / release lookup patterns ─────────────────────────────────
@@ -157,7 +182,10 @@ public class RuleBasedStrategy implements NlpStrategy {
     // ── Capability discovery patterns ──────────────────────────────────
     private static final List<Pattern> CAPABILITY_PATTERNS = List.of(
             Pattern.compile("(?i)^(?:what can you do|what do you do|help me|show me what you can do|capabilities|features?)$"),
-            Pattern.compile("(?i)^(?:how can you help|what are your capabilities|what should I ask|give me examples?)$")
+            Pattern.compile("(?i)^(?:how can you help|what are your capabilities|what should I ask|give me examples?)$"),
+            Pattern.compile("(?i)^(?:tell me (?:something )?about (?:this |the )?(?:app|application|tool|system|platform|planner))$"),
+            Pattern.compile("(?i)^(?:what (?:is|does) (?:this |the )?(?:app|application|tool|system|platform|planner)(?: do)?)$"),
+            Pattern.compile("(?i)^(?:about (?:this |the )?(?:app|application|tool|system|platform|planner))$")
     );
 
     // ── Project filter patterns (by owner, status, priority) ──────────
@@ -168,8 +196,8 @@ public class RuleBasedStrategy implements NlpStrategy {
             // "give me all projects under BD", "projects under John", "all projects under BD"
             Pattern.compile("(?i)(?:show|list|get|give|display)\\s+(?:me\\s+)?(?:all\\s+)?projects?\\s+under\\s+(.+)$"),
             // "show active projects", "list completed projects", "which projects are on hold"
-            Pattern.compile("(?i)(?:show|list|get|display|give)\\s+(?:me\\s+)?(?:all\\s+)?(active|on hold|completed|cancelled|not started|in discovery)\\s+projects?$"),
-            Pattern.compile("(?i)(?:which|what)\\s+projects?\\s+(?:are|is)\\s+(active|on hold|completed|cancelled|not started|in discovery)"),
+            Pattern.compile("(?i)(?:show|list|get|display|give)\\s+(?:me\\s+)?(?:all\\s+)?(active|on[\\s\\-_]?hold|completed|cancelled|not[\\s\\-_]?started|in[\\s\\-_]?discovery)\\s+projects?$"),
+            Pattern.compile("(?i)(?:which|what)\\s+projects?\\s+(?:are|is)\\s+(active|on[\\s\\-_]?hold|completed|cancelled|not[\\s\\-_]?started|in[\\s\\-_]?discovery)"),
             // "show P0 projects", "list P1 projects", "P2 projects"
             Pattern.compile("(?i)(?:show|list|get|display|give)\\s+(?:me\\s+)?(?:all\\s+)?(p[0-3])\\s+projects?$"),
             Pattern.compile("(?i)(p[0-3])\\s+projects?$")
@@ -330,6 +358,171 @@ public class RuleBasedStrategy implements NlpStrategy {
             Pattern.compile("(?i)(?:jira)\\s+(?:actuals|actual hours|logged hours)")
     );
 
+    // ── Jira search / filter patterns ─────────────────────────────────
+    private static final List<Pattern> JIRA_SEARCH_PATTERNS = List.of(
+            // "show me all open bugs in CEP", "find bugs in PLAT"
+            Pattern.compile("(?i)(?:show|find|list|get)\\s+(?:me\\s+)?(?:all\\s+)?(?:open\\s+)?(?:bugs?|defects?|issues?)\\s+(?:in|for|under|on)\\s+([A-Z]{2,10})"),
+            // "tickets assigned to John", "issues assigned to Sarah"
+            Pattern.compile("(?i)(?:tickets?|issues?|stories?|tasks?)\\s+(?:assigned to|for|owned by)\\s+(.+)$"),
+            // "high priority tickets in CEP", "blocker issues"
+            Pattern.compile("(?i)(?:high|highest|critical|blocker|urgent)\\s+(?:priority\\s+)?(?:tickets?|issues?|stories?)(?:\\s+in\\s+([A-Z]{2,10}))?"),
+            // "open stories in PLAT", "unresolved issues"
+            Pattern.compile("(?i)(?:open|unresolved|pending|in.progress)\\s+(?:tickets?|issues?|stories?|tasks?)(?:\\s+in\\s+([A-Z]{2,10}))?"),
+            // "search for tickets with label payments"
+            Pattern.compile("(?i)(?:search|find|look)\\s+(?:for\\s+)?(?:tickets?|issues?)\\s+(?:with|containing|matching|about|labeled?)\\s+(.+)$"),
+            // "Jira backlog", "backlog size"
+            Pattern.compile("(?i)(?:jira\\s+)?(?:backlog|todo|to.do)(?:\\s+(?:size|count|items?))?(?:\\s+(?:for|in)\\s+([A-Z]{2,10}))?")
+    );
+
+    // ── Jira contributor / worklog patterns ──────────────────────────
+    private static final List<Pattern> JIRA_CONTRIBUTOR_PATTERNS = List.of(
+            // "who worked on CEP-1234", "who contributed to PLAT-200"
+            Pattern.compile("(?i)(?:who|which people|what people)\\s+(?:worked on|contributed to|touched|involved in|helped with)\\s+([A-Z]{2,10}-\\d{1,6})"),
+            // "hours logged on CEP-1234", "time spent on PLAT-200"
+            Pattern.compile("(?i)(?:hours?|time)\\s+(?:logged|spent|tracked|booked)\\s+(?:on|for|against)\\s+([A-Z]{2,10}-\\d{1,6})"),
+            // "worklog for CEP-1234"
+            Pattern.compile("(?i)(?:worklog|work log|work\\s+log)\\s+(?:for|of|on)\\s+([A-Z]{2,10}-\\d{1,6})"),
+            // "contributors for CEP-1234"
+            Pattern.compile("(?i)(?:contributors?|participants?|collaborators?)\\s+(?:for|of|on)\\s+([A-Z]{2,10}-\\d{1,6})"),
+            // "who all worked on CEP-1234"
+            Pattern.compile("(?i)who\\s+all\\s+(?:worked|contributed|logged)\\s+(?:on|to|for)\\s+([A-Z]{2,10}-\\d{1,6})")
+    );
+
+    // ── Jira bug patterns ─────────────────────────────────────────────
+    private static final List<Pattern> JIRA_BUG_PATTERNS = List.of(
+            // "how many bugs", "bug count", "open bugs", "bug summary"
+            Pattern.compile("(?i)(?:how many|total|count of|number of)\\s+(?:open\\s+)?(?:bugs?|defects?)"),
+            Pattern.compile("(?i)(?:bug|defect)\\s+(?:summary|count|report|trend|rate|metrics|stats|statistics|overview)"),
+            Pattern.compile("(?i)(?:show|give|get)\\s+(?:me\\s+)?(?:the\\s+)?(?:bug|defect)\\s+(?:summary|report|trend|overview|metrics|count)"),
+            Pattern.compile("(?i)(?:bugs?|defects?)\\s+(?:by|per)\\s+(?:priority|severity|assignee|status|project)"),
+            Pattern.compile("(?i)(?:are we)\\s+(?:creating|making|producing)\\s+(?:bugs?|defects?)\\s+faster"),
+            Pattern.compile("(?i)(?:bug|defect)\\s+(?:creation|escape|fix|resolution)\\s+(?:rate|trend|time)"),
+            Pattern.compile("(?i)(?:average|avg|mean)\\s+(?:bug|defect)\\s+(?:resolution|fix)\\s+time"),
+            Pattern.compile("(?i)(?:oldest|longest)\\s+(?:open\\s+)?(?:bugs?|defects?)")
+    );
+
+    // ── Jira sprint health patterns ──────────────────────────────────
+    private static final List<Pattern> JIRA_SPRINT_HEALTH_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:jira\\s+)?sprint\\s+(?:health|velocity|progress|status|burndown|metrics|performance)"),
+            Pattern.compile("(?i)(?:how is|how's)\\s+(?:the\\s+)?(?:current\\s+)?(?:jira\\s+)?sprint\\s+(?:going|doing|progressing)"),
+            Pattern.compile("(?i)(?:sprint\\s+)?(?:completion|burn.?down|velocity)\\s+(?:rate|trend|chart|metrics)?"),
+            Pattern.compile("(?i)(?:story|stories)\\s+(?:points?\\s+)?(?:completed|done|remaining|left|carried over|carry.?over)(?:\\s+this\\s+sprint)?"),
+            Pattern.compile("(?i)(?:blocked|blocking)\\s+(?:stories?|tickets?|issues?)\\s+(?:this|in|current)\\s+sprint"),
+            Pattern.compile("(?i)(?:what.s?|how many)\\s+(?:stories?|tickets?)\\s+(?:are\\s+)?(?:in.progress|done|completed|remaining|blocked)\\s+(?:this\\s+sprint|in\\s+the\\s+sprint)?")
+    );
+
+    // ── Jira workload patterns ────────────────────────────────────────
+    private static final List<Pattern> JIRA_WORKLOAD_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:jira\\s+)?(?:workload|work\\s+load)\\s+(?:distribution|balance|breakdown|by\\s+(?:assignee|person|team))"),
+            Pattern.compile("(?i)who\\s+has\\s+(?:the\\s+)?(?:most|least|fewest|lightest|heaviest)\\s+(?:open\\s+)?(?:tickets?|issues?|stories?)"),
+            Pattern.compile("(?i)(?:is|are)\\s+(?:anyone|somebody|someone)\\s+(?:overloaded|overwhelmed|swamped)\\s+(?:with\\s+)?(?:tickets?|issues?)?"),
+            Pattern.compile("(?i)(?:how|what)\\s+(?:is|does)\\s+(?:the\\s+)?(?:work|ticket|issue)\\s+(?:distribution|load|balance)\\s+(?:look|seem)")
+    );
+
+    // ── Jira analytics patterns ───────────────────────────────────────
+    private static final List<Pattern> JIRA_ANALYTICS_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:jira\\s+)?(?:analytics|metrics|stats|statistics|dashboard)(?:\\s+(?:for|of|summary))?(?:\\s+([A-Z]{2,10}))?"),
+            Pattern.compile("(?i)(?:show|give|get)\\s+(?:me\\s+)?(?:the\\s+)?jira\\s+(?:analytics|metrics|summary|overview|stats)"),
+            Pattern.compile("(?i)(?:how many)\\s+(?:jira\\s+)?(?:issues?|tickets?)\\s+(?:are\\s+)?(?:open|created|resolved)"),
+            Pattern.compile("(?i)(?:created|resolved)\\s+(?:vs?\\.?|versus)\\s+(?:resolved|created)\\s+(?:trend|ratio|comparison)"),
+            Pattern.compile("(?i)(?:average|avg)\\s+(?:cycle|lead|resolution)\\s+time"),
+            Pattern.compile("(?i)(?:issue|ticket)\\s+(?:trend|distribution|breakdown)\\s+(?:by\\s+)?(?:type|status|priority|project)?")
+    );
+
+    // ── DORA metrics patterns ─────────────────────────────────────────
+    private static final List<Pattern> DORA_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:dora|deployment|deploy)\\s+(?:metrics|frequency|performance|stats|report)"),
+            Pattern.compile("(?i)(?:show|give|open)\\s+(?:me\\s+)?(?:the\\s+)?dora\\s+(?:metrics|report|dashboard)"),
+            Pattern.compile("(?i)(?:lead\\s+time)\\s+(?:for\\s+)?(?:changes?|deployments?)"),
+            Pattern.compile("(?i)(?:change|deployment)\\s+(?:failure|fail)\\s+rate"),
+            Pattern.compile("(?i)(?:mean\\s+time\\s+to)\\s+(?:recovery|restore|recover|MTTR)"),
+            Pattern.compile("(?i)(?:deployment|deploy)\\s+(?:frequency|cadence|rate|count)")
+    );
+
+    // ── Utilization / heatmap patterns ────────────────────────────────
+    private static final List<Pattern> UTILIZATION_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:resource\\s+)?utilization\\s+(?:rate|heatmap|report|by\\s+(?:pod|role|month|resource))"),
+            Pattern.compile("(?i)who\\s+is\\s+(?:over|under|most|least)\\s*[-\\s]?(?:utilized|loaded|used)"),
+            Pattern.compile("(?i)(?:over|under)\\s*[-\\s]?(?:utilized|utilization)\\s+(?:resources?|people|team|pods?)"),
+            Pattern.compile("(?i)(?:what.s?|show|give)\\s+(?:me\\s+)?(?:the\\s+)?(?:overall\\s+)?utilization(?:\\s+(?:rate|heatmap|report|dashboard))?"),
+            Pattern.compile("(?i)(?:utilization|usage)\\s+(?:trend|over time|by month)")
+    );
+
+    // ── Capacity demand patterns ──────────────────────────────────────
+    private static final List<Pattern> CAPACITY_DEMAND_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:capacity|supply)\\s+(?:vs?\\.?|versus)\\s+(?:demand|need)"),
+            Pattern.compile("(?i)(?:do we have|is there)\\s+(?:enough\\s+)?(?:capacity|bandwidth|room)"),
+            Pattern.compile("(?i)(?:total|overall)\\s+(?:dev(?:eloper)?|qa|bsa|tech lead)?\\s*(?:capacity|bandwidth)(?:\\s+(?:for|in|this)\\s+(?:month|quarter|sprint|Q[1-4]))?"),
+            Pattern.compile("(?i)(?:total|overall)\\s+(?:demand|need|requirement)(?:\\s+(?:for|in|this)\\s+(?:month|quarter|sprint))?"),
+            Pattern.compile("(?i)(?:where|what)\\s+(?:is|are)\\s+(?:the\\s+)?(?:bottleneck|constraint|shortage|gap)"),
+            Pattern.compile("(?i)(?:capacity|demand)\\s+(?:gap|shortfall|surplus|deficit|forecast)"),
+            Pattern.compile("(?i)(?:are we)\\s+(?:over|under)\\s*[-\\s]?(?:capacity|staffed|resourced)")
+    );
+
+    // ── Hiring forecast patterns ──────────────────────────────────────
+    private static final List<Pattern> HIRING_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:do we|should we)\\s+(?:need to\\s+)?hire"),
+            Pattern.compile("(?i)(?:hiring|recruitment|hire)\\s+(?:forecast|plan|needs?|recommendation|timeline)"),
+            Pattern.compile("(?i)(?:how many)\\s+(?:people|resources?|developers?|QAs?)\\s+(?:should we|do we need to)\\s+hire"),
+            Pattern.compile("(?i)(?:when|by when)\\s+(?:do we|should we)\\s+(?:need to\\s+)?hire"),
+            Pattern.compile("(?i)(?:what|which)\\s+(?:roles?|positions?)\\s+(?:do we\\s+)?(?:need|should|must)\\s+(?:to\\s+)?(?:hire|fill|recruit)"),
+            Pattern.compile("(?i)(?:show|open)\\s+(?:me\\s+)?(?:the\\s+)?hiring\\s+(?:forecast|plan|needs)")
+    );
+
+    // ── Concurrency risk patterns ─────────────────────────────────────
+    private static final List<Pattern> CONCURRENCY_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:concurrency|scheduling|resource)\\s+(?:risk|conflict|contention|clash|collision)"),
+            Pattern.compile("(?i)(?:which|any|are there)\\s+(?:resources?|people)\\s+(?:double|multi)\\s*[-\\s]?(?:booked|allocated|assigned)"),
+            Pattern.compile("(?i)(?:competing|overlapping|conflicting)\\s+(?:for\\s+)?(?:the same\\s+)?(?:resources?|people)"),
+            Pattern.compile("(?i)(?:show|open)\\s+(?:me\\s+)?(?:the\\s+)?concurrency\\s+(?:risk|report|analysis)")
+    );
+
+    // ── Project Gantt / timeline visual patterns ──────────────────────
+    private static final List<Pattern> GANTT_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:show|open)\\s+(?:me\\s+)?(?:the\\s+)?(?:project\\s+)?(?:gantt|timeline|roadmap)(?:\\s+(?:chart|view|report))?"),
+            Pattern.compile("(?i)(?:project\\s+)?(?:gantt|timeline|roadmap)\\s+(?:chart|view|report|visualization)"),
+            Pattern.compile("(?i)(?:visual|graphical)\\s+(?:project\\s+)?(?:timeline|schedule|roadmap)")
+    );
+
+    // ── Owner demand patterns ─────────────────────────────────────────
+    private static final List<Pattern> OWNER_DEMAND_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:owner|ownership)\\s+(?:demand|load|workload|breakdown)"),
+            Pattern.compile("(?i)(?:demand|work|projects?)\\s+(?:by|per)\\s+(?:owner|project owner|pm)"),
+            Pattern.compile("(?i)(?:which|who)\\s+(?:owner|pm|project manager)\\s+(?:has|owns)\\s+(?:the\\s+)?(?:most|least|heaviest|lightest)\\s+(?:demand|load|work|projects?)")
+    );
+
+    // ── Slack buffer patterns ─────────────────────────────────────────
+    private static final List<Pattern> SLACK_BUFFER_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:how much|what.s|what is)\\s+(?:the\\s+)?(?:slack|buffer|cushion|breathing room)"),
+            Pattern.compile("(?i)(?:slack|buffer)\\s+(?:analysis|report|by pod|per pod)"),
+            Pattern.compile("(?i)(?:is there|do we have)\\s+(?:enough\\s+)?(?:slack|buffer|contingency|cushion)"),
+            Pattern.compile("(?i)(?:show|open)\\s+(?:me\\s+)?(?:the\\s+)?(?:slack|buffer)\\s+(?:report|analysis|page)")
+    );
+
+    // ── CapEx / OpEx patterns ─────────────────────────────────────────
+    private static final List<Pattern> CAPEX_OPEX_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:capex|cap.?ex|capital\\s+expenditure)\\s+(?:report|breakdown|summary|vs?\\.?|split|by|trend)"),
+            Pattern.compile("(?i)(?:opex|op.?ex|operating\\s+expenditure)\\s+(?:report|breakdown|summary)"),
+            Pattern.compile("(?i)(?:capex|cap.?ex)\\s+(?:vs?\\.?|versus)\\s+(?:opex|op.?ex)"),
+            Pattern.compile("(?i)(?:what|how much|show)\\s+(?:is|are|me)\\s+(?:the\\s+)?(?:capex|cap.?ex|capitalized|capitalizable)\\s+(?:hours?|work|percentage|split)?"),
+            Pattern.compile("(?i)(?:capitalization|capitalized)\\s+(?:rate|percentage|split|hours?|report)")
+    );
+
+    // ── Pod capacity patterns ─────────────────────────────────────────
+    private static final List<Pattern> POD_CAPACITY_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:which|what)\\s+pods?\\s+(?:are|is)\\s+(?:over|under|at)\\s*[-\\s]?(?:capacity)"),
+            Pattern.compile("(?i)(?:pod|team)\\s+(?:capacity|workload|load)\\s+(?:report|summary|overview|by pod)"),
+            Pattern.compile("(?i)(?:show|open)\\s+(?:me\\s+)?(?:the\\s+)?pod\\s+(?:capacity|workload)\\s+(?:report|page|view)")
+    );
+
+    // ── Dashboard / overview patterns ─────────────────────────────────
+    private static final List<Pattern> DASHBOARD_PATTERNS = List.of(
+            Pattern.compile("(?i)(?:give me|show me|what.s?)\\s+(?:a\\s+)?(?:an?\\s+)?(?:overview|summary|snapshot|status|dashboard|executive summary|exec summary)"),
+            Pattern.compile("(?i)(?:what do I need to|what should I)\\s+(?:know|focus on|pay attention to)\\s+(?:today|right now|this week)?"),
+            Pattern.compile("(?i)(?:portfolio|project|team|overall)\\s+(?:overview|summary|status|health|snapshot)"),
+            Pattern.compile("(?i)(?:state of|current state|how.s?)\\s+(?:things|the team|the portfolio|everything|the world)")
+    );
+
     // ── Add-member-to-entity patterns (must be checked BEFORE creation) ──
     private static final List<Pattern> ADD_MEMBER_PATTERNS = List.of(
             // "add Piyush Baheti to the Accessioning POD"
@@ -370,7 +563,9 @@ public class RuleBasedStrategy implements NlpStrategy {
     // ── Help / explanation patterns ────────────────────────────────────────
     private static final List<Pattern> HELP_PATTERNS = List.of(
             Pattern.compile("(?i)^(?:what is|what are|explain|help|how does?|how do|tell me about)\\s+(.+)$"),
-            Pattern.compile("(?i)^(?:what does?)\\s+(?:the\\s+)?(.+?)\\s+(?:mean|do|show|report)")
+            Pattern.compile("(?i)^(?:what does?)\\s+(?:the\\s+)?(.+?)\\s+(?:mean|do|show|report)"),
+            Pattern.compile("(?i)^(?:can you )?tell me (?:how|what|where|why)\\s+(.+)$"),
+            Pattern.compile("(?i)^(?:can you )?(?:explain|help|clarify)\\s+(?:how|what)\\s+(.+)$")
     );
 
     // ── Page alias lookup ──────────────────────────────────────────────────
@@ -427,6 +622,11 @@ public class RuleBasedStrategy implements NlpStrategy {
         PAGE_ALIASES.put("/settings/tables",         new String[]{"database browser", "tables", "db browser"});
         PAGE_ALIASES.put("/settings/feedback-hub",   new String[]{"feedback hub", "feedback", "user feedback", "suggestions"});
         PAGE_ALIASES.put("/settings/error-log",      new String[]{"error log", "error logs", "application errors", "app errors"});
+        PAGE_ALIASES.put("/reports/dora-metrics",    new String[]{"dora metrics", "dora", "dora report", "deployment metrics", "engineering metrics", "deployment frequency", "lead time", "change failure rate", "mttr"});
+        PAGE_ALIASES.put("/reports/jira-analytics",  new String[]{"jira analytics", "jira metrics", "jira report", "jira summary", "jira stats"});
+        PAGE_ALIASES.put("/reports/jira-dashboard-builder", new String[]{"jira dashboard builder", "jira dashboard", "custom jira dashboard"});
+        PAGE_ALIASES.put("/settings/nlp-optimizer",  new String[]{"nlp optimizer", "nlp trainer", "ai trainer", "ai optimizer"});
+        PAGE_ALIASES.put("/nlp",                     new String[]{"ask ai", "ai assistant", "chat", "nlp", "ask", "ask question"});
     }
 
     // ── Help topics ────────────────────────────────────────────────────────
@@ -457,6 +657,20 @@ public class RuleBasedStrategy implements NlpStrategy {
         HELP_TOPICS.put("worklog", "The Worklog report shows time logged in Jira — actual hours worked per resource, compared against planned capacity.");
         HELP_TOPICS.put("slack buffer", "Slack/Buffer represents the cushion between capacity and demand. Positive slack means breathing room; zero or negative means the team is stretched thin.");
         HELP_TOPICS.put("deadline gap", "The Deadline Gap report shows projects at risk of missing their target end dates based on current velocity and remaining effort.");
+        HELP_TOPICS.put("dora", "DORA (DevOps Research and Assessment) metrics measure engineering performance: Deployment Frequency (how often you deploy), Lead Time for Changes (time from commit to production), Change Failure Rate (% of deploys causing issues), and Mean Time to Recovery (how fast you fix failures).");
+        HELP_TOPICS.put("dora metrics", "DORA metrics measure engineering performance: Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Recovery.");
+        HELP_TOPICS.put("jira", "Jira integration syncs issues, sprints, and worklogs from your Jira projects into Portfolio Planner. This allows you to track actual work, sprint health, bug metrics, and workload distribution alongside your capacity planning data.");
+        HELP_TOPICS.put("story points", "Story points are a relative estimation unit used in Agile to measure the effort, complexity, and uncertainty of a piece of work. Common scales include Fibonacci (1, 2, 3, 5, 8, 13, 21) or T-shirt sizes. They help teams estimate velocity and plan sprints.");
+        HELP_TOPICS.put("sprint velocity", "Sprint velocity is the amount of work (usually in story points) a team completes in a sprint. It's used to predict how much work the team can handle in future sprints. Consistent velocity indicates a well-calibrated team.");
+        HELP_TOPICS.put("fte", "FTE (Full-Time Equivalent) represents the portion of a full-time position a resource occupies. 1.0 FTE = full-time, 0.5 FTE = half-time. Used in capacity planning to calculate available hours.");
+        HELP_TOPICS.put("ip week", "IP (Innovation & Planning) Week is a dedicated sprint period where teams step back from regular project work to focus on innovation, technical improvements, learning, or planning activities.");
+        HELP_TOPICS.put("code freeze", "Code freeze is a period before a release where no new code changes are allowed. This gives QA time to do final testing and ensures stability. The freeze date is set in the release calendar.");
+        HELP_TOPICS.put("complexity multiplier", "The complexity multiplier on a POD adjusts capacity calculations to account for the inherent complexity of a POD's domain. A multiplier > 1.0 means work takes longer than average; < 1.0 means it's simpler.");
+        HELP_TOPICS.put("project mapping", "Project mapping links a Portfolio Planner project to Jira via an epic name, label, or project key. This enables the system to pull Jira tickets associated with each project for tracking and analytics.");
+        HELP_TOPICS.put("support board", "Support boards track incoming support tickets and maintenance work. They help measure the support burden on teams, track stale tickets, and understand how much time goes to reactive vs proactive work.");
+        HELP_TOPICS.put("reconciliation", "The reconciliation report compares planned capacity against actual demand across all pods and months, highlighting discrepancies between what was planned and what actually happened.");
+        HELP_TOPICS.put("contingency", "Contingency is a buffer percentage added to project effort estimates to account for unknowns, risks, and scope creep. Typically 10-20%. It's configured per project-pod assignment.");
+        HELP_TOPICS.put("owner demand", "The Owner Demand report shows how demand is distributed across project owners/PMs, helping identify if any single owner is overloaded with too many concurrent projects.");
     }
 
     // ── Entity type to route mapping for form prefill ──────────────────────
@@ -498,6 +712,10 @@ public class RuleBasedStrategy implements NlpStrategy {
         // 0. Check learned patterns first (from NLP Learner)
         NlpResult learned = tryLearnedPatterns(q);
         if (learned != null) return learned;
+
+        // 0b. Jira ticket ID fast-path (deterministic, no LLM needed)
+        NlpResult jiraTicket = tryJiraTicketLookup(q);
+        if (jiraTicket != null) return jiraTicket;
 
         // 1. Greeting / small talk
         NlpResult greeting = tryGreeting(q);
@@ -619,6 +837,70 @@ public class RuleBasedStrategy implements NlpStrategy {
         NlpResult jira = tryJiraSpecific(q, catalog);
         if (jira != null) return jira;
 
+        // 28a. Jira contributor queries ("who worked on CEP-1234")
+        NlpResult jiraContribs = tryJiraContributors(q);
+        if (jiraContribs != null) return jiraContribs;
+
+        // 28b. Jira bug summary
+        NlpResult jiraBugs = tryJiraBugSummary(q);
+        if (jiraBugs != null) return jiraBugs;
+
+        // 28c. Jira sprint health
+        NlpResult jiraSprint = tryJiraSprintHealth(q);
+        if (jiraSprint != null) return jiraSprint;
+
+        // 28d. Jira workload
+        NlpResult jiraWork = tryJiraWorkload(q);
+        if (jiraWork != null) return jiraWork;
+
+        // 28e. Jira analytics
+        NlpResult jiraAnal = tryJiraAnalytics(q);
+        if (jiraAnal != null) return jiraAnal;
+
+        // 28f. DORA metrics
+        NlpResult dora = tryDoraMetrics(q);
+        if (dora != null) return dora;
+
+        // 28g. Utilization queries
+        NlpResult util = tryUtilization(q);
+        if (util != null) return util;
+
+        // 28h. Capacity vs Demand
+        NlpResult capDemand = tryCapacityDemand(q);
+        if (capDemand != null) return capDemand;
+
+        // 28i. Hiring forecast
+        NlpResult hiring = tryHiringForecast(q);
+        if (hiring != null) return hiring;
+
+        // 28j. Concurrency risk
+        NlpResult concurrency = tryConcurrencyRisk(q);
+        if (concurrency != null) return concurrency;
+
+        // 28k. Project Gantt chart
+        NlpResult gantt = tryGantt(q);
+        if (gantt != null) return gantt;
+
+        // 28l. Owner demand
+        NlpResult ownerDemand = tryOwnerDemand(q);
+        if (ownerDemand != null) return ownerDemand;
+
+        // 28m. Slack/buffer analysis
+        NlpResult slackBuf = trySlackBuffer(q);
+        if (slackBuf != null) return slackBuf;
+
+        // 28n. CapEx/OpEx
+        NlpResult capex = tryCapexOpex(q);
+        if (capex != null) return capex;
+
+        // 28o. Pod capacity
+        NlpResult podCap = tryPodCapacity(q);
+        if (podCap != null) return podCap;
+
+        // 28p. Dashboard / overview
+        NlpResult dash = tryDashboardOverview(q);
+        if (dash != null) return dash;
+
         // 29. Scenario / what-if
         NlpResult scenario = tryScenario(q);
         if (scenario != null) return scenario;
@@ -656,7 +938,65 @@ public class RuleBasedStrategy implements NlpStrategy {
         if (catchAll != null) return catchAll;
 
         // No match
-        return new NlpResult("UNKNOWN", 0.0, null, null, null, null, null, null);
+        return new NlpResult("UNKNOWN", 0.0, null, null, null, null, null, null, null);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Ticket ID Fast-Path ─────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Quick deterministic lookup for Jira ticket IDs like "TAT-123" or
+     * "tell me about BGENG-456". No LLM needed — directly queries the DB.
+     */
+    private NlpResult tryJiraTicketLookup(String query) {
+        if (jiraToolExecutor == null) return null;
+
+        String issueKey = null;
+
+        // Try explicit patterns first: "tell me about TAT-123", "summarize PROJ-456"
+        for (Pattern p : JIRA_TICKET_LOOKUP_PATTERNS) {
+            Matcher m = p.matcher(query);
+            if (m.find()) {
+                issueKey = m.group(1).toUpperCase();
+                break;
+            }
+        }
+
+        // If no explicit pattern matched, check for a bare ticket key in the query
+        if (issueKey == null) {
+            Matcher m = JIRA_ISSUE_KEY_PATTERN.matcher(query);
+            if (m.find()) {
+                issueKey = m.group(1).toUpperCase();
+            }
+        }
+
+        if (issueKey == null) return null;
+
+        // Look up the issue from the DB
+        Map<String, Object> structured = jiraToolExecutor.lookupIssueStructured(issueKey);
+        if (structured == null) {
+            return new NlpResult(
+                    "DATA_QUERY", 0.85,
+                    "I couldn't find issue " + issueKey + " in our synced data. "
+                            + "It may not have been synced yet, or the key might be incorrect.",
+                    null, null, null, "/reports/jira-analytics",
+                    List.of("Search for similar issues", "Check Jira sync status", "Show open issues", null)
+            , null);
+        }
+
+        String summary = jiraToolExecutor.summarizeIssue(structured);
+        String statusEmoji = "Done".equalsIgnoreCase(String.valueOf(structured.get("Status Category")))
+                ? "✅ " : "🔷 ";
+
+        return new NlpResult(
+                "DATA_QUERY", 0.95,
+                statusEmoji + structured.get("Key") + " — " + structured.get("Summary"),
+                null, null, structured, null,
+                List.of("Show worklogs for " + issueKey,
+                        "Who else is working on " + structured.get("Project") + "?",
+                        "Show open issues for " + structured.get("Assignee"))
+        , null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -700,6 +1040,12 @@ public class RuleBasedStrategy implements NlpStrategy {
                 }
 
                 if (match) {
+                    // Learned patterns only store routing hints (intent + route), not actual data.
+                    // For data-bearing intents, skip the shortcut so the real pipeline runs.
+                    String intent = p.getResolvedIntent();
+                    if ("DATA_QUERY".equals(intent) || "INSIGHT".equals(intent) || "REPORT".equals(intent)) {
+                        continue;
+                    }
                     // Record the match to keep the pattern alive (prevents confidence decay)
                     try { learnerService.recordPatternMatch(p.getId()); } catch (Exception ignored) {}
 
@@ -709,8 +1055,11 @@ public class RuleBasedStrategy implements NlpStrategy {
 
             // If no EXACT/REGEX/FUZZY matched, try best CONTAINS match
             if (bestContainsMatch != null) {
-                try { learnerService.recordPatternMatch(bestContainsMatch.getId()); } catch (Exception ignored) {}
-                return buildLearnedPatternResult(bestContainsMatch);
+                String intent = bestContainsMatch.getResolvedIntent();
+                if (!"DATA_QUERY".equals(intent) && !"INSIGHT".equals(intent) && !"REPORT".equals(intent)) {
+                    try { learnerService.recordPatternMatch(bestContainsMatch.getId()); } catch (Exception ignored) {}
+                    return buildLearnedPatternResult(bestContainsMatch);
+                }
             }
 
         } catch (Exception e) {
@@ -727,13 +1076,13 @@ public class RuleBasedStrategy implements NlpStrategy {
         data.put("patternId", p.getId());
 
         if ("NAVIGATE".equals(p.getResolvedIntent()) && route != null) {
-            return new NlpResult("NAVIGATE", p.getConfidence(), message, route, null, data, null, List.of());
+            return new NlpResult("NAVIGATE", p.getConfidence(), message, route, null, data, null, List.of(), null);
         } else if ("FORM_PREFILL".equals(p.getResolvedIntent()) && route != null) {
             Map<String, Object> formData = new LinkedHashMap<>();
             if (p.getEntityName() != null) formData.put("name", p.getEntityName());
-            return new NlpResult("FORM_PREFILL", p.getConfidence(), message, route, formData, data, null, List.of());
+            return new NlpResult("FORM_PREFILL", p.getConfidence(), message, route, formData, data, null, List.of(), null);
         } else {
-            return new NlpResult(p.getResolvedIntent(), p.getConfidence(), message, route, null, data, null, List.of());
+            return new NlpResult(p.getResolvedIntent(), p.getConfidence(), message, route, null, data, null, List.of(), null);
         }
     }
 
@@ -750,7 +1099,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (route != null) {
                     String title = getPageTitle(route);
                     return new NlpResult("NAVIGATE", 0.92, "Opening " + title + "…",
-                            route, null, null, null, List.of("What does " + title + " show?"));
+                            route, null, null, null, List.of("What does " + title + " show?", null), null);
                 }
             }
         }
@@ -763,7 +1112,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         if (bareRoute != null) {
             String title = getPageTitle(bareRoute);
             return new NlpResult("NAVIGATE", 0.90, "Opening " + title + "…",
-                    bareRoute, null, null, null, List.of("What does " + title + " show?"));
+                    bareRoute, null, null, null, List.of("What does " + title + " show?", null), null);
         }
 
         return null;
@@ -796,7 +1145,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             resource.name() + " is currently in the " + resource.podName() + " POD. "
                                     + "To move them to " + pod.name() + ", go to the Resources page and update their POD assignment.",
                             "/resources", null, data, "/pods/" + pod.id(),
-                            List.of("Show " + pod.name() + " POD details", "Go to Resources page"));
+                            List.of("Show " + pod.name() + " POD details", "Go to Resources page"), null);
                 } else if (pod != null) {
                     // Pod found, person not found or ambiguous
                     Map<String, Object> data = new LinkedHashMap<>();
@@ -808,7 +1157,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "To add a member to the " + pod.name() + " POD, go to the Resources page and update their POD assignment. "
                                     + "The " + pod.name() + " POD currently has " + pod.memberCount() + " member(s).",
                             "/resources", null, data, "/pods/" + pod.id(),
-                            List.of("Show " + pod.name() + " POD details", "Go to Resources page"));
+                            List.of("Show " + pod.name() + " POD details", "Go to Resources page"), null);
                 } else if (resource != null) {
                     // Resource found, target not recognized as a pod — check if it's a project
                     NlpCatalogResponse.ProjectInfo proj = findProjectByName(targetFragment, catalog.projectDetails());
@@ -821,7 +1170,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                 resource.name() + " can be assigned to " + proj.name()
                                         + " via POD-level project assignments. Go to the project's POD planning to configure.",
                                 "/projects/" + proj.id(), null, data, null,
-                                List.of("Show " + proj.name() + " details", "Go to Resources page"));
+                                List.of("Show " + proj.name() + " details", "Go to Resources page"), null);
                     }
                 }
             }
@@ -845,7 +1194,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("FORM_PREFILL", 0.85,
                                 "I'll set up a new " + entry.getKey() + " for you. Review the details and hit Save when ready.",
                                 entry.getValue(), formData, null, null,
-                                List.of("Show all " + entry.getKey() + "s"));
+                                List.of("Show all " + entry.getKey() + "s"), null);
                     }
                 }
 
@@ -857,7 +1206,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("FORM_PREFILL", 0.85,
                                 "I'll set up a new " + entry.getKey() + " for you. Review the details and hit Save when ready.",
                                 entry.getValue(), formData, null, null,
-                                List.of("Show all " + entry.getKey() + "s"));
+                                List.of("Show all " + entry.getKey() + "s"), null);
                     }
                 }
             }
@@ -884,7 +1233,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("FORM_PREFILL", 0.88,
                             "I'll update " + proj.name() + " status to " + formatStatus(newStatus) + ". Please confirm on the project form.",
                             "/projects?action=edit&id=" + proj.id(), formData, null, null,
-                            List.of("Show " + proj.name() + " details"));
+                            List.of("Show " + proj.name() + " details"), null);
                 }
             }
         }
@@ -924,7 +1273,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "Ready to export " + label + " data. Click the download button below.",
                         null, null, data, null,
-                        List.of("Show " + label + " report"));
+                        List.of("Show " + label + " report", null), null);
             }
         }
         return null;
@@ -959,7 +1308,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.88,
                             "Comparing " + podA.name() + " vs " + podB.name() + ":",
                             null, null, data, "/reports/capacity-gap",
-                            List.of("Show capacity gap report"));
+                            List.of("Show capacity gap report"), null);
                 }
 
                 // Try project comparison
@@ -983,7 +1332,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.88,
                             "Comparing " + projA.name() + " vs " + projB.name() + ":",
                             null, null, data, "/reports/project-health",
-                            List.of("Show project health report"));
+                            List.of("Show project health report"), null);
                 }
             }
         }
@@ -1028,7 +1377,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("DATA_QUERY", 0.88,
                                 proj.name() + " has " + teamMembers.size() + " team member(s) across " + proj.assignedPods() + ".",
                                 null, null, data, "/resources",
-                                List.of("Go to Resources page", "Show " + proj.name() + " details"));
+                                List.of("Go to Resources page", "Show " + proj.name() + " details"), null);
                     }
                 }
             }
@@ -1057,7 +1406,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             return new NlpResult("DATA_QUERY", 0.88,
                                     resource.name() + " is in the " + pod.name() + " pod, working on " + pod.projectNames().size() + " project(s).",
                                     null, null, data, "/reports/project-pod-matrix",
-                                    List.of("Show project-pod matrix"));
+                                    List.of("Show project-pod matrix"), null);
                         }
                     }
 
@@ -1074,7 +1423,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("DATA_QUERY", 0.88,
                                 pod.name() + " pod has " + pod.projectNames().size() + " project(s): " + String.join(", ", pod.projectNames()) + ".",
                                 null, null, data, "/reports/pod-project-matrix",
-                                List.of("Show pod-project matrix"));
+                                List.of("Show pod-project matrix"), null);
                     }
                 }
             }
@@ -1086,19 +1435,140 @@ public class RuleBasedStrategy implements NlpStrategy {
     // ════════════════════════════════════════════════════════════════════════
     // ── Resource Lookup ────────────────────────────────────────────────────
     // ════════════════════════════════════════════════════════════════════════
+    /** Strip trailing location/team phrases from a captured name fragment.
+     *  Handles: "in any team", "in the team", "in any of the pods", "on our teams",
+     *  "across all pods", "from the organization", etc. */
+    private static final Pattern TRAILING_TEAM_PHRASE = Pattern.compile(
+            "(?i)\\s+(?:in|on|at|from|of|across)\\s+(?:any\\s+(?:of\\s+)?)?(?:the|our|my|this|that|a|all)?\\s*(?:team|teams|pod|pods|org|organization|company|group|groups|department|departments)s?.*$");
+
+    /** Noise words that can leak into captured name fragments from loose regexes. */
+    private static final Pattern NAME_NOISE_PREFIX = Pattern.compile(
+            "(?i)^(?:someone|anybody|anyone|person|resource|member|employee|a|an|the|named|called)\\s+");
+
     private NlpResult tryResourceLookup(String query, NlpCatalogResponse catalog) {
         if (catalog.resourceDetails() == null || catalog.resourceDetails().isEmpty()) return null;
+        boolean namePatternMatched = false;
+        String bestNameFragment = null; // keep the shortest (cleanest) extracted name
         for (Pattern p : RESOURCE_LOOKUP_PATTERNS) {
             Matcher m = p.matcher(query);
             if (m.find()) {
                 String nameFragment = m.group(1).trim();
-                NlpCatalogResponse.ResourceInfo match = findResourceByName(nameFragment, catalog.resourceDetails());
+                // Clean trailing team/pod/org phrases: "Piyush in any team" → "Piyush"
+                nameFragment = TRAILING_TEAM_PHRASE.matcher(nameFragment).replaceAll("").trim();
+                // Strip leading noise words: "named Piyush" → "Piyush", "anyone Piyush" → "Piyush"
+                String cleaned = nameFragment;
+                String prev;
+                do { prev = cleaned; cleaned = NAME_NOISE_PREFIX.matcher(cleaned).replaceFirst(""); } while (!cleaned.equals(prev));
+                cleaned = cleaned.trim();
+                if (cleaned.isEmpty()) continue;
+                namePatternMatched = true;
+                // Keep the shortest clean fragment (most precise extraction)
+                if (bestNameFragment == null || cleaned.length() < bestNameFragment.length()) {
+                    bestNameFragment = cleaned;
+                }
+                NlpCatalogResponse.ResourceInfo match = findResourceByName(cleaned, catalog.resourceDetails());
                 if (match != null) return buildResourceResult(match);
             }
         }
         NlpCatalogResponse.ResourceInfo directMatch = findResourceByName(query, catalog.resourceDetails());
         if (directMatch != null) return buildResourceResult(directMatch);
+
+        // If a name-search pattern matched but no resource was found, return a smart "not found" result
+        if (namePatternMatched && bestNameFragment != null) {
+            return buildResourceNotFoundResult(bestNameFragment, catalog);
+        }
         return null;
+    }
+
+    /** Build a helpful "not found" result with close-match suggestions (vector + Levenshtein hybrid). */
+    private NlpResult buildResourceNotFoundResult(String searchedName, NlpCatalogResponse catalog) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("_type", "LIST");
+        data.put("Count", "0");
+        data.put("Search Term", searchedName);
+
+        // Find close matches: try vector search first, fall back to Levenshtein
+        List<String> closestNames = new ArrayList<>();
+        Set<String> addedNames = new HashSet<>();
+
+        // Vector-based suggestions (semantic similarity — catches nicknames, abbreviations)
+        if (vectorSearchService != null && catalog.resourceDetails() != null) {
+            try {
+                var vectorResults = vectorSearchService.searchByTypes(searchedName, List.of("RESOURCE"), 5);
+                for (var vr : vectorResults) {
+                    if (vr.similarity() >= 0.45 && vr.entityName() != null && closestNames.size() < 3) {
+                        // Match back to catalog for rich details
+                        for (NlpCatalogResponse.ResourceInfo r : catalog.resourceDetails()) {
+                            if (r.name().equalsIgnoreCase(vr.entityName()) && !addedNames.contains(r.name().toLowerCase())) {
+                                closestNames.add(r.name() + " (" + formatRole(r.role()) + ", " + r.podName() + ")");
+                                addedNames.add(r.name().toLowerCase());
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Vector search non-critical
+            }
+        }
+
+        // Levenshtein fallback for any remaining suggestion slots
+        if (closestNames.size() < 3 && catalog.resourceDetails() != null) {
+            String lower = searchedName.toLowerCase();
+            for (NlpCatalogResponse.ResourceInfo r : catalog.resourceDetails()) {
+                if (addedNames.contains(r.name().toLowerCase())) continue;
+                String rLower = r.name().toLowerCase();
+                if (rLower.startsWith(lower.substring(0, Math.min(2, lower.length())))
+                        || (lower.length() >= 3 && levenshteinClose(lower, rLower))) {
+                    closestNames.add(r.name() + " (" + formatRole(r.role()) + ", " + r.podName() + ")");
+                    addedNames.add(r.name().toLowerCase());
+                    if (closestNames.size() >= 3) break;
+                }
+            }
+        }
+
+        String message;
+        if (closestNames.isEmpty()) {
+            message = "No one named \"" + searchedName + "\" was found in any team. "
+                    + "There are " + (catalog.resourceDetails() != null ? catalog.resourceDetails().size() : 0)
+                    + " resources across all pods.";
+        } else {
+            message = "No one named \"" + searchedName + "\" was found. Did you mean: "
+                    + String.join(", ", closestNames) + "?";
+        }
+
+        List<String> suggestions = new ArrayList<>();
+        suggestions.add("Show all resources");
+        suggestions.add("Show all team members");
+        if (!closestNames.isEmpty()) {
+            // Add the first close match name as a suggestion
+            String firstName = closestNames.get(0).split("\\s*\\(")[0].trim();
+            suggestions.add("Tell me about " + firstName);
+        }
+
+        return new NlpResult("DATA_QUERY", 0.88, message, null, null, data, "/resources", suggestions, null);
+    }
+
+    /** Simple Levenshtein distance check — true if edit distance ≤ 2 for short names. */
+    private boolean levenshteinClose(String a, String b) {
+        // Only compare first names for closeness
+        String aFirst = a.split("\\s+")[0];
+        String bFirst = b.split("\\s+")[0];
+        int dist = editDistance(aFirst, bFirst);
+        return dist <= 2 && dist < Math.max(aFirst.length(), bFirst.length());
+    }
+
+    private int editDistance(String a, String b) {
+        int[][] dp = new int[a.length() + 1][b.length() + 1];
+        for (int i = 0; i <= a.length(); i++) dp[i][0] = i;
+        for (int j = 0; j <= b.length(); j++) dp[0][j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                dp[i][j] = Math.min(Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1), dp[i - 1][j - 1] + cost);
+            }
+        }
+        return dp[a.length()][b.length()];
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1158,7 +1628,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         + est.totalQaHours() + "h, BSA: " + est.totalBsaHours() + "h, TL: "
                         + est.totalTechLeadHours() + "h.",
                 null, null, data, "/projects",
-                List.of("Go to Projects page", "Show project health report"));
+                List.of("Go to Projects page", "Show project health report"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1221,7 +1691,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
         return new NlpResult("DATA_QUERY", 0.88, title + " — " + allocs.size() + " allocation(s).",
                 null, null, data, "/sprint-planner",
-                List.of("Go to Sprint Planner", "Show sprint calendar"));
+                List.of("Go to Sprint Planner", "Show sprint calendar"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1277,7 +1747,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
         return new NlpResult("DATA_QUERY", 0.88, title + " — " + avails.size() + " record(s).",
                 null, null, data, "/availability",
-                List.of("Go to Availability page", "Show capacity gap report"));
+                List.of("Go to Availability page", "Show capacity gap report"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1327,7 +1797,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
         return new NlpResult("DATA_QUERY", 0.88, title + " — " + deps.size() + " dependency(ies).",
                 null, null, data, "/reports/cross-pod",
-                List.of("Go to Cross-POD Dependencies", "Show project health"));
+                List.of("Go to Cross-POD Dependencies", "Show project health"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1392,7 +1862,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.88,
                         overProjects.size() + " project(s) have exceeded their estimated hours.",
                         null, null, data, "/reports/budget",
-                        List.of("Go to Budget & Cost", "Show project health"));
+                        List.of("Go to Budget & Cost", "Show project health"), null);
             }
         }
         return null;
@@ -1416,7 +1886,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
         return new NlpResult("DATA_QUERY", 0.88, title + " — " + actuals.size() + " record(s).",
                 null, null, data, "/reports/budget",
-                List.of("Go to Budget & Cost", "Show project health"));
+                List.of("Go to Budget & Cost", "Show project health"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1441,7 +1911,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             return new NlpResult("DATA_QUERY", 0.88,
                                     ep.name() + ": " + ep.description(),
                                     null, null, data, null,
-                                    List.of("Show all effort patterns", "Go to Projects page"));
+                                    List.of("Show all effort patterns", "Go to Projects page"), null);
                         }
                     }
                 }
@@ -1461,7 +1931,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         catalog.effortPatterns().size() + " effort patterns available.",
                         null, null, data, null,
-                        List.of("Go to Projects page"));
+                        List.of("Go to Projects page"), null);
             }
         }
         return null;
@@ -1494,7 +1964,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                 .map(r -> formatRole(r.role()) + " " + r.mixPct())
                                 .collect(Collectors.joining(", ")),
                         null, null, data, null,
-                        List.of("Show cost rates", "Go to Resources page"));
+                        List.of("Show cost rates", "Go to Resources page"), null);
             }
         }
         return null;
@@ -1514,7 +1984,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATION", 0.88,
                         "Opening the Jira Support Queue dashboard where you can see open tickets, stale tickets, and support trends.",
                         "/jira-support", null, data, null,
-                        List.of("Show Jira POD dashboard", "Show project health"));
+                        List.of("Show Jira POD dashboard", "Show project health", null), null);
             }
         }
         return null;
@@ -1534,7 +2004,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATION", 0.85,
                         "Timeline configuration (fiscal year, working hours per month) can be found in Settings. Navigate there to view or adjust these values.",
                         "/settings", null, data, null,
-                        List.of("Go to Settings", "Show availability grid"));
+                        List.of("Go to Settings", "Show availability grid"), null);
             }
         }
         return null;
@@ -1692,7 +2162,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("DATA_QUERY", 0.88,
                                 monthReleases.size() + " release(s) in " + monthName + ".",
                                 null, null, data, "/release-calendar",
-                                List.of("Go to Release Calendar"));
+                                List.of("Go to Release Calendar"), null);
                     }
                 }
             }
@@ -1716,7 +2186,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             upcoming.size() + " upcoming release(s).",
                             null, null, data, "/release-calendar",
-                            List.of("Go to Release Calendar"));
+                            List.of("Go to Release Calendar"), null);
                 }
             }
             if (lower.contains("sprint")) {
@@ -1737,7 +2207,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             upcoming.size() + " upcoming sprint(s).",
                             null, null, data, "/sprint-calendar",
-                            List.of("Go to Sprint Calendar"));
+                            List.of("Go to Sprint Calendar"), null);
                 }
             }
         }
@@ -1763,7 +2233,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("NAVIGATE", 0.88,
                             "Opening the Jira Support Queue — you'll see tickets sorted by priority there.",
                             "/jira-support", null, data, null,
-                            List.of("Show Jira POD dashboard", "Show sprint planner"));
+                            List.of("Show Jira POD dashboard", "Show sprint planner", null), null);
                 }
 
                 // General risk health check
@@ -1772,7 +2242,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 // Count P0 projects
                 long p0Count = catalog.projectDetails().stream()
-                        .filter(p2 -> "P0".equals(p2.priority()) && !"COMPLETED".equals(p2.status()) && !"CANCELLED".equals(p2.status()))
+                        .filter(p2 -> "P0".equalsIgnoreCase(p2.priority()) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
                         .count();
 
                 // Count overloaded pods (many projects, few members)
@@ -1783,12 +2253,12 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 // Count unassigned projects
                 long unassigned = catalog.projectDetails().stream()
-                        .filter(p2 -> "None".equals(p2.assignedPods()) && !"COMPLETED".equals(p2.status()) && !"CANCELLED".equals(p2.status()))
+                        .filter(p2 -> "None".equals(p2.assignedPods()) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
                         .count();
 
                 // Active projects on hold
                 long onHold = catalog.projectDetails().stream()
-                        .filter(p2 -> "ON_HOLD".equals(p2.status()))
+                        .filter(p2 -> "ON_HOLD".equalsIgnoreCase(p2.status()))
                         .count();
 
                 data.put("P0 Active Projects", String.valueOf(p0Count));
@@ -1796,7 +2266,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 data.put("Unassigned Projects", String.valueOf(unassigned));
                 data.put("On Hold Projects", String.valueOf(onHold));
                 data.put("Total Active Projects", String.valueOf(catalog.projectDetails().stream()
-                        .filter(p2 -> "ACTIVE".equals(p2.status())).count()));
+                        .filter(p2 -> "ACTIVE".equalsIgnoreCase(p2.status())).count()));
 
                 List<String> alerts = new ArrayList<>();
                 if (p0Count > 0) alerts.add(p0Count + " P0 project(s) active");
@@ -1808,7 +2278,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 return new NlpResult("INSIGHT", 0.85, summary,
                         null, null, data, "/reports/project-health",
-                        List.of("Show project health", "Show capacity gap", "Show hiring forecast"));
+                        List.of("Show project health", "Show capacity gap", "Show hiring forecast", null), null);
             }
         }
         return null;
@@ -1826,24 +2296,24 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 // "how many active projects"
                 if (subject.contains("active project")) {
-                    long count = catalog.projectDetails().stream().filter(p2 -> "ACTIVE".equals(p2.status())).count();
+                    long count = catalog.projectDetails().stream().filter(p2 -> "ACTIVE".equalsIgnoreCase(p2.status())).count();
                     data.put("Active Projects", String.valueOf(count));
                     return new NlpResult("DATA_QUERY", 0.85,
                             "There are " + count + " active project(s).",
                             null, null, data, "/projects",
-                            List.of("Show all projects", "Show project health"));
+                            List.of("Show all projects", "Show project health"), null);
                 }
 
                 // "how many projects"
                 if (subject.contains("project")) {
                     data.put("Total Projects", String.valueOf(catalog.projectDetails().size()));
-                    data.put("Active", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "ACTIVE".equals(p2.status())).count()));
-                    data.put("On Hold", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "ON_HOLD".equals(p2.status())).count()));
-                    data.put("Completed", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "COMPLETED".equals(p2.status())).count()));
+                    data.put("Active", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "ACTIVE".equalsIgnoreCase(p2.status())).count()));
+                    data.put("On Hold", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "ON_HOLD".equalsIgnoreCase(p2.status())).count()));
+                    data.put("Completed", String.valueOf(catalog.projectDetails().stream().filter(p2 -> "COMPLETED".equalsIgnoreCase(p2.status())).count()));
                     return new NlpResult("DATA_QUERY", 0.85,
                             "There are " + catalog.projectDetails().size() + " project(s) in total.",
                             null, null, data, "/projects",
-                            List.of("Show all projects"));
+                            List.of("Show all projects"), null);
                 }
 
                 // "how many tech leads", "how many QAs", "how many developers"
@@ -1871,7 +2341,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             "There are " + total + " active resource(s).",
                             null, null, data, "/resources",
-                            List.of("Show all resources", "Show resource allocation"));
+                            List.of("Show all resources", "Show resource allocation"), null);
                 }
 
                 // "how many pods"
@@ -1882,7 +2352,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             "There are " + catalog.podDetails().size() + " POD(s), " + active + " active.",
                             null, null, data, "/pods",
-                            List.of("Show all PODs"));
+                            List.of("Show all PODs"), null);
                 }
 
                 // "how many sprints"
@@ -1893,13 +2363,13 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             catalog.sprintDetails().size() + " sprint(s) total.",
                             null, null, data, "/sprint-calendar",
-                            List.of("Show sprint calendar"));
+                            List.of("Show sprint calendar"), null);
                 }
 
                 // "list all P0 projects"
                 if (subject.contains("p0") || subject.contains("highest priority") || subject.contains("critical")) {
                     List<NlpCatalogResponse.ProjectInfo> p0s = catalog.projectDetails().stream()
-                            .filter(p2 -> "P0".equals(p2.priority()) && !"COMPLETED".equals(p2.status()) && !"CANCELLED".equals(p2.status()))
+                            .filter(p2 -> "P0".equalsIgnoreCase(p2.priority()) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
                             .toList();
                     data.put("_type", "LIST");
                     data.put("listType", "PROJECTS");
@@ -1913,13 +2383,13 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             p0s.size() + " P0 project(s) active.",
                             null, null, data, "/projects",
-                            List.of("Show project health report"));
+                            List.of("Show project health report"), null);
                 }
 
                 // "list all on hold"
                 if (subject.contains("on hold") || subject.contains("on_hold")) {
                     List<NlpCatalogResponse.ProjectInfo> onHold = catalog.projectDetails().stream()
-                            .filter(p2 -> "ON_HOLD".equals(p2.status())).toList();
+                            .filter(p2 -> "ON_HOLD".equalsIgnoreCase(p2.status())).toList();
                     data.put("_type", "LIST");
                     data.put("listType", "PROJECTS");
                     data.put("_itemType", "PROJECT");
@@ -1931,7 +2401,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             onHold.size() + " project(s) on hold.",
                             null, null, data, "/projects",
-                            List.of("Show all projects"));
+                            List.of("Show all projects"), null);
                 }
 
                 // "list all releases"
@@ -1945,7 +2415,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.85,
                             catalog.releaseDetails().size() + " release(s).",
                             null, null, data, "/release-calendar",
-                            List.of("Show release calendar"));
+                            List.of("Show release calendar"), null);
                 }
             }
         }
@@ -1991,11 +2461,11 @@ public class RuleBasedStrategy implements NlpStrategy {
                                 overPods.isEmpty() ? "All PODs are within healthy capacity ranges."
                                         : overPods.size() + " POD(s) appear to be over capacity based on project-to-member ratio and BAU allocation.",
                                 null, null, data, "/reports/capacity-gap",
-                                List.of("Show capacity gap report", "Show POD details", "Show hiring forecast"));
+                                List.of("Show capacity gap report", "Show POD details", "Show hiring forecast"), null);
                     }
                     return new NlpResult("INSIGHT", 0.82, "Checking for over-capacity PODs…",
                             null, null, data, "/reports/capacity-gap",
-                            List.of("Show capacity gap report", "Open sprint planner"));
+                            List.of("Show capacity gap report", "Open sprint planner", null), null);
                 }
 
                 // ── Under-utilized PODs ──
@@ -2018,7 +2488,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                 underPods.isEmpty() ? "All active PODs have at least one project assigned."
                                         : underPods.size() + " POD(s) have no projects assigned.",
                                 null, null, data, "/reports/capacity-gap",
-                                List.of("Show capacity gap report", "Show POD assignments"));
+                                List.of("Show capacity gap report", "Show POD assignments"), null);
                     }
                 }
 
@@ -2070,7 +2540,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                     + totalMembers + " total members handling " + totalProjects + " projects.";
                         return new NlpResult("INSIGHT", 0.88, msg,
                                 null, null, data, "/reports/capacity-gap",
-                                List.of("Show " + projName + " details", "Show capacity gap report", "Show hiring forecast"));
+                                List.of("Show " + projName + " details", "Show capacity gap report", "Show hiring forecast", null), null);
                     } else {
                         // ── General hiring needs ──
                         if (catalog.podDetails() != null) {
@@ -2088,7 +2558,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("INSIGHT", 0.85,
                                 "Here's the hiring needs analysis based on project-to-member ratios.",
                                 null, null, data, "/reports/hiring-forecast",
-                                List.of("Show hiring forecast", "Show all PODs"));
+                                List.of("Show hiring forecast", "Show all PODs", null), null);
                     }
                 }
 
@@ -2098,20 +2568,20 @@ public class RuleBasedStrategy implements NlpStrategy {
                     data.put("_type", "RISK_SUMMARY");
                     if (catalog.projectDetails() != null) {
                         long p0Active = catalog.projectDetails().stream()
-                                .filter(proj -> "P0".equals(proj.priority()) && "ACTIVE".equals(proj.status()))
+                                .filter(proj -> "P0".equalsIgnoreCase(proj.priority()) && "ACTIVE".equalsIgnoreCase(proj.status()))
                                 .count();
                         long onHold = catalog.projectDetails().stream()
-                                .filter(proj -> "ON_HOLD".equals(proj.status()))
+                                .filter(proj -> "ON_HOLD".equalsIgnoreCase(proj.status()))
                                 .count();
                         long totalActive = catalog.projectDetails().stream()
-                                .filter(proj -> "ACTIVE".equals(proj.status()))
+                                .filter(proj -> "ACTIVE".equalsIgnoreCase(proj.status()))
                                 .count();
                         data.put("P0 Active Projects", String.valueOf(p0Active));
                         data.put("On Hold Projects", String.valueOf(onHold));
                         data.put("Total Active Projects", String.valueOf(totalActive));
                         // List P0 and On-Hold projects
                         var riskProjects = catalog.projectDetails().stream()
-                                .filter(proj -> "P0".equals(proj.priority()) || "ON_HOLD".equals(proj.status()))
+                                .filter(proj -> "P0".equalsIgnoreCase(proj.priority()) || "ON_HOLD".equalsIgnoreCase(proj.status()))
                                 .toList();
                         for (int i = 0; i < riskProjects.size(); i++) {
                             var proj = riskProjects.get(i);
@@ -2121,7 +2591,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("INSIGHT", 0.88,
                                 p0Active + " P0 project(s) active, " + onHold + " project(s) on hold out of " + totalActive + " active.",
                                 null, null, data, "/reports/project-health",
-                                List.of("Show project health report", "Show all projects", "Show capacity gaps"));
+                                List.of("Show project health report", "Show all projects", "Show capacity gaps"), null);
                     }
                 }
 
@@ -2129,9 +2599,9 @@ public class RuleBasedStrategy implements NlpStrategy {
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("_type", "RISK_SUMMARY");
                 if (catalog.projectDetails() != null && catalog.podDetails() != null) {
-                    long p0 = catalog.projectDetails().stream().filter(proj -> "P0".equals(proj.priority()) && "ACTIVE".equals(proj.status())).count();
-                    long onHold = catalog.projectDetails().stream().filter(proj -> "ON_HOLD".equals(proj.status())).count();
-                    long totalActive = catalog.projectDetails().stream().filter(proj -> "ACTIVE".equals(proj.status())).count();
+                    long p0 = catalog.projectDetails().stream().filter(proj -> "P0".equalsIgnoreCase(proj.priority()) && "ACTIVE".equalsIgnoreCase(proj.status())).count();
+                    long onHold = catalog.projectDetails().stream().filter(proj -> "ON_HOLD".equalsIgnoreCase(proj.status())).count();
+                    long totalActive = catalog.projectDetails().stream().filter(proj -> "ACTIVE".equalsIgnoreCase(proj.status())).count();
                     long highLoad = catalog.podDetails().stream().filter(pod -> pod.active() && pod.memberCount() > 0
                             && (double) pod.projectCount() / pod.memberCount() > 1.5).count();
                     long unassigned = catalog.projectDetails().stream().filter(proj -> proj.assignedPods() == null || proj.assignedPods().isEmpty() || "None".equals(proj.assignedPods())).count();
@@ -2145,11 +2615,11 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "System health: " + p0 + " P0 active, " + highLoad + " high-load PODs, "
                                     + onHold + " projects on hold.",
                             null, null, data, "/reports/capacity-gap",
-                            List.of("Show capacity gap report", "Show hiring forecast", "Show project health"));
+                            List.of("Show capacity gap report", "Show hiring forecast", "Show project health", null), null);
                 }
                 return new NlpResult("INSIGHT", 0.75, "Analyzing system health…",
                         null, null, data, "/reports/capacity-gap",
-                        List.of("Show capacity gap report", "Open sprint planner"));
+                        List.of("Show capacity gap report", "Open sprint planner", null), null);
             }
         }
         return null;
@@ -2171,7 +2641,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (query.toLowerCase().contains("budget") || query.toLowerCase().contains("cost")) drillDown = "/reports/budget";
                 else if (query.toLowerCase().contains("utilization")) drillDown = "/reports/utilization";
                 return new NlpResult("DATA_QUERY", 0.70, "Let me look that up for you…",
-                        null, null, context, drillDown, List.of("Show full report"));
+                        null, null, context, drillDown, List.of("Show full report", null), null);
             }
         }
         return null;
@@ -2203,14 +2673,14 @@ public class RuleBasedStrategy implements NlpStrategy {
                         }
                         return new NlpResult("HELP", 0.90, sb.toString(),
                                 null, null, data, "/settings/ref-data",
-                                List.of("Show reference data settings", "What is an effort pattern?"));
+                                List.of("Show reference data settings", "What is an effort pattern?"), null);
                     }
                 }
 
                 for (var entry : HELP_TOPICS.entrySet()) {
                     if (topic.contains(entry.getKey())) {
                         return new NlpResult("HELP", 0.88, entry.getValue(),
-                                null, null, null, null, List.of("Go to " + entry.getKey() + " settings"));
+                                null, null, null, null, List.of("Go to " + entry.getKey() + " settings"), null);
                     }
                 }
                 String route = findBestRoute(topic);
@@ -2218,7 +2688,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     String title = getPageTitle(route);
                     return new NlpResult("HELP", 0.80,
                             title + " — this page lets you view and manage " + title.toLowerCase() + " data. Navigate there to see it in action.",
-                            null, null, null, null, List.of("Go to " + title));
+                            null, null, null, null, List.of("Go to " + title), null);
                 }
             }
         }
@@ -2238,12 +2708,12 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (lower.startsWith("thank") || lower.startsWith("thx") || lower.startsWith("cheers") || lower.startsWith("appreciate")) {
                     return new NlpResult("HELP", 0.95, "You're welcome! Let me know if there's anything else I can help you with.",
                             null, null, null, null,
-                            List.of("Show dashboard", "What can you do?"));
+                            List.of("Show dashboard", "What can you do?", null), null);
                 }
                 return new NlpResult("HELP", 0.95,
                         "Hello! I'm your Portfolio Planner AI assistant. I can help you navigate pages, look up resources/projects/pods, check sprints & releases, run risk checks, export data, and much more. What would you like to do?",
                         null, null, null, null,
-                        List.of("What can you do?", "Show dashboard", "Any red flags?", "Current sprint"));
+                        List.of("What can you do?", "Show dashboard", "Any red flags?", "Current sprint", null), null);
             }
         }
         return null;
@@ -2277,7 +2747,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("HELP", 0.95,
                         "Here's what I can help you with — try any of the example queries below!",
                         null, null, data, null,
-                        List.of("Any red flags?", "Current sprint", "Show dashboard", "How many active projects?"));
+                        List.of("Any red flags?", "Current sprint", "Show dashboard", "How many active projects?", null), null);
             }
         }
         return null;
@@ -2316,7 +2786,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("DATA_QUERY", 0.88,
                                 ownerProjects.get(0).owner() + " owns " + ownerProjects.size() + " project(s).",
                                 null, null, data, "/projects",
-                                List.of("Show project health report"));
+                                List.of("Show project health report"), null);
                     }
 
                     // Fallback: "under" might mean pod name — find projects assigned to that pod
@@ -2342,7 +2812,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                 return new NlpResult("DATA_QUERY", 0.88,
                                         pod.name() + " pod has " + podProjects.size() + " project(s).",
                                         null, null, data, "/projects",
-                                        List.of("Show " + pod.name() + " pod details"));
+                                        List.of("Show " + pod.name() + " pod details"), null);
                             }
                         }
                     }
@@ -2355,9 +2825,9 @@ public class RuleBasedStrategy implements NlpStrategy {
             if (i < PROJECT_FILTER_PATTERNS.size()) {
                 Matcher m = PROJECT_FILTER_PATTERNS.get(i).matcher(query);
                 if (m.find()) {
-                    String statusText = m.group(1).trim().toUpperCase().replace(" ", "_");
+                    String statusText = m.group(1).trim().toUpperCase().replaceAll("[\\s\\-]", "_");
                     List<NlpCatalogResponse.ProjectInfo> filtered = catalog.projectDetails().stream()
-                            .filter(p -> p.status().equals(statusText))
+                            .filter(p -> p.status().equalsIgnoreCase(statusText))
                             .toList();
 
                     Map<String, Object> data = new LinkedHashMap<>();
@@ -2374,7 +2844,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.88,
                             filtered.size() + " " + formatStatus(statusText).toLowerCase() + " project(s).",
                             null, null, data, "/projects",
-                            List.of("Show all projects", "Show project health"));
+                            List.of("Show all projects", "Show project health"), null);
                 }
             }
         }
@@ -2385,7 +2855,7 @@ public class RuleBasedStrategy implements NlpStrategy {
             if (m.find()) {
                 String priority = m.group(1).trim().toUpperCase();
                 List<NlpCatalogResponse.ProjectInfo> filtered = catalog.projectDetails().stream()
-                        .filter(p -> p.priority().equals(priority) && !"COMPLETED".equals(p.status()) && !"CANCELLED".equals(p.status()))
+                        .filter(p -> p.priority().equalsIgnoreCase(priority) && !"COMPLETED".equalsIgnoreCase(p.status()) && !"CANCELLED".equalsIgnoreCase(p.status()))
                         .toList();
 
                 Map<String, Object> data = new LinkedHashMap<>();
@@ -2402,7 +2872,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.88,
                         filtered.size() + " " + priority + " project(s) active.",
                         null, null, data, "/projects",
-                        List.of("Show project health report"));
+                        List.of("Show project health report"), null);
             }
         }
 
@@ -2432,7 +2902,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("DATA_QUERY", 0.88,
                                 pod.name() + " pod has an average BAU of " + pod.avgBauPct() + ".",
                                 null, null, data, "/pods",
-                                List.of("Show all PODs", "Show capacity gap"));
+                                List.of("Show all PODs", "Show capacity gap"), null);
                     }
                 }
 
@@ -2448,7 +2918,337 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "BAU breakdown by POD:",
                         null, null, data, "/pods",
-                        List.of("Show all PODs", "What is BAU?"));
+                        List.of("Show all PODs", "What is BAU?", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Search Queries ──────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraSearch(String query, NlpCatalogResponse catalog) {
+        for (Pattern p : JIRA_SEARCH_PATTERNS) {
+            Matcher m = p.matcher(query);
+            if (m.find()) {
+                // Delegate to LLM — Jira searches need the search_jira_issues tool
+                return null; // Let LLM handle with tool calling
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Contributor Queries ──────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraContributors(String query) {
+        if (jiraToolExecutor == null) return null;
+
+        for (Pattern p : JIRA_CONTRIBUTOR_PATTERNS) {
+            Matcher m = p.matcher(query);
+            if (m.find()) {
+                String issueKey = m.group(1).toUpperCase();
+                try {
+                    Map<String, Object> result = jiraToolExecutor.getIssueContributors(issueKey);
+                    if (result != null) {
+                        String summary = jiraToolExecutor.summarizeContributors(result);
+                        return new NlpResult("DATA_QUERY", 0.92, summary,
+                                null, null, result, "/reports/jira-analytics",
+                                List.of("Show full details for " + issueKey,
+                                        "Show worklog page",
+                                        "Show Jira analytics", null), null);
+                    }
+                } catch (Exception e) {
+                    return new NlpResult("DATA_QUERY", 0.80,
+                            "Could not find contributor data for " + issueKey + ". The issue may not be synced yet.",
+                            null, null, null, null,
+                            List.of("Look up " + issueKey, "Check Jira sync status", null), null);
+                }
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Bug Summary ─────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraBugSummary(String query) {
+        for (Pattern p : JIRA_BUG_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Jira Analytics — Bug Summary");
+                data.put("route", "/reports/jira-analytics");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening Jira Analytics where you can see the bug summary including open bugs by priority, creation trend, and resolution time.",
+                        "/reports/jira-analytics", null, data, null,
+                        List.of("Show Jira sprint health", "Show support queue", "Show project health", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Sprint Health ───────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraSprintHealth(String query) {
+        for (Pattern p : JIRA_SPRINT_HEALTH_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Sprint Planner — Health Check");
+                data.put("route", "/sprint-planner");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Sprint Planning Recommender where you can see sprint health metrics including completion rate, velocity, blocked stories, and burndown.",
+                        "/sprint-planner", null, data, null,
+                        List.of("Show Jira analytics", "Show bug summary", "Show sprint calendar", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Workload ────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraWorkload(String query) {
+        for (Pattern p : JIRA_WORKLOAD_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Jira Analytics — Workload");
+                data.put("route", "/reports/jira-analytics");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening Jira Analytics where you can see workload distribution — who has the most tickets, in-progress items, and story points assigned.",
+                        "/reports/jira-analytics", null, data, null,
+                        List.of("Show Jira bug summary", "Show sprint health", "Show resource allocation", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Jira Analytics ───────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryJiraAnalytics(String query) {
+        for (Pattern p : JIRA_ANALYTICS_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Jira Analytics");
+                data.put("route", "/reports/jira-analytics");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Jira Analytics dashboard where you can see issue trends, created vs resolved, cycle time, and more.",
+                        "/reports/jira-analytics", null, data, null,
+                        List.of("Show bug summary", "Show workload", "Show sprint health", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── DORA Metrics ─────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryDoraMetrics(String query) {
+        for (Pattern p : DORA_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "DORA Metrics");
+                data.put("route", "/reports/dora-metrics");
+                return new NlpResult("NAVIGATE", 0.90,
+                        "Opening the DORA Metrics dashboard — Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Recovery.",
+                        "/reports/dora-metrics", null, data, null,
+                        List.of("What are DORA metrics?", "Show Jira analytics", "Show project health", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Utilization ──────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryUtilization(String query) {
+        for (Pattern p : UTILIZATION_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Utilization Heatmap");
+                data.put("route", "/reports/utilization");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Utilization Heatmap — see who is over or under-utilized by pod, role, and month.",
+                        "/reports/utilization", null, data, null,
+                        List.of("Show capacity gap", "Show hiring forecast", "Show resource allocation", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Capacity vs Demand ───────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryCapacityDemand(String query) {
+        for (Pattern p : CAPACITY_DEMAND_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Capacity vs Demand");
+                data.put("route", "/reports/capacity-demand");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Capacity vs Demand report — see supply, demand, and gaps across pods and months.",
+                        "/reports/capacity-demand", null, data, null,
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Hiring Forecast ──────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryHiringForecast(String query) {
+        for (Pattern p : HIRING_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Hiring Forecast");
+                data.put("route", "/reports/hiring-forecast");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Hiring Forecast — see upcoming capacity shortfalls by role and location, with recommendations on when and what to hire.",
+                        "/reports/hiring-forecast", null, data, null,
+                        List.of("Show capacity gap", "Show utilization heatmap", "Do we need to hire?", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Concurrency Risk ─────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryConcurrencyRisk(String query) {
+        for (Pattern p : CONCURRENCY_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Concurrency Risk");
+                data.put("route", "/reports/concurrency");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Concurrency Risk report — see which pods or resources are double-booked or have conflicting allocations.",
+                        "/reports/concurrency", null, data, null,
+                        List.of("Show resource allocation", "Show capacity demand", "Show project dependencies", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Project Gantt ────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryGantt(String query) {
+        for (Pattern p : GANTT_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Project Gantt Chart");
+                data.put("route", "/reports/gantt");
+                return new NlpResult("NAVIGATE", 0.90,
+                        "Opening the Project Gantt Chart — a visual timeline of all projects showing start dates, durations, and overlaps.",
+                        "/reports/gantt", null, data, null,
+                        List.of("Show project health", "Show cross-pod dependencies", "Show deadline gap", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Owner Demand ─────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryOwnerDemand(String query) {
+        for (Pattern p : OWNER_DEMAND_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Owner Demand");
+                data.put("route", "/reports/owner-demand");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Owner Demand report — see how project demand is distributed across project owners.",
+                        "/reports/owner-demand", null, data, null,
+                        List.of("Show project health", "List all projects", "Show capacity demand", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Slack Buffer ─────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult trySlackBuffer(String query) {
+        for (Pattern p : SLACK_BUFFER_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Slack / Buffer Analysis");
+                data.put("route", "/reports/slack-buffer");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Slack/Buffer Analysis — see how much breathing room each pod has between capacity and demand.",
+                        "/reports/slack-buffer", null, data, null,
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show pod capacity", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── CapEx / OpEx ─────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryCapexOpex(String query) {
+        for (Pattern p : CAPEX_OPEX_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "CapEx / OpEx Report");
+                data.put("route", "/jira-capex");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the CapEx/OpEx report — see how Jira work hours are classified as capital vs operating expenditure.",
+                        "/jira-capex", null, data, null,
+                        List.of("What is CapEx?", "Show budget report", "Show Jira worklog", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Pod Capacity ─────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryPodCapacity(String query) {
+        for (Pattern p : POD_CAPACITY_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Pod Capacity");
+                data.put("route", "/reports/pod-capacity");
+                return new NlpResult("NAVIGATE", 0.88,
+                        "Opening the Pod Capacity report — see which pods are over or under capacity.",
+                        "/reports/pod-capacity", null, data, null,
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast", null), null);
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Dashboard / Overview ─────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    private NlpResult tryDashboardOverview(String query) {
+        for (Pattern p : DASHBOARD_PATTERNS) {
+            if (p.matcher(query).find()) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("_type", "NAVIGATE_ACTION");
+                data.put("page", "Dashboard");
+                data.put("route", "/");
+                return new NlpResult("NAVIGATE", 0.85,
+                        "Opening the Dashboard — your central hub for portfolio overview, key metrics, and quick navigation.",
+                        "/", null, data, null,
+                        List.of("Show project health", "Show capacity gap", "Any risks?", null), null);
             }
         }
         return null;
@@ -2466,7 +3266,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.85,
                         "Opening the Temporary Overrides page — you can view and manage temp allocations there.",
                         "/overrides", null, data, null,
-                        List.of("Show resources", "Show availability grid"));
+                        List.of("Show resources", "Show availability grid", null), null);
             }
         }
         return null;
@@ -2492,7 +3292,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("NAVIGATE", 0.85,
                                 "Opening the Budget report — you can see cost breakdown for " + proj.name() + " and other projects there.",
                                 "/reports/budget", null, data, null,
-                                List.of("Show " + proj.name() + " details", "Show all projects"));
+                                List.of("Show " + proj.name() + " details", "Show all projects"), null);
                     }
                 }
 
@@ -2503,7 +3303,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.85,
                         "Opening the Budget & Cost report — it shows project costs by pod, role, and month.",
                         "/reports/budget", null, data, null,
-                        List.of("Show project health", "Export budget as CSV"));
+                        List.of("Show project health", "Export budget as CSV", null), null);
             }
         }
         return null;
@@ -2529,12 +3329,12 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                     if (detectedRole != null) {
                         String role = detectedRole;
-                        filtered = filtered.filter(cr -> cr.role().equals(role));
+                        filtered = filtered.filter(cr -> AliasResolver.matchesField(cr.role(), role));
                         filterDesc += formatRole(detectedRole);
                     }
                     if (detectedLocation != null) {
                         String loc = detectedLocation.toUpperCase();
-                        filtered = filtered.filter(cr -> cr.location().equalsIgnoreCase(loc));
+                        filtered = filtered.filter(cr -> AliasResolver.matchesField(cr.location(), loc));
                         filterDesc += (filterDesc.isEmpty() ? "" : " in ") + detectedLocation;
                     }
 
@@ -2554,7 +3354,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                     return new NlpResult("DATA_QUERY", 0.88, summary,
                             null, null, data, "/settings/ref-data",
-                            List.of("Show all cost rates", "Show resource ROI"));
+                            List.of("Show all cost rates", "Show resource ROI", null), null);
                 }
 
                 // General: "show all cost rates" / "rate card"
@@ -2567,7 +3367,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "Here are all configured billing rates:",
                         null, null, data, "/settings/ref-data",
-                        List.of("Show resource ROI", "Average billing of developers"));
+                        List.of("Show resource ROI", "Average billing of developers", null), null);
             }
         }
         return null;
@@ -2588,7 +3388,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "Opening the Jira CapEx/OpEx report.",
                             "/jira-capex", null,
                             Map.of("_type", "NAVIGATE_ACTION", "action", "View CapEx/OpEx report"),
-                            null, List.of("Show budget report", "Show Jira POD dashboard"));
+                            null, List.of("Show budget report", "Show Jira POD dashboard"), null);
                 }
 
                 // "worklog summary", "time tracking"
@@ -2597,7 +3397,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "Opening the Jira Worklog report.",
                             "/jira-worklog", null,
                             Map.of("_type", "NAVIGATE_ACTION", "action", "View worklog and time tracking"),
-                            null, List.of("Show Jira actuals", "Show Jira POD dashboard"));
+                            null, List.of("Show Jira actuals", "Show Jira POD dashboard"), null);
                 }
 
                 // "jira actuals"
@@ -2606,7 +3406,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "Opening Jira Actuals — logged hours vs planned.",
                             "/jira-actuals", null,
                             Map.of("_type", "NAVIGATE_ACTION", "action", "View Jira actuals"),
-                            null, List.of("Show worklog", "Show budget report"));
+                            null, List.of("Show worklog", "Show budget report"), null);
                 }
 
                 // "jira dashboard for API pod"
@@ -2619,7 +3419,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("NAVIGATE", 0.85, msg,
                             "/jira-pods", null,
                             Map.of("_type", "NAVIGATE_ACTION", "action", "View Jira POD dashboard"),
-                            null, List.of("Show sprint planner", "Show support queue"));
+                            null, List.of("Show sprint planner", "Show support queue"), null);
                 }
             }
         }
@@ -2639,7 +3439,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         "Opening the " + label + " — you can model changes and compare outcomes without affecting live data.",
                         route, null,
                         Map.of("_type", "NAVIGATE_ACTION", "action", "Open " + label),
-                        null, List.of("What is a scenario?", "Show capacity gap"));
+                        null, List.of("What is a scenario?", "Show capacity gap"), null);
             }
         }
         return null;
@@ -2655,7 +3455,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         "Opening the Audit Log — it tracks all changes made across the system.",
                         "/settings/audit-log", null,
                         Map.of("_type", "NAVIGATE_ACTION", "action", "View audit trail"),
-                        null, List.of("Show dashboard", "Any red flags?"));
+                        null, List.of("Show dashboard", "Any red flags?"), null);
             }
         }
         return null;
@@ -2683,10 +3483,10 @@ public class RuleBasedStrategy implements NlpStrategy {
         String detectedRole = detectRole(lower);
 
         var filtered = catalog.resourceDetails().stream()
-                .filter(r -> r.location().equalsIgnoreCase(detectedLocation));
+                .filter(r -> AliasResolver.matchesField(r.location(), detectedLocation));
         if (detectedRole != null) {
             String role = detectedRole;
-            filtered = filtered.filter(r -> r.role().equals(role));
+            filtered = filtered.filter(r -> AliasResolver.matchesField(r.role(), role));
         }
 
         List<NlpCatalogResponse.ResourceInfo> matches = filtered.toList();
@@ -2694,7 +3494,7 @@ public class RuleBasedStrategy implements NlpStrategy {
             return new NlpResult("DATA_QUERY", 0.85,
                     "No resources found in " + detectedLocation + ".",
                     null, null, Map.of("_type", "LIST", "listType", "RESOURCES", "Count", "0"),
-                    "/resources", List.of("Show all resources"));
+                    "/resources", List.of("Show all resources"), null);
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -2743,7 +3543,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         return new NlpResult("DATA_QUERY", 0.90,
                 "The " + filterDesc + " has " + matches.size() + " member(s): " + roleSummary + ".",
                 null, null, data, "/resources",
-                List.of("Show " + detectedLocation + " billing rates", "Show all resources", "Show POD assignments"));
+                List.of("Show " + detectedLocation + " billing rates", "Show all resources", "Show POD assignments"), null);
     }
 
     private NlpResult tryResourceAnalytics(String query, NlpCatalogResponse catalog) {
@@ -2764,12 +3564,12 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 if (detectedRole != null) {
                     String roleUpper = detectedRole;
-                    filtered = filtered.filter(r -> r.role().equals(roleUpper));
+                    filtered = filtered.filter(r -> AliasResolver.matchesField(r.role(), roleUpper));
                     filterDesc += formatRole(detectedRole);
                 }
                 if (detectedLocation != null) {
                     String loc = detectedLocation;
-                    filtered = filtered.filter(r -> r.location().equalsIgnoreCase(loc));
+                    filtered = filtered.filter(r -> AliasResolver.matchesField(r.location(), loc));
                     filterDesc += (filterDesc.isEmpty() ? "" : " in ") + detectedLocation;
                 }
 
@@ -2777,7 +3577,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (matches.isEmpty()) {
                     return new NlpResult("DATA_QUERY", 0.80,
                             "No resources found matching " + filterDesc + ".",
-                            null, null, Map.of(), "/resources", List.of("Show all resources"));
+                            null, null, Map.of(), "/resources", List.of("Show all resources"), null);
                 }
 
                 // Parse billing rates and compute average
@@ -2814,7 +3614,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         count > 0 ? "Average billing rate for " + filterDesc + " is " + String.format("$%.2f/hr", sum / count) + " across " + matches.size() + " resource(s)."
                                   : "Found " + matches.size() + " resource(s) matching " + filterDesc + " but no billing rates available.",
                         null, null, data, "/resources",
-                        List.of("Show all resources", "Show resource ROI"));
+                        List.of("Show all resources", "Show resource ROI"), null);
             }
         }
 
@@ -2827,12 +3627,12 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 if (detectedRole != null) {
                     String roleUpper = detectedRole;
-                    filtered = filtered.filter(r -> r.role().equals(roleUpper));
+                    filtered = filtered.filter(r -> AliasResolver.matchesField(r.role(), roleUpper));
                     filterDesc += formatRole(detectedRole);
                 }
                 if (detectedLocation != null) {
                     String loc = detectedLocation;
-                    filtered = filtered.filter(r -> r.location().equalsIgnoreCase(loc));
+                    filtered = filtered.filter(r -> AliasResolver.matchesField(r.location(), loc));
                     filterDesc += (filterDesc.isEmpty() ? "" : " in ") + detectedLocation;
                 }
 
@@ -2871,7 +3671,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.88,
                         matches.size() + " " + filterDesc + " resource(s) with total FTE of " + String.format("%.1f", totalFte) + ".",
                         null, null, data, "/resources",
-                        List.of("Show all resources", "Show availability grid"));
+                        List.of("Show all resources", "Show availability grid"), null);
             }
         }
 
@@ -2886,14 +3686,17 @@ public class RuleBasedStrategy implements NlpStrategy {
 
             if (detectedRole != null) {
                 String roleUpper = detectedRole;
-                filtered = filtered.filter(r -> r.role().equals(roleUpper));
+                filtered = filtered.filter(r -> AliasResolver.matchesField(r.role(), roleUpper));
                 filters.add(formatRole(detectedRole) + "(s)");
             } else {
                 filters.add("resource(s)");
             }
             if (detectedLocation != null) {
                 String loc = detectedLocation;
-                filtered = filtered.filter(r -> r.location().equalsIgnoreCase(loc));
+                filtered = filtered.filter(r -> r.location() != null
+                        && (r.location().equalsIgnoreCase(loc)
+                            || r.location().toLowerCase().contains(loc.toLowerCase())
+                            || loc.toLowerCase().contains(r.location().toLowerCase())));
                 filters.add("in " + detectedLocation);
             }
 
@@ -2917,36 +3720,26 @@ public class RuleBasedStrategy implements NlpStrategy {
             return new NlpResult("DATA_QUERY", 0.88,
                     "There are " + matches.size() + " " + filterDesc + ".",
                     null, null, data, "/resources",
-                    List.of("Show all resources", "Show resource allocation"));
+                    List.of("Show all resources", "Show resource allocation"), null);
         }
 
         return null;
     }
 
+    /**
+     * Detect role from query text using centralized AliasResolver.
+     * Returns canonical DB enum value (DEVELOPER, QA, BSA, TECH_LEAD) or null.
+     */
     private String detectRole(String lower) {
-        if (lower.contains("tech lead") || lower.contains("tech_lead") || lower.contains("techlead")) return "TECH_LEAD";
-        if (lower.contains("developer") || lower.contains("dev ") || lower.contains("devs ") || lower.endsWith("dev") || lower.endsWith("devs")) return "DEVELOPER";
-        if (lower.contains("qa") || lower.contains("tester") || lower.contains("quality")) return "QA";
-        if (lower.contains("bsa") || lower.contains("analyst") || lower.contains("business system")) return "BSA";
-        return null;
+        return aliasResolver.extractRole(lower);
     }
 
+    /**
+     * Detect location from query text using centralized AliasResolver.
+     * Returns canonical DB enum value (US, INDIA) or null.
+     */
     private String detectLocation(String lower, NlpCatalogResponse catalog) {
-        // Check known locations from catalog
-        Set<String> locations = catalog.resourceDetails().stream()
-                .map(NlpCatalogResponse.ResourceInfo::location)
-                .collect(Collectors.toSet());
-        for (String loc : locations) {
-            if (lower.contains(loc.toLowerCase())) return loc;
-        }
-        // Common location aliases
-        if (lower.contains("india")) return locations.stream().filter(l -> l.toLowerCase().contains("india")).findFirst().orElse("India");
-        if (lower.contains("us ") || lower.contains("usa") || lower.contains("united states") || lower.contains("houston") || lower.contains("domestic")) {
-            return locations.stream().filter(l -> l.toLowerCase().matches(".*(us|usa|houston|domestic|america).*")).findFirst().orElse(null);
-        }
-        if (lower.contains("offshore")) return locations.stream().filter(l -> l.toLowerCase().contains("offshore")).findFirst().orElse("Offshore");
-        if (lower.contains("onshore")) return locations.stream().filter(l -> l.toLowerCase().contains("onshore")).findFirst().orElse("Onshore");
-        return null;
+        return aliasResolver.extractLocation(lower);
     }
 
     private NlpResult buildResourceResult(NlpCatalogResponse.ResourceInfo r) {
@@ -2962,7 +3755,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         return new NlpResult("DATA_QUERY", 0.90,
                 r.name() + " is a " + formatRole(r.role()) + " in the " + r.podName() + " pod, based in " + r.location() + ".",
                 null, null, data, "/resources?highlight=" + r.id(),
-                List.of("Go to Resources page", "Show " + r.podName() + " pod details"));
+                List.of("Go to Resources page", "Show " + r.podName() + " pod details"), null);
     }
 
     private NlpResult buildProjectResult(NlpCatalogResponse.ProjectInfo p) {
@@ -2981,7 +3774,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 p.name() + " is a " + p.priority() + " project owned by " + p.owner()
                         + ", currently " + formatStatus(p.status()) + ". Assigned to: " + p.assignedPods() + ".",
                 null, null, data, "/projects/" + p.id(),
-                List.of("Go to Projects page", "Show project health report"));
+                List.of("Go to Projects page", "Show project health report"), null);
     }
 
     private NlpResult buildPodResult(NlpCatalogResponse.PodInfo p) {
@@ -3053,7 +3846,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         return new NlpResult("DATA_QUERY", 0.90,
                 p.name() + " pod has " + p.memberCount() + " member(s) and " + p.projectCount() + " project(s). Avg BAU: " + p.avgBauPct() + ".",
                 null, null, data, "/pods/" + p.id(),
-                List.of("Go to PODs page", "Show " + p.name() + " capacity"));
+                List.of("Go to PODs page", "Show " + p.name() + " capacity"), null);
     }
 
     private NlpResult buildSprintResult(NlpCatalogResponse.SprintInfo s) {
@@ -3068,7 +3861,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         return new NlpResult("DATA_QUERY", 0.90,
                 s.name() + " (" + s.status() + "): " + s.startDate() + " to " + s.endDate() + ".",
                 null, null, data, "/sprint-calendar",
-                List.of("Go to Sprint Calendar", "Open Sprint Planner"));
+                List.of("Go to Sprint Calendar", "Open Sprint Planner"), null);
     }
 
     private NlpResult buildReleaseResult(NlpCatalogResponse.ReleaseInfo r) {
@@ -3083,7 +3876,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         return new NlpResult("DATA_QUERY", 0.90,
                 r.name() + " (" + r.status() + "): releases " + r.releaseDate() + ", code freeze " + r.codeFreezeDate() + ".",
                 null, null, data, "/release-calendar",
-                List.of("Go to Release Calendar", "Show upcoming releases"));
+                List.of("Go to Release Calendar", "Show upcoming releases"), null);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -3092,9 +3885,11 @@ public class RuleBasedStrategy implements NlpStrategy {
     private NlpCatalogResponse.ResourceInfo findResourceByName(String fragment, List<NlpCatalogResponse.ResourceInfo> details) {
         if (details == null) return null;
         String lower = fragment.toLowerCase().trim();
+        // 1. Exact match
         for (NlpCatalogResponse.ResourceInfo r : details) {
             if (r.name().equalsIgnoreCase(lower)) return r;
         }
+        // 2. Substring/contains match
         NlpCatalogResponse.ResourceInfo best = null; int bestScore = 0;
         for (NlpCatalogResponse.ResourceInfo r : details) {
             String rLower = r.name().toLowerCase();
@@ -3104,12 +3899,31 @@ public class RuleBasedStrategy implements NlpStrategy {
             }
         }
         if (best != null && lower.length() >= 3) return best;
-        // Fuzzy fallback: Levenshtein-based matching for typos
+        // 3. Fuzzy fallback: Levenshtein-based matching for typos
         if (lower.length() >= 3 && preprocessor != null) {
             List<String> names = details.stream().map(NlpCatalogResponse.ResourceInfo::name).toList();
             String fuzzyMatch = preprocessor.fuzzyMatchEntity(lower, names);
             if (fuzzyMatch != null) {
                 return details.stream().filter(r -> r.name().equals(fuzzyMatch)).findFirst().orElse(null);
+            }
+        }
+        // 4. Vector semantic search fallback — catches nicknames, misspellings, alternate names
+        if (lower.length() >= 2 && vectorSearchService != null) {
+            try {
+                var vectorResults = vectorSearchService.searchByTypes(fragment, List.of("RESOURCE"), 3);
+                for (var vr : vectorResults) {
+                    if (vr.similarity() >= VECTOR_ENTITY_THRESHOLD && vr.entityName() != null) {
+                        // Match vector result back to a catalog entry
+                        for (NlpCatalogResponse.ResourceInfo r : details) {
+                            if (r.name().equalsIgnoreCase(vr.entityName())
+                                    || (vr.entityId() != null && vr.entityId().equals(r.id()))) {
+                                return r;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Vector search is non-critical — fall through silently
             }
         }
         return null;
@@ -3119,9 +3933,11 @@ public class RuleBasedStrategy implements NlpStrategy {
         if (details == null) return null;
         String lower = fragment.toLowerCase().trim().replaceAll("\\bproject\\b", "").trim();
         if (lower.isEmpty()) return null;
+        // 1. Exact match
         for (NlpCatalogResponse.ProjectInfo p : details) {
             if (p.name().equalsIgnoreCase(lower)) return p;
         }
+        // 2. Substring/contains match
         NlpCatalogResponse.ProjectInfo best = null; int bestScore = 0;
         for (NlpCatalogResponse.ProjectInfo p : details) {
             String pLower = p.name().toLowerCase();
@@ -3131,12 +3947,30 @@ public class RuleBasedStrategy implements NlpStrategy {
             }
         }
         if (best != null && lower.length() >= 3) return best;
-        // Fuzzy fallback: Levenshtein-based matching for typos
+        // 3. Fuzzy fallback: Levenshtein-based matching for typos
         if (lower.length() >= 3 && preprocessor != null) {
             List<String> names = details.stream().map(NlpCatalogResponse.ProjectInfo::name).toList();
             String fuzzyMatch = preprocessor.fuzzyMatchEntity(lower, names);
             if (fuzzyMatch != null) {
                 return details.stream().filter(p -> p.name().equals(fuzzyMatch)).findFirst().orElse(null);
+            }
+        }
+        // 4. Vector semantic search fallback
+        if (lower.length() >= 2 && vectorSearchService != null) {
+            try {
+                var vectorResults = vectorSearchService.searchByTypes(fragment, List.of("PROJECT"), 3);
+                for (var vr : vectorResults) {
+                    if (vr.similarity() >= VECTOR_ENTITY_THRESHOLD && vr.entityName() != null) {
+                        for (NlpCatalogResponse.ProjectInfo p : details) {
+                            if (p.name().equalsIgnoreCase(vr.entityName())
+                                    || (vr.entityId() != null && vr.entityId().equals(p.id()))) {
+                                return p;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Vector search is non-critical
             }
         }
         return null;
@@ -3146,9 +3980,11 @@ public class RuleBasedStrategy implements NlpStrategy {
         if (details == null) return null;
         String lower = fragment.toLowerCase().trim().replaceAll("\\b(?:pod|team)\\b", "").trim();
         if (lower.isEmpty()) return null;
+        // 1. Exact match
         for (NlpCatalogResponse.PodInfo p : details) {
             if (p.name().equalsIgnoreCase(lower)) return p;
         }
+        // 2. Substring/contains match
         NlpCatalogResponse.PodInfo best = null; int bestScore = 0;
         for (NlpCatalogResponse.PodInfo p : details) {
             String pLower = p.name().toLowerCase();
@@ -3158,12 +3994,30 @@ public class RuleBasedStrategy implements NlpStrategy {
             }
         }
         if (best != null && lower.length() >= 2) return best;
-        // Fuzzy fallback: Levenshtein-based matching for typos
+        // 3. Fuzzy fallback: Levenshtein-based matching for typos
         if (lower.length() >= 2 && preprocessor != null) {
             List<String> names = details.stream().map(NlpCatalogResponse.PodInfo::name).toList();
             String fuzzyMatch = preprocessor.fuzzyMatchEntity(lower, names);
             if (fuzzyMatch != null) {
                 return details.stream().filter(p -> p.name().equals(fuzzyMatch)).findFirst().orElse(null);
+            }
+        }
+        // 4. Vector semantic search fallback
+        if (lower.length() >= 2 && vectorSearchService != null) {
+            try {
+                var vectorResults = vectorSearchService.searchByTypes(fragment, List.of("POD"), 3);
+                for (var vr : vectorResults) {
+                    if (vr.similarity() >= VECTOR_ENTITY_THRESHOLD && vr.entityName() != null) {
+                        for (NlpCatalogResponse.PodInfo p : details) {
+                            if (p.name().equalsIgnoreCase(vr.entityName())
+                                    || (vr.entityId() != null && vr.entityId().equals(p.id()))) {
+                                return p;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Vector search is non-critical
             }
         }
         return null;
@@ -3228,7 +4082,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.75,
                             "Here are the details for " + s.name() + ".",
                             null, null, data, "/sprint-calendar",
-                            List.of("Show sprint allocations", "Show sprint calendar"));
+                            List.of("Show sprint allocations", "Show sprint calendar"), null);
                 }
             }
         }
@@ -3248,7 +4102,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.75,
                             "Here are the details for release " + r.name() + ".",
                             null, null, data, "/release-calendar",
-                            List.of("Show upcoming releases", "Show release calendar"));
+                            List.of("Show upcoming releases", "Show release calendar"), null);
                 }
             }
         }

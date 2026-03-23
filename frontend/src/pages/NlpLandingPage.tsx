@@ -20,8 +20,9 @@ import {
   IconX, IconNotes, IconAlertCircle, IconExternalLink, IconChevronRight,
   IconHistory, IconMoodEmpty, IconArrowUpRight, IconThumbUp, IconThumbDown,
 } from '@tabler/icons-react';
-import { useNlpQuery, useNlpCatalog, useNlpCatalogWarmup, useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse } from '../api/nlp';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../brandTokens';
+import { useNlpQuery, useNlpCatalog, useNlpCatalogWarmup, useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse, streamNlpQuery, useNlpInsights, NlpInsightCard, directToolCall } from '../api/nlp';
+import { useAuth } from '../auth/AuthContext';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY, BORDER_DEFAULT, BORDER_SUBTLE, TYPE_SCALE, SHADOW } from '../brandTokens';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ const QUICK_ACTIONS = [
   { label: 'View team calendar',           query: 'go to team calendar',                 icon: <IconCalendarStats size={16} /> },
   { label: 'Add a new resource',           query: 'add a new resource',                  icon: <IconUsers size={16} /> },
   { label: 'Lookup a resource',           query: 'who is ',                               icon: <IconUser size={16} /> },
+  { label: 'Look up a Jira ticket',     query: 'tell me about ',                          icon: <IconNotes size={16} /> },
 ];
 
 const INTENT_ICONS: Record<string, React.ReactNode> = {
@@ -100,18 +102,102 @@ const ENTITY_SIGNATURES: Record<string, { icon: React.ReactNode; color: string; 
   CAPABILITIES:        { icon: <IconHelp size={16} />,          color: 'gray',   label: 'Help' },
   PROJECT_ESTIMATES:   { icon: <IconChartBar size={16} />,      color: 'teal',   label: 'Estimates' },
   SPRINT_ALLOCATIONS:  { icon: <IconCalendarStats size={16} />, color: 'orange', label: 'Allocations' },
+  JIRA_ISSUE_PROFILE:  { icon: <IconNotes size={16} />,         color: 'blue',   label: 'Jira Issue' },
 };
 
 // Max recent queries to keep in memory
 const MAX_RECENT_QUERIES = 5;
 
+// ── Smart Greeting Generator ──────────────────────────────────────────────────
+
+function getSmartGreeting(displayName: string | null): { title: string; subtitle: string } {
+  const hour = new Date().getHours();
+  const day = new Date().getDay(); // 0=Sun, 6=Sat
+  const firstName = displayName?.split(/\s+/)[0] || null;
+  const name = firstName ? `, ${firstName}` : '';
+
+  // Day-of-week context
+  const isMonday = day === 1;
+  const isFriday = day === 5;
+  const isWeekend = day === 0 || day === 6;
+
+  // Time-of-day greetings with personality
+  if (hour >= 5 && hour < 8) {
+    // Early bird
+    const options = [
+      { title: `Early start${name}!`, subtitle: 'You\'re ahead of the game. What can I look up for you?' },
+      { title: `Good morning${name}!`, subtitle: 'Up before the sun? Let\'s make the most of it.' },
+    ];
+    return options[firstName ? firstName.length % options.length : 0];
+  }
+  if (hour >= 8 && hour < 12) {
+    // Morning
+    if (isMonday) {
+      return { title: `Happy Monday${name}!`, subtitle: 'New week, fresh start. What\'s on your radar?' };
+    }
+    if (isFriday) {
+      return { title: `Happy Friday${name}!`, subtitle: 'Almost there! Let\'s wrap up the week strong.' };
+    }
+    const options = [
+      { title: `Good morning${name}!`, subtitle: 'What would you like to explore today?' },
+      { title: `Morning${name}!`, subtitle: 'Ready to dive in. What can I help with?' },
+      { title: `Hey${name}, good morning!`, subtitle: 'What\'s on your mind today?' },
+    ];
+    return options[hour % options.length];
+  }
+  if (hour >= 12 && hour < 14) {
+    // Lunch time
+    const options = [
+      { title: `Good afternoon${name}!`, subtitle: 'Lunchtime productivity? I\'m here for it.' },
+      { title: `Hey${name}!`, subtitle: 'Afternoon check-in — what do you need?' },
+    ];
+    return options[firstName ? firstName.length % options.length : 0];
+  }
+  if (hour >= 14 && hour < 17) {
+    // Afternoon
+    if (isFriday) {
+      return { title: `Almost weekend${name}!`, subtitle: 'Last push before Friday wraps up. How can I help?' };
+    }
+    const options = [
+      { title: `Good afternoon${name}!`, subtitle: 'Let\'s keep the momentum going. What do you need?' },
+      { title: `Afternoon${name}!`, subtitle: 'Halfway through the day — what can I look into?' },
+    ];
+    return options[hour % options.length];
+  }
+  if (hour >= 17 && hour < 20) {
+    // Evening
+    const options = [
+      { title: `Still going${name}?`, subtitle: 'Working late — let me help you wrap up faster.' },
+      { title: `Good evening${name}!`, subtitle: 'Burning the evening oil? Let\'s make it count.' },
+    ];
+    return options[firstName ? firstName.length % options.length : 0];
+  }
+  if (hour >= 20 && hour < 23) {
+    // Night owl
+    const options = [
+      { title: `Night owl mode${name}!`, subtitle: 'The office is quiet, but I\'m still here. What do you need?' },
+      { title: `Burning the midnight oil${name}?`, subtitle: 'I don\'t sleep either. How can I help?' },
+    ];
+    return options[firstName ? firstName.length % options.length : 0];
+  }
+  // Late night / very early (23:00-5:00)
+  if (isWeekend) {
+    return { title: `Weekend warrior${name}!`, subtitle: 'Working through the weekend? I respect the hustle.' };
+  }
+  return { title: `Up late${name}?`, subtitle: 'No judgment — I\'m always on. What do you need?' };
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function NlpLandingPage() {
   const navigate = useNavigate();
+  const { displayLabel } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const computedColorScheme = useComputedColorScheme('light');
   const isDark = computedColorScheme === 'dark';
+
+  // Smart time-of-day greeting (memoized — only changes once per minute)
+  const greeting = useMemo(() => getSmartGreeting(displayLabel), [displayLabel]);
 
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebouncedValue(query, 300);
@@ -120,10 +206,56 @@ export default function NlpLandingPage() {
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const [focusedListIdx, setFocusedListIdx] = useState<number>(-1);
   const [inputFocused, setInputFocused] = useState(false);
+
+  // Session memory: track last few Q&A pairs for follow-up context
+  const sessionMemoryRef = useRef<Array<{ q: string; a: string; intent: string }>>([]);
+  const MAX_SESSION_MEMORY = 5;
+
+  const buildSessionContext = useCallback((): string | undefined => {
+    const mem = sessionMemoryRef.current;
+    if (mem.length === 0) return undefined;
+    const lines = mem.map(m => `User: ${m.q}\nAssistant: ${m.a}`).join('\n');
+    return `Previous conversation:\n${lines}`;
+  }, []);
   const listItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const nlpQuery = useNlpQuery();
   const { data: catalog } = useNlpCatalog();
+  const [loadingPhase, setLoadingPhase] = useState(0);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const loadingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // SSE phase → loading phase index mapping
+  const SSE_PHASE_MAP: Record<string, number> = useMemo(() => ({
+    thinking: 0, searching: 1, matched: 2, analyzing: 2, finalizing: 3,
+  }), []);
+
+  // Advance loading phase with staggered timings (fallback when not using SSE)
+  useEffect(() => {
+    if (nlpQuery.isPending && !isStreaming) {
+      setLoadingPhase(0);
+      const stepDelays = [2500, 3000, 3500, 4000];
+      let cumulative = 0;
+      const timers: ReturnType<typeof setTimeout>[] = [];
+      stepDelays.forEach((delay, idx) => {
+        cumulative += delay;
+        timers.push(setTimeout(() => setLoadingPhase(idx + 1), cumulative));
+      });
+      loadingTimersRef.current = timers;
+    } else if (!nlpQuery.isPending && !isStreaming) {
+      loadingTimersRef.current.forEach(t => clearTimeout(t));
+      loadingTimersRef.current = [];
+      setLoadingPhase(0);
+    }
+    return () => { loadingTimersRef.current.forEach(t => clearTimeout(t)); };
+  }, [nlpQuery.isPending, isStreaming]);
+
+  // Unified loading state: true when either SSE streaming or regular POST is in progress
+  const isLoading = nlpQuery.isPending || isStreaming;
+
+  // Proactive insight cards
+  const { data: insightCards } = useNlpInsights();
+
   // Pre-warm the backend catalog cache when user visits this page
   useNlpCatalogWarmup();
 
@@ -158,22 +290,72 @@ export default function NlpLandingPage() {
     });
   }, []);
 
+  const sseAbortRef = useRef<(() => void) | null>(null);
+
+  // Save a Q&A pair to session memory for follow-up context
+  const addToSessionMemory = useCallback((q: string, res: NlpQueryResponse) => {
+    const answer = res.response?.message || res.intent || 'No response';
+    sessionMemoryRef.current = [
+      ...sessionMemoryRef.current.slice(-(MAX_SESSION_MEMORY - 1)),
+      { q, a: answer, intent: res.intent },
+    ];
+  }, []);
+
   const handleSubmit = useCallback((q?: string) => {
     const text = (q ?? query).trim();
     if (!text) return;
     setShowResult(false);
     addToRecent(text);
-    nlpQuery.mutate(text, {
-      onSuccess: (res) => {
+
+    const sessionContext = buildSessionContext();
+
+    // Cancel any previous SSE stream
+    if (sseAbortRef.current) { sseAbortRef.current(); sseAbortRef.current = null; }
+
+    // Try SSE streaming first for real-time progress
+    setIsStreaming(true);
+    setLoadingPhase(0);
+
+    const abort = streamNlpQuery(text, {
+      onPhase: (phase) => {
+        const idx = SSE_PHASE_MAP[phase.phase];
+        if (idx !== undefined) setLoadingPhase(idx);
+      },
+      onResult: (res) => {
+        setIsStreaming(false);
         setResult(res);
         setShowResult(true);
-        // Auto-navigate for high-confidence navigation intents
-        if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response.route) {
+        addToSessionMemory(text, res);
+        if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
           setTimeout(() => navigate(res.response.route!), 600);
         }
       },
-    });
-  }, [query, nlpQuery, navigate, addToRecent]);
+      onError: () => {
+        // SSE failed — fall back to regular POST
+        setIsStreaming(false);
+        nlpQuery.mutate({ query: text, sessionContext }, {
+          onSuccess: (res) => {
+            setResult(res);
+            setShowResult(true);
+            addToSessionMemory(text, res);
+            if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
+              setTimeout(() => navigate(res.response.route!), 600);
+            }
+          },
+          onError: () => {
+            // Both SSE and POST failed — show a fallback error
+            setResult({
+              intent: 'ERROR',
+              confidence: 0,
+              response: { summary: 'Sorry, something went wrong. Please try again or rephrase your question.' },
+            } as any);
+            setShowResult(true);
+          },
+        });
+      },
+    }, sessionContext);
+    sseAbortRef.current = abort;
+  }, [query, nlpQuery, navigate, addToRecent, SSE_PHASE_MAP, buildSessionContext, addToSessionMemory]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSubmit();
@@ -184,8 +366,65 @@ export default function NlpLandingPage() {
     handleSubmit(q);
   };
 
+  /**
+   * Append filter query params to a route based on the original query text.
+   * Uses the query string as the primary (reliable) source of filter intent,
+   * with fallback to response data parsing.
+   */
+  const appendNlpFilters = useCallback((route: string): string => {
+    const params = new URLSearchParams();
+
+    if (route.startsWith('/projects')) {
+      // ── Primary: extract filters from the original query text ──
+      // This is deterministic and doesn't depend on response format
+      const q = query.trim();
+
+      // Priority: "P0 projects", "P1 projects", etc.
+      const pMatch = q.match(/\b(P[0-3])\b/i);
+      if (pMatch) params.set('priority', pMatch[1].toUpperCase());
+
+      // Status: "on-hold projects", "active projects", "completed projects"
+      if (/\bon[- _]?hold\b/i.test(q)) params.set('status', 'ON_HOLD');
+      else if (/\bactive\b/i.test(q) && !/\bcritical\b/i.test(q) && !pMatch) params.set('status', 'ACTIVE');
+      else if (/\bcompleted\b/i.test(q)) params.set('status', 'COMPLETED');
+      else if (/\bnot[- _]?started\b/i.test(q)) params.set('status', 'NOT_STARTED');
+      else if (/\bcancelled\b/i.test(q)) params.set('status', 'CANCELLED');
+
+      // Owner: "projects owned by John", "projects by Sarah"
+      const ownerMatch = q.match(/(?:owned\s+by|projects?\s+(?:by|for))\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+      if (ownerMatch) params.set('owner', ownerMatch[1]);
+
+      // ── Fallback: try response data if query didn't yield filters ──
+      if (params.toString() === '' && result?.response?.data) {
+        const d = result.response.data as Record<string, unknown>;
+        const items = d._structuredItems as Array<Record<string, string>> | undefined;
+        if (items && items.length > 0) {
+          // All items share same priority → priority filter
+          if (items[0].priority) {
+            const priorities = new Set(items.map(i => i.priority));
+            if (priorities.size === 1) params.set('priority', items[0].priority);
+          }
+          // All items share same owner → owner filter
+          if (items[0].Owner) {
+            const owners = new Set(items.map(i => i.Owner));
+            if (owners.size === 1) params.set('owner', items[0].Owner);
+          }
+        }
+        // Priority from response message
+        const msg = result.response.message ?? '';
+        if (!params.has('priority')) {
+          const mp = msg.match(/\b(P[0-3])\b/);
+          if (mp) params.set('priority', mp[1]);
+        }
+      }
+    }
+
+    const qs = params.toString();
+    return qs ? `${route}${route.includes('?') ? '&' : '?'}${qs}` : route;
+  }, [query, result]);
+
   const handleNavigate = (route: string) => {
-    navigate(route, { state: { fromNlp: true } });
+    navigate(appendNlpFilters(route), { state: { fromNlp: true } });
   };
 
   const handleNavigateWithToast = useCallback((route: string, entityName?: string) => {
@@ -198,8 +437,8 @@ export default function NlpLandingPage() {
         withCloseButton: false,
       });
     }
-    navigate(route, { state: { fromNlp: true } });
-  }, [navigate]);
+    navigate(appendNlpFilters(route), { state: { fromNlp: true } });
+  }, [navigate, appendNlpFilters]);
 
   const handleFormPrefill = (route: string, formData: Record<string, unknown>) => {
     navigate(route, { state: { prefill: formData, fromNlp: true } });
@@ -207,26 +446,156 @@ export default function NlpLandingPage() {
 
   return (
     <Container size="md" py="xl">
-      {/* ── Hero section ── */}
-      <Stack align="center" gap="xs" mb="xl">
-        <Group gap="xs">
-          <ThemeIcon
-            size={48}
-            radius="xl"
-            variant="gradient"
-            gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+      {/* ── Hero section with floating orbs ── */}
+      <div className="nlp-hero" style={{ marginBottom: 24, position: 'relative' }}>
+        {/* Floating decorative orbs */}
+        <div className="nlp-orb nlp-orb-1" />
+        <div className="nlp-orb nlp-orb-2" />
+        <div className="nlp-orb nlp-orb-3" />
+
+        <Stack align="center" gap="xs" style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{
+            position: 'relative',
+            marginBottom: 8,
+          }}>
+            <ThemeIcon
+              size={64}
+              radius="xl"
+              variant="gradient"
+              gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+              style={{
+                boxShadow: `0 0 40px ${AQUA}30, 0 0 80px ${AQUA}10`,
+                animation: 'float 4s ease-in-out infinite',
+              }}
+            >
+              <IconBrain size={34} />
+            </ThemeIcon>
+            {/* Animated ring around the icon */}
+            <div style={{
+              position: 'absolute',
+              inset: -6,
+              borderRadius: '50%',
+              border: `2px solid ${AQUA}30`,
+              animation: 'pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }} />
+          </div>
+          <Title
+            order={2}
+            ta="center"
+            style={{
+              fontFamily: FONT_FAMILY,
+              fontSize: 32,
+              fontWeight: 700,
+              lineHeight: 1.2,
+              color: isDark ? '#fff' : DEEP_BLUE,
+              letterSpacing: '-0.02em',
+            }}
           >
-            <IconBrain size={28} />
-          </ThemeIcon>
-        </Group>
-        <Title order={2} ta="center" style={{ fontFamily: FONT_FAMILY, color: isDark ? undefined : DEEP_BLUE }}>
-          What would you like to do?
-        </Title>
-        <Text c="dimmed" ta="center" size="sm" maw={480}>
-          Ask a question, navigate to a page, or create something new.
-          Try natural language like "show me pods that are over capacity" or "create a new project called Alpha".
-        </Text>
-      </Stack>
+            {greeting.title}
+          </Title>
+          <Text c="dimmed" ta="center" size="md" maw={480} style={{ lineHeight: 1.5 }}>
+            {greeting.subtitle}
+          </Text>
+        </Stack>
+      </div>
+
+      {/* ── Proactive insight cards ── */}
+      {insightCards && insightCards.length > 0 && !showResult && !isLoading && (
+        <SimpleGrid cols={{ base: 1, xs: 2, sm: Math.min(insightCards.length, 4) }} spacing="sm" mt={-4} mb="md">
+          {insightCards.map((card) => {
+            const iconMap: Record<string, React.ReactNode> = {
+              'clock': <IconClock size={16} />,
+              'player-play': <IconPlayerPlay size={16} />,
+              'snowflake': <IconSnowflake size={16} />,
+              'rocket': <IconRocket size={16} />,
+              'alert-triangle': <IconAlertTriangle size={16} />,
+              'status-change': <IconStatusChange size={16} />,
+              'briefcase': <IconBriefcase size={16} />,
+              'users': <IconUsers size={16} />,
+              'chart-bar': <IconChartBar size={16} />,
+              'calendar-event': <IconCalendarEvent size={16} />,
+            };
+            const cardNum = card.title.match(/\d+/)?.[0];
+            return (
+              <Tooltip key={card.id} label={`Click to ask: "${card.query}"`} position="bottom" withArrow openDelay={400} multiline maw={280}>
+                <Paper
+                  p="sm"
+                  radius="lg"
+                  withBorder
+                  className="nlp-insight-card"
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    borderColor: isDark ? 'rgba(45, 204, 211, 0.15)' : `var(--mantine-color-${card.color}-2)`,
+                    borderLeft: `3px solid ${AQUA}`,
+                    minHeight: 96,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    background: isDark
+                      ? `linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))`
+                      : `linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.5))`,
+                    backdropFilter: 'blur(8px)',
+                  }}
+                  onClick={async () => {
+                    setQuery(card.query);
+                    if (card.toolName) {
+                      // Phase 0.2: Direct tool execution — bypass NLP pipeline
+                      setIsStreaming(true);
+                      setShowResult(false);
+                      setLoadingPhase(0);
+                      try {
+                        const res = await directToolCall(card.toolName, card.toolParams ?? {});
+                        setResult(res);
+                        setShowResult(true);
+                        setIsStreaming(false);
+                        addToSessionMemory(card.query, res);
+                      } catch {
+                        // Fall back to regular NLP query
+                        setIsStreaming(false);
+                        handleSubmit(card.query);
+                      }
+                    } else {
+                      handleSubmit(card.query);
+                    }
+                  }}
+                >
+                  <Group gap={8} wrap="nowrap" align="flex-start" style={{ position: 'relative', zIndex: 1 }}>
+                    <ThemeIcon size={28} radius="md" variant="light" color={card.color} className="nlp-insight-icon">
+                      {iconMap[card.icon] || <IconBulb size={16} />}
+                    </ThemeIcon>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <Group gap={4} wrap="nowrap" justify="space-between">
+                        <Text size="xs" fw={600} lineClamp={1} style={{ color: isDark ? undefined : DEEP_BLUE }}>
+                          {card.title}
+                        </Text>
+                        {cardNum && <Badge size="xs" variant="light" color={card.color} className="nlp-count-badge" style={{ minWidth: 'fit-content', flexShrink: 0, padding: '0 6px' }}>{cardNum}</Badge>}
+                      </Group>
+                      <Text size="xs" c="dimmed" lineClamp={2} lh={1.3} mt={2}>
+                        {card.description}
+                      </Text>
+                    </Box>
+                  </Group>
+                  <Box style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    opacity: 0,
+                    transition: 'opacity 0.25s ease',
+                    zIndex: 0,
+                    color: AQUA,
+                  }} className="nlp-insight-arrow">
+                    <IconArrowRight size={18} />
+                  </Box>
+                </Paper>
+              </Tooltip>
+            );
+          })}
+        </SimpleGrid>
+      )}
 
       {/* ── Search input ── */}
       <Paper
@@ -234,9 +603,11 @@ export default function NlpLandingPage() {
         radius="lg"
         p={4}
         mb="lg"
+        className="nlp-search-container"
         style={{
-          border: `2px solid ${isDark ? '#2C2C2C' : '#E8ECF2'}`,
-          transition: 'border-color 150ms ease',
+          border: `2px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
+          transition: 'all 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+          boxShadow: inputFocused ? `0 0 0 1px ${AQUA}, 0 0 24px ${AQUA}20` : SHADOW.md,
         }}
       >
         <Autocomplete
@@ -264,8 +635,8 @@ export default function NlpLandingPage() {
           onFocus={() => setInputFocused(true)}
           onBlur={() => setTimeout(() => setInputFocused(false), 200)}
           leftSection={
-            nlpQuery.isPending
-              ? <Loader size={18} color={AQUA} />
+            isLoading
+              ? <Loader size={18} color={AQUA} className="nlp-typing-indicator" />
               : <IconSearch size={18} style={{ opacity: 0.5 }} />
           }
           rightSection={
@@ -288,8 +659,8 @@ export default function NlpLandingPage() {
                   radius="xl"
                   size="lg"
                   onClick={() => handleSubmit()}
-                  loading={nlpQuery.isPending}
-                  style={{ backgroundColor: AQUA }}
+                  loading={isLoading}
+                  style={{ backgroundColor: AQUA, transition: 'all 150ms ease' }}
                 >
                   <IconArrowRight size={18} />
                 </ActionIcon>
@@ -311,41 +682,70 @@ export default function NlpLandingPage() {
 
       {/* ── Accessibility: screen reader announcements ── */}
       <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-        {nlpQuery.isPending && 'Processing your query…'}
+        {isLoading && 'Processing your query…'}
         {showResult && result && `Result: ${result.response.message ?? 'Query processed'}`}
         {nlpQuery.isError && 'Error processing your query.'}
       </div>
 
-      {/* ── Skeleton loading state ── */}
-      {nlpQuery.isPending && !showResult && (
-        <Paper shadow="sm" radius="lg" mb="lg" withBorder style={{ overflow: 'hidden' }}>
-          <Box
-            px="md" py="sm"
-            style={{
-              background: isDark
-                ? `linear-gradient(135deg, rgba(45,204,211,0.06) 0%, rgba(12,35,64,0.06) 100%)`
-                : `linear-gradient(135deg, ${AQUA_TINTS[10]} 0%, ${DEEP_BLUE_TINTS[10]} 100%)`,
-              borderBottom: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : '#e8ecf2'}`,
-            }}
-          >
-            <Group gap="sm">
-              <Box className="nlp-skeleton" style={{ width: 36, height: 36, borderRadius: 8 }} />
-              <Stack gap={6} style={{ flex: 1 }}>
-                <Box className="nlp-skeleton" style={{ width: '70%', height: 14, borderRadius: 4 }} />
-                <Box className="nlp-skeleton" style={{ width: '40%', height: 10, borderRadius: 4 }} />
-              </Stack>
-            </Group>
-          </Box>
-          <Box px="md" py="sm">
-            <SimpleGrid cols={3} spacing="sm" mb="sm">
-              {[1, 2, 3].map((i) => (
-                <Box key={i} className="nlp-skeleton" style={{ height: 56, borderRadius: 8 }} />
-              ))}
-            </SimpleGrid>
-            <Box className="nlp-skeleton" style={{ width: '30%', height: 14, borderRadius: 4 }} />
-          </Box>
-        </Paper>
-      )}
+      {/* ── Animated AI loading state ── */}
+      {isLoading && !showResult && (() => {
+        const LOADING_STEPS = [
+          { icon: <IconBrain size={16} />, text: 'Understanding your question…', detail: 'Parsing intent & entities' },
+          { icon: <IconSearch size={16} />, text: 'Searching across all teams…', detail: 'Scanning resources, projects & pods' },
+          { icon: <IconChartBar size={16} />, text: 'Analyzing matching data…', detail: 'Computing metrics & insights' },
+          { icon: <IconSparkles size={16} />, text: 'Synthesizing answer…', detail: 'Building your response' },
+          { icon: <IconBulb size={16} />, text: 'Almost there…', detail: 'Finalizing results' },
+        ];
+        const currentStep = Math.min(loadingPhase, LOADING_STEPS.length - 1);
+        const progressPct = Math.min(((loadingPhase + 1) / LOADING_STEPS.length) * 100, 95);
+        return (
+          <Paper shadow="sm" radius="lg" mb="lg" withBorder style={{ overflow: 'hidden' }}>
+            {/* Progress bar with shimmer */}
+            <Box style={{ height: 4, background: isDark ? 'var(--mantine-color-dark-5)' : BORDER_DEFAULT, overflow: 'hidden', position: 'relative' }}>
+              <Box className="nlp-progress-bar" style={{ height: '100%', width: `${progressPct}%`, background: `linear-gradient(90deg, ${AQUA}, ${DEEP_BLUE}, ${AQUA})`, transition: 'width 1s ease-out', boxShadow: `0 0 12px ${AQUA}60`, position: 'relative' }}>
+                <Box className="nlp-progress-shimmer" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(90deg, transparent, ${AQUA}40, transparent)`, animation: 'nlp-shimmer 2s infinite' }} />
+              </Box>
+            </Box>
+            <Box px="md" py="md">
+              {/* Active step with animated icon */}
+              <Group gap="sm" mb="md" wrap="nowrap">
+                <ThemeIcon
+                  size={36} variant="light" radius="xl"
+                  className="nlp-thinking-icon"
+                  style={{ backgroundColor: `${AQUA}15`, color: AQUA, boxShadow: `0 0 16px ${AQUA}40` }}
+                >
+                  {LOADING_STEPS[currentStep].icon}
+                </ThemeIcon>
+                <Stack gap={2} style={{ flex: 1 }}>
+                  <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+                    {LOADING_STEPS[currentStep].text}
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                    {LOADING_STEPS[currentStep].detail}
+                  </Text>
+                </Stack>
+                <Loader size={18} color={AQUA} type="dots" />
+              </Group>
+              {/* Step indicators */}
+              <Group gap={6} justify="center">
+                {LOADING_STEPS.map((step, idx) => (
+                  <Tooltip key={idx} label={step.text} position="bottom" withArrow>
+                    <Box style={{
+                      width: idx <= currentStep ? 24 : 8,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: idx <= currentStep ? AQUA : (isDark ? 'var(--mantine-color-dark-4)' : DEEP_BLUE_TINTS[20]),
+                      transition: 'all 0.5s ease',
+                      opacity: idx === currentStep ? 1 : 0.6,
+                      boxShadow: idx === currentStep ? `0 0 8px ${AQUA}40` : 'none',
+                    }} />
+                  </Tooltip>
+                ))}
+              </Group>
+            </Box>
+          </Paper>
+        );
+      })()}
 
       {/* ── Result card ── */}
       <Transition mounted={showResult && result != null} transition="slide-up" duration={250}>
@@ -391,7 +791,7 @@ export default function NlpLandingPage() {
               color="red"
               size="xs"
               onClick={() => handleSubmit()}
-              loading={nlpQuery.isPending}
+              loading={isLoading}
             >
               Retry
             </Button>
@@ -402,29 +802,44 @@ export default function NlpLandingPage() {
       {/* ── Quick actions ── */}
       {!showResult && (
         <Box>
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb="xs" style={{ letterSpacing: '0.06em' }}>
-            Quick Actions
-          </Text>
-          <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="xs">
+          <div className="section-header-modern">
+            <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+              Quick Actions
+            </Text>
+          </div>
+          <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="sm" mt="sm">
             {QUICK_ACTIONS.map((action) => (
-              <Paper
-                key={action.label}
-                p="sm"
-                radius="md"
-                withBorder
-                style={{ cursor: 'pointer', transition: 'all 150ms ease' }}
-                onClick={() => handleQuickAction(action.query)}
-                className="nlp-quick-action"
-              >
-                <Group gap="xs" wrap="nowrap">
-                  <ThemeIcon size={28} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
-                    {action.icon}
-                  </ThemeIcon>
-                  <Text size="xs" fw={500} lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
-                    {action.label}
-                  </Text>
-                </Group>
-              </Paper>
+              <Tooltip key={action.label} label={action.query.endsWith(' ') ? `Type & complete: "${action.query.trim()}…"` : `Ask: "${action.query}"`} position="bottom" withArrow openDelay={400} multiline maw={260}>
+                <Paper
+                  p="sm"
+                  radius="lg"
+                  withBorder
+                  className="quick-action-btn"
+                  style={{
+                    cursor: 'pointer',
+                    background: isDark
+                      ? 'linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.6))',
+                    borderColor: isDark ? 'rgba(45, 204, 211, 0.1)' : 'rgba(12, 35, 64, 0.08)',
+                  }}
+                  onClick={() => handleQuickAction(action.query)}
+                >
+                  <Group gap="xs" wrap="nowrap">
+                    <ThemeIcon
+                      size={32}
+                      variant="gradient"
+                      gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+                      radius="lg"
+                      style={{ boxShadow: `0 2px 8px ${AQUA}20` }}
+                    >
+                      {action.icon}
+                    </ThemeIcon>
+                    <Text size="xs" fw={600} lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
+                      {action.label}
+                    </Text>
+                  </Group>
+                </Paper>
+              </Tooltip>
             ))}
           </SimpleGrid>
         </Box>
@@ -441,24 +856,25 @@ export default function NlpLandingPage() {
           </Text>
           <Group gap="xs">
             {recentQueries.map((q) => (
-              <Badge
-                key={q}
-                variant="light"
-                size="lg"
-                style={{
-                  cursor: 'pointer',
-                  textTransform: 'none',
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : DEEP_BLUE_TINTS[10],
-                  color: isDark ? undefined : DEEP_BLUE,
-                  fontFamily: FONT_FAMILY,
-                  fontWeight: 500,
-                  transition: 'all 150ms ease',
-                }}
-                className="nlp-recent-badge"
-                onClick={() => handleQuickAction(q)}
-              >
-                {q}
-              </Badge>
+              <Tooltip key={q} label={`Re-run: "${q}"`} position="bottom" withArrow openDelay={400}>
+                <Badge
+                  variant="light"
+                  size="lg"
+                  style={{
+                    cursor: 'pointer',
+                    textTransform: 'none',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : DEEP_BLUE_TINTS[10],
+                    color: isDark ? undefined : DEEP_BLUE,
+                    fontFamily: FONT_FAMILY,
+                    fontWeight: 500,
+                    transition: 'all 150ms ease',
+                  }}
+                  className="nlp-recent-badge"
+                  onClick={() => handleQuickAction(q)}
+                >
+                  {q}
+                </Badge>
+              </Tooltip>
             ))}
           </Group>
         </Box>
@@ -472,15 +888,17 @@ export default function NlpLandingPage() {
           </Text>
           <Group gap="xs">
             {result.suggestions.map((s) => (
-              <Badge
-                key={s}
-                variant="outline"
-                size="lg"
-                style={{ cursor: 'pointer', textTransform: 'none', borderColor: AQUA, color: AQUA }}
-                onClick={() => handleQuickAction(s)}
-              >
-                {s}
-              </Badge>
+              <Tooltip key={s} label={`Ask: "${s}"`} position="bottom" withArrow openDelay={400}>
+                <Badge
+                  variant="outline"
+                  size="lg"
+                  style={{ cursor: 'pointer', textTransform: 'none', borderColor: AQUA, color: AQUA, transition: 'all 150ms ease' }}
+                  className="nlp-suggestion-badge"
+                  onClick={() => handleQuickAction(s)}
+                >
+                  {s}
+                </Badge>
+              </Tooltip>
             ))}
           </Group>
         </Box>
@@ -488,10 +906,101 @@ export default function NlpLandingPage() {
 
       {/* ── CSS for hover ── */}
       <style>{`
+        /* Hero section glass-morphism */
+        @keyframes nlp-gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .nlp-hero-brain {
+          animation: nlp-hero-glow 3s ease-in-out infinite;
+        }
+        @keyframes nlp-hero-glow {
+          0%, 100% { box-shadow: 0 0 24px ${AQUA}20, inset 0 0 16px ${AQUA}10; }
+          50% { box-shadow: 0 0 32px ${AQUA}30, inset 0 0 20px ${AQUA}15; }
+        }
+        /* Insight card enhancements — light mode */
+        [data-mantine-color-scheme="light"] .nlp-insight-card {
+          background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%);
+        }
+        [data-mantine-color-scheme="light"] .nlp-insight-card:hover {
+          transform: translateY(-4px);
+          box-shadow: ${SHADOW.md}, 0 0 20px ${AQUA}15;
+          background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+          border-left-color: ${DEEP_BLUE} !important;
+        }
+        /* Insight card enhancements — dark mode */
+        [data-mantine-color-scheme="dark"] .nlp-insight-card {
+          background: linear-gradient(135deg, rgba(45, 204, 211, 0.06) 0%, rgba(12, 35, 64, 0.25) 100%);
+        }
+        [data-mantine-color-scheme="dark"] .nlp-insight-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 4px 20px rgba(45, 204, 211, 0.15), 0 0 24px rgba(45, 204, 211, 0.08);
+          background: linear-gradient(135deg, rgba(45, 204, 211, 0.10) 0%, rgba(12, 35, 64, 0.35) 100%);
+          border-left-color: ${AQUA} !important;
+        }
+        .nlp-insight-icon {
+          animation: nlp-icon-shimmer 2s ease-in-out infinite;
+        }
+        .nlp-insight-card:hover .nlp-insight-icon {
+          animation: nlp-icon-pulse 0.4s ease-out;
+        }
+        @keyframes nlp-icon-shimmer {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes nlp-icon-pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1); }
+        }
+        .nlp-insight-card:hover .nlp-insight-arrow {
+          opacity: 1;
+          animation: nlp-arrow-bounce 0.6s ease-out;
+        }
+        @keyframes nlp-arrow-bounce {
+          0% { transform: translateY(-50%) translateX(12px); opacity: 0; }
+          50% { transform: translateY(-50%) translateX(-2px); }
+          100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+        }
+        .nlp-count-badge {
+          animation: nlp-count-up 400ms ease-out;
+        }
+        /* Search container glow */
+        .nlp-search-container {
+          backdrop-filter: blur(8px);
+        }
+        .nlp-typing-indicator {
+          animation: nlp-typing-bounce 1s ease-in-out infinite;
+        }
+        @keyframes nlp-typing-bounce {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        /* Progress bar shimmer */
+        @keyframes nlp-shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .nlp-progress-shimmer {
+          animation: nlp-shimmer 2s infinite;
+        }
+        /* Quick action enhancements */
         .nlp-quick-action:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 12px rgba(45, 204, 211, 0.12);
+          transform: translateY(-4px);
+          box-shadow: 0 8px 24px ${AQUA}20, inset 0 0 12px ${AQUA}10;
           border-color: ${AQUA} !important;
+          background: linear-gradient(135deg, ${AQUA}08 0%, ${DEEP_BLUE}04 100%) !important;
+        }
+        .nlp-action-icon {
+          transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .nlp-quick-action:hover .nlp-action-icon {
+          transform: rotate(12deg) scale(1.1);
+        }
+        .nlp-suggestion-badge:hover {
+          background: ${AQUA_TINTS[10]} !important;
+          transform: translateY(-1px);
         }
         .nlp-info-tile {
           transition: all 150ms ease;
@@ -532,7 +1041,7 @@ export default function NlpLandingPage() {
         }
         /* Autocomplete dropdown styling */
         .mantine-Autocomplete-dropdown {
-          border: 1px solid #e8ecf2;
+          border: 1px solid ${BORDER_DEFAULT};
           border-radius: 12px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.08);
           padding: 4px;
@@ -577,13 +1086,49 @@ export default function NlpLandingPage() {
           100% { background-position: 200% 0; }
         }
         .nlp-skeleton {
-          background: linear-gradient(90deg, #e8ecf2 25%, #f0f4f8 50%, #e8ecf2 75%);
+          background: linear-gradient(90deg, ${BORDER_DEFAULT} 25%, ${BORDER_SUBTLE} 50%, ${BORDER_DEFAULT} 75%);
           background-size: 200% 100%;
           animation: nlp-skeleton-shimmer 1.5s ease-in-out infinite;
+        }
+        @keyframes nlp-thinking-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(45, 204, 211, 0.3); }
+          50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(45, 204, 211, 0); }
+        }
+        .nlp-thinking-icon {
+          animation: nlp-thinking-pulse 2s ease-in-out infinite;
+        }
+        @keyframes nlp-progress-glow {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.3); }
+        }
+        .nlp-progress-bar {
+          animation: nlp-progress-glow 2s ease-in-out infinite;
         }
         .nlp-breadcrumb-btn:hover {
           background-color: ${AQUA_TINTS[10]} !important;
           box-shadow: 0 0 0 1px ${AQUA};
+        }
+        /* Additional smooth transitions */
+        @keyframes nlp-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        /* Glow pulse for focus states */
+        @keyframes nlp-glow-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 ${AQUA}40; }
+          50% { box-shadow: 0 0 0 8px ${AQUA}0; }
+        }
+        /* Smooth gradient transitions */
+        .nlp-quick-action,
+        .nlp-insight-card {
+          background-attachment: fixed;
+        }
+        /* Hover state consistency */
+        .nlp-insight-card,
+        .nlp-quick-action,
+        .nlp-suggestion-badge,
+        .nlp-recent-badge {
+          will-change: transform, box-shadow;
         }
       `}</style>
     </Container>
@@ -621,7 +1166,7 @@ function NlpResultCard({
           background: isDark
             ? `linear-gradient(135deg, rgba(45,204,211,0.12) 0%, rgba(12,35,64,0.12) 100%)`
             : `linear-gradient(135deg, ${AQUA_TINTS[10]} 0%, ${DEEP_BLUE_TINTS[10]} 100%)`,
-          borderBottom: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : '#e8ecf2'}`,
+          borderBottom: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
         }}
       >
         <Group justify="space-between" align="flex-start">
@@ -636,7 +1181,22 @@ function NlpResultCard({
             </ThemeIcon>
             <div style={{ flex: 1 }}>
               <Text size="sm" fw={600} lh={1.4} style={{ fontFamily: FONT_FAMILY, color: isDark ? undefined : DEEP_BLUE }}>
-                {result.response.message ?? 'No response'}
+                {(() => {
+                  const msg = result.response.message ?? 'No response';
+                  const d = result.response.data;
+                  // Check if the card body will actually have meaningful content to show
+                  const meaningfulKeys = d ? Object.keys(d).filter(k =>
+                    !k.startsWith('_') && !k.startsWith('#') &&
+                    d[k] !== null && d[k] !== undefined && typeof d[k] !== 'object'
+                  ) : [];
+                  const hasNumbered = d ? Object.keys(d).some(k => /^#\d+$/.test(k)) : false;
+                  const bodyWillBeEmpty = !d || (meaningfulKeys.length === 0 && !hasNumbered);
+                  // Override misleading promises when the card body is actually empty
+                  if (bodyWillBeEmpty && /^(I can help|I'll |Let me |Sure|Here|Absolutely|Of course|No problem|Got it|Looking)/i.test(msg)) {
+                    return 'Hmm, I searched but couldn\'t find a match for that.';
+                  }
+                  return msg;
+                })()}
               </Text>
             </div>
           </Group>
@@ -794,7 +1354,7 @@ function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark: boole
       px="md"
       py={8}
       style={{
-        borderTop: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : '#e8ecf2'}`,
+        borderTop: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
         background: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.015)',
       }}
     >
@@ -912,6 +1472,56 @@ function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark: boole
   );
 }
 
+// ── Witty Empty State ─────────────────────────────────────────────────────────
+
+const WITTY_EMPTY_STATES = [
+  { emoji: '🔍', title: 'Looked everywhere — nada.', sub: 'Even checked under the couch cushions.' },
+  { emoji: '🕵️', title: 'The search party came back empty-handed.', sub: 'Sherlock would be stumped too.' },
+  { emoji: '🏜️', title: 'It\'s a desert out here.', sub: 'Not a single result in sight.' },
+  { emoji: '👻', title: 'Ghost town.', sub: 'Whatever you\'re looking for isn\'t haunting our database.' },
+  { emoji: '🧊', title: 'Cold case.', sub: 'No matches found in the system.' },
+  { emoji: '🪄', title: 'Poof — nothing appeared.', sub: 'Even magic has its limits.' },
+  { emoji: '🗺️', title: 'X marks the spot… but the treasure isn\'t here.', sub: 'Time to redraw the map.' },
+  { emoji: '🎣', title: 'Cast the line, but no bites today.', sub: 'Try different bait — rephrase your query!' },
+  { emoji: '🛸', title: 'Beam me up — there\'s nothing here.', sub: 'This search returned from another dimension… empty.' },
+  { emoji: '🧩', title: 'Missing piece.', sub: 'We couldn\'t find what fits this puzzle.' },
+];
+
+function WittyEmptyState({ message, searchTerm }: { message?: string | null; searchTerm?: string }) {
+  // Pick a deterministic-ish witty message based on the search term
+  const idx = (searchTerm ?? message ?? '').length % WITTY_EMPTY_STATES.length;
+  const wit = WITTY_EMPTY_STATES[idx];
+
+  // Try to extract a name/entity from the message for personalization
+  const entity = searchTerm
+    ?? message?.match(/(?:named|called|about|for)\s+"?([A-Z][a-zA-Z\s]+)"?/)?.[1]?.trim()
+    ?? null;
+
+  const personalTitle = entity
+    ? `No "${entity}" found anywhere.`
+    : wit.title;
+
+  return (
+    <Paper p="lg" radius="md" withBorder style={{
+      textAlign: 'center',
+      borderStyle: 'dashed',
+      borderColor: 'var(--mantine-color-gray-4)',
+      background: 'linear-gradient(135deg, rgba(45,204,211,0.02) 0%, rgba(12,35,64,0.02) 100%)',
+    }}>
+      <Text size="xl" style={{ margin: '0 auto 4px', lineHeight: 1 }}>{wit.emoji}</Text>
+      <Text size="sm" fw={700} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+        {personalTitle}
+      </Text>
+      <Text size="xs" c="dimmed" mt={2} style={{ fontStyle: 'italic' }}>
+        {wit.sub}
+      </Text>
+      <Text size="xs" c="dimmed" mt={8} style={{ fontFamily: FONT_FAMILY }}>
+        Try a different spelling, or explore using the suggestions below.
+      </Text>
+    </Paper>
+  );
+}
+
 // ── Card Body ────────────────────────────────────────────────────────────────
 
 function CardBody({
@@ -958,7 +1568,15 @@ function CardBody({
   }
 
   if (!d) {
-    return <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />;
+    // No structured data — witty empty state
+    return (
+      <Stack gap="sm">
+        <WittyEmptyState message={result.response.message} />
+        {result.response.drillDown && (
+          <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
+        )}
+      </Stack>
+    );
   }
 
   const type = String(d._type ?? '');
@@ -1132,17 +1750,7 @@ function CardBody({
 
         {/* Empty state */}
         {hasNoItems ? (
-          <Paper p="xl" radius="md" withBorder style={{ textAlign: 'center', borderStyle: 'dashed', borderColor: 'var(--mantine-color-gray-4)' }}>
-            <ThemeIcon size={48} variant="light" color="gray" radius="xl" style={{ margin: '0 auto 8px' }}>
-              <IconMoodEmpty size={28} />
-            </ThemeIcon>
-            <Text size="sm" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-              No matching items found
-            </Text>
-            <Text size="xs" c="dimmed" mt={4}>
-              Try adjusting your query or broadening your search criteria.
-            </Text>
-          </Paper>
+          <WittyEmptyState message={result.response.message} searchTerm={str(d['Search Term']) || undefined} />
         ) : (
           /* Numbered items rendered as clickable mini-cards */
           <NumberedItemList data={d} onNavigate={onNavigateWithToast} />
@@ -1298,7 +1906,7 @@ function CardBody({
   }
 
   // ── Capabilities ──
-  if (type === 'CAPABILITIES' && result.intent === 'HELP') {
+  if (type === 'CAPABILITIES') {
     return (
       <Stack gap={6}>
         {Object.entries(d)
@@ -1516,11 +2124,109 @@ function CardBody({
     );
   }
 
+  // ── Jira Issue Profile ──
+  if (type === 'JIRA_ISSUE_PROFILE') {
+    const statusCat = str(d['Status Category']);
+    const statusAccent = statusCat === 'done' ? 'green' : statusCat === 'indeterminate' ? 'blue' : 'orange';
+    const priorityAccent = str(d.Priority).toLowerCase().includes('high') ? 'red'
+      : str(d.Priority).toLowerCase().includes('medium') ? 'orange' : 'blue';
+    const hasSprint = d.Sprint != null;
+    const hasEpic = d.Epic != null;
+    const hasProject = d.Project != null;
+    const hasDueDate = d['Due Date'] != null;
+    const hasEstimate = d.Estimate != null;
+
+    return (
+      <Stack gap="sm">
+        {/* Key fields grid */}
+        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+          <InfoTile icon={<IconStatusChange size={16} />} label="Status" value={str(d.Status)} accent={statusAccent} />
+          <InfoTile icon={<IconFlag size={16} />} label="Priority" value={str(d.Priority)} accent={priorityAccent} />
+          <InfoTile icon={<IconBriefcase size={16} />} label="Type" value={str(d.Type)} accent="grape" />
+          <InfoTile icon={<IconUser size={16} />} label="Assignee" value={str(d.Assignee)} accent="blue" />
+          <InfoTile icon={<IconUser size={16} />} label="Reporter" value={str(d.Reporter)} accent="indigo" />
+          <InfoTile icon={<IconChartBar size={16} />} label="Story Points" value={str(d['Story Points'])} accent="teal" />
+          <InfoTile icon={<IconCalendarEvent size={16} />} label="Created" value={str(d.Created)} accent="gray" />
+          <InfoTile icon={<IconCheck size={16} />} label="Resolved" value={str(d.Resolved)} accent={str(d.Resolved) === 'Open' ? 'orange' : 'green'} />
+          <InfoTile icon={<IconClock size={16} />} label="Time Logged" value={str(d['Time Logged'])} accent="cyan" />
+        </SimpleGrid>
+
+        {/* Optional fields */}
+        {(hasSprint || hasEpic || hasProject) && (
+          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+            {hasSprint ? <InfoTile icon={<IconPlayerPlay size={16} />} label="Sprint" value={str(d.Sprint)} accent="orange" /> : null}
+            {hasEpic ? <InfoTile icon={<IconHexagons size={16} />} label="Epic" value={str(d.Epic)} accent="grape" /> : null}
+            {hasProject ? <InfoTile icon={<IconBriefcase size={16} />} label="Project" value={str(d.Project)} accent="teal" /> : null}
+            {hasDueDate ? <InfoTile icon={<IconCalendarEvent size={16} />} label="Due Date" value={str(d['Due Date'])} accent="red" /> : null}
+            {hasEstimate ? <InfoTile icon={<IconClock size={16} />} label="Estimate" value={str(d.Estimate)} accent="indigo" /> : null}
+          </SimpleGrid>
+        )}
+
+        {/* Labels, Fix Versions, Components */}
+        {d.Labels != null ? <BadgeListSection label="Labels" items={str(d.Labels)} color="grape" /> : null}
+        {d['Fix Versions'] != null ? <BadgeListSection label="Fix Versions" items={str(d['Fix Versions'])} color="cyan" /> : null}
+        {d.Components != null ? <BadgeListSection label="Components" items={str(d.Components)} color="teal" /> : null}
+
+        {/* Description */}
+        {d.Description != null ? (
+          <Paper p="sm" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-gray-4)` }}>
+            <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>Description</Text>
+            <Text size="sm" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'pre-wrap', lineHeight: 1.5 }} lineClamp={8}>
+              {str(d.Description)}
+            </Text>
+          </Paper>
+        ) : null}
+
+        {/* Comments */}
+        {Array.isArray(d.Comments) && (d.Comments as Array<Record<string, string>>).length > 0 && (
+          <div>
+            <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>
+              Comments ({(d.Comments as Array<Record<string, string>>).length})
+            </Text>
+            <Stack gap={6}>
+              {(d.Comments as Array<Record<string, string>>).slice(-5).map((c, idx) => (
+                <Paper key={idx} p="xs" radius="md" withBorder style={{ borderLeft: `2px solid var(--mantine-color-blue-3)` }}>
+                  <Group gap={6} mb={2}>
+                    <Text size="xs" fw={600} c="blue">{c.author}</Text>
+                    <Text size="xs" c="dimmed">{c.date}</Text>
+                  </Group>
+                  <Text size="xs" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }} lineClamp={4}>
+                    {c.body}
+                  </Text>
+                </Paper>
+              ))}
+            </Stack>
+          </div>
+        )}
+
+        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View in Jira Analytics" />
+      </Stack>
+    );
+  }
+
   // ── Generic Data / Insight fallback ──
   if (!['NAVIGATE_ACTION'].includes(type)) {
+    const summaryData = Object.entries(d)
+      .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation'].includes(k))
+      .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
+    const hasNumberedItems = Object.keys(d).some(k => /^#\d+$/.test(k));
+
+    if (summaryData.length === 0 && !hasNumberedItems) {
+      // No structured data — witty empty state
+      return (
+        <Stack gap="sm">
+          <WittyEmptyState message={result.response.message} />
+          {result.response.drillDown && (
+            <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
+          )}
+        </Stack>
+      );
+    }
+
     return (
       <Stack gap="sm">
         <SummaryRow data={d} excludeKeys={['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation']} />
+        {hasNumberedItems && <NumberedItemList data={d} onNavigate={onNavigateWithToast} />}
         <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
       </Stack>
     );

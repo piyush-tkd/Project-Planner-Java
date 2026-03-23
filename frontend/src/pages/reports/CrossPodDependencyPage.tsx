@@ -19,7 +19,9 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface ProjectPodMatrixResponse {
   planningId: number;
@@ -82,8 +84,12 @@ export default function CrossPodDependencyPage() {
   const { data: projectPodMatrix, isLoading, error } = useProjectPodMatrix();
   const { monthLabels } = useMonthLabels();
   const navigate = useNavigate();
+  const dark = useDarkMode();
   const [sortBy, setSortBy] = useState<SortBy>('podCount');
   const [selectedPods, setSelectedPods] = useState<string[]>([]);
+  const sectionBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const barTrackBg = dark ? 'rgba(255,255,255,0.1)' : '#e9ecef';
+  const headingColor = dark ? '#e0e0e0' : DEEP_BLUE;
 
   const { multiPodProjects, allPods } = useMemo(() => {
     if (!projectPodMatrix) return { multiPodProjects: [], allPods: [] };
@@ -146,14 +152,14 @@ export default function CrossPodDependencyPage() {
   }, [multiPodProjects, selectedPods]);
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading cross-POD dependencies..." />;
-  if (error) return <Text c="red">Error loading dependency data</Text>;
+  if (error) return <PageError context="loading dependency data" error={error} />;
 
   if (filteredProjects.length === 0) {
     return (
       <Container size="xl" py="xl">
         <Stack gap="lg">
           <div>
-            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
               Cross-POD Dependencies
             </Title>
             <Text c="dimmed" size="sm">
@@ -169,18 +175,20 @@ export default function CrossPodDependencyPage() {
   }
 
   return (
-    <Container size="xl" py="xl">
+    <Container size="xl" py="xl" className="page-enter stagger-children">
       <Stack gap="lg">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
-            Cross-POD Dependencies
-          </Title>
-          <Text c="dimmed" size="sm">
-            Projects that span multiple PODs — coordination risk
-          </Text>
-        </div>
+        <Group className="slide-in-left">
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
+              Cross-POD Dependencies
+            </Title>
+            <Text c="dimmed" size="sm">
+              Projects that span multiple PODs — coordination risk
+            </Text>
+          </div>
+        </Group>
 
-        <Group justify="space-between" wrap="wrap">
+        <Group justify="space-between" wrap="wrap" className="stagger-children">
           <SegmentedControl
             label="Sort by"
             value={sortBy}
@@ -234,7 +242,7 @@ export default function CrossPodDependencyPage() {
                   withBorder
                   inheritPadding
                   py="md"
-                  style={{ backgroundColor: '#f8f9fa' }}
+                  style={{ backgroundColor: sectionBg }}
                 >
                   <Group justify="space-between" mb="sm">
                     <Text fw={700} size="lg" lineClamp={2}>
@@ -275,7 +283,7 @@ export default function CrossPodDependencyPage() {
                             style={{
                               position: 'relative',
                               height: '24px',
-                              backgroundColor: '#e9ecef',
+                              backgroundColor: barTrackBg,
                               borderRadius: '4px',
                               overflow: 'hidden',
                             }}
@@ -310,7 +318,7 @@ export default function CrossPodDependencyPage() {
                   </Stack>
                 </Card.Section>
 
-                <Card.Section inheritPadding py="md" style={{ backgroundColor: '#f8f9fa' }}>
+                <Card.Section inheritPadding py="md" style={{ backgroundColor: sectionBg }}>
                   <Group justify="space-between">
                     <Group gap="xs">
                       <Text size="sm" fw={600}>

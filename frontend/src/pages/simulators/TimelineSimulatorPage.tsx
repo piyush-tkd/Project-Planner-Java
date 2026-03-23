@@ -57,8 +57,8 @@ export default function TimelineSimulatorPage() {
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading simulator..." />;
 
   return (
-    <Stack>
-      <Title order={2}>Timeline Simulator</Title>
+    <Stack className="page-enter stagger-children">
+      <Title order={2} className="slide-in-left">Timeline Simulator</Title>
 
       <Grid>
         <Grid.Col span={5}>

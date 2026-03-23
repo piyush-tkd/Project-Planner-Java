@@ -6,7 +6,7 @@ import {
 import {
   IconUsers, IconBriefcase, IconFlame, IconAlertTriangle,
   IconChartBar, IconChartAreaLine, IconUserPlus, IconCalendar,
-  IconTag, IconHexagons, IconArrowRight, IconHeadset,
+  IconTag, IconHexagons, IconArrowRight, IconHeadset, IconSparkles,
 } from '@tabler/icons-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -26,7 +26,7 @@ import ChartCard from '../components/common/ChartCard';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useJiraStatus, usePodWatchConfig, useReleaseConfig } from '../api/jira';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY, SHADOW } from '../brandTokens';
 
 const ROLE_COLORS: Record<string, string> = {
   DEVELOPER: '#3b82f6',
@@ -167,48 +167,101 @@ export default function DashboardPage() {
   if (summaryLoading) return <LoadingSpinner variant="dashboard" message="Loading dashboard..." />;
 
   return (
-    <Stack pb="xl">
-      <Title order={2}>Dashboard</Title>
+    <Stack pb="xl" style={{ position: 'relative' }}>
+      <div className="dashboard-page">
+        <Group align="center" gap="md" mb={4}>
+          <Title order={2} style={{
+            fontFamily: FONT_FAMILY,
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: dark ? '#fff' : DEEP_BLUE,
+          }}>Dashboard</Title>
+          <div style={{
+            height: 3,
+            flex: 1,
+            background: `linear-gradient(90deg, ${AQUA}, transparent)`,
+            borderRadius: 2,
+            opacity: 0.6,
+          }} />
+        </Group>
+      </div>
 
       <WidgetGrid pageKey="dashboard">
 
         {/* ── Portfolio Health ── */}
         <Widget id="portfolio-health" title="Portfolio Health">
           <Paper
-            p="lg"
-            radius="md"
-            withBorder
+            p="xl"
+            radius="lg"
+            className="health-card-modern"
             style={{
-              borderLeft: `4px solid ${healthStatus.color}`,
-              background: dark ? 'rgba(0, 0, 0, 0.15)' : AQUA_TINTS[10],
+              border: `1px solid ${healthStatus.color}30`,
+              background: dark
+                ? `linear-gradient(135deg, ${healthStatus.color}15 0%, rgba(0, 0, 0, 0.3) 50%, ${healthStatus.color}08 100%)`
+                : `linear-gradient(135deg, ${healthStatus.color}10 0%, rgba(255, 255, 255, 0.8) 50%, ${healthStatus.color}05 100%)`,
+              backdropFilter: 'blur(12px)',
             }}
           >
-            <Group align="flex-start" gap="md">
-              <ThemeIcon
-                size={56}
-                radius="100%"
-                style={{
-                  backgroundColor: healthStatus.color,
-                  flexShrink: 0,
-                }}
-              />
+            {/* Top gradient accent */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              background: `linear-gradient(90deg, ${healthStatus.color}, ${AQUA}, ${healthStatus.color})`,
+              backgroundSize: '200% 100%',
+              animation: 'gradient-shift 3s ease infinite',
+              borderRadius: '16px 16px 0 0',
+            }} />
+            <Group align="flex-start" gap="lg">
+              <div style={{ position: 'relative', width: 64, height: 64 }}>
+                <ThemeIcon
+                  size={64}
+                  radius="100%"
+                  style={{
+                    backgroundColor: healthStatus.color,
+                    boxShadow: `0 0 30px ${healthStatus.color}40, 0 0 60px ${healthStatus.color}15`,
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  inset: -8,
+                  borderRadius: '50%',
+                  border: `2px solid ${healthStatus.color}40`,
+                  animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  inset: -16,
+                  borderRadius: '50%',
+                  border: `1px solid ${healthStatus.color}20`,
+                  animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite 0.5s',
+                }} />
+              </div>
               <Stack gap="xs" style={{ flex: 1 }}>
                 <Group justify="space-between" align="center">
-                  <Text fw={700} size="md" style={{ fontFamily: FONT_FAMILY }}>
+                  <Text fw={800} size="lg" style={{ fontFamily: FONT_FAMILY, letterSpacing: '-0.01em' }}>
                     Status: {healthStatus.status}
                   </Text>
                   <Badge
-                    variant="light"
-                    color={
-                      healthStatus.status === 'RED' ? 'red'
-                        : healthStatus.status === 'AMBER' ? 'orange'
-                          : 'green'
+                    variant="gradient"
+                    gradient={
+                      healthStatus.status === 'GREEN'
+                        ? { from: '#51cf66', to: '#40c057' }
+                        : healthStatus.status === 'AMBER'
+                          ? { from: '#fd7e14', to: '#f59f00' }
+                          : { from: '#fa5252', to: '#e03131' }
                     }
+                    size="lg"
+                    style={{ boxShadow: `0 2px 8px ${healthStatus.color}30` }}
                   >
                     {healthStatus.status === 'GREEN' ? 'Healthy' : healthStatus.status === 'AMBER' ? 'Watch' : 'At Risk'}
                   </Badge>
                 </Group>
-                <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY, lineHeight: 1.5 }}>
+                <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY, lineHeight: 1.6 }}>
                   {portfolioNarrative}
                 </Text>
               </Stack>
@@ -218,6 +271,20 @@ export default function DashboardPage() {
 
         {/* ── KPI Summary ── */}
         <Widget id="kpi-cards" title="KPI Summary">
+          <div className="section-header-modern" style={{ marginBottom: 16 }}>
+            <ThemeIcon
+              size={28}
+              variant="gradient"
+              gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+              radius="lg"
+              style={{ boxShadow: `0 2px 8px ${AQUA}30` }}
+            >
+              <IconSparkles size={16} />
+            </ThemeIcon>
+            <Text size="sm" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, letterSpacing: '-0.01em' }}>
+              Key Performance Indicators
+            </Text>
+          </div>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
             <SummaryCard
               title="Total Resources"
@@ -258,30 +325,26 @@ export default function DashboardPage() {
           <Card
             withBorder
             padding="lg"
-            radius="md"
+            radius="lg"
             onClick={() => navigate('/jira-pods')}
+            className="jira-card-modern"
             style={{
               cursor: 'pointer',
               borderLeft: `4px solid ${DEEP_BLUE}`,
-              transition: 'box-shadow 0.15s ease, transform 0.1s ease',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(0,0,0,0.12)';
-              (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '';
-              (e.currentTarget as HTMLElement).style.transform = '';
+              background: dark
+                ? `linear-gradient(135deg, rgba(12, 35, 64, 0.15) 0%, rgba(45, 204, 211, 0.04) 100%)`
+                : `linear-gradient(135deg, ${DEEP_BLUE}06 0%, rgba(255, 255, 255, 0.8) 100%)`,
             }}
           >
             <Group justify="space-between" align="flex-start">
               <Group gap="sm">
                 <div
                   style={{
-                    width: 40, height: 40, borderRadius: 8,
-                    backgroundColor: DEEP_BLUE,
+                    width: 44, height: 44, borderRadius: 12,
+                    background: `linear-gradient(135deg, ${DEEP_BLUE}, ${AQUA})`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
+                    boxShadow: `0 4px 12px ${DEEP_BLUE}30`,
                   }}
                 >
                   <IconHexagons size={22} color="white" />
@@ -290,14 +353,14 @@ export default function DashboardPage() {
                   <Text size="sm" c="dimmed" fw={500} style={{ fontFamily: FONT_FAMILY }}>
                     POD Dashboard
                   </Text>
-                  <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+                  <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
                     {activePodCount} Active POD{activePodCount !== 1 ? 's' : ''}
                   </Text>
                 </div>
               </Group>
               <Group gap="xs" align="center" mt={4}>
                 {podConfig.length > 0 && (
-                  <Badge size="sm" variant="light" color="teal">
+                  <Badge size="sm" variant="gradient" gradient={{ from: 'teal', to: 'cyan' }}>
                     {podConfig.length} configured
                   </Badge>
                 )}
@@ -313,30 +376,26 @@ export default function DashboardPage() {
           <Card
             withBorder
             padding="lg"
-            radius="md"
+            radius="lg"
             onClick={() => navigate('/jira-releases')}
+            className="jira-card-modern"
             style={{
               cursor: 'pointer',
               borderLeft: `4px solid ${AQUA}`,
-              transition: 'box-shadow 0.15s ease, transform 0.1s ease',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(0,0,0,0.12)';
-              (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '';
-              (e.currentTarget as HTMLElement).style.transform = '';
+              background: dark
+                ? `linear-gradient(135deg, rgba(45, 204, 211, 0.06) 0%, rgba(0, 0, 0, 0.2) 100%)`
+                : `linear-gradient(135deg, ${AQUA}06 0%, rgba(255, 255, 255, 0.8) 100%)`,
             }}
           >
             <Group justify="space-between" align="flex-start">
               <Group gap="sm">
                 <div
                   style={{
-                    width: 40, height: 40, borderRadius: 8,
-                    backgroundColor: AQUA,
+                    width: 44, height: 44, borderRadius: 12,
+                    background: `linear-gradient(135deg, ${AQUA}, #40c9c0)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
+                    boxShadow: `0 4px 12px ${AQUA}30`,
                   }}
                 >
                   <IconTag size={22} color="white" />
@@ -369,30 +428,26 @@ export default function DashboardPage() {
             <Card
               withBorder
               padding="lg"
-              radius="md"
+              radius="lg"
               onClick={() => navigate('/jira-support')}
+              className="jira-card-modern"
               style={{
                 cursor: 'pointer',
                 borderLeft: `4px solid ${supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : supportHealth === 'green' ? '#51cf66' : '#adb5bd'}`,
-                transition: 'box-shadow 0.15s ease, transform 0.1s ease',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(0,0,0,0.12)';
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.boxShadow = '';
-                (e.currentTarget as HTMLElement).style.transform = '';
+                background: dark
+                  ? `linear-gradient(135deg, ${supportHealth === 'red' ? 'rgba(250, 82, 82, 0.06)' : supportHealth === 'orange' ? 'rgba(253, 126, 20, 0.06)' : 'rgba(81, 207, 102, 0.06)'} 0%, rgba(0, 0, 0, 0.2) 100%)`
+                  : `linear-gradient(135deg, ${supportHealth === 'red' ? '#fa525208' : supportHealth === 'orange' ? '#fd7e1408' : '#51cf6608'} 0%, rgba(255, 255, 255, 0.8) 100%)`,
               }}
             >
               <Group justify="space-between" align="flex-start">
                 <Group gap="sm">
                   <div
                     style={{
-                      width: 40, height: 40, borderRadius: 8,
-                      backgroundColor: supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#51cf66',
+                      width: 44, height: 44, borderRadius: 12,
+                      background: `linear-gradient(135deg, ${supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#51cf66'}, ${supportHealth === 'red' ? '#e03131' : supportHealth === 'orange' ? '#f08c00' : '#40c057'})`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0,
+                      boxShadow: `0 4px 12px ${supportHealth === 'red' ? '#fa525230' : supportHealth === 'orange' ? '#fd7e1430' : '#51cf6630'}`,
                     }}
                   >
                     <IconHeadset size={22} color="white" />
@@ -514,13 +569,36 @@ export default function DashboardPage() {
 
         {/* ── Quick Links ── */}
         <Widget id="quick-links" title="Quick Links">
-          <Group>
-            <Button variant="light" leftSection={<IconChartBar size={16} />} onClick={() => navigate('/reports/capacity-gap')}>Capacity Gap</Button>
-            <Button variant="light" leftSection={<IconFlame size={16} />} onClick={() => navigate('/reports/utilization')}>Utilization Heatmap</Button>
-            <Button variant="light" leftSection={<IconChartAreaLine size={16} />} onClick={() => navigate('/reports/capacity-demand')}>Capacity vs Demand</Button>
-            <Button variant="light" leftSection={<IconAlertTriangle size={16} />} onClick={() => navigate('/reports/concurrency')}>Concurrency Risk</Button>
-            <Button variant="light" leftSection={<IconUserPlus size={16} />} onClick={() => navigate('/reports/hiring-forecast')}>Hiring Forecast</Button>
-            <Button variant="light" leftSection={<IconCalendar size={16} />} onClick={() => navigate('/reports/gantt')}>Project Gantt</Button>
+          <Group wrap="wrap" gap="sm">
+            {[
+              { icon: IconChartBar, label: 'Capacity Gap', path: '/reports/capacity-gap' },
+              { icon: IconFlame, label: 'Utilization', path: '/reports/utilization' },
+              { icon: IconChartAreaLine, label: 'Capacity vs Demand', path: '/reports/capacity-demand' },
+              { icon: IconAlertTriangle, label: 'Concurrency Risk', path: '/reports/concurrency' },
+              { icon: IconUserPlus, label: 'Hiring Forecast', path: '/reports/hiring-forecast' },
+              { icon: IconCalendar, label: 'Project Gantt', path: '/reports/gantt' },
+            ].map(({ icon: Icon, label, path }) => (
+              <Button
+                key={path}
+                onClick={() => navigate(path)}
+                variant="light"
+                radius="xl"
+                size="sm"
+                leftSection={<Icon size={16} className="quick-link-icon" />}
+                className="quick-link-pill"
+                style={{
+                  fontFamily: FONT_FAMILY,
+                  fontWeight: 600,
+                  border: `1px solid ${dark ? 'rgba(45, 204, 211, 0.15)' : `${AQUA}25`}`,
+                  background: dark
+                    ? 'linear-gradient(135deg, rgba(45, 204, 211, 0.08), rgba(12, 35, 64, 0.2))'
+                    : `linear-gradient(135deg, ${AQUA}10, ${DEEP_BLUE}05)`,
+                  color: dark ? AQUA : DEEP_BLUE,
+                }}
+              >
+                {label}
+              </Button>
+            ))}
           </Group>
         </Widget>
 

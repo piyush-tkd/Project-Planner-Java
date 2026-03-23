@@ -243,9 +243,9 @@ export default function ProjectDetailPage() {
   // PodPlanForm is now defined outside the component to prevent focus loss
 
   return (
-    <Stack>
+    <Stack className="page-enter stagger-children">
       <NlpBreadcrumb />
-      <Group>
+      <Group className="detail-header">
         <Title order={2}>{project.name}</Title>
         <PriorityBadge priority={project.priority} />
         <StatusBadge status={project.status} />

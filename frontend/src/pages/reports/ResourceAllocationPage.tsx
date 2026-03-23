@@ -12,6 +12,7 @@ import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
 import { formatRole } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
 
 export default function ResourceAllocationPage() {
   const { data, isLoading, error } = useResourceAllocation();
@@ -94,13 +95,15 @@ export default function ResourceAllocationPage() {
   const hasFilters = search.trim() !== '' || podFilter !== null || roleFilter !== null;
 
   if (isLoading) return <LoadingSpinner variant="table" message="Loading resource allocation..." />;
-  if (error) return <Text c="red">Error loading resource allocation data</Text>;
+  if (error) return <PageError context="loading resource allocation data" error={error} />;
 
   return (
-    <Stack>
-      <Title order={2}>Resource Allocation</Title>
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left">
+        <Title order={2}>Resource Allocation</Title>
+      </Group>
 
-      <Group gap="sm" align="flex-end" wrap="wrap">
+      <Group gap="sm" align="flex-end" wrap="wrap" className="stagger-children">
         <TextInput
           placeholder="Search by name…"
           leftSection={<IconSearch size={15} />}

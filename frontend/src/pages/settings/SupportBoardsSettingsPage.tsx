@@ -64,8 +64,8 @@ export default function SupportBoardsSettingsPage() {
   const disabledCount = boards.filter(b => !b.enabled).length;
 
   return (
-    <Container size="xl" py="md">
-      <Group justify="space-between" align="flex-start" mb="lg">
+    <Container size="xl" py="md" className="page-enter stagger-children">
+      <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
         <div>
           <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 700 }}>
             Support Boards

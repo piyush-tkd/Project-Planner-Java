@@ -208,6 +208,35 @@ public class JiraClient {
         return all;
     }
 
+    /**
+     * Fetch all comments for a given issue (paginated).
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getComments(String issueKey) {
+        List<Map<String, Object>> all = new ArrayList<>();
+        int startAt  = 0;
+        int pageSize = 100;
+        while (true) {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(creds.getBaseUrl() + "/rest/api/3/issue/" + issueKey + "/comment")
+                    .queryParam("startAt",    startAt)
+                    .queryParam("maxResults", pageSize)
+                    .queryParam("orderBy",    "created")
+                    .toUriString();
+            Map<String, Object> resp = get(url, Map.class);
+            if (resp == null) break;
+            Object comments = resp.get("comments");
+            if (!(comments instanceof List)) break;
+            List<Map<String, Object>> batch = (List<Map<String, Object>>) comments;
+            all.addAll(batch);
+            int total = resp.get("total") instanceof Number
+                    ? ((Number) resp.get("total")).intValue() : 0;
+            startAt += batch.size();
+            if (startAt >= total || batch.isEmpty()) break;
+        }
+        return all;
+    }
+
     // ── Resources / Members ───────────────────────────────────────────
 
     /** Returns all members of a Jira project (for name matching against PP resources). */

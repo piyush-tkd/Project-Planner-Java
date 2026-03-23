@@ -1,8 +1,11 @@
 package com.portfolioplanner.service.jira;
 
 import com.portfolioplanner.domain.model.JiraProjectMapping;
+import com.portfolioplanner.domain.model.JiraSyncedIssue;
 import com.portfolioplanner.domain.model.Resource;
+import com.portfolioplanner.domain.repository.JiraIssueLabelRepository;
 import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
+import com.portfolioplanner.domain.repository.JiraSyncedIssueRepository;
 import com.portfolioplanner.domain.repository.ResourceRepository;
 import com.portfolioplanner.service.TimelineService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,8 @@ public class JiraActualsService {
     private final JiraProjectMappingRepository mappingRepo;
     private final ResourceRepository resourceRepo;
     private final TimelineService timelineService;
+    private final JiraSyncedIssueRepository issueRepo;
+    private final JiraIssueLabelRepository labelRepo;
 
     // Jira stores time in seconds; 1 FTE-day = 8 h = 28800 s
     private static final double SECONDS_PER_HOUR = 3600.0;
@@ -52,37 +57,43 @@ public class JiraActualsService {
     /**
      * Lightweight: returns only key + name for every Jira project.
      * Used by the Settings board-picker — no epic/label data needed there.
+     * Queries from synced issues in the database instead of live API.
      */
+    @Transactional(readOnly = true)
     public List<SimpleProject> getSimpleProjects() {
         if (!creds.isConfigured()) return List.of();
-        return jiraClient.getProjects().stream()
-                .map(p -> new SimpleProject(str(p, "key"), str(p, "name")))
-                .filter(sp -> sp.key() != null && !sp.key().isBlank())
+
+        // Get distinct project keys from synced issues
+        return issueRepo.findAll().stream()
+                .map(JiraSyncedIssue::getProjectKey)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .map(key -> new SimpleProject(key, key))
                 .collect(Collectors.toList());
     }
 
     /**
      * Returns all Jira projects with their epics/labels so the UI can build
      * the mapping configuration.
-     * Epics and labels are fetched in parallel (8-thread pool) so N projects
-     * take roughly 1× the latency of one project instead of N×.
+     * Epics and labels are fetched from the database in parallel (8-thread pool)
+     * so N projects take roughly 1× the latency of one project instead of N×.
      */
     @Transactional(readOnly = true)
     public List<JiraProjectInfo> getJiraProjects() {
         if (!creds.isConfigured()) return List.of();
 
-        List<Map<String, Object>> raw = jiraClient.getProjects();
-        log.info("Jira returned {} projects — fetching epics/labels in parallel", raw.size());
+        // Get distinct project keys from synced issues
+        Set<String> projectKeys = issueRepo.findAll().stream()
+                .map(JiraSyncedIssue::getProjectKey)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        log.info("Database contains {} projects — fetching epics/labels in parallel", projectKeys.size());
         long t0 = System.currentTimeMillis();
 
-        List<CompletableFuture<JiraProjectInfo>> futures = raw.stream()
-                .map(p -> {
-                    String key  = str(p, "key");
-                    String name = str(p, "name");
-                    if (key == null || key.isBlank()) return null;
-                    return CompletableFuture.supplyAsync(() -> fetchProjectInfo(key, name), POOL);
-                })
-                .filter(Objects::nonNull)
+        List<CompletableFuture<JiraProjectInfo>> futures = projectKeys.stream()
+                .map(key -> CompletableFuture.supplyAsync(() -> fetchProjectInfoFromDb(key), POOL))
                 .collect(Collectors.toList());
 
         List<JiraProjectInfo> result = futures.stream()
@@ -94,11 +105,25 @@ public class JiraActualsService {
         return result;
     }
 
-    private JiraProjectInfo fetchProjectInfo(String key, String name) {
+    private JiraProjectInfo fetchProjectInfoFromDb(String key) {
         List<EpicInfo> epics;
         try {
-            epics = jiraClient.getEpics(key).stream()
-                    .map(e -> new EpicInfo(str(e, "key"), epicName(e), epicStatus(e)))
+            // Group synced issues by epicKey/epicName where epicKey is not null
+            epics = issueRepo.findByProjectKey(key).stream()
+                    .filter(issue -> issue.getEpicKey() != null && !issue.getEpicKey().isBlank())
+                    .collect(Collectors.groupingByConcurrent(
+                            issue -> issue.getEpicKey(),
+                            Collectors.mapping(JiraSyncedIssue::getEpicName, Collectors.toList())
+                    ))
+                    .entrySet().stream()
+                    .map(entry -> {
+                        String epicKey = entry.getKey();
+                        String epicName = entry.getValue().stream()
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .orElse(epicKey);
+                        return new EpicInfo(epicKey, epicName, null);
+                    })
                     .filter(ei -> ei.name() != null && !ei.name().isBlank())
                     .collect(Collectors.toList());
             log.debug("  Project {}: {} epics", key, epics.size());
@@ -109,13 +134,13 @@ public class JiraActualsService {
 
         List<String> labels;
         try {
-            labels = jiraClient.getLabels(key);
+            labels = labelRepo.findDistinctLabelsByProjectKey(key);
         } catch (Exception e) {
             log.warn("Failed to fetch labels for project {}: {}", key, e.getMessage());
             labels = List.of();
         }
 
-        return new JiraProjectInfo(key, name, epics, labels);
+        return new JiraProjectInfo(key, key, epics, labels);
     }
 
     /**
@@ -142,7 +167,7 @@ public class JiraActualsService {
 
         for (JiraProjectMapping mapping : mappings) {
             try {
-                List<Map<String, Object>> issues = fetchIssuesForMapping(mapping);
+                List<JiraSyncedIssue> issues = fetchIssuesForMapping(mapping);
                 ActualsRow row = buildActualsRow(mapping, issues, resourceByName, monthLabels);
                 rows.add(row);
             } catch (Exception e) {
@@ -190,19 +215,18 @@ public class JiraActualsService {
 
     // ── Internals ─────────────────────────────────────────────────────
 
-    private List<Map<String, Object>> fetchIssuesForMapping(JiraProjectMapping m) {
+    private List<JiraSyncedIssue> fetchIssuesForMapping(JiraProjectMapping m) {
         return switch (m.getMatchType()) {
-            case "EPIC_NAME" -> jiraClient.getIssuesByEpicName(m.getJiraProjectKey(), m.getMatchValue());
-            case "LABEL"     -> jiraClient.getIssuesByLabel(m.getJiraProjectKey(), m.getMatchValue());
-            case "EPIC_KEY"  -> jiraClient.getIssuesByEpicLink(m.getJiraProjectKey(), m.getMatchValue());
-            default          -> jiraClient.getIssuesByEpicName(m.getJiraProjectKey(), m.getMatchValue());
+            case "EPIC_NAME" -> issueRepo.findByProjectKeyAndEpicName(m.getJiraProjectKey(), m.getMatchValue());
+            case "LABEL"     -> issueRepo.findByProjectKeyAndLabel(m.getJiraProjectKey(), m.getMatchValue());
+            case "EPIC_KEY"  -> issueRepo.findByProjectKeyAndEpicKey(m.getJiraProjectKey(), m.getMatchValue());
+            default          -> issueRepo.findByProjectKeyAndEpicName(m.getJiraProjectKey(), m.getMatchValue());
         };
     }
 
-    @SuppressWarnings("unchecked")
     private ActualsRow buildActualsRow(
             JiraProjectMapping mapping,
-            List<Map<String, Object>> issues,
+            List<JiraSyncedIssue> issues,
             Map<String, Long> resourceByName,
             Map<Integer, String> monthLabels) {
 
@@ -214,29 +238,25 @@ public class JiraActualsService {
         double totalStoryPoints = 0;
         int issueCount = 0;
 
-        for (Map<String, Object> issue : issues) {
-            Map<String, Object> fields = (Map<String, Object>) issue.get("fields");
-            if (fields == null) continue;
+        for (JiraSyncedIssue issue : issues) {
             issueCount++;
 
-            // Story points (customfield_10016 is the standard Jira SP field)
-            Object sp = fields.get("customfield_10016");
-            if (sp instanceof Number) totalStoryPoints += ((Number) sp).doubleValue();
+            // Story points from the entity
+            if (issue.getStoryPoints() != null) {
+                totalStoryPoints += issue.getStoryPoints().doubleValue();
+            }
 
             // Assignee → resource name
-            Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
-            String assigneeName = assignee != null
-                    ? nvl((String) assignee.get("displayName"), "Unassigned")
-                    : "Unassigned";
+            String assigneeName = nvl(issue.getAssigneeDisplayName(), "Unassigned");
 
-            // Time spent (seconds → hours)
-            Object timespent = fields.get("timespent");
-            double hoursLogged = timespent instanceof Number
-                    ? ((Number) timespent).doubleValue() / SECONDS_PER_HOUR : 0.0;
+            // Time spent (entity stores seconds, convert to hours)
+            double hoursLogged = issue.getTimeSpent() != null
+                    ? issue.getTimeSpent() / SECONDS_PER_HOUR : 0.0;
 
             // Determine which PP month this work falls in from issue created date
-            String createdStr = (String) fields.get("created");
-            int monthIdx = dateToMonthIndex(createdStr, monthLabels);
+            int monthIdx = dateToMonthIndex(
+                    issue.getCreatedAt() != null ? issue.getCreatedAt().toLocalDate() : null,
+                    monthLabels);
 
             if (hoursLogged > 0 && monthIdx > 0) {
                 actualsByMonth.get(monthIdx)
@@ -279,12 +299,10 @@ public class JiraActualsService {
                 null);
     }
 
-    /** Convert a Jira ISO date string to the PP month index (1-12). */
-    private int dateToMonthIndex(String isoDate, Map<Integer, String> monthLabels) {
-        if (isoDate == null || isoDate.isBlank()) return 0;
+    /** Convert a date to the PP month index (1-12). */
+    private int dateToMonthIndex(LocalDate date, Map<Integer, String> monthLabels) {
+        if (date == null) return 0;
         try {
-            // Jira format: "2024-03-15T10:30:00.000+0000"
-            LocalDate d = LocalDate.parse(isoDate.substring(0, 10), DateTimeFormatter.ISO_LOCAL_DATE);
             // Find the PP month that matches this calendar month/year
             for (Map.Entry<Integer, String> entry : monthLabels.entrySet()) {
                 // monthLabels values are like "Mar-24" — parse them
@@ -292,13 +310,13 @@ public class JiraActualsService {
                 try {
                     LocalDate labelDate = LocalDate.parse("01-" + label,
                             DateTimeFormatter.ofPattern("dd-MMM-yy"));
-                    if (labelDate.getYear() == d.getYear() && labelDate.getMonth() == d.getMonth()) {
+                    if (labelDate.getYear() == date.getYear() && labelDate.getMonth() == date.getMonth()) {
                         return entry.getKey();
                     }
                 } catch (Exception ignored) {}
             }
         } catch (Exception e) {
-            log.debug("Could not parse date: {}", isoDate);
+            log.debug("Could not match date to PP month: {}", date);
         }
         return 0;
     }
@@ -310,53 +328,7 @@ public class JiraActualsService {
         return Math.min(1.0, name.length() / 30.0);
     }
 
-    // ── Epic field helpers ────────────────────────────────────────────
-
-    /**
-     * Extracts the epic display name from either:
-     *  - Agile board /epic response: top-level "name" or "summary"
-     *  - REST API v3 search: fields.summary
-     * The Agile endpoint's "name" is the short epic colour name; "summary" is the
-     * full issue title. We prefer "summary" as it matches what users type in Jira.
-     */
-    private static String epicName(Map<String, Object> epic) {
-        // 1. Agile board response: try top-level "summary" first, then "name"
-        String summary = str(epic, "summary");
-        if (summary != null && !summary.isBlank()) return summary;
-
-        String name = str(epic, "name");
-        if (name != null && !name.isBlank()) return name;
-
-        // 2. REST API v3 response: fields.summary
-        return fieldStr(epic, "summary");
-    }
-
-    private static String epicStatus(Map<String, Object> epic) {
-        // Agile board response: "done" boolean → synthesise a status string
-        Object done = epic.get("done");
-        if (done instanceof Boolean) {
-            return Boolean.TRUE.equals(done) ? "Done" : "In Progress";
-        }
-        // REST API v3: fields.status.name
-        return fieldStr(epic, "status", "name");
-    }
-
     // ── Value helpers ─────────────────────────────────────────────────
-
-    @SuppressWarnings("unchecked")
-    private static String fieldStr(Map<String, Object> issue, String... path) {
-        Object current = ((Map<String, Object>) issue.getOrDefault("fields", Map.of()));
-        for (String key : path) {
-            if (!(current instanceof Map)) return null;
-            current = ((Map<String, Object>) current).get(key);
-        }
-        return current instanceof String ? (String) current : null;
-    }
-
-    private static String str(Map<String, Object> m, String key) {
-        Object v = m.get(key);
-        return v instanceof String ? (String) v : null;
-    }
 
     private static String nvl(String s, String def) {
         return (s != null && !s.isBlank()) ? s : def;
