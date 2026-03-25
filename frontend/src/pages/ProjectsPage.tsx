@@ -1,14 +1,16 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Title, Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
+ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider,
 } from '@mantine/core';
-import { AQUA, AQUA_TINTS } from '../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject } from '../api/projects';
 import { useEffortPatterns } from '../api/refData';
+import { useJiraProjectsSimple } from '../api/jira';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
 import { Priority, ProjectStatus } from '../types';
@@ -17,6 +19,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
+import { useDarkMode } from '../hooks/useDarkMode';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
 import TablePagination from '../components/common/TablePagination';
@@ -42,16 +45,119 @@ const emptyForm: ProjectRequest = {
   client: null,
 };
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0]?.substring(0, 2)?.toUpperCase() ?? '?';
+}
+
 export default function ProjectsPage() {
+  const isDark = useDarkMode();
   const { data: projects, isLoading, error } = useProjects();
   const createMutation = useCreateProject();
   const copyMutation = useCopyProject();
   const { data: effortPatterns } = useEffortPatterns();
+  const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraProjectsSimple();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
   const [modalOpen, setModalOpen] = useState(false);
+  const [jiraImportOpen, setJiraImportOpen] = useState(false);
+  const [selectedJiraKeys, setSelectedJiraKeys] = useState<Set<string>>(new Set());
+  const [importingCount, setImportingCount] = useState(0);
+  const [importedCount, setImportedCount] = useState(0);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
   const [nameError, setNameError] = useState<string>('');
+
+  // Existing project names for duplicate checking (case-insensitive)
+  const existingNames = useMemo(() => {
+    return new Set((projects ?? []).map(p => p.name.toLowerCase()));
+  }, [projects]);
+
+  // Real-time duplicate name check
+  const checkDuplicateName = useCallback((name: string) => {
+    if (!name.trim()) return '';
+    if (existingNames.has(name.trim().toLowerCase())) {
+      return 'A project with this name already exists';
+    }
+    return '';
+  }, [existingNames]);
+
+  // Jira projects not already in portfolio (by name match)
+  const importableJiraProjects = useMemo(() => {
+    return jiraProjects.filter(jp => !existingNames.has(jp.name.toLowerCase()));
+  }, [jiraProjects, existingNames]);
+
+  const alreadyImportedJiraProjects = useMemo(() => {
+    return jiraProjects.filter(jp => existingNames.has(jp.name.toLowerCase()));
+  }, [jiraProjects, existingNames]);
+
+  const toggleJiraKey = (key: string) => {
+    setSelectedJiraKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAllImportable = () => {
+    if (selectedJiraKeys.size === importableJiraProjects.length) {
+      setSelectedJiraKeys(new Set());
+    } else {
+      setSelectedJiraKeys(new Set(importableJiraProjects.map(p => p.key)));
+    }
+  };
+
+  const handleJiraImport = async () => {
+    const toImport = importableJiraProjects.filter(p => selectedJiraKeys.has(p.key));
+    if (toImport.length === 0) return;
+    setImportingCount(toImport.length);
+    setImportedCount(0);
+    setImportErrors([]);
+
+    let successCount = 0;
+    const errors: string[] = [];
+
+    for (const jp of toImport) {
+      try {
+        await createMutation.mutateAsync({
+          name: jp.name,
+          priority: Priority.P2,
+          owner: '',
+          startMonth: 1,
+          durationMonths: 3,
+          defaultPattern: 'Flat',
+          status: ProjectStatus.NOT_STARTED,
+          notes: `Imported from Jira project: ${jp.key}`,
+          startDate: null,
+          targetDate: null,
+          client: null,
+        });
+        successCount++;
+        setImportedCount(prev => prev + 1);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || 'Unknown error';
+        errors.push(`${jp.key} (${jp.name}): ${msg}`);
+      }
+    }
+
+    setImportErrors(errors);
+
+    if (successCount > 0) {
+      notifications.show({
+        title: 'Import Complete',
+        message: `${successCount} project${successCount !== 1 ? 's' : ''} imported from Jira${errors.length > 0 ? ` (${errors.length} failed)` : ''}.`,
+        color: errors.length > 0 ? 'orange' : 'green',
+      });
+    }
+
+    if (errors.length === 0) {
+      setJiraImportOpen(false);
+      setSelectedJiraKeys(new Set());
+      setImportingCount(0);
+    }
+  };
   // URL search params — used for both NLP navigation filters and highlight
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -142,7 +248,7 @@ export default function ProjectsPage() {
     return list;
   }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter]);
 
-  const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered);
+  const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered, 'createdAt', 'desc');
   const { paginatedData: pagedProjects, ...pagination } = usePagination(sortedProjects, 25);
 
   const stats = useMemo(() => {
@@ -155,6 +261,12 @@ export default function ProjectsPage() {
   }, [projects]);
 
   const handleCreate = () => {
+    // Real-time duplicate check before submitting
+    const dupError = checkDuplicateName(form.name);
+    if (dupError) {
+      setNameError(dupError);
+      return;
+    }
     setNameError('');
     createMutation.mutate(form, {
       onSuccess: () => {
@@ -179,7 +291,7 @@ export default function ProjectsPage() {
   return (
     <Stack className="page-enter stagger-children">
       <Group justify="space-between" className="slide-in-left">
-        <Title order={2}>Projects</Title>
+        <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Projects</Title>
         <Group gap="sm">
           <CsvToolbar
             data={projects ?? []}
@@ -202,6 +314,20 @@ export default function ProjectsPage() {
               });
             }}
           />
+          <Button
+            variant="light"
+            color="blue"
+            leftSection={<IconPlugConnected size={16} />}
+            onClick={() => {
+              setJiraImportOpen(true);
+              setSelectedJiraKeys(new Set());
+              setImportingCount(0);
+              setImportedCount(0);
+              setImportErrors([]);
+            }}
+          >
+            Import from Jira
+          </Button>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>Add Project</Button>
         </Group>
       </Group>
@@ -292,8 +418,8 @@ export default function ProjectsPage() {
         </Text>
       </Group>
 
-      <Table.ScrollContainer minWidth={900}>
-        <Table striped highlightOnHover withTableBorder withColumnBorders>
+      <ScrollArea>
+        <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 40 }}>#</Table.Th>
@@ -305,13 +431,14 @@ export default function ProjectsPage() {
               <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>
               <Table.Th>Pattern</Table.Th>
               <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+              <SortableHeader sortKey="createdAt" currentKey={sortKey} dir={sortDir} onSort={onSort}>Created</SortableHeader>
               <Table.Th style={{ width: 50 }}>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {pagedProjects.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={10} style={{ textAlign: 'center', padding: '2rem' }}>
+                <Table.Td colSpan={11} style={{ textAlign: 'center', padding: '2rem' }}>
                   <Text c="dimmed" size="sm">No projects match the current filters.</Text>
                 </Table.Td>
               </Table.Tr>
@@ -339,6 +466,7 @@ export default function ProjectsPage() {
                 <Table.Td>{p.durationMonths}m</Table.Td>
                 <Table.Td>{p.defaultPattern}</Table.Td>
                 <Table.Td><StatusBadge status={p.status} /></Table.Td>
+                <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>
                 <Table.Td>
                   <Tooltip label="Duplicate project">
                     <ActionIcon
@@ -362,7 +490,7 @@ export default function ProjectsPage() {
             ))}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </ScrollArea>
 
       <TablePagination {...pagination} />
 
@@ -372,8 +500,9 @@ export default function ProjectsPage() {
             label="Name"
             value={form.name}
             onChange={e => {
-              setForm({ ...form, name: e.target.value });
-              setNameError('');
+              const val = e.target.value;
+              setForm({ ...form, name: val });
+              setNameError(checkDuplicateName(val));
             }}
             error={nameError}
             required
@@ -408,7 +537,158 @@ export default function ProjectsPage() {
             clearable={false}
           />
           <Textarea label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
-          <Button onClick={handleCreate} loading={createMutation.isPending}>Create</Button>
+          <Button onClick={handleCreate} loading={createMutation.isPending} disabled={!!nameError}>Create</Button>
+        </Stack>
+      </Modal>
+
+      {/* ── Import from Jira Modal ── */}
+      <Modal
+        opened={jiraImportOpen}
+        onClose={() => setJiraImportOpen(false)}
+        title={
+          <Group gap="xs">
+            <IconPlugConnected size={20} color="#0052CC" />
+            <Text fw={600}>Import Projects from Jira</Text>
+          </Group>
+        }
+        size="lg"
+        centered
+      >
+        <Stack gap="sm">
+          {jiraProjectsLoading ? (
+            <Stack align="center" py="xl">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">Loading Jira projects...</Text>
+            </Stack>
+          ) : jiraProjects.length === 0 ? (
+            <Alert color="orange" icon={<IconAlertTriangle size={14} />}>
+              No Jira projects found. Configure Jira boards in Settings first.
+            </Alert>
+          ) : (
+            <>
+              <Text size="sm" c="dimmed">
+                Select Jira projects to import as portfolio projects. Projects will be created with default settings (P2 priority, NOT_STARTED status, Flat pattern).
+              </Text>
+
+              {/* Stats */}
+              <Group gap="xs">
+                <Badge size="sm" color="blue" variant="light">
+                  {jiraProjects.length} Jira projects
+                </Badge>
+                <Badge size="sm" color="teal" variant="light">
+                  {importableJiraProjects.length} available to import
+                </Badge>
+                {alreadyImportedJiraProjects.length > 0 && (
+                  <Badge size="sm" color="gray" variant="light">
+                    {alreadyImportedJiraProjects.length} already exist
+                  </Badge>
+                )}
+              </Group>
+
+              {importableJiraProjects.length > 0 && (
+                <>
+                  <Divider />
+                  {/* Select all / deselect all */}
+                  <Group justify="space-between">
+                    <Checkbox
+                      label={<Text size="sm" fw={600}>Select all ({importableJiraProjects.length})</Text>}
+                      checked={selectedJiraKeys.size === importableJiraProjects.length && importableJiraProjects.length > 0}
+                      indeterminate={selectedJiraKeys.size > 0 && selectedJiraKeys.size < importableJiraProjects.length}
+                      onChange={toggleAllImportable}
+                    />
+                    {selectedJiraKeys.size > 0 && (
+                      <Badge size="sm" color="indigo" variant="filled">
+                        {selectedJiraKeys.size} selected
+                      </Badge>
+                    )}
+                  </Group>
+
+                  {/* Importable project list */}
+                  <ScrollArea.Autosize mah={320}>
+                    <Stack gap={4}>
+                      {importableJiraProjects.map(jp => (
+                        <Group
+                          key={jp.key}
+                          gap="sm"
+                          p="xs"
+                          style={{
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            background: selectedJiraKeys.has(jp.key)
+                              ? (isDark ? 'var(--mantine-color-indigo-9)' : 'var(--mantine-color-indigo-0)')
+                              : 'transparent',
+                          }}
+                          onClick={() => toggleJiraKey(jp.key)}
+                        >
+                          <Checkbox
+                            checked={selectedJiraKeys.has(jp.key)}
+                            onChange={() => toggleJiraKey(jp.key)}
+                            size="sm"
+                          />
+                          <Badge size="sm" variant="light" color="blue" ff="monospace">{jp.key}</Badge>
+                          <Text size="sm">{jp.name}</Text>
+                        </Group>
+                      ))}
+                    </Stack>
+                  </ScrollArea.Autosize>
+                </>
+              )}
+
+              {/* Already existing projects */}
+              {alreadyImportedJiraProjects.length > 0 && (
+                <>
+                  <Divider label="Already in Portfolio Planner" labelPosition="center" />
+                  <ScrollArea.Autosize mah={120}>
+                    <Stack gap={2}>
+                      {alreadyImportedJiraProjects.map(jp => (
+                        <Group key={jp.key} gap="sm" p="xs" style={{ opacity: 0.5 }}>
+                          <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                          <Badge size="sm" variant="light" color="gray" ff="monospace">{jp.key}</Badge>
+                          <Text size="sm" c="dimmed">{jp.name}</Text>
+                        </Group>
+                      ))}
+                    </Stack>
+                  </ScrollArea.Autosize>
+                </>
+              )}
+
+              {/* Import progress */}
+              {importingCount > 0 && importedCount < importingCount && importErrors.length === 0 && (
+                <Group gap="sm">
+                  <Loader size="xs" />
+                  <Text size="sm" c="dimmed">Importing {importedCount} of {importingCount}...</Text>
+                </Group>
+              )}
+
+              {/* Import errors */}
+              {importErrors.length > 0 && (
+                <Alert color="red" variant="light" icon={<IconAlertTriangle size={14} />}>
+                  <Stack gap={2}>
+                    <Text size="sm" fw={600}>{importErrors.length} project(s) failed:</Text>
+                    {importErrors.map((e, i) => (
+                      <Text key={i} size="xs" ff="monospace">{e}</Text>
+                    ))}
+                  </Stack>
+                </Alert>
+              )}
+
+              {/* Action buttons */}
+              <Group justify="flex-end">
+                <Button variant="light" onClick={() => setJiraImportOpen(false)} size="sm">
+                  Cancel
+                </Button>
+                <Button
+                  leftSection={<IconDownload size={14} />}
+                  onClick={handleJiraImport}
+                  loading={importingCount > 0 && importedCount < importingCount && importErrors.length === 0}
+                  disabled={selectedJiraKeys.size === 0}
+                  size="sm"
+                >
+                  Import {selectedJiraKeys.size > 0 ? `${selectedJiraKeys.size} Project${selectedJiraKeys.size !== 1 ? 's' : ''}` : ''}
+                </Button>
+              </Group>
+            </>
+          )}
         </Stack>
       </Modal>
     </Stack>

@@ -31,12 +31,15 @@ public interface EntityMapper {
         return new ResourceResponse(
                 resource.getId(),
                 resource.getName(),
+                resource.getEmail(),
                 resource.getRole(),
                 resource.getLocation(),
                 resource.getActive(),
                 resource.getCountsInCapacity(),
                 resource.getActualRate(),
-                podAssignment
+                podAssignment,
+                resource.getJiraDisplayName(),
+                resource.getJiraAccountId()
         );
     }
 
@@ -69,7 +72,8 @@ public interface EntityMapper {
                 project.getTargetDate(),
                 project.getStartDate(),
                 project.getCapacityNote(),
-                project.getClient()
+                project.getClient(),
+                project.getCreatedAt()
         );
     }
 

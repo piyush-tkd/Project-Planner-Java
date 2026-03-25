@@ -141,3 +141,84 @@ export function useDoraMonthly(months?: number, source?: 'jira' | 'db') {
     refetchOnReconnect: false,
   });
 }
+
+// ── Engineering Productivity Metrics ──────────────────────────────────────
+
+export interface ProductivityProjectCost {
+  id: number;
+  name: string;
+  status: string;
+  priority: string;
+  owner: string;
+  totalHours: number;
+  totalCost: number;
+  pods: number;
+  durationMonths: number;
+  roleCosts: Record<string, number>;
+}
+
+export interface ProductivityPodSpend {
+  pod: string;
+  annualSpend: number;
+  pct: number;
+}
+
+export interface ProductivityDoraSnapshot {
+  deploymentFrequency: DoraMetricValue;
+  leadTimeForChanges: DoraMetricValue;
+  changeFailureRate: DoraMetricValue;
+  meanTimeToRecovery: DoraMetricValue;
+  source: string;
+}
+
+export interface ProductivityData {
+  lookbackMonths: number;
+  generatedAt: string;
+  investment: {
+    totalAnnualSpend: number;
+    avgMonthlySpend: number;
+    spendByPod: ProductivityPodSpend[];
+    spendByProject: ProductivityProjectCost[];
+  };
+  output: {
+    totalProjects: number;
+    completedProjects: number;
+    activeProjects: number;
+    completionRate: number;
+    statusBreakdown: Record<string, number>;
+    priorityBreakdown: Record<string, number>;
+    criticalHighDelivered: number;
+    projectEffortSummary: Array<{
+      id: number; name: string; status: string; priority: string;
+      owner: string; pods: number; totalHours: number; durationMonths: number;
+    }>;
+  };
+  efficiency: {
+    dora?: ProductivityDoraSnapshot;
+    deliveredProjectCount: number;
+    totalDeliveredCost: number;
+    avgCostPerProjectDelivered: number;
+    costPerProject: ProductivityProjectCost[];
+    totalPlannedCost?: number;
+    allProjectCosts?: ProductivityProjectCost[];
+  };
+  impact: {
+    criticalHighPct: number;
+    criticalHighEffortPct: number;
+    totalPlannedEffortHours: number;
+    effortByOwner: Array<{ owner: string; totalHours: number; pct: number }>;
+  };
+}
+
+export function useProductivityMetrics(months?: number) {
+  return useQuery<ProductivityData>({
+    queryKey: ['reports', 'productivity', months ?? 6],
+    queryFn: () => apiClient.get('/reports/productivity', {
+      params: { ...(months ? { months } : {}) },
+    }).then(r => r.data),
+    staleTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+}

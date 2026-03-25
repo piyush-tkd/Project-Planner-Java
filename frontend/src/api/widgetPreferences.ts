@@ -40,3 +40,27 @@ export function useWidgetPreferences(pageKey: string) {
     save: mutation.mutate,
   };
 }
+
+// ── Sidebar Order Preferences ────────────────────────────────────────────
+
+export interface SidebarOrderPrefs {
+  groupOrder: string[];
+  itemOrder: Record<string, string[]>;
+}
+
+const EMPTY_SIDEBAR: SidebarOrderPrefs = { groupOrder: [], itemOrder: {} };
+
+export function useSidebarOrder() {
+  const { data = EMPTY_SIDEBAR, isLoading } = useQuery<SidebarOrderPrefs>({
+    queryKey: ['widget-prefs', 'sidebar_order'],
+    queryFn: () =>
+      apiClient.get('/widget-preferences/sidebar_order').then(r => ({
+        groupOrder: Array.isArray(r.data?.groupOrder) ? r.data.groupOrder : [],
+        itemOrder: r.data?.itemOrder && typeof r.data.itemOrder === 'object' ? r.data.itemOrder : {},
+      })),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+
+  return { sidebarOrder: data, isLoading };
+}

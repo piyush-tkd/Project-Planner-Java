@@ -26,9 +26,9 @@ function compare(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
 }
 
-export function useTableSort<T>(data: T[]) {
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>(null);
+export function useTableSort<T>(data: T[], defaultSortKey?: string | null, defaultSortDir?: SortDir) {
+  const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir ?? null);
 
   const onSort = (key: string) => {
     if (sortKey !== key) {

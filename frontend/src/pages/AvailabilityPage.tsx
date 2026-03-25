@@ -3,7 +3,9 @@ import {
   Title, Stack, Table, NumberInput, Button, Text, Group,
   Checkbox, Menu, ActionIcon, Tooltip, Badge, Paper, Select,
   UnstyledButton,
+ScrollArea, ThemeIcon,
 } from '@mantine/core';
+import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
 import { IconCopy, IconChecks, IconTemplate, IconAlertTriangle, IconArrowUp, IconArrowDown, IconArrowsSort } from '@tabler/icons-react';
 import { useAllAvailability } from '../api/resources';
@@ -26,6 +28,12 @@ const TEMPLATES: Record<string, number[]> = {
   'Part-time 50%':      FULL_TIME_HOURS.map(h => Math.round(h * 0.5)),
   'Zero (Leave/Off)':   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0]?.substring(0, 2)?.toUpperCase() ?? '?';
+}
 
 export default function AvailabilityPage() {
   const { data: availability, isLoading, error } = useAllAvailability();
@@ -233,7 +241,7 @@ export default function AvailabilityPage() {
     <Stack className="page-enter stagger-children">
       <Group justify="space-between" className="slide-in-left">
         <Group gap="sm">
-          <Title order={2}>Availability (Hours per Month)</Title>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Availability (Hours per Month)</Title>
           {warningCount > 0 && (
             <Tooltip label={`${warningCount} cell(s) exceed the resource's FTE capacity`}>
               <Badge color="orange" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
@@ -346,8 +354,8 @@ export default function AvailabilityPage() {
       </Paper>
 
       {/* ── Table ───────────────────────────────── */}
-      <Table.ScrollContainer minWidth={1100}>
-        <Table withTableBorder withColumnBorders>
+      <ScrollArea>
+        <Table fz="xs" withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 40, textAlign: 'center' }}>
@@ -452,7 +460,7 @@ export default function AvailabilityPage() {
             })}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </ScrollArea>
     </Stack>
   );
 }

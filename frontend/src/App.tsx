@@ -49,6 +49,7 @@ import OwnerDemandPage from './pages/reports/OwnerDemandPage';
 import CrossPodDependencyPage from './pages/reports/CrossPodDependencyPage';
 import ProjectHealthPage from './pages/reports/ProjectHealthPage';
 import ResourceROIPage from './pages/reports/ResourceROIPage';
+import ResourcePerformancePage from './pages/reports/ResourcePerformancePage';
 import SprintCalendarPage from './pages/SprintCalendarPage';
 import ReleaseCalendarPage from './pages/ReleaseCalendarPage';
 import ReleaseNotesPage from './pages/ReleaseNotesPage';
@@ -62,6 +63,11 @@ import ErrorLogPage from './pages/settings/ErrorLogPage';
 import DoraMetricsPage from './pages/reports/DoraMetricsPage';
 import JiraAnalyticsPage from './pages/reports/JiraAnalyticsPage';
 import JiraDashboardBuilderPage from './pages/reports/JiraDashboardBuilderPage';
+import EngineeringProductivityPage from './pages/reports/EngineeringProductivityPage';
+import SidebarOrderPage from './pages/settings/SidebarOrderPage';
+import JiraResourceMappingPage from './pages/settings/JiraResourceMappingPage';
+import JiraReleaseMappingPage from './pages/settings/JiraReleaseMappingPage';
+
 
 export default function App() {
   return (
@@ -186,6 +192,10 @@ export default function App() {
             <Route path="/reports/resource-roi" element={<ResourceROIPage />} />
           </Route>
 
+          <Route element={<ProtectedRoute pageKey="resource_performance" />}>
+            <Route path="/reports/resource-performance" element={<ResourcePerformancePage />} />
+          </Route>
+
           <Route element={<ProtectedRoute pageKey="dora_metrics" />}>
             <Route path="/reports/dora" element={<DoraMetricsPage />} />
           </Route>
@@ -196,6 +206,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="jira_dashboard_builder" />}>
             <Route path="/reports/jira-dashboard-builder" element={<JiraDashboardBuilderPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="engineering_productivity" />}>
+            <Route path="/reports/engineering-productivity" element={<EngineeringProductivityPage />} />
           </Route>
 
           {/* ── Integrations ─────────────────────────────────── */}
@@ -280,6 +294,18 @@ export default function App() {
             <Route path="/settings/releases" element={<ReleaseSettingsPage />} />
             <Route path="/settings/jira-credentials" element={<JiraCredentialsPage />} />
             <Route path="/settings/support-boards" element={<SupportBoardsSettingsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="jira_resource_mapping" />}>
+            <Route path="/settings/jira-resource-mapping" element={<JiraResourceMappingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="jira_release_mapping" />}>
+            <Route path="/settings/jira-release-mapping" element={<JiraReleaseMappingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="sidebar_order" />}>
+            <Route path="/settings/sidebar-order" element={<SidebarOrderPage />} />
           </Route>
 
           {/* Admin-only pages — no pageKey needed (nav already hides them) */}

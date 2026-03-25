@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 
 export interface DbTableMeta {
@@ -63,4 +63,96 @@ export function useDbTableData(
     staleTime: 15_000,
     placeholderData: (prev) => prev,
   });
+}
+
+// ── SQL Query Execution ─────────────────────────────────────────────────────
+
+export interface QueryResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  truncated: boolean;
+  elapsedMs: number;
+  success: boolean;
+  error?: string;
+  mutationType?: 'INSERT' | 'UPDATE' | 'DELETE';
+}
+
+export interface ExecuteQueryParams {
+  sql: string;
+  noLimit?: boolean;
+}
+
+export function useExecuteQuery() {
+  return useMutation<QueryResult, Error, ExecuteQueryParams>({
+    mutationFn: ({ sql, noLimit }: ExecuteQueryParams) =>
+      apiClient.post('/admin/db/query', { sql, noLimit: noLimit ?? false }).then(r => r.data),
+  });
+}
+
+// ── Saved Queries (stored via UserWidgetPreference with pageKey="saved_queries") ──
+
+export interface SavedQuery {
+  id: string;
+  name: string;
+  sql: string;
+  createdAt: string;
+}
+
+interface SavedQueriesData {
+  queries: SavedQuery[];
+}
+
+const SAVED_QUERIES_KEY = 'saved_queries';
+const EMPTY_SAVED: SavedQueriesData = { queries: [] };
+
+export function useSavedQueries() {
+  const qc = useQueryClient();
+
+  const { data = EMPTY_SAVED, isLoading } = useQuery<SavedQueriesData>({
+    queryKey: ['widget-prefs', SAVED_QUERIES_KEY],
+    queryFn: () =>
+      apiClient.get(`/widget-preferences/${SAVED_QUERIES_KEY}`).then(r => ({
+        queries: Array.isArray(r.data?.queries) ? r.data.queries : [],
+      })),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+
+  const persist = useMutation({
+    mutationFn: (updated: SavedQueriesData) =>
+      apiClient.put(`/widget-preferences/${SAVED_QUERIES_KEY}`, updated),
+    onMutate: async (updated) => {
+      await qc.cancelQueries({ queryKey: ['widget-prefs', SAVED_QUERIES_KEY] });
+      qc.setQueryData(['widget-prefs', SAVED_QUERIES_KEY], updated);
+    },
+  });
+
+  const addQuery = (name: string, sql: string) => {
+    const newQ: SavedQuery = {
+      id: crypto.randomUUID(),
+      name,
+      sql,
+      createdAt: new Date().toISOString(),
+    };
+    persist.mutate({ queries: [...data.queries, newQ] });
+  };
+
+  const removeQuery = (id: string) => {
+    persist.mutate({ queries: data.queries.filter(q => q.id !== id) });
+  };
+
+  const updateQuery = (id: string, name: string, sql: string) => {
+    persist.mutate({
+      queries: data.queries.map(q => q.id === id ? { ...q, name, sql } : q),
+    });
+  };
+
+  return {
+    queries: data.queries,
+    isLoading,
+    addQuery,
+    removeQuery,
+    updateQuery,
+  };
 }

@@ -1,24 +1,24 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container, Title, Text, TextInput, Paper, Group, Stack, Badge,
-  ActionIcon, Loader, Kbd, Transition, Box, ThemeIcon, SimpleGrid,
-  Tooltip, useComputedColorScheme, Anchor, rem,
-  Button, Autocomplete, Textarea,
+ Container, Title, Text, TextInput, Paper, Group, Stack, Badge,
+ ActionIcon, Loader, Kbd, Transition, Box, ThemeIcon, SimpleGrid,
+ Tooltip, useComputedColorScheme, Anchor, rem,
+ Button, Autocomplete, Textarea,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
-  IconSearch, IconSparkles, IconArrowRight, IconBrain,
-  IconRoute, IconForms, IconChartBar, IconBulb, IconHelp,
-  IconUsers, IconBriefcase, IconHexagons,
-  IconCalendarStats, IconChartAreaLine, IconAlertTriangle,
-  IconPlayerPlay, IconUser, IconMapPin, IconCurrencyDollar,
-  IconBuildingSkyscraper, IconFlag, IconClock, IconStatusChange,
-  IconDownload, IconArrowsSplit, IconListCheck, IconCalendarEvent,
-  IconRocket, IconSnowflake, IconLock, IconPercentage, IconCheck,
-  IconX, IconNotes, IconAlertCircle, IconExternalLink, IconChevronRight,
-  IconHistory, IconMoodEmpty, IconArrowUpRight, IconThumbUp, IconThumbDown,
+ IconSearch, IconSparkles, IconArrowRight, IconBrain,
+ IconRoute, IconForms, IconChartBar, IconBulb, IconHelp,
+ IconUsers, IconBriefcase, IconHexagons,
+ IconCalendarStats, IconChartAreaLine, IconAlertTriangle,
+ IconPlayerPlay, IconUser, IconMapPin, IconCurrencyDollar,
+ IconBuildingSkyscraper, IconFlag, IconClock, IconStatusChange,
+ IconDownload, IconArrowsSplit, IconListCheck, IconCalendarEvent,
+ IconRocket, IconSnowflake, IconLock, IconPercentage, IconCheck,
+ IconX, IconNotes, IconAlertCircle, IconExternalLink, IconChevronRight,
+ IconHistory, IconMoodEmpty, IconArrowUpRight, IconThumbUp, IconThumbDown,
 } from '@tabler/icons-react';
 import { useNlpQuery, useNlpCatalog, useNlpCatalogWarmup, useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse, streamNlpQuery, useNlpInsights, NlpInsightCard, directToolCall } from '../api/nlp';
 import { useAuth } from '../auth/AuthContext';
@@ -27,82 +27,82 @@ import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY, BORDER_DEFAU
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-  { label: 'Show capacity gaps',           query: 'show me the capacity gap report',    icon: <IconChartBar size={16} /> },
-  { label: 'Which pods are over capacity?', query: 'which pods are over capacity?',     icon: <IconAlertTriangle size={16} /> },
-  { label: 'Go to Sprint Planner',         query: 'open sprint planner',                icon: <IconPlayerPlay size={16} /> },
-  { label: 'Create a new project',         query: 'create a new project',               icon: <IconBriefcase size={16} /> },
-  { label: 'Show utilization heatmap',     query: 'show utilization heatmap',            icon: <IconChartAreaLine size={16} /> },
-  { label: 'View team calendar',           query: 'go to team calendar',                 icon: <IconCalendarStats size={16} /> },
-  { label: 'Add a new resource',           query: 'add a new resource',                  icon: <IconUsers size={16} /> },
-  { label: 'Lookup a resource',           query: 'who is ',                               icon: <IconUser size={16} /> },
-  { label: 'Look up a Jira ticket',     query: 'tell me about ',                          icon: <IconNotes size={16} /> },
+ { label: 'Show capacity gaps', query: 'show me the capacity gap report', icon: <IconChartBar size={16} /> },
+ { label: 'Which pods are over capacity?', query: 'which pods are over capacity?', icon: <IconAlertTriangle size={16} /> },
+ { label: 'Go to Sprint Planner', query: 'open sprint planner', icon: <IconPlayerPlay size={16} /> },
+ { label: 'Create a new project', query: 'create a new project', icon: <IconBriefcase size={16} /> },
+ { label: 'Show utilization heatmap', query: 'show utilization heatmap', icon: <IconChartAreaLine size={16} /> },
+ { label: 'View team calendar', query: 'go to team calendar', icon: <IconCalendarStats size={16} /> },
+ { label: 'Add a new resource', query: 'add a new resource', icon: <IconUsers size={16} /> },
+ { label: 'Lookup a resource', query: 'who is ', icon: <IconUser size={16} /> },
+ { label: 'Look up a Jira ticket', query: 'tell me about ', icon: <IconNotes size={16} /> },
 ];
 
 const INTENT_ICONS: Record<string, React.ReactNode> = {
-  NAVIGATE:    <IconRoute size={20} />,
-  FORM_PREFILL:<IconForms size={20} />,
-  DATA_QUERY:  <IconChartBar size={20} />,
-  INSIGHT:     <IconBulb size={20} />,
-  HELP:        <IconHelp size={20} />,
+ NAVIGATE: <IconRoute size={20} />,
+ FORM_PREFILL:<IconForms size={20} />,
+ DATA_QUERY: <IconChartBar size={20} />,
+ INSIGHT: <IconBulb size={20} />,
+ HELP: <IconHelp size={20} />,
 };
 
 const INTENT_LABELS: Record<string, string> = {
-  NAVIGATE:    'Navigation',
-  FORM_PREFILL:'Form Pre-fill',
-  DATA_QUERY:  'Data Query',
-  INSIGHT:     'Insight',
-  HELP:        'Help',
-  UNKNOWN:     'Unknown',
+ NAVIGATE: 'Navigation',
+ FORM_PREFILL:'Form Pre-fill',
+ DATA_QUERY: 'Data Query',
+ INSIGHT: 'Insight',
+ HELP: 'Help',
+ UNKNOWN: 'Unknown',
 };
 
 // Status → brand-aligned colors
 const STATUS_COLORS: Record<string, string> = {
-  'Active': 'teal',
-  'Completed': 'gray',
-  'In Discovery': 'blue',
-  'Not Started': 'orange',
-  'On Hold': 'yellow',
-  'Cancelled': 'red',
-  'Upcoming': 'blue',
-  'Released': 'green',
-  'Code Frozen': 'cyan',
+ 'Active': 'teal',
+ 'Completed': 'gray',
+ 'In Discovery': 'blue',
+ 'Not Started': 'orange',
+ 'On Hold': 'yellow',
+ 'Cancelled': 'red',
+ 'Upcoming': 'blue',
+ 'Released': 'green',
+ 'Code Frozen': 'cyan',
 };
 
 // Role → color mapping for visual distinction in resource lists
 const ROLE_COLORS: Record<string, string> = {
-  'Developer': 'indigo',
-  'DEVELOPER': 'indigo',
-  'QA': 'orange',
-  'BSA': 'cyan',
-  'Tech Lead': 'red',
-  'TECH_LEAD': 'red',
+ 'Developer': 'indigo',
+ 'DEVELOPER': 'indigo',
+ 'QA': 'orange',
+ 'BSA': 'cyan',
+ 'Tech Lead': 'red',
+ 'TECH_LEAD': 'red',
 };
 
 // Location → color mapping
 const LOCATION_COLORS: Record<string, string> = {
-  'INDIA': 'violet',
-  'India': 'violet',
-  'US': 'blue',
-  'USA': 'blue',
-  'Houston': 'blue',
+ 'INDIA': 'violet',
+ 'India': 'violet',
+ 'US': 'blue',
+ 'USA': 'blue',
+ 'Houston': 'blue',
 };
 
 // ── Entity type icon + color signatures for consistent visual identity ────────
 const ENTITY_SIGNATURES: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  RESOURCE_PROFILE:    { icon: <IconUser size={16} />,          color: 'blue',   label: 'Resource' },
-  PROJECT_PROFILE:     { icon: <IconBriefcase size={16} />,     color: 'teal',   label: 'Project' },
-  POD_PROFILE:         { icon: <IconHexagons size={16} />,      color: 'grape',  label: 'POD' },
-  SPRINT_PROFILE:      { icon: <IconPlayerPlay size={16} />,    color: 'orange', label: 'Sprint' },
-  RELEASE_PROFILE:     { icon: <IconRocket size={16} />,        color: 'cyan',   label: 'Release' },
-  COMPARISON:          { icon: <IconArrowsSplit size={16} />,    color: 'indigo', label: 'Comparison' },
-  LIST:                { icon: <IconListCheck size={16} />,      color: 'teal',   label: 'List' },
-  EXPORT:              { icon: <IconDownload size={16} />,       color: 'green',  label: 'Export' },
-  RISK_SUMMARY:        { icon: <IconAlertTriangle size={16} />, color: 'red',    label: 'Risk' },
-  RESOURCE_ANALYTICS:  { icon: <IconChartBar size={16} />,      color: 'blue',   label: 'Analytics' },
-  CAPABILITIES:        { icon: <IconHelp size={16} />,          color: 'gray',   label: 'Help' },
-  PROJECT_ESTIMATES:   { icon: <IconChartBar size={16} />,      color: 'teal',   label: 'Estimates' },
-  SPRINT_ALLOCATIONS:  { icon: <IconCalendarStats size={16} />, color: 'orange', label: 'Allocations' },
-  JIRA_ISSUE_PROFILE:  { icon: <IconNotes size={16} />,         color: 'blue',   label: 'Jira Issue' },
+ RESOURCE_PROFILE: { icon: <IconUser size={16} />, color: 'blue', label: 'Resource' },
+ PROJECT_PROFILE: { icon: <IconBriefcase size={16} />, color: 'teal', label: 'Project' },
+ POD_PROFILE: { icon: <IconHexagons size={16} />, color: 'grape', label: 'POD' },
+ SPRINT_PROFILE: { icon: <IconPlayerPlay size={16} />, color: 'orange', label: 'Sprint' },
+ RELEASE_PROFILE: { icon: <IconRocket size={16} />, color: 'cyan', label: 'Release' },
+ COMPARISON: { icon: <IconArrowsSplit size={16} />, color: 'indigo', label: 'Comparison' },
+ LIST: { icon: <IconListCheck size={16} />, color: 'teal', label: 'List' },
+ EXPORT: { icon: <IconDownload size={16} />, color: 'green', label: 'Export' },
+ RISK_SUMMARY: { icon: <IconAlertTriangle size={16} />, color: 'red', label: 'Risk' },
+ RESOURCE_ANALYTICS: { icon: <IconChartBar size={16} />, color: 'blue', label: 'Analytics' },
+ CAPABILITIES: { icon: <IconHelp size={16} />, color: 'gray', label: 'Help' },
+ PROJECT_ESTIMATES: { icon: <IconChartBar size={16} />, color: 'teal', label: 'Estimates' },
+ SPRINT_ALLOCATIONS: { icon: <IconCalendarStats size={16} />, color: 'orange', label: 'Allocations' },
+ JIRA_ISSUE_PROFILE: { icon: <IconNotes size={16} />, color: 'blue', label: 'Jira Issue' },
 };
 
 // Max recent queries to keep in memory
@@ -111,2128 +111,2128 @@ const MAX_RECENT_QUERIES = 5;
 // ── Smart Greeting Generator ──────────────────────────────────────────────────
 
 function getSmartGreeting(displayName: string | null): { title: string; subtitle: string } {
-  const hour = new Date().getHours();
-  const day = new Date().getDay(); // 0=Sun, 6=Sat
-  const firstName = displayName?.split(/\s+/)[0] || null;
-  const name = firstName ? `, ${firstName}` : '';
+ const hour = new Date().getHours();
+ const day = new Date().getDay(); // 0=Sun, 6=Sat
+ const firstName = displayName?.split(/\s+/)[0] || null;
+ const name = firstName ? `, ${firstName}` : '';
 
-  // Day-of-week context
-  const isMonday = day === 1;
-  const isFriday = day === 5;
-  const isWeekend = day === 0 || day === 6;
+ // Day-of-week context
+ const isMonday = day === 1;
+ const isFriday = day === 5;
+ const isWeekend = day === 0 || day === 6;
 
-  // Time-of-day greetings with personality
-  if (hour >= 5 && hour < 8) {
-    // Early bird
-    const options = [
-      { title: `Early start${name}!`, subtitle: 'You\'re ahead of the game. What can I look up for you?' },
-      { title: `Good morning${name}!`, subtitle: 'Up before the sun? Let\'s make the most of it.' },
-    ];
-    return options[firstName ? firstName.length % options.length : 0];
-  }
-  if (hour >= 8 && hour < 12) {
-    // Morning
-    if (isMonday) {
-      return { title: `Happy Monday${name}!`, subtitle: 'New week, fresh start. What\'s on your radar?' };
-    }
-    if (isFriday) {
-      return { title: `Happy Friday${name}!`, subtitle: 'Almost there! Let\'s wrap up the week strong.' };
-    }
-    const options = [
-      { title: `Good morning${name}!`, subtitle: 'What would you like to explore today?' },
-      { title: `Morning${name}!`, subtitle: 'Ready to dive in. What can I help with?' },
-      { title: `Hey${name}, good morning!`, subtitle: 'What\'s on your mind today?' },
-    ];
-    return options[hour % options.length];
-  }
-  if (hour >= 12 && hour < 14) {
-    // Lunch time
-    const options = [
-      { title: `Good afternoon${name}!`, subtitle: 'Lunchtime productivity? I\'m here for it.' },
-      { title: `Hey${name}!`, subtitle: 'Afternoon check-in — what do you need?' },
-    ];
-    return options[firstName ? firstName.length % options.length : 0];
-  }
-  if (hour >= 14 && hour < 17) {
-    // Afternoon
-    if (isFriday) {
-      return { title: `Almost weekend${name}!`, subtitle: 'Last push before Friday wraps up. How can I help?' };
-    }
-    const options = [
-      { title: `Good afternoon${name}!`, subtitle: 'Let\'s keep the momentum going. What do you need?' },
-      { title: `Afternoon${name}!`, subtitle: 'Halfway through the day — what can I look into?' },
-    ];
-    return options[hour % options.length];
-  }
-  if (hour >= 17 && hour < 20) {
-    // Evening
-    const options = [
-      { title: `Still going${name}?`, subtitle: 'Working late — let me help you wrap up faster.' },
-      { title: `Good evening${name}!`, subtitle: 'Burning the evening oil? Let\'s make it count.' },
-    ];
-    return options[firstName ? firstName.length % options.length : 0];
-  }
-  if (hour >= 20 && hour < 23) {
-    // Night owl
-    const options = [
-      { title: `Night owl mode${name}!`, subtitle: 'The office is quiet, but I\'m still here. What do you need?' },
-      { title: `Burning the midnight oil${name}?`, subtitle: 'I don\'t sleep either. How can I help?' },
-    ];
-    return options[firstName ? firstName.length % options.length : 0];
-  }
-  // Late night / very early (23:00-5:00)
-  if (isWeekend) {
-    return { title: `Weekend warrior${name}!`, subtitle: 'Working through the weekend? I respect the hustle.' };
-  }
-  return { title: `Up late${name}?`, subtitle: 'No judgment — I\'m always on. What do you need?' };
+ // Time-of-day greetings with personality
+ if (hour >= 5 && hour < 8) {
+ // Early bird
+ const options = [
+ { title: `Early start${name}!`, subtitle: 'You\'re ahead of the game. What can I look up for you?' },
+ { title: `Good morning${name}!`, subtitle: 'Up before the sun? Let\'s make the most of it.' },
+ ];
+ return options[firstName ? firstName.length % options.length : 0];
+ }
+ if (hour >= 8 && hour < 12) {
+ // Morning
+ if (isMonday) {
+ return { title: `Happy Monday${name}!`, subtitle: 'New week, fresh start. What\'s on your radar?' };
+ }
+ if (isFriday) {
+ return { title: `Happy Friday${name}!`, subtitle: 'Almost there! Let\'s wrap up the week strong.' };
+ }
+ const options = [
+ { title: `Good morning${name}!`, subtitle: 'What would you like to explore today?' },
+ { title: `Morning${name}!`, subtitle: 'Ready to dive in. What can I help with?' },
+ { title: `Hey${name}, good morning!`, subtitle: 'What\'s on your mind today?' },
+ ];
+ return options[hour % options.length];
+ }
+ if (hour >= 12 && hour < 14) {
+ // Lunch time
+ const options = [
+ { title: `Good afternoon${name}!`, subtitle: 'Lunchtime productivity? I\'m here for it.' },
+ { title: `Hey${name}!`, subtitle: 'Afternoon check-in — what do you need?' },
+ ];
+ return options[firstName ? firstName.length % options.length : 0];
+ }
+ if (hour >= 14 && hour < 17) {
+ // Afternoon
+ if (isFriday) {
+ return { title: `Almost weekend${name}!`, subtitle: 'Last push before Friday wraps up. How can I help?' };
+ }
+ const options = [
+ { title: `Good afternoon${name}!`, subtitle: 'Let\'s keep the momentum going. What do you need?' },
+ { title: `Afternoon${name}!`, subtitle: 'Halfway through the day — what can I look into?' },
+ ];
+ return options[hour % options.length];
+ }
+ if (hour >= 17 && hour < 20) {
+ // Evening
+ const options = [
+ { title: `Still going${name}?`, subtitle: 'Working late — let me help you wrap up faster.' },
+ { title: `Good evening${name}!`, subtitle: 'Burning the evening oil? Let\'s make it count.' },
+ ];
+ return options[firstName ? firstName.length % options.length : 0];
+ }
+ if (hour >= 20 && hour < 23) {
+ // Night owl
+ const options = [
+ { title: `Night owl mode${name}!`, subtitle: 'The office is quiet, but I\'m still here. What do you need?' },
+ { title: `Burning the midnight oil${name}?`, subtitle: 'I don\'t sleep either. How can I help?' },
+ ];
+ return options[firstName ? firstName.length % options.length : 0];
+ }
+ // Late night / very early (23:00-5:00)
+ if (isWeekend) {
+ return { title: `Weekend warrior${name}!`, subtitle: 'Working through the weekend? I respect the hustle.' };
+ }
+ return { title: `Up late${name}?`, subtitle: 'No judgment — I\'m always on. What do you need?' };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function NlpLandingPage() {
-  const navigate = useNavigate();
-  const { displayLabel } = useAuth();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const computedColorScheme = useComputedColorScheme('light');
-  const isDark = computedColorScheme === 'dark';
+ const navigate = useNavigate();
+ const { displayLabel } = useAuth();
+ const inputRef = useRef<HTMLInputElement>(null);
+ const computedColorScheme = useComputedColorScheme('light');
+ const isDark = computedColorScheme === 'dark';
 
-  // Smart time-of-day greeting (memoized — only changes once per minute)
-  const greeting = useMemo(() => getSmartGreeting(displayLabel), [displayLabel]);
+ // Smart time-of-day greeting (memoized — only changes once per minute)
+ const greeting = useMemo(() => getSmartGreeting(displayLabel), [displayLabel]);
 
-  const [query, setQuery] = useState('');
-  const [debouncedQuery] = useDebouncedValue(query, 300);
-  const [result, setResult] = useState<NlpQueryResponse | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
-  const [focusedListIdx, setFocusedListIdx] = useState<number>(-1);
-  const [inputFocused, setInputFocused] = useState(false);
+ const [query, setQuery] = useState('');
+ const [debouncedQuery] = useDebouncedValue(query, 300);
+ const [result, setResult] = useState<NlpQueryResponse | null>(null);
+ const [showResult, setShowResult] = useState(false);
+ const [recentQueries, setRecentQueries] = useState<string[]>([]);
+ const [focusedListIdx, setFocusedListIdx] = useState<number>(-1);
+ const [inputFocused, setInputFocused] = useState(false);
 
-  // Session memory: track last few Q&A pairs for follow-up context
-  const sessionMemoryRef = useRef<Array<{ q: string; a: string; intent: string }>>([]);
-  const MAX_SESSION_MEMORY = 5;
+ // Session memory: track last few Q&A pairs for follow-up context
+ const sessionMemoryRef = useRef<Array<{ q: string; a: string; intent: string }>>([]);
+ const MAX_SESSION_MEMORY = 5;
 
-  const buildSessionContext = useCallback((): string | undefined => {
-    const mem = sessionMemoryRef.current;
-    if (mem.length === 0) return undefined;
-    const lines = mem.map(m => `User: ${m.q}\nAssistant: ${m.a}`).join('\n');
-    return `Previous conversation:\n${lines}`;
-  }, []);
-  const listItemRefs = useRef<(HTMLDivElement | null)[]>([]);
+ const buildSessionContext = useCallback((): string | undefined => {
+ const mem = sessionMemoryRef.current;
+ if (mem.length === 0) return undefined;
+ const lines = mem.map(m => `User: ${m.q}\nAssistant: ${m.a}`).join('\n');
+ return `Previous conversation:\n${lines}`;
+ }, []);
+ const listItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const nlpQuery = useNlpQuery();
-  const { data: catalog } = useNlpCatalog();
-  const [loadingPhase, setLoadingPhase] = useState(0);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const loadingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+ const nlpQuery = useNlpQuery();
+ const { data: catalog } = useNlpCatalog();
+ const [loadingPhase, setLoadingPhase] = useState(0);
+ const [isStreaming, setIsStreaming] = useState(false);
+ const loadingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // SSE phase → loading phase index mapping
-  const SSE_PHASE_MAP: Record<string, number> = useMemo(() => ({
-    thinking: 0, searching: 1, matched: 2, analyzing: 2, finalizing: 3,
-  }), []);
+ // SSE phase → loading phase index mapping
+ const SSE_PHASE_MAP: Record<string, number> = useMemo(() => ({
+ thinking: 0, searching: 1, matched: 2, analyzing: 2, finalizing: 3,
+ }), []);
 
-  // Advance loading phase with staggered timings (fallback when not using SSE)
-  useEffect(() => {
-    if (nlpQuery.isPending && !isStreaming) {
-      setLoadingPhase(0);
-      const stepDelays = [2500, 3000, 3500, 4000];
-      let cumulative = 0;
-      const timers: ReturnType<typeof setTimeout>[] = [];
-      stepDelays.forEach((delay, idx) => {
-        cumulative += delay;
-        timers.push(setTimeout(() => setLoadingPhase(idx + 1), cumulative));
-      });
-      loadingTimersRef.current = timers;
-    } else if (!nlpQuery.isPending && !isStreaming) {
-      loadingTimersRef.current.forEach(t => clearTimeout(t));
-      loadingTimersRef.current = [];
-      setLoadingPhase(0);
-    }
-    return () => { loadingTimersRef.current.forEach(t => clearTimeout(t)); };
-  }, [nlpQuery.isPending, isStreaming]);
+ // Advance loading phase with staggered timings (fallback when not using SSE)
+ useEffect(() => {
+ if (nlpQuery.isPending && !isStreaming) {
+ setLoadingPhase(0);
+ const stepDelays = [2500, 3000, 3500, 4000];
+ let cumulative = 0;
+ const timers: ReturnType<typeof setTimeout>[] = [];
+ stepDelays.forEach((delay, idx) => {
+ cumulative += delay;
+ timers.push(setTimeout(() => setLoadingPhase(idx + 1), cumulative));
+ });
+ loadingTimersRef.current = timers;
+ } else if (!nlpQuery.isPending && !isStreaming) {
+ loadingTimersRef.current.forEach(t => clearTimeout(t));
+ loadingTimersRef.current = [];
+ setLoadingPhase(0);
+ }
+ return () => { loadingTimersRef.current.forEach(t => clearTimeout(t)); };
+ }, [nlpQuery.isPending, isStreaming]);
 
-  // Unified loading state: true when either SSE streaming or regular POST is in progress
-  const isLoading = nlpQuery.isPending || isStreaming;
+ // Unified loading state: true when either SSE streaming or regular POST is in progress
+ const isLoading = nlpQuery.isPending || isStreaming;
 
-  // Proactive insight cards
-  const { data: insightCards } = useNlpInsights();
+ // Proactive insight cards
+ const { data: insightCards } = useNlpInsights();
 
-  // Pre-warm the backend catalog cache when user visits this page
-  useNlpCatalogWarmup();
+ // Pre-warm the backend catalog cache when user visits this page
+ useNlpCatalogWarmup();
 
-  // Build autocomplete suggestions from catalog data
-  const autocompleteData = useMemo(() => {
-    if (!catalog) return [];
-    const items: string[] = [];
-    // Entity name shortcuts — keep them short and natural
-    catalog.projects?.forEach((p) => items.push(`Tell me about ${p}`));
-    catalog.resources?.forEach((r) => items.push(`Who is ${r}`));
-    catalog.pods?.forEach((p) => items.push(`${p} pod details`));
-    catalog.sprints?.slice(0, 5).forEach((s) => items.push(`${s} allocations`));
-    catalog.releases?.slice(0, 3).forEach((r) => items.push(`${r} release`));
-    // Common actions
-    items.push('Show capacity gaps', 'Which pods are over capacity?',
-      'Show utilization heatmap', 'Create a new project',
-      'Show all developers', 'India team details', 'Show active projects',
-      'Show hiring forecast', 'Show project timeline');
-    return items;
-  }, [catalog]);
+ // Build autocomplete suggestions from catalog data
+ const autocompleteData = useMemo(() => {
+ if (!catalog) return [];
+ const items: string[] = [];
+ // Entity name shortcuts — keep them short and natural
+ catalog.projects?.forEach((p) => items.push(`Tell me about ${p}`));
+ catalog.resources?.forEach((r) => items.push(`Who is ${r}`));
+ catalog.pods?.forEach((p) => items.push(`${p} pod details`));
+ catalog.sprints?.slice(0, 5).forEach((s) => items.push(`${s} allocations`));
+ catalog.releases?.slice(0, 3).forEach((r) => items.push(`${r} release`));
+ // Common actions
+ items.push('Show capacity gaps', 'Which pods are over capacity?',
+ 'Show utilization heatmap', 'Create a new project',
+ 'Show all developers', 'India team details', 'Show active projects',
+ 'Show hiring forecast', 'Show project timeline');
+ return items;
+ }, [catalog]);
 
-  // Auto-focus search input
-  useEffect(() => { inputRef.current?.focus(); }, []);
+ // Auto-focus search input
+ useEffect(() => { inputRef.current?.focus(); }, []);
 
-  // Reset keyboard focus when result changes
-  useEffect(() => { setFocusedListIdx(-1); }, [result]);
+ // Reset keyboard focus when result changes
+ useEffect(() => { setFocusedListIdx(-1); }, [result]);
 
-  const addToRecent = useCallback((text: string) => {
-    setRecentQueries((prev) => {
-      const filtered = prev.filter((q) => q.toLowerCase() !== text.toLowerCase());
-      return [text, ...filtered].slice(0, MAX_RECENT_QUERIES);
-    });
-  }, []);
+ const addToRecent = useCallback((text: string) => {
+ setRecentQueries((prev) => {
+ const filtered = prev.filter((q) => q.toLowerCase() !== text.toLowerCase());
+ return [text, ...filtered].slice(0, MAX_RECENT_QUERIES);
+ });
+ }, []);
 
-  const sseAbortRef = useRef<(() => void) | null>(null);
+ const sseAbortRef = useRef<(() => void) | null>(null);
 
-  // Save a Q&A pair to session memory for follow-up context
-  const addToSessionMemory = useCallback((q: string, res: NlpQueryResponse) => {
-    const answer = res.response?.message || res.intent || 'No response';
-    sessionMemoryRef.current = [
-      ...sessionMemoryRef.current.slice(-(MAX_SESSION_MEMORY - 1)),
-      { q, a: answer, intent: res.intent },
-    ];
-  }, []);
+ // Save a Q&A pair to session memory for follow-up context
+ const addToSessionMemory = useCallback((q: string, res: NlpQueryResponse) => {
+ const answer = res.response?.message || res.intent || 'No response';
+ sessionMemoryRef.current = [
+ ...sessionMemoryRef.current.slice(-(MAX_SESSION_MEMORY - 1)),
+ { q, a: answer, intent: res.intent },
+ ];
+ }, []);
 
-  const handleSubmit = useCallback((q?: string) => {
-    const text = (q ?? query).trim();
-    if (!text) return;
-    setShowResult(false);
-    addToRecent(text);
+ const handleSubmit = useCallback((q?: string) => {
+ const text = (q ?? query).trim();
+ if (!text) return;
+ setShowResult(false);
+ addToRecent(text);
 
-    const sessionContext = buildSessionContext();
+ const sessionContext = buildSessionContext();
 
-    // Cancel any previous SSE stream
-    if (sseAbortRef.current) { sseAbortRef.current(); sseAbortRef.current = null; }
+ // Cancel any previous SSE stream
+ if (sseAbortRef.current) { sseAbortRef.current(); sseAbortRef.current = null; }
 
-    // Try SSE streaming first for real-time progress
-    setIsStreaming(true);
-    setLoadingPhase(0);
+ // Try SSE streaming first for real-time progress
+ setIsStreaming(true);
+ setLoadingPhase(0);
 
-    const abort = streamNlpQuery(text, {
-      onPhase: (phase) => {
-        const idx = SSE_PHASE_MAP[phase.phase];
-        if (idx !== undefined) setLoadingPhase(idx);
-      },
-      onResult: (res) => {
-        setIsStreaming(false);
-        setResult(res);
-        setShowResult(true);
-        addToSessionMemory(text, res);
-        if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
-          setTimeout(() => navigate(res.response.route!), 600);
-        }
-      },
-      onError: () => {
-        // SSE failed — fall back to regular POST
-        setIsStreaming(false);
-        nlpQuery.mutate({ query: text, sessionContext }, {
-          onSuccess: (res) => {
-            setResult(res);
-            setShowResult(true);
-            addToSessionMemory(text, res);
-            if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
-              setTimeout(() => navigate(res.response.route!), 600);
-            }
-          },
-          onError: () => {
-            // Both SSE and POST failed — show a fallback error
-            setResult({
-              intent: 'ERROR',
-              confidence: 0,
-              response: { summary: 'Sorry, something went wrong. Please try again or rephrase your question.' },
-            } as any);
-            setShowResult(true);
-          },
-        });
-      },
-    }, sessionContext);
-    sseAbortRef.current = abort;
-  }, [query, nlpQuery, navigate, addToRecent, SSE_PHASE_MAP, buildSessionContext, addToSessionMemory]);
+ const abort = streamNlpQuery(text, {
+ onPhase: (phase) => {
+ const idx = SSE_PHASE_MAP[phase.phase];
+ if (idx !== undefined) setLoadingPhase(idx);
+ },
+ onResult: (res) => {
+ setIsStreaming(false);
+ setResult(res);
+ setShowResult(true);
+ addToSessionMemory(text, res);
+ if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
+ setTimeout(() => navigate(res.response.route!), 600);
+ }
+ },
+ onError: () => {
+ // SSE failed — fall back to regular POST
+ setIsStreaming(false);
+ nlpQuery.mutate({ query: text, sessionContext }, {
+ onSuccess: (res) => {
+ setResult(res);
+ setShowResult(true);
+ addToSessionMemory(text, res);
+ if (res.intent === 'NAVIGATE' && res.confidence >= 0.9 && res.response?.route) {
+ setTimeout(() => navigate(res.response.route!), 600);
+ }
+ },
+ onError: () => {
+ // Both SSE and POST failed — show a fallback error
+ setResult({
+ intent: 'ERROR',
+ confidence: 0,
+ response: { summary: 'Sorry, something went wrong. Please try again or rephrase your question.' },
+ } as any);
+ setShowResult(true);
+ },
+ });
+ },
+ }, sessionContext);
+ sseAbortRef.current = abort;
+ }, [query, nlpQuery, navigate, addToRecent, SSE_PHASE_MAP, buildSessionContext, addToSessionMemory]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSubmit();
-  };
+ const handleKeyDown = (e: React.KeyboardEvent) => {
+ if (e.key === 'Enter') handleSubmit();
+ };
 
-  const handleQuickAction = (q: string) => {
-    setQuery(q);
-    handleSubmit(q);
-  };
+ const handleQuickAction = (q: string) => {
+ setQuery(q);
+ handleSubmit(q);
+ };
 
-  /**
-   * Append filter query params to a route based on the original query text.
-   * Uses the query string as the primary (reliable) source of filter intent,
-   * with fallback to response data parsing.
-   */
-  const appendNlpFilters = useCallback((route: string): string => {
-    const params = new URLSearchParams();
+ /**
+ * Append filter query params to a route based on the original query text.
+ * Uses the query string as the primary (reliable) source of filter intent,
+ * with fallback to response data parsing.
+ */
+ const appendNlpFilters = useCallback((route: string): string => {
+ const params = new URLSearchParams();
 
-    if (route.startsWith('/projects')) {
-      // ── Primary: extract filters from the original query text ──
-      // This is deterministic and doesn't depend on response format
-      const q = query.trim();
+ if (route.startsWith('/projects')) {
+ // ── Primary: extract filters from the original query text ──
+ // This is deterministic and doesn't depend on response format
+ const q = query.trim();
 
-      // Priority: "P0 projects", "P1 projects", etc.
-      const pMatch = q.match(/\b(P[0-3])\b/i);
-      if (pMatch) params.set('priority', pMatch[1].toUpperCase());
+ // Priority: "P0 projects", "P1 projects", etc.
+ const pMatch = q.match(/\b(P[0-3])\b/i);
+ if (pMatch) params.set('priority', pMatch[1].toUpperCase());
 
-      // Status: "on-hold projects", "active projects", "completed projects"
-      if (/\bon[- _]?hold\b/i.test(q)) params.set('status', 'ON_HOLD');
-      else if (/\bactive\b/i.test(q) && !/\bcritical\b/i.test(q) && !pMatch) params.set('status', 'ACTIVE');
-      else if (/\bcompleted\b/i.test(q)) params.set('status', 'COMPLETED');
-      else if (/\bnot[- _]?started\b/i.test(q)) params.set('status', 'NOT_STARTED');
-      else if (/\bcancelled\b/i.test(q)) params.set('status', 'CANCELLED');
+ // Status: "on-hold projects", "active projects", "completed projects"
+ if (/\bon[- _]?hold\b/i.test(q)) params.set('status', 'ON_HOLD');
+ else if (/\bactive\b/i.test(q) && !/\bcritical\b/i.test(q) && !pMatch) params.set('status', 'ACTIVE');
+ else if (/\bcompleted\b/i.test(q)) params.set('status', 'COMPLETED');
+ else if (/\bnot[- _]?started\b/i.test(q)) params.set('status', 'NOT_STARTED');
+ else if (/\bcancelled\b/i.test(q)) params.set('status', 'CANCELLED');
 
-      // Owner: "projects owned by John", "projects by Sarah"
-      const ownerMatch = q.match(/(?:owned\s+by|projects?\s+(?:by|for))\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
-      if (ownerMatch) params.set('owner', ownerMatch[1]);
+ // Owner: "projects owned by John", "projects by Sarah"
+ const ownerMatch = q.match(/(?:owned\s+by|projects?\s+(?:by|for))\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+ if (ownerMatch) params.set('owner', ownerMatch[1]);
 
-      // ── Fallback: try response data if query didn't yield filters ──
-      if (params.toString() === '' && result?.response?.data) {
-        const d = result.response.data as Record<string, unknown>;
-        const items = d._structuredItems as Array<Record<string, string>> | undefined;
-        if (items && items.length > 0) {
-          // All items share same priority → priority filter
-          if (items[0].priority) {
-            const priorities = new Set(items.map(i => i.priority));
-            if (priorities.size === 1) params.set('priority', items[0].priority);
-          }
-          // All items share same owner → owner filter
-          if (items[0].Owner) {
-            const owners = new Set(items.map(i => i.Owner));
-            if (owners.size === 1) params.set('owner', items[0].Owner);
-          }
-        }
-        // Priority from response message
-        const msg = result.response.message ?? '';
-        if (!params.has('priority')) {
-          const mp = msg.match(/\b(P[0-3])\b/);
-          if (mp) params.set('priority', mp[1]);
-        }
-      }
-    }
+ // ── Fallback: try response data if query didn't yield filters ──
+ if (params.toString() === '' && result?.response?.data) {
+ const d = result.response.data as Record<string, unknown>;
+ const items = d._structuredItems as Array<Record<string, string>> | undefined;
+ if (items && items.length > 0) {
+ // All items share same priority → priority filter
+ if (items[0].priority) {
+ const priorities = new Set(items.map(i => i.priority));
+ if (priorities.size === 1) params.set('priority', items[0].priority);
+ }
+ // All items share same owner → owner filter
+ if (items[0].Owner) {
+ const owners = new Set(items.map(i => i.Owner));
+ if (owners.size === 1) params.set('owner', items[0].Owner);
+ }
+ }
+ // Priority from response message
+ const msg = result.response.message ?? '';
+ if (!params.has('priority')) {
+ const mp = msg.match(/\b(P[0-3])\b/);
+ if (mp) params.set('priority', mp[1]);
+ }
+ }
+ }
 
-    const qs = params.toString();
-    return qs ? `${route}${route.includes('?') ? '&' : '?'}${qs}` : route;
-  }, [query, result]);
+ const qs = params.toString();
+ return qs ? `${route}${route.includes('?') ? '&' : '?'}${qs}` : route;
+ }, [query, result]);
 
-  const handleNavigate = (route: string) => {
-    navigate(appendNlpFilters(route), { state: { fromNlp: true } });
-  };
+ const handleNavigate = (route: string) => {
+ navigate(appendNlpFilters(route), { state: { fromNlp: true } });
+ };
 
-  const handleNavigateWithToast = useCallback((route: string, entityName?: string) => {
-    if (entityName) {
-      notifications.show({
-        title: 'Navigating',
-        message: `Opening ${entityName}…`,
-        color: 'teal',
-        autoClose: 1500,
-        withCloseButton: false,
-      });
-    }
-    navigate(appendNlpFilters(route), { state: { fromNlp: true } });
-  }, [navigate, appendNlpFilters]);
+ const handleNavigateWithToast = useCallback((route: string, entityName?: string) => {
+ if (entityName) {
+ notifications.show({
+ title: 'Navigating',
+ message: `Opening ${entityName}…`,
+ color: 'teal',
+ autoClose: 1500,
+ withCloseButton: false,
+ });
+ }
+ navigate(appendNlpFilters(route), { state: { fromNlp: true } });
+ }, [navigate, appendNlpFilters]);
 
-  const handleFormPrefill = (route: string, formData: Record<string, unknown>) => {
-    navigate(route, { state: { prefill: formData, fromNlp: true } });
-  };
+ const handleFormPrefill = (route: string, formData: Record<string, unknown>) => {
+ navigate(route, { state: { prefill: formData, fromNlp: true } });
+ };
 
-  return (
-    <Container size="md" py="xl">
-      {/* ── Hero section with floating orbs ── */}
-      <div className="nlp-hero" style={{ marginBottom: 24, position: 'relative' }}>
-        {/* Floating decorative orbs */}
-        <div className="nlp-orb nlp-orb-1" />
-        <div className="nlp-orb nlp-orb-2" />
-        <div className="nlp-orb nlp-orb-3" />
+ return (
+ <Container size="md" py="xl">
+ {/* ── Hero section with floating orbs ── */}
+ <div className="nlp-hero" style={{ marginBottom: 24, position: 'relative' }}>
+ {/* Floating decorative orbs */}
+ <div className="nlp-orb nlp-orb-1" />
+ <div className="nlp-orb nlp-orb-2" />
+ <div className="nlp-orb nlp-orb-3" />
 
-        <Stack align="center" gap="xs" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{
-            position: 'relative',
-            marginBottom: 8,
-          }}>
-            <ThemeIcon
-              size={64}
-              radius="xl"
-              variant="gradient"
-              gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
-              style={{
-                boxShadow: `0 0 40px ${AQUA}30, 0 0 80px ${AQUA}10`,
-                animation: 'float 4s ease-in-out infinite',
-              }}
-            >
-              <IconBrain size={34} />
-            </ThemeIcon>
-            {/* Animated ring around the icon */}
-            <div style={{
-              position: 'absolute',
-              inset: -6,
-              borderRadius: '50%',
-              border: `2px solid ${AQUA}30`,
-              animation: 'pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            }} />
-          </div>
-          <Title
-            order={2}
-            ta="center"
-            style={{
-              fontFamily: FONT_FAMILY,
-              fontSize: 32,
-              fontWeight: 700,
-              lineHeight: 1.2,
-              color: isDark ? '#fff' : DEEP_BLUE,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {greeting.title}
-          </Title>
-          <Text c="dimmed" ta="center" size="md" maw={480} style={{ lineHeight: 1.5 }}>
-            {greeting.subtitle}
-          </Text>
-        </Stack>
-      </div>
+ <Stack align="center" gap="xs" style={{ position: 'relative', zIndex: 1 }}>
+ <div style={{
+ position: 'relative',
+ marginBottom: 8,
+ }}>
+ <ThemeIcon
+ size={64}
+ radius="xl"
+ variant="gradient"
+ gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+ style={{
+ boxShadow: `0 0 40px ${AQUA}30, 0 0 80px ${AQUA}10`,
+ animation: 'float 4s ease-in-out infinite',
+ }}
+ >
+ <IconBrain size={34} />
+ </ThemeIcon>
+ {/* Animated ring around the icon */}
+ <div style={{
+ position: 'absolute',
+ inset: -6,
+ borderRadius: '50%',
+ border: `2px solid ${AQUA}30`,
+ animation: 'pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+ }} />
+ </div>
+ <Title
+ order={2}
+ ta="center"
+ style={{
+ fontFamily: FONT_FAMILY,
+ fontSize: 32,
+ fontWeight: 700,
+ lineHeight: 1.2,
+ color: isDark ? '#fff' : DEEP_BLUE,
+ letterSpacing: '-0.02em',
+ }}
+ >
+ {greeting.title}
+ </Title>
+ <Text c="dimmed" ta="center" size="md" maw={480} style={{ lineHeight: 1.5 }}>
+ {greeting.subtitle}
+ </Text>
+ </Stack>
+ </div>
 
-      {/* ── Proactive insight cards ── */}
-      {insightCards && insightCards.length > 0 && !showResult && !isLoading && (
-        <SimpleGrid cols={{ base: 1, xs: 2, sm: Math.min(insightCards.length, 4) }} spacing="sm" mt={-4} mb="md">
-          {insightCards.map((card) => {
-            const iconMap: Record<string, React.ReactNode> = {
-              'clock': <IconClock size={16} />,
-              'player-play': <IconPlayerPlay size={16} />,
-              'snowflake': <IconSnowflake size={16} />,
-              'rocket': <IconRocket size={16} />,
-              'alert-triangle': <IconAlertTriangle size={16} />,
-              'status-change': <IconStatusChange size={16} />,
-              'briefcase': <IconBriefcase size={16} />,
-              'users': <IconUsers size={16} />,
-              'chart-bar': <IconChartBar size={16} />,
-              'calendar-event': <IconCalendarEvent size={16} />,
-            };
-            const cardNum = card.title.match(/\d+/)?.[0];
-            return (
-              <Tooltip key={card.id} label={`Click to ask: "${card.query}"`} position="bottom" withArrow openDelay={400} multiline maw={280}>
-                <Paper
-                  p="sm"
-                  radius="lg"
-                  withBorder
-                  className="nlp-insight-card"
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    borderColor: isDark ? 'rgba(45, 204, 211, 0.15)' : `var(--mantine-color-${card.color}-2)`,
-                    borderLeft: `3px solid ${AQUA}`,
-                    minHeight: 96,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    background: isDark
-                      ? `linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))`
-                      : `linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.5))`,
-                    backdropFilter: 'blur(8px)',
-                  }}
-                  onClick={async () => {
-                    setQuery(card.query);
-                    if (card.toolName) {
-                      // Phase 0.2: Direct tool execution — bypass NLP pipeline
-                      setIsStreaming(true);
-                      setShowResult(false);
-                      setLoadingPhase(0);
-                      try {
-                        const res = await directToolCall(card.toolName, card.toolParams ?? {});
-                        setResult(res);
-                        setShowResult(true);
-                        setIsStreaming(false);
-                        addToSessionMemory(card.query, res);
-                      } catch {
-                        // Fall back to regular NLP query
-                        setIsStreaming(false);
-                        handleSubmit(card.query);
-                      }
-                    } else {
-                      handleSubmit(card.query);
-                    }
-                  }}
-                >
-                  <Group gap={8} wrap="nowrap" align="flex-start" style={{ position: 'relative', zIndex: 1 }}>
-                    <ThemeIcon size={28} radius="md" variant="light" color={card.color} className="nlp-insight-icon">
-                      {iconMap[card.icon] || <IconBulb size={16} />}
-                    </ThemeIcon>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
-                      <Group gap={4} wrap="nowrap" justify="space-between">
-                        <Text size="xs" fw={600} lineClamp={1} style={{ color: isDark ? undefined : DEEP_BLUE }}>
-                          {card.title}
-                        </Text>
-                        {cardNum && <Badge size="xs" variant="light" color={card.color} className="nlp-count-badge" style={{ minWidth: 'fit-content', flexShrink: 0, padding: '0 6px' }}>{cardNum}</Badge>}
-                      </Group>
-                      <Text size="xs" c="dimmed" lineClamp={2} lh={1.3} mt={2}>
-                        {card.description}
-                      </Text>
-                    </Box>
-                  </Group>
-                  <Box style={{
-                    position: 'absolute',
-                    right: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    opacity: 0,
-                    transition: 'opacity 0.25s ease',
-                    zIndex: 0,
-                    color: AQUA,
-                  }} className="nlp-insight-arrow">
-                    <IconArrowRight size={18} />
-                  </Box>
-                </Paper>
-              </Tooltip>
-            );
-          })}
-        </SimpleGrid>
-      )}
+ {/* ── Proactive insight cards ── */}
+ {insightCards && insightCards.length > 0 && !showResult && !isLoading && (
+ <SimpleGrid cols={{ base: 1, xs: 2, sm: Math.min(insightCards.length, 4) }} spacing="sm" mt={-4} mb="md">
+ {insightCards.map((card) => {
+ const iconMap: Record<string, React.ReactNode> = {
+ 'clock': <IconClock size={16} />,
+ 'player-play': <IconPlayerPlay size={16} />,
+ 'snowflake': <IconSnowflake size={16} />,
+ 'rocket': <IconRocket size={16} />,
+ 'alert-triangle': <IconAlertTriangle size={16} />,
+ 'status-change': <IconStatusChange size={16} />,
+ 'briefcase': <IconBriefcase size={16} />,
+ 'users': <IconUsers size={16} />,
+ 'chart-bar': <IconChartBar size={16} />,
+ 'calendar-event': <IconCalendarEvent size={16} />,
+ };
+ const cardNum = card.title.match(/\d+/)?.[0];
+ return (
+ <Tooltip key={card.id} label={`Click to ask: "${card.query}"`} position="bottom" withArrow openDelay={400} multiline maw={280}>
+ <Paper
+ p="sm"
+ radius="lg"
+ withBorder
+ className="nlp-insight-card"
+ style={{
+ cursor: 'pointer',
+ transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+ borderColor: isDark ? 'rgba(45, 204, 211, 0.15)' : `var(--mantine-color-${card.color}-2)`,
+ borderLeft: `3px solid ${AQUA}`,
+ minHeight: 96,
+ display: 'flex',
+ flexDirection: 'column',
+ justifyContent: 'space-between',
+ position: 'relative',
+ overflow: 'hidden',
+ background: isDark
+ ? `linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))`
+ : `linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.5))`,
+ backdropFilter: 'blur(8px)',
+ }}
+ onClick={async () => {
+ setQuery(card.query);
+ if (card.toolName) {
+ // Phase 0.2: Direct tool execution — bypass NLP pipeline
+ setIsStreaming(true);
+ setShowResult(false);
+ setLoadingPhase(0);
+ try {
+ const res = await directToolCall(card.toolName, card.toolParams ?? {});
+ setResult(res);
+ setShowResult(true);
+ setIsStreaming(false);
+ addToSessionMemory(card.query, res);
+ } catch {
+ // Fall back to regular NLP query
+ setIsStreaming(false);
+ handleSubmit(card.query);
+ }
+ } else {
+ handleSubmit(card.query);
+ }
+ }}
+ >
+ <Group gap={8} wrap="nowrap" align="flex-start" style={{ position: 'relative', zIndex: 1 }}>
+ <ThemeIcon size={28} radius="md" variant="light" color={card.color} className="nlp-insight-icon">
+ {iconMap[card.icon] || <IconBulb size={16} />}
+ </ThemeIcon>
+ <Box style={{ flex: 1, minWidth: 0 }}>
+ <Group gap={4} wrap="nowrap" justify="space-between">
+ <Text size="xs" fw={600} lineClamp={1} style={{ color: isDark ? undefined : DEEP_BLUE }}>
+ {card.title}
+ </Text>
+ {cardNum && <Badge size="xs" variant="light" color={card.color} className="nlp-count-badge" style={{ minWidth: 'fit-content', flexShrink: 0, padding: '0 6px' }}>{cardNum}</Badge>}
+ </Group>
+ <Text size="xs" c="dimmed" lineClamp={2} lh={1.3} mt={2}>
+ {card.description}
+ </Text>
+ </Box>
+ </Group>
+ <Box style={{
+ position: 'absolute',
+ right: 8,
+ top: '50%',
+ transform: 'translateY(-50%)',
+ opacity: 0,
+ transition: 'opacity 0.25s ease',
+ zIndex: 0,
+ color: AQUA,
+ }} className="nlp-insight-arrow">
+ <IconArrowRight size={18} />
+ </Box>
+ </Paper>
+ </Tooltip>
+ );
+ })}
+ </SimpleGrid>
+ )}
 
-      {/* ── Search input ── */}
-      <Paper
-        shadow="md"
-        radius="lg"
-        p={4}
-        mb="lg"
-        className="nlp-search-container"
-        style={{
-          border: `2px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
-          transition: 'all 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-          boxShadow: inputFocused ? `0 0 0 1px ${AQUA}, 0 0 24px ${AQUA}20` : SHADOW.md,
-        }}
-      >
-        <Autocomplete
-          ref={inputRef}
-          placeholder="Ask me anything about your portfolio…"
-          size="lg"
-          radius="lg"
-          value={query}
-          onChange={(val) => { setQuery(val); setShowResult(false); }}
-          onKeyDown={handleKeyDown}
-          onOptionSubmit={(val) => { setQuery(val); setTimeout(() => handleSubmit(val), 50); }}
-          data={autocompleteData}
-          maxDropdownHeight={280}
-          limit={8}
-          filter={({ options, search }: { options: any[]; search: string }) => {
-            if (!search || search.trim().length < 2) return [];
-            const q = search.toLowerCase();
-            return options.filter((o: any) => {
-              const label = typeof o === 'string' ? o : (o?.label ?? o?.value ?? '');
-              return String(label).toLowerCase().includes(q);
-            });
-          }}
-          // Only show dropdown when focused, has 2+ chars, and not showing result
-          dropdownOpened={inputFocused && query.trim().length >= 2 && !showResult}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setTimeout(() => setInputFocused(false), 200)}
-          leftSection={
-            isLoading
-              ? <Loader size={18} color={AQUA} className="nlp-typing-indicator" />
-              : <IconSearch size={18} style={{ opacity: 0.5 }} />
-          }
-          rightSection={
-            <Group gap={4} wrap="nowrap" pr={4}>
-              {query.trim() && (
-                <ActionIcon
-                  variant="subtle"
-                  radius="xl"
-                  size="sm"
-                  onClick={() => { setQuery(''); setShowResult(false); setResult(null); inputRef.current?.focus(); }}
-                  aria-label="Clear search"
-                  style={{ color: DEEP_BLUE_TINTS[40] }}
-                >
-                  <IconX size={16} />
-                </ActionIcon>
-              )}
-              {query.trim() ? (
-                <ActionIcon
-                  variant="filled"
-                  radius="xl"
-                  size="lg"
-                  onClick={() => handleSubmit()}
-                  loading={isLoading}
-                  style={{ backgroundColor: AQUA, transition: 'all 150ms ease' }}
-                >
-                  <IconArrowRight size={18} />
-                </ActionIcon>
-              ) : (
-                <Kbd size="sm" style={{ opacity: 0.4 }}>↵</Kbd>
-              )}
-            </Group>
-          }
-          rightSectionWidth={88}
-          styles={{
-            input: {
-              border: 'none',
-              fontSize: rem(16),
-              fontFamily: FONT_FAMILY,
-            },
-          }}
-        />
-      </Paper>
+ {/* ── Search input ── */}
+ <Paper
+ shadow="md"
+ radius="lg"
+ p={4}
+ mb="lg"
+ className="nlp-search-container"
+ style={{
+ border: `2px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
+ transition: 'all 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+ boxShadow: inputFocused ? `0 0 0 1px ${AQUA}, 0 0 24px ${AQUA}20` : SHADOW.md,
+ }}
+ >
+ <Autocomplete
+ ref={inputRef}
+ placeholder="Ask me anything about your portfolio…"
+ size="lg"
+ radius="lg"
+ value={query}
+ onChange={(val) => { setQuery(val); setShowResult(false); }}
+ onKeyDown={handleKeyDown}
+ onOptionSubmit={(val) => { setQuery(val); setTimeout(() => handleSubmit(val), 50); }}
+ data={autocompleteData}
+ maxDropdownHeight={280}
+ limit={8}
+ filter={({ options, search }: { options: any[]; search: string }) => {
+ if (!search || search.trim().length < 2) return [];
+ const q = search.toLowerCase();
+ return options.filter((o: any) => {
+ const label = typeof o === 'string' ? o : (o?.label ?? o?.value ?? '');
+ return String(label).toLowerCase().includes(q);
+ });
+ }}
+ // Only show dropdown when focused, has 2+ chars, and not showing result
+ dropdownOpened={inputFocused && query.trim().length >= 2 && !showResult}
+ onFocus={() => setInputFocused(true)}
+ onBlur={() => setTimeout(() => setInputFocused(false), 200)}
+ leftSection={
+ isLoading
+ ? <Loader size={18} color={AQUA} className="nlp-typing-indicator" />
+ : <IconSearch size={18} style={{ opacity: 0.5 }} />
+ }
+ rightSection={
+ <Group gap={4} wrap="nowrap" pr={4}>
+ {query.trim() && (
+ <ActionIcon
+ variant="subtle"
+ radius="xl"
+ size="sm"
+ onClick={() => { setQuery(''); setShowResult(false); setResult(null); inputRef.current?.focus(); }}
+ aria-label="Clear search"
+ style={{ color: DEEP_BLUE_TINTS[40] }}
+ >
+ <IconX size={16} />
+ </ActionIcon>
+ )}
+ {query.trim() ? (
+ <ActionIcon
+ variant="filled"
+ radius="xl"
+ size="lg"
+ onClick={() => handleSubmit()}
+ loading={isLoading}
+ style={{ backgroundColor: AQUA, transition: 'all 150ms ease' }}
+ >
+ <IconArrowRight size={18} />
+ </ActionIcon>
+ ) : (
+ <Kbd size="sm" style={{ opacity: 0.4 }}>↵</Kbd>
+ )}
+ </Group>
+ }
+ rightSectionWidth={88}
+ styles={{
+ input: {
+ border: 'none',
+ fontSize: rem(16),
+ fontFamily: FONT_FAMILY,
+ },
+ }}
+ />
+ </Paper>
 
-      {/* ── Accessibility: screen reader announcements ── */}
-      <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-        {isLoading && 'Processing your query…'}
-        {showResult && result && `Result: ${result.response.message ?? 'Query processed'}`}
-        {nlpQuery.isError && 'Error processing your query.'}
-      </div>
+ {/* ── Accessibility: screen reader announcements ── */}
+ <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+ {isLoading && 'Processing your query…'}
+ {showResult && result && `Result: ${result.response.message ?? 'Query processed'}`}
+ {nlpQuery.isError && 'Error processing your query.'}
+ </div>
 
-      {/* ── Animated AI loading state ── */}
-      {isLoading && !showResult && (() => {
-        const LOADING_STEPS = [
-          { icon: <IconBrain size={16} />, text: 'Understanding your question…', detail: 'Parsing intent & entities' },
-          { icon: <IconSearch size={16} />, text: 'Searching across all teams…', detail: 'Scanning resources, projects & pods' },
-          { icon: <IconChartBar size={16} />, text: 'Analyzing matching data…', detail: 'Computing metrics & insights' },
-          { icon: <IconSparkles size={16} />, text: 'Synthesizing answer…', detail: 'Building your response' },
-          { icon: <IconBulb size={16} />, text: 'Almost there…', detail: 'Finalizing results' },
-        ];
-        const currentStep = Math.min(loadingPhase, LOADING_STEPS.length - 1);
-        const progressPct = Math.min(((loadingPhase + 1) / LOADING_STEPS.length) * 100, 95);
-        return (
-          <Paper shadow="sm" radius="lg" mb="lg" withBorder style={{ overflow: 'hidden' }}>
-            {/* Progress bar with shimmer */}
-            <Box style={{ height: 4, background: isDark ? 'var(--mantine-color-dark-5)' : BORDER_DEFAULT, overflow: 'hidden', position: 'relative' }}>
-              <Box className="nlp-progress-bar" style={{ height: '100%', width: `${progressPct}%`, background: `linear-gradient(90deg, ${AQUA}, ${DEEP_BLUE}, ${AQUA})`, transition: 'width 1s ease-out', boxShadow: `0 0 12px ${AQUA}60`, position: 'relative' }}>
-                <Box className="nlp-progress-shimmer" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(90deg, transparent, ${AQUA}40, transparent)`, animation: 'nlp-shimmer 2s infinite' }} />
-              </Box>
-            </Box>
-            <Box px="md" py="md">
-              {/* Active step with animated icon */}
-              <Group gap="sm" mb="md" wrap="nowrap">
-                <ThemeIcon
-                  size={36} variant="light" radius="xl"
-                  className="nlp-thinking-icon"
-                  style={{ backgroundColor: `${AQUA}15`, color: AQUA, boxShadow: `0 0 16px ${AQUA}40` }}
-                >
-                  {LOADING_STEPS[currentStep].icon}
-                </ThemeIcon>
-                <Stack gap={2} style={{ flex: 1 }}>
-                  <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
-                    {LOADING_STEPS[currentStep].text}
-                  </Text>
-                  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                    {LOADING_STEPS[currentStep].detail}
-                  </Text>
-                </Stack>
-                <Loader size={18} color={AQUA} type="dots" />
-              </Group>
-              {/* Step indicators */}
-              <Group gap={6} justify="center">
-                {LOADING_STEPS.map((step, idx) => (
-                  <Tooltip key={idx} label={step.text} position="bottom" withArrow>
-                    <Box style={{
-                      width: idx <= currentStep ? 24 : 8,
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: idx <= currentStep ? AQUA : (isDark ? 'var(--mantine-color-dark-4)' : DEEP_BLUE_TINTS[20]),
-                      transition: 'all 0.5s ease',
-                      opacity: idx === currentStep ? 1 : 0.6,
-                      boxShadow: idx === currentStep ? `0 0 8px ${AQUA}40` : 'none',
-                    }} />
-                  </Tooltip>
-                ))}
-              </Group>
-            </Box>
-          </Paper>
-        );
-      })()}
+ {/* ── Animated AI loading state ── */}
+ {isLoading && !showResult && (() => {
+ const LOADING_STEPS = [
+ { icon: <IconBrain size={16} />, text: 'Understanding your question…', detail: 'Parsing intent & entities' },
+ { icon: <IconSearch size={16} />, text: 'Searching across all teams…', detail: 'Scanning resources, projects & pods' },
+ { icon: <IconChartBar size={16} />, text: 'Analyzing matching data…', detail: 'Computing metrics & insights' },
+ { icon: <IconSparkles size={16} />, text: 'Synthesizing answer…', detail: 'Building your response' },
+ { icon: <IconBulb size={16} />, text: 'Almost there…', detail: 'Finalizing results' },
+ ];
+ const currentStep = Math.min(loadingPhase, LOADING_STEPS.length - 1);
+ const progressPct = Math.min(((loadingPhase + 1) / LOADING_STEPS.length) * 100, 95);
+ return (
+ <Paper shadow="sm" radius="lg" mb="lg" withBorder style={{ overflow: 'hidden' }}>
+ {/* Progress bar with shimmer */}
+ <Box style={{ height: 4, background: isDark ? 'var(--mantine-color-dark-5)' : BORDER_DEFAULT, overflow: 'hidden', position: 'relative' }}>
+ <Box className="nlp-progress-bar" style={{ height: '100%', width: `${progressPct}%`, background: `linear-gradient(90deg, ${AQUA}, ${DEEP_BLUE}, ${AQUA})`, transition: 'width 1s ease-out', boxShadow: `0 0 12px ${AQUA}60`, position: 'relative' }}>
+ <Box className="nlp-progress-shimmer" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(90deg, transparent, ${AQUA}40, transparent)`, animation: 'nlp-shimmer 2s infinite' }} />
+ </Box>
+ </Box>
+ <Box px="md" py="md">
+ {/* Active step with animated icon */}
+ <Group gap="sm" mb="md" wrap="nowrap">
+ <ThemeIcon
+ size={36} variant="light" radius="xl"
+ className="nlp-thinking-icon"
+ style={{ backgroundColor: `${AQUA}15`, color: AQUA, boxShadow: `0 0 16px ${AQUA}40` }}
+ >
+ {LOADING_STEPS[currentStep].icon}
+ </ThemeIcon>
+ <Stack gap={2} style={{ flex: 1 }}>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+ {LOADING_STEPS[currentStep].text}
+ </Text>
+ <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ {LOADING_STEPS[currentStep].detail}
+ </Text>
+ </Stack>
+ <Loader size={18} color={AQUA} type="dots" />
+ </Group>
+ {/* Step indicators */}
+ <Group gap={6} justify="center">
+ {LOADING_STEPS.map((step, idx) => (
+ <Tooltip key={idx} label={step.text} position="bottom" withArrow>
+ <Box style={{
+ width: idx <= currentStep ? 24 : 8,
+ height: 4,
+ borderRadius: 2,
+ backgroundColor: idx <= currentStep ? AQUA : (isDark ? 'var(--mantine-color-dark-4)' : DEEP_BLUE_TINTS[20]),
+ transition: 'all 0.5s ease',
+ opacity: idx === currentStep ? 1 : 0.6,
+ boxShadow: idx === currentStep ? `0 0 8px ${AQUA}40` : 'none',
+ }} />
+ </Tooltip>
+ ))}
+ </Group>
+ </Box>
+ </Paper>
+ );
+ })()}
 
-      {/* ── Result card ── */}
-      <Transition mounted={showResult && result != null} transition="slide-up" duration={250}>
-        {(styles) => (
-          <Paper
-            style={{
-              ...styles,
-              overflow: 'hidden',
-            }}
-            shadow="sm"
-            radius="lg"
-            mb="lg"
-            withBorder
-          >
-            {result && <NlpResultCard result={result} onNavigate={handleNavigate} onNavigateWithToast={handleNavigateWithToast} onFormPrefill={handleFormPrefill} isDark={isDark} />}
-          </Paper>
-        )}
-      </Transition>
+ {/* ── Result card ── */}
+ <Transition mounted={showResult && result != null} transition="slide-up" duration={250}>
+ {(styles) => (
+ <Paper
+ style={{
+ ...styles,
+ overflow: 'hidden',
+ }}
+ shadow="sm"
+ radius="lg"
+ mb="lg"
+ withBorder
+ >
+ {result && <NlpResultCard result={result} onNavigate={handleNavigate} onNavigateWithToast={handleNavigateWithToast} onFormPrefill={handleFormPrefill} isDark={isDark} />}
+ </Paper>
+ )}
+ </Transition>
 
-      {/* ── Error display ── */}
-      {nlpQuery.isError && (
-        <Paper p="md" mb="lg" radius="lg" withBorder style={{ borderColor: 'var(--mantine-color-red-4)', borderLeft: `4px solid var(--mantine-color-red-5)` }}>
-          <Group gap="sm" justify="space-between" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap">
-              <ThemeIcon size={32} variant="light" color="red" radius="md">
-                <IconAlertCircle size={18} />
-              </ThemeIcon>
-              <div>
-                <Text c="red" size="sm" fw={500}>
-                  {nlpQuery.error?.message?.includes('timed out')
-                    ? 'The query took too long. The system may be warming up — please try again.'
-                    : 'Something went wrong processing your query.'}
-                </Text>
-                {nlpQuery.error && !nlpQuery.error.message?.includes('timed out') && (
-                  <Text c="dimmed" size="xs" mt={4}>
-                    {nlpQuery.error.message}
-                  </Text>
-                )}
-              </div>
-            </Group>
-            <Button
-              variant="light"
-              color="red"
-              size="xs"
-              onClick={() => handleSubmit()}
-              loading={isLoading}
-            >
-              Retry
-            </Button>
-          </Group>
-        </Paper>
-      )}
+ {/* ── Error display ── */}
+ {nlpQuery.isError && (
+ <Paper p="md" mb="lg" radius="lg" withBorder style={{ borderColor: 'var(--mantine-color-red-4)', borderLeft: `4px solid var(--mantine-color-red-5)` }}>
+ <Group gap="sm" justify="space-between" wrap="nowrap">
+ <Group gap="sm" wrap="nowrap">
+ <ThemeIcon size={32} variant="light" color="red" radius="md">
+ <IconAlertCircle size={18} />
+ </ThemeIcon>
+ <div>
+ <Text c="red" size="sm" fw={500}>
+ {nlpQuery.error?.message?.includes('timed out')
+ ? 'The query took too long. The system may be warming up — please try again.'
+ : 'Something went wrong processing your query.'}
+ </Text>
+ {nlpQuery.error && !nlpQuery.error.message?.includes('timed out') && (
+ <Text c="dimmed" size="xs" mt={4}>
+ {nlpQuery.error.message}
+ </Text>
+ )}
+ </div>
+ </Group>
+ <Button
+ variant="light"
+ color="red"
+ size="xs"
+ onClick={() => handleSubmit()}
+ loading={isLoading}
+ >
+ Retry
+ </Button>
+ </Group>
+ </Paper>
+ )}
 
-      {/* ── Quick actions ── */}
-      {!showResult && (
-        <Box>
-          <div className="section-header-modern">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
-              Quick Actions
-            </Text>
-          </div>
-          <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="sm" mt="sm">
-            {QUICK_ACTIONS.map((action) => (
-              <Tooltip key={action.label} label={action.query.endsWith(' ') ? `Type & complete: "${action.query.trim()}…"` : `Ask: "${action.query}"`} position="bottom" withArrow openDelay={400} multiline maw={260}>
-                <Paper
-                  p="sm"
-                  radius="lg"
-                  withBorder
-                  className="quick-action-btn"
-                  style={{
-                    cursor: 'pointer',
-                    background: isDark
-                      ? 'linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.6))',
-                    borderColor: isDark ? 'rgba(45, 204, 211, 0.1)' : 'rgba(12, 35, 64, 0.08)',
-                  }}
-                  onClick={() => handleQuickAction(action.query)}
-                >
-                  <Group gap="xs" wrap="nowrap">
-                    <ThemeIcon
-                      size={32}
-                      variant="gradient"
-                      gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
-                      radius="lg"
-                      style={{ boxShadow: `0 2px 8px ${AQUA}20` }}
-                    >
-                      {action.icon}
-                    </ThemeIcon>
-                    <Text size="xs" fw={600} lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
-                      {action.label}
-                    </Text>
-                  </Group>
-                </Paper>
-              </Tooltip>
-            ))}
-          </SimpleGrid>
-        </Box>
-      )}
+ {/* ── Quick actions ── */}
+ {!showResult && (
+ <Box>
+ <div className="section-header-modern">
+ <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+ Quick Actions
+ </Text>
+ </div>
+ <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="sm" mt="sm">
+ {QUICK_ACTIONS.map((action) => (
+ <Tooltip key={action.label} label={action.query.endsWith(' ') ? `Type & complete: "${action.query.trim()}…"` : `Ask: "${action.query}"`} position="bottom" withArrow openDelay={400} multiline maw={260}>
+ <Paper
+ p="sm"
+ radius="lg"
+ withBorder
+ className="quick-action-btn"
+ style={{
+ cursor: 'pointer',
+ background: isDark
+ ? 'linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))'
+ : 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.6))',
+ borderColor: isDark ? 'rgba(45, 204, 211, 0.1)' : 'rgba(12, 35, 64, 0.08)',
+ }}
+ onClick={() => handleQuickAction(action.query)}
+ >
+ <Group gap="xs" wrap="nowrap">
+ <ThemeIcon
+ size={32}
+ variant="gradient"
+ gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
+ radius="lg"
+ style={{ boxShadow: `0 2px 8px ${AQUA}20` }}
+ >
+ {action.icon}
+ </ThemeIcon>
+ <Text size="xs" fw={600} lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
+ {action.label}
+ </Text>
+ </Group>
+ </Paper>
+ </Tooltip>
+ ))}
+ </SimpleGrid>
+ </Box>
+ )}
 
-      {/* ── Recent queries ── */}
-      {!showResult && recentQueries.length > 0 && (
-        <Box mt="md">
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb="xs" style={{ letterSpacing: '0.06em' }}>
-            <Group gap={6}>
-              <IconHistory size={12} />
-              Recent
-            </Group>
-          </Text>
-          <Group gap="xs">
-            {recentQueries.map((q) => (
-              <Tooltip key={q} label={`Re-run: "${q}"`} position="bottom" withArrow openDelay={400}>
-                <Badge
-                  variant="light"
-                  size="lg"
-                  style={{
-                    cursor: 'pointer',
-                    textTransform: 'none',
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : DEEP_BLUE_TINTS[10],
-                    color: isDark ? undefined : DEEP_BLUE,
-                    fontFamily: FONT_FAMILY,
-                    fontWeight: 500,
-                    transition: 'all 150ms ease',
-                  }}
-                  className="nlp-recent-badge"
-                  onClick={() => handleQuickAction(q)}
-                >
-                  {q}
-                </Badge>
-              </Tooltip>
-            ))}
-          </Group>
-        </Box>
-      )}
+ {/* ── Recent queries ── */}
+ {!showResult && recentQueries.length > 0 && (
+ <Box mt="md">
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb="xs" style={{ letterSpacing: '0.06em' }}>
+ <Group gap={6}>
+ <IconHistory size={12} />
+ Recent
+ </Group>
+ </Text>
+ <Group gap="xs">
+ {recentQueries.map((q) => (
+ <Tooltip key={q} label={`Re-run: "${q}"`} position="bottom" withArrow openDelay={400}>
+ <Badge
+ variant="light"
+ size="lg"
+ style={{
+ cursor: 'pointer',
+ textTransform: 'none',
+ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : DEEP_BLUE_TINTS[10],
+ color: isDark ? undefined : DEEP_BLUE,
+ fontFamily: FONT_FAMILY,
+ fontWeight: 500,
+ transition: 'all 150ms ease',
+ }}
+ className="nlp-recent-badge"
+ onClick={() => handleQuickAction(q)}
+ >
+ {q}
+ </Badge>
+ </Tooltip>
+ ))}
+ </Group>
+ </Box>
+ )}
 
-      {/* ── Suggestions from result ── */}
-      {showResult && result && result.suggestions.length > 0 && (
-        <Box mt="md">
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb="xs" style={{ letterSpacing: '0.06em' }}>
-            Try also
-          </Text>
-          <Group gap="xs">
-            {result.suggestions.map((s) => (
-              <Tooltip key={s} label={`Ask: "${s}"`} position="bottom" withArrow openDelay={400}>
-                <Badge
-                  variant="outline"
-                  size="lg"
-                  style={{ cursor: 'pointer', textTransform: 'none', borderColor: AQUA, color: AQUA, transition: 'all 150ms ease' }}
-                  className="nlp-suggestion-badge"
-                  onClick={() => handleQuickAction(s)}
-                >
-                  {s}
-                </Badge>
-              </Tooltip>
-            ))}
-          </Group>
-        </Box>
-      )}
+ {/* ── Suggestions from result ── */}
+ {showResult && result && result.suggestions.length > 0 && (
+ <Box mt="md">
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb="xs" style={{ letterSpacing: '0.06em' }}>
+ Try also
+ </Text>
+ <Group gap="xs">
+ {result.suggestions.map((s) => (
+ <Tooltip key={s} label={`Ask: "${s}"`} position="bottom" withArrow openDelay={400}>
+ <Badge
+ variant="outline"
+ size="lg"
+ style={{ cursor: 'pointer', textTransform: 'none', borderColor: AQUA, color: AQUA, transition: 'all 150ms ease' }}
+ className="nlp-suggestion-badge"
+ onClick={() => handleQuickAction(s)}
+ >
+ {s}
+ </Badge>
+ </Tooltip>
+ ))}
+ </Group>
+ </Box>
+ )}
 
-      {/* ── CSS for hover ── */}
-      <style>{`
-        /* Hero section glass-morphism */
-        @keyframes nlp-gradient-shift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .nlp-hero-brain {
-          animation: nlp-hero-glow 3s ease-in-out infinite;
-        }
-        @keyframes nlp-hero-glow {
-          0%, 100% { box-shadow: 0 0 24px ${AQUA}20, inset 0 0 16px ${AQUA}10; }
-          50% { box-shadow: 0 0 32px ${AQUA}30, inset 0 0 20px ${AQUA}15; }
-        }
-        /* Insight card enhancements — light mode */
-        [data-mantine-color-scheme="light"] .nlp-insight-card {
-          background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%);
-        }
-        [data-mantine-color-scheme="light"] .nlp-insight-card:hover {
-          transform: translateY(-4px);
-          box-shadow: ${SHADOW.md}, 0 0 20px ${AQUA}15;
-          background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
-          border-left-color: ${DEEP_BLUE} !important;
-        }
-        /* Insight card enhancements — dark mode */
-        [data-mantine-color-scheme="dark"] .nlp-insight-card {
-          background: linear-gradient(135deg, rgba(45, 204, 211, 0.06) 0%, rgba(12, 35, 64, 0.25) 100%);
-        }
-        [data-mantine-color-scheme="dark"] .nlp-insight-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 4px 20px rgba(45, 204, 211, 0.15), 0 0 24px rgba(45, 204, 211, 0.08);
-          background: linear-gradient(135deg, rgba(45, 204, 211, 0.10) 0%, rgba(12, 35, 64, 0.35) 100%);
-          border-left-color: ${AQUA} !important;
-        }
-        .nlp-insight-icon {
-          animation: nlp-icon-shimmer 2s ease-in-out infinite;
-        }
-        .nlp-insight-card:hover .nlp-insight-icon {
-          animation: nlp-icon-pulse 0.4s ease-out;
-        }
-        @keyframes nlp-icon-shimmer {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-        @keyframes nlp-icon-pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.15); }
-          100% { transform: scale(1); }
-        }
-        .nlp-insight-card:hover .nlp-insight-arrow {
-          opacity: 1;
-          animation: nlp-arrow-bounce 0.6s ease-out;
-        }
-        @keyframes nlp-arrow-bounce {
-          0% { transform: translateY(-50%) translateX(12px); opacity: 0; }
-          50% { transform: translateY(-50%) translateX(-2px); }
-          100% { transform: translateY(-50%) translateX(0); opacity: 1; }
-        }
-        .nlp-count-badge {
-          animation: nlp-count-up 400ms ease-out;
-        }
-        /* Search container glow */
-        .nlp-search-container {
-          backdrop-filter: blur(8px);
-        }
-        .nlp-typing-indicator {
-          animation: nlp-typing-bounce 1s ease-in-out infinite;
-        }
-        @keyframes nlp-typing-bounce {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
-        }
-        /* Progress bar shimmer */
-        @keyframes nlp-shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .nlp-progress-shimmer {
-          animation: nlp-shimmer 2s infinite;
-        }
-        /* Quick action enhancements */
-        .nlp-quick-action:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 24px ${AQUA}20, inset 0 0 12px ${AQUA}10;
-          border-color: ${AQUA} !important;
-          background: linear-gradient(135deg, ${AQUA}08 0%, ${DEEP_BLUE}04 100%) !important;
-        }
-        .nlp-action-icon {
-          transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .nlp-quick-action:hover .nlp-action-icon {
-          transform: rotate(12deg) scale(1.1);
-        }
-        .nlp-suggestion-badge:hover {
-          background: ${AQUA_TINTS[10]} !important;
-          transform: translateY(-1px);
-        }
-        .nlp-info-tile {
-          transition: all 150ms ease;
-        }
-        .nlp-info-tile:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        .nlp-list-item {
-          transition: all 150ms ease;
-        }
-        .nlp-list-item:hover {
-          background: ${AQUA_TINTS[10]};
-          border-left-color: ${AQUA} !important;
-          box-shadow: 0 1px 6px rgba(45, 204, 211, 0.10);
-        }
-        .nlp-list-item[style*="cursor: pointer"]:hover {
-          transform: translateX(2px);
-        }
-        .nlp-list-item[style*="cursor: pointer"]:hover svg {
-          opacity: 0.8 !important;
-          transform: translateX(2px);
-          transition: all 150ms ease;
-        }
-        .nlp-list-item[style*="cursor: pointer"]:active {
-          transform: translateX(1px);
-          background: ${DEEP_BLUE_TINTS[10]};
-        }
-        .nlp-list-item.nlp-list-focused {
-          background: ${AQUA_TINTS[10]};
-          border-left-color: ${AQUA} !important;
-          box-shadow: 0 0 0 2px ${AQUA};
-          outline: none;
-        }
-        .nlp-recent-badge:hover {
-          background: ${AQUA_TINTS[10]} !important;
-          color: ${AQUA} !important;
-        }
-        /* Autocomplete dropdown styling */
-        .mantine-Autocomplete-dropdown {
-          border: 1px solid ${BORDER_DEFAULT};
-          border-radius: 12px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-          padding: 4px;
-          margin-top: 4px;
-        }
-        .mantine-Autocomplete-option {
-          border-radius: 8px;
-          font-size: 13px;
-          font-family: ${FONT_FAMILY};
-          padding: 8px 12px;
-        }
-        .mantine-Autocomplete-option[data-combobox-selected] {
-          background: ${AQUA_TINTS[10]};
-          color: ${DEEP_BLUE};
-        }
-        .mantine-Autocomplete-option:hover {
-          background: ${AQUA_TINTS[10]};
-        }
-        @keyframes nlp-count-up {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .nlp-count-animate {
-          animation: nlp-count-up 400ms ease-out;
-        }
-        @keyframes nlp-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .nlp-loading-pulse {
-          animation: nlp-pulse 1.2s ease-in-out infinite;
-        }
-        @keyframes nlp-slide-in {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .nlp-stagger-item {
-          animation: nlp-slide-in 300ms ease-out both;
-        }
-        @keyframes nlp-skeleton-shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        .nlp-skeleton {
-          background: linear-gradient(90deg, ${BORDER_DEFAULT} 25%, ${BORDER_SUBTLE} 50%, ${BORDER_DEFAULT} 75%);
-          background-size: 200% 100%;
-          animation: nlp-skeleton-shimmer 1.5s ease-in-out infinite;
-        }
-        @keyframes nlp-thinking-pulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(45, 204, 211, 0.3); }
-          50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(45, 204, 211, 0); }
-        }
-        .nlp-thinking-icon {
-          animation: nlp-thinking-pulse 2s ease-in-out infinite;
-        }
-        @keyframes nlp-progress-glow {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.3); }
-        }
-        .nlp-progress-bar {
-          animation: nlp-progress-glow 2s ease-in-out infinite;
-        }
-        .nlp-breadcrumb-btn:hover {
-          background-color: ${AQUA_TINTS[10]} !important;
-          box-shadow: 0 0 0 1px ${AQUA};
-        }
-        /* Additional smooth transitions */
-        @keyframes nlp-fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        /* Glow pulse for focus states */
-        @keyframes nlp-glow-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 ${AQUA}40; }
-          50% { box-shadow: 0 0 0 8px ${AQUA}0; }
-        }
-        /* Smooth gradient transitions */
-        .nlp-quick-action,
-        .nlp-insight-card {
-          background-attachment: fixed;
-        }
-        /* Hover state consistency */
-        .nlp-insight-card,
-        .nlp-quick-action,
-        .nlp-suggestion-badge,
-        .nlp-recent-badge {
-          will-change: transform, box-shadow;
-        }
-      `}</style>
-    </Container>
-  );
+ {/* ── CSS for hover ── */}
+ <style>{`
+ /* Hero section glass-morphism */
+ @keyframes nlp-gradient-shift {
+ 0% { background-position: 0% 50%; }
+ 50% { background-position: 100% 50%; }
+ 100% { background-position: 0% 50%; }
+ }
+ .nlp-hero-brain {
+ animation: nlp-hero-glow 3s ease-in-out infinite;
+ }
+ @keyframes nlp-hero-glow {
+ 0%, 100% { box-shadow: 0 0 24px ${AQUA}20, inset 0 0 16px ${AQUA}10; }
+ 50% { box-shadow: 0 0 32px ${AQUA}30, inset 0 0 20px ${AQUA}15; }
+ }
+ /* Insight card enhancements — light mode */
+ [data-mantine-color-scheme="light"] .nlp-insight-card {
+ background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%);
+ }
+ [data-mantine-color-scheme="light"] .nlp-insight-card:hover {
+ transform: translateY(-4px);
+ box-shadow: ${SHADOW.md}, 0 0 20px ${AQUA}15;
+ background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+ border-left-color: ${DEEP_BLUE} !important;
+ }
+ /* Insight card enhancements — dark mode */
+ [data-mantine-color-scheme="dark"] .nlp-insight-card {
+ background: linear-gradient(135deg, rgba(45, 204, 211, 0.06) 0%, rgba(12, 35, 64, 0.25) 100%);
+ }
+ [data-mantine-color-scheme="dark"] .nlp-insight-card:hover {
+ transform: translateY(-4px);
+ box-shadow: 0 4px 20px rgba(45, 204, 211, 0.15), 0 0 24px rgba(45, 204, 211, 0.08);
+ background: linear-gradient(135deg, rgba(45, 204, 211, 0.10) 0%, rgba(12, 35, 64, 0.35) 100%);
+ border-left-color: ${AQUA} !important;
+ }
+ .nlp-insight-icon {
+ animation: nlp-icon-shimmer 2s ease-in-out infinite;
+ }
+ .nlp-insight-card:hover .nlp-insight-icon {
+ animation: nlp-icon-pulse 0.4s ease-out;
+ }
+ @keyframes nlp-icon-shimmer {
+ 0%, 100% { opacity: 1; }
+ 50% { opacity: 0.7; }
+ }
+ @keyframes nlp-icon-pulse {
+ 0% { transform: scale(1); }
+ 50% { transform: scale(1.15); }
+ 100% { transform: scale(1); }
+ }
+ .nlp-insight-card:hover .nlp-insight-arrow {
+ opacity: 1;
+ animation: nlp-arrow-bounce 0.6s ease-out;
+ }
+ @keyframes nlp-arrow-bounce {
+ 0% { transform: translateY(-50%) translateX(12px); opacity: 0; }
+ 50% { transform: translateY(-50%) translateX(-2px); }
+ 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+ }
+ .nlp-count-badge {
+ animation: nlp-count-up 400ms ease-out;
+ }
+ /* Search container glow */
+ .nlp-search-container {
+ backdrop-filter: blur(8px);
+ }
+ .nlp-typing-indicator {
+ animation: nlp-typing-bounce 1s ease-in-out infinite;
+ }
+ @keyframes nlp-typing-bounce {
+ 0%, 100% { opacity: 1; transform: scale(1); }
+ 50% { opacity: 0.6; transform: scale(1.1); }
+ }
+ /* Progress bar shimmer */
+ @keyframes nlp-shimmer {
+ 0% { transform: translateX(-100%); }
+ 100% { transform: translateX(100%); }
+ }
+ .nlp-progress-shimmer {
+ animation: nlp-shimmer 2s infinite;
+ }
+ /* Quick action enhancements */
+ .nlp-quick-action:hover {
+ transform: translateY(-4px);
+ box-shadow: 0 8px 24px ${AQUA}20, inset 0 0 12px ${AQUA}10;
+ border-color: ${AQUA} !important;
+ background: linear-gradient(135deg, ${AQUA}08 0%, ${DEEP_BLUE}04 100%) !important;
+ }
+ .nlp-action-icon {
+ transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+ }
+ .nlp-quick-action:hover .nlp-action-icon {
+ transform: rotate(12deg) scale(1.1);
+ }
+ .nlp-suggestion-badge:hover {
+ background: ${AQUA_TINTS[10]} !important;
+ transform: translateY(-1px);
+ }
+ .nlp-info-tile {
+ transition: all 150ms ease;
+ }
+ .nlp-info-tile:hover {
+ transform: translateY(-1px);
+ box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+ }
+ .nlp-list-item {
+ transition: all 150ms ease;
+ }
+ .nlp-list-item:hover {
+ background: ${AQUA_TINTS[10]};
+ border-left-color: ${AQUA} !important;
+ box-shadow: 0 1px 6px rgba(45, 204, 211, 0.10);
+ }
+ .nlp-list-item[style*="cursor: pointer"]:hover {
+ transform: translateX(2px);
+ }
+ .nlp-list-item[style*="cursor: pointer"]:hover svg {
+ opacity: 0.8 !important;
+ transform: translateX(2px);
+ transition: all 150ms ease;
+ }
+ .nlp-list-item[style*="cursor: pointer"]:active {
+ transform: translateX(1px);
+ background: ${DEEP_BLUE_TINTS[10]};
+ }
+ .nlp-list-item.nlp-list-focused {
+ background: ${AQUA_TINTS[10]};
+ border-left-color: ${AQUA} !important;
+ box-shadow: 0 0 0 2px ${AQUA};
+ outline: none;
+ }
+ .nlp-recent-badge:hover {
+ background: ${AQUA_TINTS[10]} !important;
+ color: ${AQUA} !important;
+ }
+ /* Autocomplete dropdown styling */
+ .mantine-Autocomplete-dropdown {
+ border: 1px solid ${BORDER_DEFAULT};
+ border-radius: 12px;
+ box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+ padding: 4px;
+ margin-top: 4px;
+ }
+ .mantine-Autocomplete-option {
+ border-radius: 8px;
+ font-size: 13px;
+ font-family: ${FONT_FAMILY};
+ padding: 8px 12px;
+ }
+ .mantine-Autocomplete-option[data-combobox-selected] {
+ background: ${AQUA_TINTS[10]};
+ color: ${DEEP_BLUE};
+ }
+ .mantine-Autocomplete-option:hover {
+ background: ${AQUA_TINTS[10]};
+ }
+ @keyframes nlp-count-up {
+ from { opacity: 0; transform: translateY(4px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
+ .nlp-count-animate {
+ animation: nlp-count-up 400ms ease-out;
+ }
+ @keyframes nlp-pulse {
+ 0%, 100% { opacity: 1; }
+ 50% { opacity: 0.5; }
+ }
+ .nlp-loading-pulse {
+ animation: nlp-pulse 1.2s ease-in-out infinite;
+ }
+ @keyframes nlp-slide-in {
+ from { opacity: 0; transform: translateY(8px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
+ .nlp-stagger-item {
+ animation: nlp-slide-in 300ms ease-out both;
+ }
+ @keyframes nlp-skeleton-shimmer {
+ 0% { background-position: -200% 0; }
+ 100% { background-position: 200% 0; }
+ }
+ .nlp-skeleton {
+ background: linear-gradient(90deg, ${BORDER_DEFAULT} 25%, ${BORDER_SUBTLE} 50%, ${BORDER_DEFAULT} 75%);
+ background-size: 200% 100%;
+ animation: nlp-skeleton-shimmer 1.5s ease-in-out infinite;
+ }
+ @keyframes nlp-thinking-pulse {
+ 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(45, 204, 211, 0.3); }
+ 50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(45, 204, 211, 0); }
+ }
+ .nlp-thinking-icon {
+ animation: nlp-thinking-pulse 2s ease-in-out infinite;
+ }
+ @keyframes nlp-progress-glow {
+ 0%, 100% { filter: brightness(1); }
+ 50% { filter: brightness(1.3); }
+ }
+ .nlp-progress-bar {
+ animation: nlp-progress-glow 2s ease-in-out infinite;
+ }
+ .nlp-breadcrumb-btn:hover {
+ background-color: ${AQUA_TINTS[10]} !important;
+ box-shadow: 0 0 0 1px ${AQUA};
+ }
+ /* Additional smooth transitions */
+ @keyframes nlp-fade-in {
+ from { opacity: 0; }
+ to { opacity: 1; }
+ }
+ /* Glow pulse for focus states */
+ @keyframes nlp-glow-pulse {
+ 0%, 100% { box-shadow: 0 0 0 0 ${AQUA}40; }
+ 50% { box-shadow: 0 0 0 8px ${AQUA}0; }
+ }
+ /* Smooth gradient transitions */
+ .nlp-quick-action,
+ .nlp-insight-card {
+ background-attachment: fixed;
+ }
+ /* Hover state consistency */
+ .nlp-insight-card,
+ .nlp-quick-action,
+ .nlp-suggestion-badge,
+ .nlp-recent-badge {
+ will-change: transform, box-shadow;
+ }
+ `}</style>
+ </Container>
+ );
 }
 
 // ── Result Card sub-component ────────────────────────────────────────────────
 
 function NlpResultCard({
-  result,
-  onNavigate,
-  onNavigateWithToast,
-  onFormPrefill,
-  isDark,
+ result,
+ onNavigate,
+ onNavigateWithToast,
+ onFormPrefill,
+ isDark,
 }: {
-  result: NlpQueryResponse;
-  onNavigate: (route: string) => void;
-  onNavigateWithToast: (route: string, entityName?: string) => void;
-  onFormPrefill: (route: string, formData: Record<string, unknown>) => void;
-  isDark: boolean;
+ result: NlpQueryResponse;
+ onNavigate: (route: string) => void;
+ onNavigateWithToast: (route: string, entityName?: string) => void;
+ onFormPrefill: (route: string, formData: Record<string, unknown>) => void;
+ isDark: boolean;
 }) {
-  const icon = INTENT_ICONS[result.intent] ?? <IconSparkles size={20} />;
-  const intentLabel = INTENT_LABELS[result.intent] ?? result.intent;
-  const confPct = Math.round(result.confidence * 100);
-  const entityType = result.response.data?._type ? String(result.response.data._type) : null;
-  const entitySig = entityType ? ENTITY_SIGNATURES[entityType] : null;
+ const icon = INTENT_ICONS[result.intent] ?? <IconSparkles size={20} />;
+ const intentLabel = INTENT_LABELS[result.intent] ?? result.intent;
+ const confPct = Math.round(result.confidence * 100);
+ const entityType = result.response.data?._type ? String(result.response.data._type) : null;
+ const entitySig = entityType ? ENTITY_SIGNATURES[entityType] : null;
 
-  return (
-    <Stack gap={0}>
-      {/* ── Card header with brand gradient accent ── */}
-      <Box
-        px="md"
-        py="sm"
-        style={{
-          background: isDark
-            ? `linear-gradient(135deg, rgba(45,204,211,0.12) 0%, rgba(12,35,64,0.12) 100%)`
-            : `linear-gradient(135deg, ${AQUA_TINTS[10]} 0%, ${DEEP_BLUE_TINTS[10]} 100%)`,
-          borderBottom: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
-        }}
-      >
-        <Group justify="space-between" align="flex-start">
-          <Group gap="sm" style={{ flex: 1 }}>
-            <ThemeIcon
-              size={36}
-              radius="lg"
-              variant="filled"
-              style={{ backgroundColor: DEEP_BLUE }}
-            >
-              {icon}
-            </ThemeIcon>
-            <div style={{ flex: 1 }}>
-              <Text size="sm" fw={600} lh={1.4} style={{ fontFamily: FONT_FAMILY, color: isDark ? undefined : DEEP_BLUE }}>
-                {(() => {
-                  const msg = result.response.message ?? 'No response';
-                  const d = result.response.data;
-                  // Check if the card body will actually have meaningful content to show
-                  const meaningfulKeys = d ? Object.keys(d).filter(k =>
-                    !k.startsWith('_') && !k.startsWith('#') &&
-                    d[k] !== null && d[k] !== undefined && typeof d[k] !== 'object'
-                  ) : [];
-                  const hasNumbered = d ? Object.keys(d).some(k => /^#\d+$/.test(k)) : false;
-                  const bodyWillBeEmpty = !d || (meaningfulKeys.length === 0 && !hasNumbered);
-                  // Override misleading promises when the card body is actually empty
-                  if (bodyWillBeEmpty && /^(I can help|I'll |Let me |Sure|Here|Absolutely|Of course|No problem|Got it|Looking)/i.test(msg)) {
-                    return 'Hmm, I searched but couldn\'t find a match for that.';
-                  }
-                  return msg;
-                })()}
-              </Text>
-            </div>
-          </Group>
-          <Group gap={6} style={{ flexShrink: 0 }}>
-            {entitySig && (
-              <Badge
-                size="xs"
-                variant="light"
-                color={entitySig.color}
-                radius="sm"
-                leftSection={entitySig.icon}
-                style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}
-              >
-                {entitySig.label}
-              </Badge>
-            )}
-            <Badge
-              size="xs"
-              variant="filled"
-              radius="sm"
-              style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY, letterSpacing: '0.03em' }}
-            >
-              {intentLabel}
-            </Badge>
-            <Tooltip label={`Resolved by ${result.resolvedBy} at ${confPct}% confidence`}>
-              <Badge
-                size="xs"
-                variant="dot"
-                color={result.confidence >= 0.75 ? 'green' : 'orange'}
-                radius="sm"
-                style={{ fontFamily: FONT_FAMILY }}
-              >
-                {confPct}%
-              </Badge>
-            </Tooltip>
-          </Group>
-        </Group>
-      </Box>
+ return (
+ <Stack gap={0}>
+ {/* ── Card header with brand gradient accent ── */}
+ <Box
+ px="md"
+ py="sm"
+ style={{
+ background: isDark
+ ? `linear-gradient(135deg, rgba(45,204,211,0.12) 0%, rgba(12,35,64,0.12) 100%)`
+ : `linear-gradient(135deg, ${AQUA_TINTS[10]} 0%, ${DEEP_BLUE_TINTS[10]} 100%)`,
+ borderBottom: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
+ }}
+ >
+ <Group justify="space-between" align="flex-start">
+ <Group gap="sm" style={{ flex: 1 }}>
+ <ThemeIcon
+ size={36}
+ radius="lg"
+ variant="filled"
+ style={{ backgroundColor: DEEP_BLUE }}
+ >
+ {icon}
+ </ThemeIcon>
+ <div style={{ flex: 1 }}>
+ <Text size="sm" fw={600} lh={1.4} style={{ fontFamily: FONT_FAMILY, color: isDark ? undefined : DEEP_BLUE }}>
+ {(() => {
+ const msg = result.response.message ?? 'No response';
+ const d = result.response.data;
+ // Check if the card body will actually have meaningful content to show
+ const meaningfulKeys = d ? Object.keys(d).filter(k =>
+ !k.startsWith('_') && !k.startsWith('#') &&
+ d[k] !== null && d[k] !== undefined && typeof d[k] !== 'object'
+ ) : [];
+ const hasNumbered = d ? Object.keys(d).some(k => /^#\d+$/.test(k)) : false;
+ const bodyWillBeEmpty = !d || (meaningfulKeys.length === 0 && !hasNumbered);
+ // Override misleading promises when the card body is actually empty
+ if (bodyWillBeEmpty && /^(I can help|I'll |Let me |Sure|Here|Absolutely|Of course|No problem|Got it|Looking)/i.test(msg)) {
+ return 'Hmm, I searched but couldn\'t find a match for that.';
+ }
+ return msg;
+ })()}
+ </Text>
+ </div>
+ </Group>
+ <Group gap={6} style={{ flexShrink: 0 }}>
+ {entitySig && (
+ <Badge
+ size="xs"
+ variant="light"
+ color={entitySig.color}
+ radius="sm"
+ leftSection={entitySig.icon}
+ style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}
+ >
+ {entitySig.label}
+ </Badge>
+ )}
+ <Badge
+ size="xs"
+ variant="filled"
+ radius="sm"
+ style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY, letterSpacing: '0.03em' }}
+ >
+ {intentLabel}
+ </Badge>
+ <Tooltip label={`Resolved by ${result.resolvedBy} at ${confPct}% confidence`}>
+ <Badge
+ size="xs"
+ variant="dot"
+ color={result.confidence >= 0.75 ? 'green' : 'orange'}
+ radius="sm"
+ style={{ fontFamily: FONT_FAMILY }}
+ >
+ {confPct}%
+ </Badge>
+ </Tooltip>
+ </Group>
+ </Group>
+ </Box>
 
-      {/* ── Card body ── */}
-      <Box px="md" py="sm">
-        <CardBody result={result} onNavigate={onNavigate} onNavigateWithToast={onNavigateWithToast} onFormPrefill={onFormPrefill} isDark={isDark} />
-      </Box>
+ {/* ── Card body ── */}
+ <Box px="md" py="sm">
+ <CardBody result={result} onNavigate={onNavigate} onNavigateWithToast={onNavigateWithToast} onFormPrefill={onFormPrefill} isDark={isDark} />
+ </Box>
 
-      {/* ── Feedback row ── */}
-      {result.queryLogId != null && (
-        <FeedbackRow queryLogId={result.queryLogId} isDark={isDark} />
-      )}
-    </Stack>
-  );
+ {/* ── Feedback row ── */}
+ {result.queryLogId != null && (
+ <FeedbackRow queryLogId={result.queryLogId} isDark={isDark} />
+ )}
+ </Stack>
+ );
 }
 
 // ── Feedback Row ──────────────────────────────────────────────────────────
 
 function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark: boolean }) {
-  const feedback = useNlpFeedback();
-  const undoMutation = useNlpFeedbackUndo();
-  const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [comment, setComment] = useState('');
-  const [commentSent, setCommentSent] = useState(false);
-  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [undoCountdown, setUndoCountdown] = useState(0);
-  const undoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const feedback = useNlpFeedback();
+ const undoMutation = useNlpFeedbackUndo();
+ const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null);
+ const [showExplanation, setShowExplanation] = useState(false);
+ const [comment, setComment] = useState('');
+ const [commentSent, setCommentSent] = useState(false);
+ const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
+ const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+ const [undoCountdown, setUndoCountdown] = useState(0);
+ const undoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+ const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (undoTimerRef.current) clearInterval(undoTimerRef.current);
-      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    };
-  }, []);
+ // Cleanup timers on unmount
+ useEffect(() => {
+ return () => {
+ if (undoTimerRef.current) clearInterval(undoTimerRef.current);
+ if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+ };
+ }, []);
 
-  const startUndoWindow = () => {
-    setUndoCountdown(10);
-    undoTimerRef.current = setInterval(() => {
-      setUndoCountdown((prev) => {
-        if (prev <= 1) {
-          if (undoTimerRef.current) clearInterval(undoTimerRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    // After 10 seconds the undo window closes
-    undoTimeoutRef.current = setTimeout(() => {
-      setUndoCountdown(0);
-    }, 10000);
-  };
+ const startUndoWindow = () => {
+ setUndoCountdown(10);
+ undoTimerRef.current = setInterval(() => {
+ setUndoCountdown((prev) => {
+ if (prev <= 1) {
+ if (undoTimerRef.current) clearInterval(undoTimerRef.current);
+ return 0;
+ }
+ return prev - 1;
+ });
+ }, 1000);
+ // After 10 seconds the undo window closes
+ undoTimeoutRef.current = setTimeout(() => {
+ setUndoCountdown(0);
+ }, 10000);
+ };
 
-  const handleUndo = () => {
-    if (undoTimerRef.current) clearInterval(undoTimerRef.current);
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    undoMutation.mutate({ queryLogId });
-    setSubmitted(null);
-    setCommentSent(false);
-    setShowExplanation(false);
-    setComment('');
-    setScreenshotBase64(null);
-    setScreenshotPreview(null);
-    setUndoCountdown(0);
-  };
+ const handleUndo = () => {
+ if (undoTimerRef.current) clearInterval(undoTimerRef.current);
+ if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+ undoMutation.mutate({ queryLogId });
+ setSubmitted(null);
+ setCommentSent(false);
+ setShowExplanation(false);
+ setComment('');
+ setScreenshotBase64(null);
+ setScreenshotPreview(null);
+ setUndoCountdown(0);
+ };
 
-  const handleFeedback = (rating: number) => {
-    const dir = rating > 0 ? 'up' : 'down';
-    setSubmitted(dir);
-    if (rating > 0) {
-      feedback.mutate({ queryLogId, rating });
-      startUndoWindow();
-    } else {
-      setShowExplanation(true);
-    }
-  };
+ const handleFeedback = (rating: number) => {
+ const dir = rating > 0 ? 'up' : 'down';
+ setSubmitted(dir);
+ if (rating > 0) {
+ feedback.mutate({ queryLogId, rating });
+ startUndoWindow();
+ } else {
+ setShowExplanation(true);
+ }
+ };
 
-  const handleSubmitExplanation = () => {
-    const trimmed = comment.trim();
-    feedback.mutate({
-      queryLogId,
-      rating: -1,
-      comment: trimmed || undefined,
-      screenshot: screenshotBase64 || undefined,
-    });
-    setCommentSent(true);
-    setShowExplanation(false);
-    startUndoWindow();
-  };
+ const handleSubmitExplanation = () => {
+ const trimmed = comment.trim();
+ feedback.mutate({
+ queryLogId,
+ rating: -1,
+ comment: trimmed || undefined,
+ screenshot: screenshotBase64 || undefined,
+ });
+ setCommentSent(true);
+ setShowExplanation(false);
+ startUndoWindow();
+ };
 
-  const handleSkipExplanation = () => {
-    feedback.mutate({ queryLogId, rating: -1 });
-    setCommentSent(true);
-    setShowExplanation(false);
-    startUndoWindow();
-  };
+ const handleSkipExplanation = () => {
+ feedback.mutate({ queryLogId, rating: -1 });
+ setCommentSent(true);
+ setShowExplanation(false);
+ startUndoWindow();
+ };
 
-  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500 * 1024) {
-      notifications.show({ title: 'File too large', message: 'Max 500KB for screenshots', color: 'red' });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      setScreenshotBase64(base64);
-      setScreenshotPreview(base64);
-    };
-    reader.readAsDataURL(file);
-  };
+ const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+ const file = e.target.files?.[0];
+ if (!file) return;
+ if (file.size > 500 * 1024) {
+ notifications.show({ title: 'File too large', message: 'Max 500KB for screenshots', color: 'red' });
+ return;
+ }
+ const reader = new FileReader();
+ reader.onload = () => {
+ const base64 = reader.result as string;
+ setScreenshotBase64(base64);
+ setScreenshotPreview(base64);
+ };
+ reader.readAsDataURL(file);
+ };
 
-  return (
-    <Box
-      px="md"
-      py={8}
-      style={{
-        borderTop: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
-        background: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.015)',
-      }}
-    >
-      <Group justify="flex-end" gap={6}>
-        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Was this helpful?</Text>
-        <Tooltip label="Thumbs up">
-          <ActionIcon
-            variant={submitted === 'up' ? 'filled' : 'subtle'}
-            color={submitted === 'up' ? 'teal' : 'gray'}
-            size="sm"
-            radius="xl"
-            onClick={() => handleFeedback(1)}
-            disabled={submitted != null}
-          >
-            <IconThumbUp size={14} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Thumbs down">
-          <ActionIcon
-            variant={submitted === 'down' ? 'filled' : 'subtle'}
-            color={submitted === 'down' ? 'red' : 'gray'}
-            size="sm"
-            radius="xl"
-            onClick={() => handleFeedback(-1)}
-            disabled={submitted != null}
-          >
-            <IconThumbDown size={14} />
-          </ActionIcon>
-        </Tooltip>
-        {(submitted === 'up' || commentSent) && undoCountdown > 0 && (
-          <Button
-            variant="subtle"
-            color="gray"
-            size="compact-xs"
-            onClick={handleUndo}
-            style={{ fontFamily: FONT_FAMILY }}
-          >
-            Undo ({undoCountdown}s)
-          </Button>
-        )}
-        {(submitted === 'up' || commentSent) && undoCountdown === 0 && (
-          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Thanks for your feedback!
-          </Text>
-        )}
-      </Group>
+ return (
+ <Box
+ px="md"
+ py={8}
+ style={{
+ borderTop: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : BORDER_DEFAULT}`,
+ background: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.015)',
+ }}
+ >
+ <Group justify="flex-end" gap={6}>
+ <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Was this helpful?</Text>
+ <Tooltip label="Thumbs up">
+ <ActionIcon
+ variant={submitted === 'up' ? 'filled' : 'subtle'}
+ color={submitted === 'up' ? 'teal' : 'gray'}
+ size="sm"
+ radius="xl"
+ onClick={() => handleFeedback(1)}
+ disabled={submitted != null}
+ >
+ <IconThumbUp size={14} />
+ </ActionIcon>
+ </Tooltip>
+ <Tooltip label="Thumbs down">
+ <ActionIcon
+ variant={submitted === 'down' ? 'filled' : 'subtle'}
+ color={submitted === 'down' ? 'red' : 'gray'}
+ size="sm"
+ radius="xl"
+ onClick={() => handleFeedback(-1)}
+ disabled={submitted != null}
+ >
+ <IconThumbDown size={14} />
+ </ActionIcon>
+ </Tooltip>
+ {(submitted === 'up' || commentSent) && undoCountdown > 0 && (
+ <Button
+ variant="subtle"
+ color="gray"
+ size="compact-xs"
+ onClick={handleUndo}
+ style={{ fontFamily: FONT_FAMILY }}
+ >
+ Undo ({undoCountdown}s)
+ </Button>
+ )}
+ {(submitted === 'up' || commentSent) && undoCountdown === 0 && (
+ <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ Thanks for your feedback!
+ </Text>
+ )}
+ </Group>
 
-      {/* Explanation input — shown after thumbs-down */}
-      {showExplanation && (
-        <Box mt={8}>
-          <Textarea
-            placeholder="What were you expecting? (optional)"
-            value={comment}
-            onChange={(e) => setComment(e.currentTarget.value)}
-            minRows={2}
-            maxRows={4}
-            autosize
-            size="xs"
-            styles={{
-              input: {
-                fontFamily: FONT_FAMILY,
-                fontSize: '12px',
-                background: isDark ? 'var(--mantine-color-dark-6)' : '#fff',
-              },
-            }}
-          />
-          {/* Screenshot upload */}
-          <Group gap={6} mt={6}>
-            <Button
-              variant="subtle"
-              color="gray"
-              size="compact-xs"
-              component="label"
-              style={{ fontFamily: FONT_FAMILY, cursor: 'pointer' }}
-            >
-              {screenshotPreview ? 'Change screenshot' : 'Attach screenshot'}
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleScreenshotUpload}
-              />
-            </Button>
-            {screenshotPreview && (
-              <img
-                src={screenshotPreview}
-                alt="Screenshot preview"
-                style={{ height: 32, borderRadius: 4, border: '1px solid var(--mantine-color-gray-4)' }}
-              />
-            )}
-          </Group>
-          <Group justify="flex-end" gap={6} mt={6}>
-            <Button
-              variant="subtle"
-              color="gray"
-              size="compact-xs"
-              onClick={handleSkipExplanation}
-              style={{ fontFamily: FONT_FAMILY }}
-            >
-              Skip
-            </Button>
-            <Button
-              variant="filled"
-              color={AQUA}
-              size="compact-xs"
-              onClick={handleSubmitExplanation}
-              style={{ fontFamily: FONT_FAMILY }}
-            >
-              Submit
-            </Button>
-          </Group>
-        </Box>
-      )}
-    </Box>
-  );
+ {/* Explanation input — shown after thumbs-down */}
+ {showExplanation && (
+ <Box mt={8}>
+ <Textarea
+ placeholder="What were you expecting? (optional)"
+ value={comment}
+ onChange={(e) => setComment(e.currentTarget.value)}
+ minRows={2}
+ maxRows={4}
+ autosize
+ size="xs"
+ styles={{
+ input: {
+ fontFamily: FONT_FAMILY,
+ fontSize: '12px',
+ background: isDark ? 'var(--mantine-color-dark-6)' : '#fff',
+ },
+ }}
+ />
+ {/* Screenshot upload */}
+ <Group gap={6} mt={6}>
+ <Button
+ variant="subtle"
+ color="gray"
+ size="compact-xs"
+ component="label"
+ style={{ fontFamily: FONT_FAMILY, cursor: 'pointer' }}
+ >
+ {screenshotPreview ? 'Change screenshot' : 'Attach screenshot'}
+ <input
+ type="file"
+ accept="image/*"
+ style={{ display: 'none' }}
+ onChange={handleScreenshotUpload}
+ />
+ </Button>
+ {screenshotPreview && (
+ <img
+ src={screenshotPreview}
+ alt="Screenshot preview"
+ style={{ height: 32, borderRadius: 4, border: '1px solid var(--mantine-color-gray-4)' }}
+ />
+ )}
+ </Group>
+ <Group justify="flex-end" gap={6} mt={6}>
+ <Button
+ variant="subtle"
+ color="gray"
+ size="compact-xs"
+ onClick={handleSkipExplanation}
+ style={{ fontFamily: FONT_FAMILY }}
+ >
+ Skip
+ </Button>
+ <Button
+ variant="filled"
+ color={AQUA}
+ size="compact-xs"
+ onClick={handleSubmitExplanation}
+ style={{ fontFamily: FONT_FAMILY }}
+ >
+ Submit
+ </Button>
+ </Group>
+ </Box>
+ )}
+ </Box>
+ );
 }
 
 // ── Witty Empty State ─────────────────────────────────────────────────────────
 
 const WITTY_EMPTY_STATES = [
-  { emoji: '🔍', title: 'Looked everywhere — nada.', sub: 'Even checked under the couch cushions.' },
-  { emoji: '🕵️', title: 'The search party came back empty-handed.', sub: 'Sherlock would be stumped too.' },
-  { emoji: '🏜️', title: 'It\'s a desert out here.', sub: 'Not a single result in sight.' },
-  { emoji: '👻', title: 'Ghost town.', sub: 'Whatever you\'re looking for isn\'t haunting our database.' },
-  { emoji: '🧊', title: 'Cold case.', sub: 'No matches found in the system.' },
-  { emoji: '🪄', title: 'Poof — nothing appeared.', sub: 'Even magic has its limits.' },
-  { emoji: '🗺️', title: 'X marks the spot… but the treasure isn\'t here.', sub: 'Time to redraw the map.' },
-  { emoji: '🎣', title: 'Cast the line, but no bites today.', sub: 'Try different bait — rephrase your query!' },
-  { emoji: '🛸', title: 'Beam me up — there\'s nothing here.', sub: 'This search returned from another dimension… empty.' },
-  { emoji: '🧩', title: 'Missing piece.', sub: 'We couldn\'t find what fits this puzzle.' },
+ { emoji: '🔍', title: 'Looked everywhere — nada.', sub: 'Even checked under the couch cushions.' },
+ { emoji: '🕵️', title: 'The search party came back empty-handed.', sub: 'Sherlock would be stumped too.' },
+ { emoji: '🏜️', title: 'It\'s a desert out here.', sub: 'Not a single result in sight.' },
+ { emoji: '👻', title: 'Ghost town.', sub: 'Whatever you\'re looking for isn\'t haunting our database.' },
+ { emoji: '🧊', title: 'Cold case.', sub: 'No matches found in the system.' },
+ { emoji: '🪄', title: 'Poof — nothing appeared.', sub: 'Even magic has its limits.' },
+ { emoji: '🗺️', title: 'X marks the spot… but the treasure isn\'t here.', sub: 'Time to redraw the map.' },
+ { emoji: '🎣', title: 'Cast the line, but no bites today.', sub: 'Try different bait — rephrase your query!' },
+ { emoji: '🛸', title: 'Beam me up — there\'s nothing here.', sub: 'This search returned from another dimension… empty.' },
+ { emoji: '🧩', title: 'Missing piece.', sub: 'We couldn\'t find what fits this puzzle.' },
 ];
 
 function WittyEmptyState({ message, searchTerm }: { message?: string | null; searchTerm?: string }) {
-  // Pick a deterministic-ish witty message based on the search term
-  const idx = (searchTerm ?? message ?? '').length % WITTY_EMPTY_STATES.length;
-  const wit = WITTY_EMPTY_STATES[idx];
+ // Pick a deterministic-ish witty message based on the search term
+ const idx = (searchTerm ?? message ?? '').length % WITTY_EMPTY_STATES.length;
+ const wit = WITTY_EMPTY_STATES[idx];
 
-  // Try to extract a name/entity from the message for personalization
-  const entity = searchTerm
-    ?? message?.match(/(?:named|called|about|for)\s+"?([A-Z][a-zA-Z\s]+)"?/)?.[1]?.trim()
-    ?? null;
+ // Try to extract a name/entity from the message for personalization
+ const entity = searchTerm
+ ?? message?.match(/(?:named|called|about|for)\s+"?([A-Z][a-zA-Z\s]+)"?/)?.[1]?.trim()
+ ?? null;
 
-  const personalTitle = entity
-    ? `No "${entity}" found anywhere.`
-    : wit.title;
+ const personalTitle = entity
+ ? `No "${entity}" found anywhere.`
+ : wit.title;
 
-  return (
-    <Paper p="lg" radius="md" withBorder style={{
-      textAlign: 'center',
-      borderStyle: 'dashed',
-      borderColor: 'var(--mantine-color-gray-4)',
-      background: 'linear-gradient(135deg, rgba(45,204,211,0.02) 0%, rgba(12,35,64,0.02) 100%)',
-    }}>
-      <Text size="xl" style={{ margin: '0 auto 4px', lineHeight: 1 }}>{wit.emoji}</Text>
-      <Text size="sm" fw={700} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-        {personalTitle}
-      </Text>
-      <Text size="xs" c="dimmed" mt={2} style={{ fontStyle: 'italic' }}>
-        {wit.sub}
-      </Text>
-      <Text size="xs" c="dimmed" mt={8} style={{ fontFamily: FONT_FAMILY }}>
-        Try a different spelling, or explore using the suggestions below.
-      </Text>
-    </Paper>
-  );
+ return (
+ <Paper p="lg" radius="md" withBorder style={{
+ textAlign: 'center',
+ borderStyle: 'dashed',
+ borderColor: 'var(--mantine-color-gray-4)',
+ background: 'linear-gradient(135deg, rgba(45,204,211,0.02) 0%, rgba(12,35,64,0.02) 100%)',
+ }}>
+ <Text size="xl" style={{ margin: '0 auto 4px', lineHeight: 1 }}>{wit.emoji}</Text>
+ <Text size="sm" fw={700} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ {personalTitle}
+ </Text>
+ <Text size="xs" c="dimmed" mt={2} style={{ fontStyle: 'italic' }}>
+ {wit.sub}
+ </Text>
+ <Text size="xs" c="dimmed" mt={8} style={{ fontFamily: FONT_FAMILY }}>
+ Try a different spelling, or explore using the suggestions below.
+ </Text>
+ </Paper>
+ );
 }
 
 // ── Card Body ────────────────────────────────────────────────────────────────
 
 function CardBody({
-  result,
-  onNavigate,
-  onNavigateWithToast,
-  onFormPrefill,
-  isDark,
+ result,
+ onNavigate,
+ onNavigateWithToast,
+ onFormPrefill,
+ isDark,
 }: {
-  result: NlpQueryResponse;
-  onNavigate: (route: string) => void;
-  onNavigateWithToast: (route: string, entityName?: string) => void;
-  onFormPrefill: (route: string, formData: Record<string, unknown>) => void;
-  isDark: boolean;
+ result: NlpQueryResponse;
+ onNavigate: (route: string) => void;
+ onNavigateWithToast: (route: string, entityName?: string) => void;
+ onFormPrefill: (route: string, formData: Record<string, unknown>) => void;
+ isDark: boolean;
 }) {
-  const d = result.response.data;
+ const d = result.response.data;
 
-  // ── Navigation action ──
-  if (result.intent === 'NAVIGATE' && result.response.route) {
-    return (
-      <DrillDownButton route={result.response.route} onNavigate={onNavigate} label={`Go to ${result.response.route}`} />
-    );
-  }
+ // ── Navigation action ──
+ if (result.intent === 'NAVIGATE' && result.response.route) {
+ return (
+ <DrillDownButton route={result.response.route} onNavigate={onNavigate} label={`Go to ${result.response.route}`} />
+ );
+ }
 
-  // ── Form prefill action ──
-  if (result.intent === 'FORM_PREFILL' && result.response.route && result.response.formData) {
-    return (
-      <Stack gap="sm">
-        <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Pre-filled fields</Text>
-        <Group gap="xs">
-          {Object.entries(result.response.formData).map(([key, val]) => (
-            <Badge key={key} variant="light" radius="sm" size="sm" style={{ textTransform: 'none', backgroundColor: AQUA_TINTS[10], color: AQUA }}>
-              {key}: {String(val)}
-            </Badge>
-          ))}
-        </Group>
-        <DrillDownButton
-          route={result.response.route}
-          onNavigate={() => onFormPrefill(result.response.route!, result.response.formData!)}
-          label="Open form with pre-filled data"
-        />
-      </Stack>
-    );
-  }
+ // ── Form prefill action ──
+ if (result.intent === 'FORM_PREFILL' && result.response.route && result.response.formData) {
+ return (
+ <Stack gap="sm">
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Pre-filled fields</Text>
+ <Group gap="xs">
+ {Object.entries(result.response.formData).map(([key, val]) => (
+ <Badge key={key} variant="light" radius="sm" size="sm" style={{ textTransform: 'none', backgroundColor: AQUA_TINTS[10], color: AQUA }}>
+ {key}: {String(val)}
+ </Badge>
+ ))}
+ </Group>
+ <DrillDownButton
+ route={result.response.route}
+ onNavigate={() => onFormPrefill(result.response.route!, result.response.formData!)}
+ label="Open form with pre-filled data"
+ />
+ </Stack>
+ );
+ }
 
-  if (!d) {
-    // No structured data — witty empty state
-    return (
-      <Stack gap="sm">
-        <WittyEmptyState message={result.response.message} />
-        {result.response.drillDown && (
-          <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
-        )}
-      </Stack>
-    );
-  }
+ if (!d) {
+ // No structured data — witty empty state
+ return (
+ <Stack gap="sm">
+ <WittyEmptyState message={result.response.message} />
+ {result.response.drillDown && (
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
+ )}
+ </Stack>
+ );
+ }
 
-  const type = String(d._type ?? '');
+ const type = String(d._type ?? '');
 
-  // ── Resource Profile ──
-  if (type === 'RESOURCE_PROFILE') {
-    const isEnriched = d.Role != null || d.POD != null || d.Location != null;
-    if (isEnriched) {
-      return (
-        <Stack gap="sm">
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            <InfoTile icon={<IconUsers size={16} />} label="Role" value={str(d.Role)} accent={ROLE_COLORS[str(d.Role)] ?? 'blue'} />
-            <InfoTile icon={<IconHexagons size={16} />} label="POD" value={str(d.POD)} accent="teal" />
-            <InfoTile icon={<IconMapPin size={16} />} label="Location" value={str(d.Location)} accent={LOCATION_COLORS[str(d.Location)] ?? 'grape'} />
-            <InfoTile icon={<IconCurrencyDollar size={16} />} label="Billing Rate" value={str(d['Billing Rate'])} accent="orange" />
-            <InfoTile icon={<IconUser size={16} />} label="FTE" value={str(d.FTE)} accent="indigo" />
-          </SimpleGrid>
-          <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Resources page" />
-        </Stack>
-      );
-    }
-    return (
-      <Stack gap="sm">
-        <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
-          <Group gap="sm">
-            <ThemeIcon size={36} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
-              <IconUser size={20} />
-            </ThemeIcon>
-            <div>
-              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{str(d.entityName || d.Name)}</Text>
-              <Text size="xs" c="dimmed">Click below to view full resource profile</Text>
-            </div>
-          </Group>
-        </Paper>
-        <DrillDownButton route={result.response.drillDown ?? `/resources`} onNavigate={onNavigate} label="View on Resources page" />
-      </Stack>
-    );
-  }
+ // ── Resource Profile ──
+ if (type === 'RESOURCE_PROFILE') {
+ const isEnriched = d.Role != null || d.POD != null || d.Location != null;
+ if (isEnriched) {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ <InfoTile icon={<IconUsers size={16} />} label="Role" value={str(d.Role)} accent={ROLE_COLORS[str(d.Role)] ?? 'blue'} />
+ <InfoTile icon={<IconHexagons size={16} />} label="POD" value={str(d.POD)} accent="teal" />
+ <InfoTile icon={<IconMapPin size={16} />} label="Location" value={str(d.Location)} accent={LOCATION_COLORS[str(d.Location)] ?? 'grape'} />
+ <InfoTile icon={<IconCurrencyDollar size={16} />} label="Billing Rate" value={str(d['Billing Rate'])} accent="orange" />
+ <InfoTile icon={<IconUser size={16} />} label="FTE" value={str(d.FTE)} accent="indigo" />
+ </SimpleGrid>
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Resources page" />
+ </Stack>
+ );
+ }
+ return (
+ <Stack gap="sm">
+ <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
+ <Group gap="sm">
+ <ThemeIcon size={36} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
+ <IconUser size={20} />
+ </ThemeIcon>
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{str(d.entityName || d.Name)}</Text>
+ <Text size="xs" c="dimmed">Click below to view full resource profile</Text>
+ </div>
+ </Group>
+ </Paper>
+ <DrillDownButton route={result.response.drillDown ?? `/resources`} onNavigate={onNavigate} label="View on Resources page" />
+ </Stack>
+ );
+ }
 
-  // ── Project Profile ──
-  if (type === 'PROJECT_PROFILE') {
-    // Check if this is an enriched response (has Priority/Owner) vs unenriched (only entityName)
-    const isEnriched = d.Priority != null || d.Owner != null || d.Status != null;
-    if (isEnriched) {
-      return (
-        <Stack gap="sm">
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            <InfoTile icon={<IconFlag size={16} />} label="Priority" value={str(d.Priority)} accent="red" />
-            <InfoTile icon={<IconUser size={16} />} label="Owner" value={str(d.Owner)} accent="blue" />
-            <InfoTile icon={<IconStatusChange size={16} />} label="Status" value={str(d.Status)} accent={STATUS_COLORS[str(d.Status)] ?? 'teal'} />
-            <InfoTile icon={<IconHexagons size={16} />} label="Assigned PODs" value={str(d['Assigned PODs'] ?? d['Assigned Pods'])} accent="grape" />
-            <InfoTile icon={<IconCalendarStats size={16} />} label="Timeline" value={str(d.Timeline)} accent="orange" />
-            <InfoTile icon={<IconClock size={16} />} label="Duration" value={str(d.Duration)} accent="indigo" />
-            {d.Client != null && (
-              <InfoTile icon={<IconBuildingSkyscraper size={16} />} label="Client" value={str(d.Client)} accent="cyan" />
-            )}
-          </SimpleGrid>
-          <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Projects page" />
-        </Stack>
-      );
-    }
-    // Unenriched — show entity name with navigation link
-    return (
-      <Stack gap="sm">
-        <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
-          <Group gap="sm">
-            <ThemeIcon size={36} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
-              <IconBriefcase size={20} />
-            </ThemeIcon>
-            <div>
-              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{str(d.entityName || d.Name)}</Text>
-              <Text size="xs" c="dimmed">Click below to view full project details</Text>
-            </div>
-          </Group>
-        </Paper>
-        <DrillDownButton route={result.response.drillDown ?? `/projects`} onNavigate={onNavigate} label="View on Projects page" />
-      </Stack>
-    );
-  }
+ // ── Project Profile ──
+ if (type === 'PROJECT_PROFILE') {
+ // Check if this is an enriched response (has Priority/Owner) vs unenriched (only entityName)
+ const isEnriched = d.Priority != null || d.Owner != null || d.Status != null;
+ if (isEnriched) {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ <InfoTile icon={<IconFlag size={16} />} label="Priority" value={str(d.Priority)} accent="red" />
+ <InfoTile icon={<IconUser size={16} />} label="Owner" value={str(d.Owner)} accent="blue" />
+ <InfoTile icon={<IconStatusChange size={16} />} label="Status" value={str(d.Status)} accent={STATUS_COLORS[str(d.Status)] ?? 'teal'} />
+ <InfoTile icon={<IconHexagons size={16} />} label="Assigned PODs" value={str(d['Assigned PODs'] ?? d['Assigned Pods'])} accent="grape" />
+ <InfoTile icon={<IconCalendarStats size={16} />} label="Timeline" value={str(d.Timeline)} accent="orange" />
+ <InfoTile icon={<IconClock size={16} />} label="Duration" value={str(d.Duration)} accent="indigo" />
+ {d.Client != null && (
+ <InfoTile icon={<IconBuildingSkyscraper size={16} />} label="Client" value={str(d.Client)} accent="cyan" />
+ )}
+ </SimpleGrid>
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Projects page" />
+ </Stack>
+ );
+ }
+ // Unenriched — show entity name with navigation link
+ return (
+ <Stack gap="sm">
+ <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
+ <Group gap="sm">
+ <ThemeIcon size={36} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
+ <IconBriefcase size={20} />
+ </ThemeIcon>
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{str(d.entityName || d.Name)}</Text>
+ <Text size="xs" c="dimmed">Click below to view full project details</Text>
+ </div>
+ </Group>
+ </Paper>
+ <DrillDownButton route={result.response.drillDown ?? `/projects`} onNavigate={onNavigate} label="View on Projects page" />
+ </Stack>
+ );
+ }
 
-  // ── POD Profile ──
-  if (type === 'POD_PROFILE') {
-    return (
-      <Stack gap="sm">
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-          <InfoTile icon={<IconUsers size={16} />} label="Members" value={str(d.Members)} accent="blue" />
-          <InfoTile icon={<IconBriefcase size={16} />} label="Projects" value={str(d.Projects)} accent="teal" />
-          <InfoTile icon={<IconPercentage size={16} />} label="Avg BAU" value={str(d['Avg BAU'])} accent="orange" />
-          <InfoTile
-            icon={d.Active === 'Yes' ? <IconCheck size={16} /> : <IconX size={16} />}
-            label="Active"
-            value={str(d.Active)}
-            accent={d.Active === 'Yes' ? 'green' : 'red'}
-          />
-        </SimpleGrid>
-        <BadgeListSection label="Team Members" items={str(d.Team)} color="blue" />
-        <BadgeListSection label="Assigned Projects" items={str(d['Project List'])} color="teal" />
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on PODs page" />
-      </Stack>
-    );
-  }
+ // ── POD Profile ──
+ if (type === 'POD_PROFILE') {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+ <InfoTile icon={<IconUsers size={16} />} label="Members" value={str(d.Members)} accent="blue" />
+ <InfoTile icon={<IconBriefcase size={16} />} label="Projects" value={str(d.Projects)} accent="teal" />
+ <InfoTile icon={<IconPercentage size={16} />} label="Avg BAU" value={str(d['Avg BAU'])} accent="orange" />
+ <InfoTile
+ icon={d.Active === 'Yes' ? <IconCheck size={16} /> : <IconX size={16} />}
+ label="Active"
+ value={str(d.Active)}
+ accent={d.Active === 'Yes' ? 'green' : 'red'}
+ />
+ </SimpleGrid>
+ <BadgeListSection label="Team Members" items={str(d.Team)} color="blue" />
+ <BadgeListSection label="Assigned Projects" items={str(d['Project List'])} color="teal" />
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on PODs page" />
+ </Stack>
+ );
+ }
 
-  // ── Sprint Profile ──
-  if (type === 'SPRINT_PROFILE') {
-    return (
-      <Stack gap="sm">
-        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-          <InfoTile icon={<IconPlayerPlay size={16} />} label="Type" value={str(d.Type)} accent="blue" />
-          <InfoTile icon={<IconCalendarEvent size={16} />} label="Start Date" value={str(d['Start Date'])} accent="teal" />
-          <InfoTile icon={<IconCalendarEvent size={16} />} label="End Date" value={str(d['End Date'])} accent="grape" />
-          {d['Lock-in Date'] != null && (
-            <InfoTile icon={<IconLock size={16} />} label="Lock-in Date" value={str(d['Lock-in Date'])} accent="orange" />
-          )}
-          <InfoTile
-            icon={<IconStatusChange size={16} />}
-            label="Status"
-            value={str(d.Status)}
-            accent={STATUS_COLORS[str(d.Status)] ?? 'gray'}
-          />
-        </SimpleGrid>
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Sprint Calendar" />
-      </Stack>
-    );
-  }
+ // ── Sprint Profile ──
+ if (type === 'SPRINT_PROFILE') {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ <InfoTile icon={<IconPlayerPlay size={16} />} label="Type" value={str(d.Type)} accent="blue" />
+ <InfoTile icon={<IconCalendarEvent size={16} />} label="Start Date" value={str(d['Start Date'])} accent="teal" />
+ <InfoTile icon={<IconCalendarEvent size={16} />} label="End Date" value={str(d['End Date'])} accent="grape" />
+ {d['Lock-in Date'] != null && (
+ <InfoTile icon={<IconLock size={16} />} label="Lock-in Date" value={str(d['Lock-in Date'])} accent="orange" />
+ )}
+ <InfoTile
+ icon={<IconStatusChange size={16} />}
+ label="Status"
+ value={str(d.Status)}
+ accent={STATUS_COLORS[str(d.Status)] ?? 'gray'}
+ />
+ </SimpleGrid>
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Sprint Calendar" />
+ </Stack>
+ );
+ }
 
-  // ── Release Profile ──
-  if (type === 'RELEASE_PROFILE') {
-    return (
-      <Stack gap="sm">
-        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-          <InfoTile icon={<IconRocket size={16} />} label="Release Date" value={str(d['Release Date'])} accent="teal" />
-          <InfoTile icon={<IconSnowflake size={16} />} label="Code Freeze" value={str(d['Code Freeze'])} accent="blue" />
-          <InfoTile icon={<IconPlayerPlay size={16} />} label="Type" value={str(d.Type)} accent="grape" />
-          <InfoTile
-            icon={<IconStatusChange size={16} />}
-            label="Status"
-            value={str(d.Status)}
-            accent={STATUS_COLORS[str(d.Status)] ?? 'orange'}
-          />
-        </SimpleGrid>
-        {d.Notes != null && <NotesBox text={str(d.Notes)} />}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Release Calendar" />
-      </Stack>
-    );
-  }
+ // ── Release Profile ──
+ if (type === 'RELEASE_PROFILE') {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ <InfoTile icon={<IconRocket size={16} />} label="Release Date" value={str(d['Release Date'])} accent="teal" />
+ <InfoTile icon={<IconSnowflake size={16} />} label="Code Freeze" value={str(d['Code Freeze'])} accent="blue" />
+ <InfoTile icon={<IconPlayerPlay size={16} />} label="Type" value={str(d.Type)} accent="grape" />
+ <InfoTile
+ icon={<IconStatusChange size={16} />}
+ label="Status"
+ value={str(d.Status)}
+ accent={STATUS_COLORS[str(d.Status)] ?? 'orange'}
+ />
+ </SimpleGrid>
+ {d.Notes != null && <NotesBox text={str(d.Notes)} />}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Release Calendar" />
+ </Stack>
+ );
+ }
 
-  // ── Comparison ──
-  if (type === 'COMPARISON') {
-    return (
-      <Stack gap="sm">
-        <Group gap="xs" mb={4}>
-          <Badge variant="filled" size="sm" style={{ backgroundColor: DEEP_BLUE }}>{str(d.entityA)}</Badge>
-          <Text size="xs" c="dimmed" fw={700}>vs</Text>
-          <Badge variant="filled" size="sm" style={{ backgroundColor: AQUA }}>{str(d.entityB)}</Badge>
-        </Group>
-        <ComparisonTable data={d} />
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
-      </Stack>
-    );
-  }
+ // ── Comparison ──
+ if (type === 'COMPARISON') {
+ return (
+ <Stack gap="sm">
+ <Group gap="xs" mb={4}>
+ <Badge variant="filled" size="sm" style={{ backgroundColor: DEEP_BLUE }}>{str(d.entityA)}</Badge>
+ <Text size="xs" c="dimmed" fw={700}>vs</Text>
+ <Badge variant="filled" size="sm" style={{ backgroundColor: AQUA }}>{str(d.entityB)}</Badge>
+ </Group>
+ <ComparisonTable data={d} />
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
+ </Stack>
+ );
+ }
 
-  // ── LIST card (team members, projects, releases, sprints) ──
-  if (type === 'LIST') {
-    const itemCount = Object.keys(d).filter(k => /^#\d+$/.test(k)).length;
-    const hasNoItems = itemCount === 0 && str(d.Count) === '0';
+ // ── LIST card (team members, projects, releases, sprints) ──
+ if (type === 'LIST') {
+ const itemCount = Object.keys(d).filter(k => /^#\d+$/.test(k)).length;
+ const hasNoItems = itemCount === 0 && str(d.Count) === '0';
 
-    return (
-      <Stack gap="sm">
-        {/* Summary metrics */}
-        <SummaryRow data={d} excludeKeys={['Members', 'Projects', 'listType']} />
+ return (
+ <Stack gap="sm">
+ {/* Summary metrics */}
+ <SummaryRow data={d} excludeKeys={['Members', 'Projects', 'listType']} />
 
-        {/* Empty state */}
-        {hasNoItems ? (
-          <WittyEmptyState message={result.response.message} searchTerm={str(d['Search Term']) || undefined} />
-        ) : (
-          /* Numbered items rendered as clickable mini-cards */
-          <NumberedItemList data={d} onNavigate={onNavigateWithToast} />
-        )}
+ {/* Empty state */}
+ {hasNoItems ? (
+ <WittyEmptyState message={result.response.message} searchTerm={str(d['Search Term']) || undefined} />
+ ) : (
+ /* Numbered items rendered as clickable mini-cards */
+ <NumberedItemList data={d} onNavigate={onNavigateWithToast} />
+ )}
 
-        {/* Members badges */}
-        <BadgeListSection label="Members" items={str(d.Members)} color="blue" />
+ {/* Members badges */}
+ <BadgeListSection label="Members" items={str(d.Members)} color="blue" />
 
-        {/* Projects badges */}
-        {d.Projects != null && d.listType === 'PROJECTS' && (
-          <BadgeListSection label="Projects" items={str(d.Projects)} color="teal" />
-        )}
+ {/* Projects badges */}
+ {d.Projects != null && d.listType === 'PROJECTS' && (
+ <BadgeListSection label="Projects" items={str(d.Projects)} color="teal" />
+ )}
 
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
-      </Stack>
-    );
-  }
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
+ </Stack>
+ );
+ }
 
-  // ── Export ──
-  if (type === 'EXPORT') {
-    return (
-      <Stack gap="sm">
-        <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
-          <Group gap="sm">
-            <ThemeIcon size={40} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
-              <IconDownload size={22} />
-            </ThemeIcon>
-            <div>
-              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
-                {str(d.label) || 'Data'} Export
-              </Text>
-              <Text size="xs" c="dimmed">Click to download as CSV</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Button
-          variant="light"
-          size="xs"
-          leftSection={<IconDownload size={14} />}
-          component="a"
-          href={str(d.exportUrl) || '#'}
-          target="_blank"
-          style={{ alignSelf: 'flex-start', color: AQUA }}
-        >
-          Download CSV
-        </Button>
-      </Stack>
-    );
-  }
+ // ── Export ──
+ if (type === 'EXPORT') {
+ return (
+ <Stack gap="sm">
+ <Paper p="sm" radius="md" withBorder style={{ borderLeft: `4px solid ${AQUA}` }}>
+ <Group gap="sm">
+ <ThemeIcon size={40} variant="light" radius="md" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA }}>
+ <IconDownload size={22} />
+ </ThemeIcon>
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+ {str(d.label) || 'Data'} Export
+ </Text>
+ <Text size="xs" c="dimmed">Click to download as CSV</Text>
+ </div>
+ </Group>
+ </Paper>
+ <Button
+ variant="light"
+ size="xs"
+ leftSection={<IconDownload size={14} />}
+ component="a"
+ href={str(d.exportUrl) || '#'}
+ target="_blank"
+ style={{ alignSelf: 'flex-start', color: AQUA }}
+ >
+ Download CSV
+ </Button>
+ </Stack>
+ );
+ }
 
-  // ── Risk Summary / Insight ──
-  if ((type === 'RISK_SUMMARY' && result.intent === 'INSIGHT') || (result.intent === 'INSIGHT' && d)) {
-    // Collect summary tiles (keys with short string/number values, NOT numbered items)
-    const summaryEntries = Object.entries(d)
-      .filter(([k, v]) => !k.startsWith('_') && !k.startsWith('#') && typeof v === 'string' && (v as string).length < 40);
-    // Collect numbered items (keys like "#1", "#2", etc.)
-    const numberedItems = Object.entries(d)
-      .filter(([k]) => /^#\d+$/.test(k))
-      .sort(([a], [b]) => Number(a.slice(1)) - Number(b.slice(1)));
-    // Collect status/meta entries
-    const statusEntry = d['Status'] as string | undefined;
+ // ── Risk Summary / Insight ──
+ if ((type === 'RISK_SUMMARY' && result.intent === 'INSIGHT') || (result.intent === 'INSIGHT' && d)) {
+ // Collect summary tiles (keys with short string/number values, NOT numbered items)
+ const summaryEntries = Object.entries(d)
+ .filter(([k, v]) => !k.startsWith('_') && !k.startsWith('#') && typeof v === 'string' && (v as string).length < 40);
+ // Collect numbered items (keys like "#1", "#2", etc.)
+ const numberedItems = Object.entries(d)
+ .filter(([k]) => /^#\d+$/.test(k))
+ .sort(([a], [b]) => Number(a.slice(1)) - Number(b.slice(1)));
+ // Collect status/meta entries
+ const statusEntry = d['Status'] as string | undefined;
 
-    return (
-      <Stack gap="sm">
-        {summaryEntries.length > 0 && (
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            {summaryEntries.map(([label, value]) => {
-              const numVal = Number(value);
-              let accent = 'blue';
-              const lower = label.toLowerCase();
-              if (lower.includes('over') || lower.includes('p0') || lower.includes('risk') || lower.includes('strained')) accent = numVal > 0 ? 'red' : 'green';
-              else if (lower.includes('under') || lower.includes('idle') || lower.includes('unassigned')) accent = numVal > 0 ? 'orange' : 'green';
-              else if (lower.includes('hold') || lower.includes('need')) accent = numVal > 0 ? 'yellow' : 'green';
-              else if (lower.includes('high') || lower.includes('load')) accent = numVal > 0 ? 'orange' : 'green';
-              else if (lower.includes('total') || lower.includes('active')) accent = 'blue';
-              const icon = lower.includes('pod') ? <IconHexagons size={16} />
-                : lower.includes('project') ? <IconBriefcase size={16} />
-                : lower.includes('hiring') || lower.includes('need') ? <IconUsers size={16} />
-                : <IconChartBar size={16} />;
-              return <InfoTile key={label} icon={icon} label={label} value={str(value)} accent={accent} />;
-            })}
-          </SimpleGrid>
-        )}
-        {numberedItems.length > 0 && (
-          <Stack gap={6}>
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.06em' }}>Details</Text>
-            {numberedItems.map(([key, value]) => (
-              <Paper key={key} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
-                <Group gap="sm" wrap="nowrap">
-                  <Badge size="sm" radius="sm" variant="filled" style={{ backgroundColor: DEEP_BLUE, minWidth: 28, textAlign: 'center' }}>
-                    {key}
-                  </Badge>
-                  <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{str(value)}</Text>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        {statusEntry && numberedItems.length === 0 && (
-          <Paper p="sm" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-green-5)` }}>
-            <Group gap="sm">
-              <IconCheck size={16} color="var(--mantine-color-green-6)" />
-              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{statusEntry}</Text>
-            </Group>
-          </Paper>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
-      </Stack>
-    );
-  }
+ return (
+ <Stack gap="sm">
+ {summaryEntries.length > 0 && (
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ {summaryEntries.map(([label, value]) => {
+ const numVal = Number(value);
+ let accent = 'blue';
+ const lower = label.toLowerCase();
+ if (lower.includes('over') || lower.includes('p0') || lower.includes('risk') || lower.includes('strained')) accent = numVal > 0 ? 'red' : 'green';
+ else if (lower.includes('under') || lower.includes('idle') || lower.includes('unassigned')) accent = numVal > 0 ? 'orange' : 'green';
+ else if (lower.includes('hold') || lower.includes('need')) accent = numVal > 0 ? 'yellow' : 'green';
+ else if (lower.includes('high') || lower.includes('load')) accent = numVal > 0 ? 'orange' : 'green';
+ else if (lower.includes('total') || lower.includes('active')) accent = 'blue';
+ const icon = lower.includes('pod') ? <IconHexagons size={16} />
+ : lower.includes('project') ? <IconBriefcase size={16} />
+ : lower.includes('hiring') || lower.includes('need') ? <IconUsers size={16} />
+ : <IconChartBar size={16} />;
+ return <InfoTile key={label} icon={icon} label={label} value={str(value)} accent={accent} />;
+ })}
+ </SimpleGrid>
+ )}
+ {numberedItems.length > 0 && (
+ <Stack gap={6}>
+ <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.06em' }}>Details</Text>
+ {numberedItems.map(([key, value]) => (
+ <Paper key={key} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
+ <Group gap="sm" wrap="nowrap">
+ <Badge size="sm" radius="sm" variant="filled" style={{ backgroundColor: DEEP_BLUE, minWidth: 28, textAlign: 'center' }}>
+ {key}
+ </Badge>
+ <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{str(value)}</Text>
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ {statusEntry && numberedItems.length === 0 && (
+ <Paper p="sm" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-green-5)` }}>
+ <Group gap="sm">
+ <IconCheck size={16} color="var(--mantine-color-green-6)" />
+ <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{statusEntry}</Text>
+ </Group>
+ </Paper>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
+ </Stack>
+ );
+ }
 
-  // ── Resource Analytics ──
-  if (type === 'RESOURCE_ANALYTICS') {
-    return (
-      <Stack gap="sm">
-        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-          {d.Count != null && <InfoTile icon={<IconUsers size={16} />} label="Count" value={str(d.Count)} accent="blue" />}
-          {d['Matching Resources'] != null && <InfoTile icon={<IconUsers size={16} />} label="Resources" value={str(d['Matching Resources'])} accent="blue" />}
-          {d['Total FTE'] != null && <InfoTile icon={<IconUser size={16} />} label="Total FTE" value={str(d['Total FTE'])} accent="teal" />}
-          {d['Average Billing Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Avg Rate" value={str(d['Average Billing Rate'])} accent="orange" />}
-          {d['Min Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Min Rate" value={str(d['Min Rate'])} accent="green" />}
-          {d['Max Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Max Rate" value={str(d['Max Rate'])} accent="red" />}
-        </SimpleGrid>
-        <SummaryRow data={d} excludeKeys={['Filter', 'Count', 'Matching Resources', 'Total FTE', 'Average Billing Rate', 'Min Rate', 'Max Rate', 'Total Count']} />
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Resources page" />
-      </Stack>
-    );
-  }
+ // ── Resource Analytics ──
+ if (type === 'RESOURCE_ANALYTICS') {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ {d.Count != null && <InfoTile icon={<IconUsers size={16} />} label="Count" value={str(d.Count)} accent="blue" />}
+ {d['Matching Resources'] != null && <InfoTile icon={<IconUsers size={16} />} label="Resources" value={str(d['Matching Resources'])} accent="blue" />}
+ {d['Total FTE'] != null && <InfoTile icon={<IconUser size={16} />} label="Total FTE" value={str(d['Total FTE'])} accent="teal" />}
+ {d['Average Billing Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Avg Rate" value={str(d['Average Billing Rate'])} accent="orange" />}
+ {d['Min Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Min Rate" value={str(d['Min Rate'])} accent="green" />}
+ {d['Max Rate'] != null && <InfoTile icon={<IconCurrencyDollar size={16} />} label="Max Rate" value={str(d['Max Rate'])} accent="red" />}
+ </SimpleGrid>
+ <SummaryRow data={d} excludeKeys={['Filter', 'Count', 'Matching Resources', 'Total FTE', 'Average Billing Rate', 'Min Rate', 'Max Rate', 'Total Count']} />
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Resources page" />
+ </Stack>
+ );
+ }
 
-  // ── Cost Rate / T-shirt Size ──
-  if (type === 'COST_RATE') {
-    return (
-      <Stack gap="sm">
-        {d.Filter != null && <Text size="xs" c="dimmed" fw={600}>{str(d.Filter)}</Text>}
-        <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
-          {Object.entries(d)
-            .filter(([k]) => !k.startsWith('_') && k !== 'Filter')
-            .map(([label, value], idx, arr) => (
-              <Group key={label} gap="xs" justify="space-between" px="sm" py={8}
-                style={{
-                  borderBottom: idx < arr.length - 1 ? '1px solid var(--mantine-color-default-border)' : undefined,
-                  backgroundColor: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'),
-                }}
-              >
-                <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
-                <Badge variant="light" radius="sm" size="sm" style={{ textTransform: 'none', backgroundColor: AQUA_TINTS[10], color: AQUA }}>{String(value)}</Badge>
-              </Group>
-            ))}
-        </Paper>
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View reference data" />
-      </Stack>
-    );
-  }
+ // ── Cost Rate / T-shirt Size ──
+ if (type === 'COST_RATE') {
+ return (
+ <Stack gap="sm">
+ {d.Filter != null && <Text size="xs" c="dimmed" fw={600}>{str(d.Filter)}</Text>}
+ <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
+ {Object.entries(d)
+ .filter(([k]) => !k.startsWith('_') && k !== 'Filter')
+ .map(([label, value], idx, arr) => (
+ <Group key={label} gap="xs" justify="space-between" px="sm" py={8}
+ style={{
+ borderBottom: idx < arr.length - 1 ? '1px solid var(--mantine-color-default-border)' : undefined,
+ backgroundColor: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'),
+ }}
+ >
+ <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
+ <Badge variant="light" radius="sm" size="sm" style={{ textTransform: 'none', backgroundColor: AQUA_TINTS[10], color: AQUA }}>{String(value)}</Badge>
+ </Group>
+ ))}
+ </Paper>
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View reference data" />
+ </Stack>
+ );
+ }
 
-  // ── Capabilities ──
-  if (type === 'CAPABILITIES') {
-    return (
-      <Stack gap={6}>
-        {Object.entries(d)
-          .filter(([k]) => !k.startsWith('_'))
-          .map(([category, examples]) => (
-            <Paper key={category} p="xs" radius="md" withBorder style={{ borderLeft: `3px solid ${AQUA}` }}>
-              <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: AQUA }}>{category}</Text>
-              <Text size="xs" c="dimmed" style={{ fontStyle: 'italic' }}>{String(examples)}</Text>
-            </Paper>
-          ))}
-      </Stack>
-    );
-  }
+ // ── Capabilities ──
+ if (type === 'CAPABILITIES') {
+ return (
+ <Stack gap={6}>
+ {Object.entries(d)
+ .filter(([k]) => !k.startsWith('_'))
+ .map(([category, examples]) => (
+ <Paper key={category} p="xs" radius="md" withBorder style={{ borderLeft: `3px solid ${AQUA}` }}>
+ <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: AQUA }}>{category}</Text>
+ <Text size="xs" c="dimmed" style={{ fontStyle: 'italic' }}>{String(examples)}</Text>
+ </Paper>
+ ))}
+ </Stack>
+ );
+ }
 
-  // ── Project Estimates ──
-  if (type === 'PROJECT_ESTIMATES') {
-    return (
-      <Stack gap="sm">
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-          <InfoTile icon={<IconChartBar size={16} />} label="Grand Total" value={`${d['Grand Total Hours'] ?? '0'}h`} accent="teal" highlight />
-          <InfoTile icon={<IconHexagons size={16} />} label="PODs" value={str(d['POD Count'])} accent="grape" />
-          <InfoTile icon={<IconUsers size={16} />} label="Dev Hours" value={`${d['Dev Hours'] ?? '0'}h`} accent="indigo" />
-          <InfoTile icon={<IconListCheck size={16} />} label="QA Hours" value={`${d['QA Hours'] ?? '0'}h`} accent="orange" />
-          <InfoTile icon={<IconNotes size={16} />} label="BSA Hours" value={`${d['BSA Hours'] ?? '0'}h`} accent="cyan" />
-          <InfoTile icon={<IconUser size={16} />} label="TL Hours" value={`${d['Tech Lead Hours'] ?? '0'}h`} accent="red" />
-        </SimpleGrid>
-        {Array.isArray(d.podBreakdown) && d.podBreakdown.length > 0 && (
-          <Box>
-            <SectionLabel text="POD Breakdown" />
-            <Stack gap={6}>
-              {(d.podBreakdown as Array<Record<string, string>>).map((pod, idx) => (
-                <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
-                  <Group justify="space-between">
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{pod.POD}</Text>
-                    <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{pod.Total}h</Badge>
-                  </Group>
-                  <Group gap={6} mt={6}>
-                    <RoleBadge role="Dev" value={pod.Dev} />
-                    <RoleBadge role="QA" value={pod.QA} />
-                    <RoleBadge role="BSA" value={pod.BSA} />
-                    <RoleBadge role="TL" value={pod.TL} />
-                    <Badge variant="outline" size="xs" radius="sm" color="gray">±{pod.Contingency}</Badge>
-                  </Group>
-                </Paper>
-              ))}
-            </Stack>
-          </Box>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Projects page" />
-      </Stack>
-    );
-  }
+ // ── Project Estimates ──
+ if (type === 'PROJECT_ESTIMATES') {
+ return (
+ <Stack gap="sm">
+ <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+ <InfoTile icon={<IconChartBar size={16} />} label="Grand Total" value={`${d['Grand Total Hours'] ?? '0'}h`} accent="teal" highlight />
+ <InfoTile icon={<IconHexagons size={16} />} label="PODs" value={str(d['POD Count'])} accent="grape" />
+ <InfoTile icon={<IconUsers size={16} />} label="Dev Hours" value={`${d['Dev Hours'] ?? '0'}h`} accent="indigo" />
+ <InfoTile icon={<IconListCheck size={16} />} label="QA Hours" value={`${d['QA Hours'] ?? '0'}h`} accent="orange" />
+ <InfoTile icon={<IconNotes size={16} />} label="BSA Hours" value={`${d['BSA Hours'] ?? '0'}h`} accent="cyan" />
+ <InfoTile icon={<IconUser size={16} />} label="TL Hours" value={`${d['Tech Lead Hours'] ?? '0'}h`} accent="red" />
+ </SimpleGrid>
+ {Array.isArray(d.podBreakdown) && d.podBreakdown.length > 0 && (
+ <Box>
+ <SectionLabel text="POD Breakdown" />
+ <Stack gap={6}>
+ {(d.podBreakdown as Array<Record<string, string>>).map((pod, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
+ <Group justify="space-between">
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{pod.POD}</Text>
+ <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{pod.Total}h</Badge>
+ </Group>
+ <Group gap={6} mt={6}>
+ <RoleBadge role="Dev" value={pod.Dev} />
+ <RoleBadge role="QA" value={pod.QA} />
+ <RoleBadge role="BSA" value={pod.BSA} />
+ <RoleBadge role="TL" value={pod.TL} />
+ <Badge variant="outline" size="xs" radius="sm" color="gray">±{pod.Contingency}</Badge>
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ </Box>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View on Projects page" />
+ </Stack>
+ );
+ }
 
-  // ── Sprint Allocations ──
-  if (type === 'SPRINT_ALLOCATIONS') {
-    return (
-      <Stack gap="sm">
-        <CountHeader title={str(d.Title) || 'Sprint Allocations'} count={d.Count} unit="allocation" />
-        {Array.isArray(d.allocations) && (
-          <Stack gap={6}>
-            {(d.allocations as Array<Record<string, string>>).map((alloc, idx) => (
-              <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
-                <Group justify="space-between">
-                  <div>
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{alloc.Project}</Text>
-                    <Text size="xs" c="dimmed">{alloc.Sprint} · {alloc.POD}</Text>
-                  </div>
-                  <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{alloc.Total}h</Badge>
-                </Group>
-                <Group gap={6} mt={6}>
-                  <RoleBadge role="Dev" value={alloc.Dev} />
-                  <RoleBadge role="QA" value={alloc.QA} />
-                  <RoleBadge role="BSA" value={alloc.BSA} />
-                  <RoleBadge role="TL" value={alloc.TL} />
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Sprint Planner" />
-      </Stack>
-    );
-  }
+ // ── Sprint Allocations ──
+ if (type === 'SPRINT_ALLOCATIONS') {
+ return (
+ <Stack gap="sm">
+ <CountHeader title={str(d.Title) || 'Sprint Allocations'} count={d.Count} unit="allocation" />
+ {Array.isArray(d.allocations) && (
+ <Stack gap={6}>
+ {(d.allocations as Array<Record<string, string>>).map((alloc, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid ${AQUA}` }}>
+ <Group justify="space-between">
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{alloc.Project}</Text>
+ <Text size="xs" c="dimmed">{alloc.Sprint} · {alloc.POD}</Text>
+ </div>
+ <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{alloc.Total}h</Badge>
+ </Group>
+ <Group gap={6} mt={6}>
+ <RoleBadge role="Dev" value={alloc.Dev} />
+ <RoleBadge role="QA" value={alloc.QA} />
+ <RoleBadge role="BSA" value={alloc.BSA} />
+ <RoleBadge role="TL" value={alloc.TL} />
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Sprint Planner" />
+ </Stack>
+ );
+ }
 
-  // ── Resource Availability ──
-  if (type === 'RESOURCE_AVAILABILITY') {
-    return (
-      <Stack gap="sm">
-        <CountHeader title={str(d.Title) || 'Resource Availability'} count={d.Count} unit="record" />
-        {Array.isArray(d.entries) && (
-          <Stack gap={6}>
-            {(d.entries as Array<Record<string, string>>).map((entry, idx) => (
-              <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item">
-                <Group justify="space-between">
-                  <div>
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{entry.Resource}</Text>
-                    <Text size="xs" c="dimmed">{entry.Role} · {entry.POD}</Text>
-                  </div>
-                  <Group gap={6}>
-                    <Badge variant="light" color="grape" size="sm" radius="sm">{entry.Month}</Badge>
-                    <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{entry.Hours}h</Badge>
-                  </Group>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Availability page" />
-      </Stack>
-    );
-  }
+ // ── Resource Availability ──
+ if (type === 'RESOURCE_AVAILABILITY') {
+ return (
+ <Stack gap="sm">
+ <CountHeader title={str(d.Title) || 'Resource Availability'} count={d.Count} unit="record" />
+ {Array.isArray(d.entries) && (
+ <Stack gap={6}>
+ {(d.entries as Array<Record<string, string>>).map((entry, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item">
+ <Group justify="space-between">
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{entry.Resource}</Text>
+ <Text size="xs" c="dimmed">{entry.Role} · {entry.POD}</Text>
+ </div>
+ <Group gap={6}>
+ <Badge variant="light" color="grape" size="sm" radius="sm">{entry.Month}</Badge>
+ <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{entry.Hours}h</Badge>
+ </Group>
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Availability page" />
+ </Stack>
+ );
+ }
 
-  // ── Project Dependencies ──
-  if (type === 'PROJECT_DEPENDENCIES') {
-    return (
-      <Stack gap="sm">
-        <CountHeader title={str(d.Title) || 'Project Dependencies'} count={d.Count} unit="dependency" color="orange" />
-        {Array.isArray(d.dependencies) && (
-          <Stack gap={6}>
-            {(d.dependencies as Array<Record<string, string>>).map((dep, idx) => (
-              <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: '3px solid var(--mantine-color-orange-5)' }}>
-                <Group justify="space-between" wrap="nowrap">
-                  <div>
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{dep.Project}</Text>
-                    <Text size="xs" c="dimmed">Blocked by <strong>{dep['Blocked By']}</strong></Text>
-                  </div>
-                  <Group gap={4}>
-                    <Badge variant="light" size="xs" radius="sm" color={STATUS_COLORS[dep['Project Status']] ?? 'blue'}>{dep['Project Status']}</Badge>
-                    <IconChevronRight size={12} style={{ opacity: 0.4 }} />
-                    <Badge variant="light" size="xs" radius="sm" color={STATUS_COLORS[dep['Blocker Status']] ?? 'gray'}>{dep['Blocker Status']}</Badge>
-                  </Group>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Cross-POD Dependencies" />
-      </Stack>
-    );
-  }
+ // ── Project Dependencies ──
+ if (type === 'PROJECT_DEPENDENCIES') {
+ return (
+ <Stack gap="sm">
+ <CountHeader title={str(d.Title) || 'Project Dependencies'} count={d.Count} unit="dependency" color="orange" />
+ {Array.isArray(d.dependencies) && (
+ <Stack gap={6}>
+ {(d.dependencies as Array<Record<string, string>>).map((dep, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: '3px solid var(--mantine-color-orange-5)' }}>
+ <Group justify="space-between" wrap="nowrap">
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{dep.Project}</Text>
+ <Text size="xs" c="dimmed">Blocked by <strong>{dep['Blocked By']}</strong></Text>
+ </div>
+ <Group gap={4}>
+ <Badge variant="light" size="xs" radius="sm" color={STATUS_COLORS[dep['Project Status']] ?? 'blue'}>{dep['Project Status']}</Badge>
+ <IconChevronRight size={12} style={{ opacity: 0.4 }} />
+ <Badge variant="light" size="xs" radius="sm" color={STATUS_COLORS[dep['Blocker Status']] ?? 'gray'}>{dep['Blocker Status']}</Badge>
+ </Group>
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Cross-POD Dependencies" />
+ </Stack>
+ );
+ }
 
-  // ── Project Actuals ──
-  if (type === 'PROJECT_ACTUALS') {
-    return (
-      <Stack gap="sm">
-        <CountHeader title={str(d.Title) || 'Project Actuals'} count={d.Count} unit="record" />
-        {Array.isArray(d.entries) && (
-          <Stack gap={6}>
-            {(d.entries as Array<Record<string, string>>).map((entry, idx) => (
-              <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item">
-                <Group justify="space-between">
-                  <div>
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{entry.Project}</Text>
-                    <Text size="xs" c="dimmed">{entry.Month}</Text>
-                  </div>
-                  <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{entry['Actual Hours'] ?? entry.Actual}h</Badge>
-                </Group>
-                {entry.Estimated && entry['Over By'] != null && (
-                  <Group gap={6} mt={6}>
-                    <Badge variant="outline" size="xs" radius="sm" color="blue">Est: {entry.Estimated}h</Badge>
-                    <Badge variant="filled" size="xs" radius="sm" color="red">+{entry['Over By']}h over</Badge>
-                  </Group>
-                )}
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Budget & Cost" />
-      </Stack>
-    );
-  }
+ // ── Project Actuals ──
+ if (type === 'PROJECT_ACTUALS') {
+ return (
+ <Stack gap="sm">
+ <CountHeader title={str(d.Title) || 'Project Actuals'} count={d.Count} unit="record" />
+ {Array.isArray(d.entries) && (
+ <Stack gap={6}>
+ {(d.entries as Array<Record<string, string>>).map((entry, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item">
+ <Group justify="space-between">
+ <div>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{entry.Project}</Text>
+ <Text size="xs" c="dimmed">{entry.Month}</Text>
+ </div>
+ <Badge variant="filled" size="sm" radius="sm" style={{ backgroundColor: AQUA }}>{entry['Actual Hours'] ?? entry.Actual}h</Badge>
+ </Group>
+ {entry.Estimated && entry['Over By'] != null && (
+ <Group gap={6} mt={6}>
+ <Badge variant="outline" size="xs" radius="sm" color="blue">Est: {entry.Estimated}h</Badge>
+ <Badge variant="filled" size="xs" radius="sm" color="red">+{entry['Over By']}h over</Badge>
+ </Group>
+ )}
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View Budget & Cost" />
+ </Stack>
+ );
+ }
 
-  // ── Effort Patterns ──
-  if (type === 'EFFORT_PATTERN' || type === 'EFFORT_PATTERN_LIST') {
-    return (
-      <Stack gap="sm">
-        {d.Name != null && !Array.isArray(d.patterns) && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <InfoTile icon={<IconArrowsSplit size={16} />} label="Pattern" value={str(d.Name)} accent="grape" />
-            <InfoTile icon={<IconNotes size={16} />} label="Description" value={str(d.Description)} accent="blue" />
-          </SimpleGrid>
-        )}
-        {Array.isArray(d.patterns) && (
-          <Stack gap={6}>
-            {(d.patterns as Array<Record<string, string>>).map((p, idx) => (
-              <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid var(--mantine-color-grape-5)` }}>
-                <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{p.Name}</Text>
-                <Text size="xs" c="dimmed">{p.Description}</Text>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    );
-  }
+ // ── Effort Patterns ──
+ if (type === 'EFFORT_PATTERN' || type === 'EFFORT_PATTERN_LIST') {
+ return (
+ <Stack gap="sm">
+ {d.Name != null && !Array.isArray(d.patterns) && (
+ <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+ <InfoTile icon={<IconArrowsSplit size={16} />} label="Pattern" value={str(d.Name)} accent="grape" />
+ <InfoTile icon={<IconNotes size={16} />} label="Description" value={str(d.Description)} accent="blue" />
+ </SimpleGrid>
+ )}
+ {Array.isArray(d.patterns) && (
+ <Stack gap={6}>
+ {(d.patterns as Array<Record<string, string>>).map((p, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder className="nlp-list-item" style={{ borderLeft: `3px solid var(--mantine-color-grape-5)` }}>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{p.Name}</Text>
+ <Text size="xs" c="dimmed">{p.Description}</Text>
+ </Paper>
+ ))}
+ </Stack>
+ )}
+ </Stack>
+ );
+ }
 
-  // ── Role Effort Mix ──
-  if (type === 'ROLE_EFFORT_MIX') {
-    return (
-      <Stack gap="sm">
-        {Array.isArray(d.roles) && (
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-            {(d.roles as Array<Record<string, string>>).map((r, idx) => (
-              <InfoTile
-                key={idx}
-                icon={<IconPercentage size={16} />}
-                label={r.Role}
-                value={r['Mix %']}
-                accent={['indigo', 'orange', 'cyan', 'red'][idx % 4]}
-              />
-            ))}
-          </SimpleGrid>
-        )}
-      </Stack>
-    );
-  }
+ // ── Role Effort Mix ──
+ if (type === 'ROLE_EFFORT_MIX') {
+ return (
+ <Stack gap="sm">
+ {Array.isArray(d.roles) && (
+ <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+ {(d.roles as Array<Record<string, string>>).map((r, idx) => (
+ <InfoTile
+ key={idx}
+ icon={<IconPercentage size={16} />}
+ label={r.Role}
+ value={r['Mix %']}
+ accent={['indigo', 'orange', 'cyan', 'red'][idx % 4]}
+ />
+ ))}
+ </SimpleGrid>
+ )}
+ </Stack>
+ );
+ }
 
-  // ── Jira Issue Profile ──
-  if (type === 'JIRA_ISSUE_PROFILE') {
-    const statusCat = str(d['Status Category']);
-    const statusAccent = statusCat === 'done' ? 'green' : statusCat === 'indeterminate' ? 'blue' : 'orange';
-    const priorityAccent = str(d.Priority).toLowerCase().includes('high') ? 'red'
-      : str(d.Priority).toLowerCase().includes('medium') ? 'orange' : 'blue';
-    const hasSprint = d.Sprint != null;
-    const hasEpic = d.Epic != null;
-    const hasProject = d.Project != null;
-    const hasDueDate = d['Due Date'] != null;
-    const hasEstimate = d.Estimate != null;
+ // ── Jira Issue Profile ──
+ if (type === 'JIRA_ISSUE_PROFILE') {
+ const statusCat = str(d['Status Category']);
+ const statusAccent = statusCat === 'done' ? 'green' : statusCat === 'indeterminate' ? 'blue' : 'orange';
+ const priorityAccent = str(d.Priority).toLowerCase().includes('high') ? 'red'
+ : str(d.Priority).toLowerCase().includes('medium') ? 'orange' : 'blue';
+ const hasSprint = d.Sprint != null;
+ const hasEpic = d.Epic != null;
+ const hasProject = d.Project != null;
+ const hasDueDate = d['Due Date'] != null;
+ const hasEstimate = d.Estimate != null;
 
-    return (
-      <Stack gap="sm">
-        {/* Key fields grid */}
-        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-          <InfoTile icon={<IconStatusChange size={16} />} label="Status" value={str(d.Status)} accent={statusAccent} />
-          <InfoTile icon={<IconFlag size={16} />} label="Priority" value={str(d.Priority)} accent={priorityAccent} />
-          <InfoTile icon={<IconBriefcase size={16} />} label="Type" value={str(d.Type)} accent="grape" />
-          <InfoTile icon={<IconUser size={16} />} label="Assignee" value={str(d.Assignee)} accent="blue" />
-          <InfoTile icon={<IconUser size={16} />} label="Reporter" value={str(d.Reporter)} accent="indigo" />
-          <InfoTile icon={<IconChartBar size={16} />} label="Story Points" value={str(d['Story Points'])} accent="teal" />
-          <InfoTile icon={<IconCalendarEvent size={16} />} label="Created" value={str(d.Created)} accent="gray" />
-          <InfoTile icon={<IconCheck size={16} />} label="Resolved" value={str(d.Resolved)} accent={str(d.Resolved) === 'Open' ? 'orange' : 'green'} />
-          <InfoTile icon={<IconClock size={16} />} label="Time Logged" value={str(d['Time Logged'])} accent="cyan" />
-        </SimpleGrid>
+ return (
+ <Stack gap="sm">
+ {/* Key fields grid */}
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ <InfoTile icon={<IconStatusChange size={16} />} label="Status" value={str(d.Status)} accent={statusAccent} />
+ <InfoTile icon={<IconFlag size={16} />} label="Priority" value={str(d.Priority)} accent={priorityAccent} />
+ <InfoTile icon={<IconBriefcase size={16} />} label="Type" value={str(d.Type)} accent="grape" />
+ <InfoTile icon={<IconUser size={16} />} label="Assignee" value={str(d.Assignee)} accent="blue" />
+ <InfoTile icon={<IconUser size={16} />} label="Reporter" value={str(d.Reporter)} accent="indigo" />
+ <InfoTile icon={<IconChartBar size={16} />} label="Story Points" value={str(d['Story Points'])} accent="teal" />
+ <InfoTile icon={<IconCalendarEvent size={16} />} label="Created" value={str(d.Created)} accent="gray" />
+ <InfoTile icon={<IconCheck size={16} />} label="Resolved" value={str(d.Resolved)} accent={str(d.Resolved) === 'Open' ? 'orange' : 'green'} />
+ <InfoTile icon={<IconClock size={16} />} label="Time Logged" value={str(d['Time Logged'])} accent="cyan" />
+ </SimpleGrid>
 
-        {/* Optional fields */}
-        {(hasSprint || hasEpic || hasProject) && (
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            {hasSprint ? <InfoTile icon={<IconPlayerPlay size={16} />} label="Sprint" value={str(d.Sprint)} accent="orange" /> : null}
-            {hasEpic ? <InfoTile icon={<IconHexagons size={16} />} label="Epic" value={str(d.Epic)} accent="grape" /> : null}
-            {hasProject ? <InfoTile icon={<IconBriefcase size={16} />} label="Project" value={str(d.Project)} accent="teal" /> : null}
-            {hasDueDate ? <InfoTile icon={<IconCalendarEvent size={16} />} label="Due Date" value={str(d['Due Date'])} accent="red" /> : null}
-            {hasEstimate ? <InfoTile icon={<IconClock size={16} />} label="Estimate" value={str(d.Estimate)} accent="indigo" /> : null}
-          </SimpleGrid>
-        )}
+ {/* Optional fields */}
+ {(hasSprint || hasEpic || hasProject) && (
+ <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+ {hasSprint ? <InfoTile icon={<IconPlayerPlay size={16} />} label="Sprint" value={str(d.Sprint)} accent="orange" /> : null}
+ {hasEpic ? <InfoTile icon={<IconHexagons size={16} />} label="Epic" value={str(d.Epic)} accent="grape" /> : null}
+ {hasProject ? <InfoTile icon={<IconBriefcase size={16} />} label="Project" value={str(d.Project)} accent="teal" /> : null}
+ {hasDueDate ? <InfoTile icon={<IconCalendarEvent size={16} />} label="Due Date" value={str(d['Due Date'])} accent="red" /> : null}
+ {hasEstimate ? <InfoTile icon={<IconClock size={16} />} label="Estimate" value={str(d.Estimate)} accent="indigo" /> : null}
+ </SimpleGrid>
+ )}
 
-        {/* Labels, Fix Versions, Components */}
-        {d.Labels != null ? <BadgeListSection label="Labels" items={str(d.Labels)} color="grape" /> : null}
-        {d['Fix Versions'] != null ? <BadgeListSection label="Fix Versions" items={str(d['Fix Versions'])} color="cyan" /> : null}
-        {d.Components != null ? <BadgeListSection label="Components" items={str(d.Components)} color="teal" /> : null}
+ {/* Labels, Fix Versions, Components */}
+ {d.Labels != null ? <BadgeListSection label="Labels" items={str(d.Labels)} color="grape" /> : null}
+ {d['Fix Versions'] != null ? <BadgeListSection label="Fix Versions" items={str(d['Fix Versions'])} color="cyan" /> : null}
+ {d.Components != null ? <BadgeListSection label="Components" items={str(d.Components)} color="teal" /> : null}
 
-        {/* Description */}
-        {d.Description != null ? (
-          <Paper p="sm" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-gray-4)` }}>
-            <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>Description</Text>
-            <Text size="sm" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'pre-wrap', lineHeight: 1.5 }} lineClamp={8}>
-              {str(d.Description)}
-            </Text>
-          </Paper>
-        ) : null}
+ {/* Description */}
+ {d.Description != null ? (
+ <Paper p="sm" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-gray-4)` }}>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>Description</Text>
+ <Text size="sm" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'pre-wrap', lineHeight: 1.5 }} lineClamp={8}>
+ {str(d.Description)}
+ </Text>
+ </Paper>
+ ) : null}
 
-        {/* Comments */}
-        {Array.isArray(d.Comments) && (d.Comments as Array<Record<string, string>>).length > 0 && (
-          <div>
-            <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>
-              Comments ({(d.Comments as Array<Record<string, string>>).length})
-            </Text>
-            <Stack gap={6}>
-              {(d.Comments as Array<Record<string, string>>).slice(-5).map((c, idx) => (
-                <Paper key={idx} p="xs" radius="md" withBorder style={{ borderLeft: `2px solid var(--mantine-color-blue-3)` }}>
-                  <Group gap={6} mb={2}>
-                    <Text size="xs" fw={600} c="blue">{c.author}</Text>
-                    <Text size="xs" c="dimmed">{c.date}</Text>
-                  </Group>
-                  <Text size="xs" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }} lineClamp={4}>
-                    {c.body}
-                  </Text>
-                </Paper>
-              ))}
-            </Stack>
-          </div>
-        )}
+ {/* Comments */}
+ {Array.isArray(d.Comments) && (d.Comments as Array<Record<string, string>>).length > 0 && (
+ <div>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4} style={{ letterSpacing: '0.04em' }}>
+ Comments ({(d.Comments as Array<Record<string, string>>).length})
+ </Text>
+ <Stack gap={6}>
+ {(d.Comments as Array<Record<string, string>>).slice(-5).map((c, idx) => (
+ <Paper key={idx} p="xs" radius="md" withBorder style={{ borderLeft: `2px solid var(--mantine-color-blue-3)` }}>
+ <Group gap={6} mb={2}>
+ <Text size="xs" fw={600} c="blue">{c.author}</Text>
+ <Text size="xs" c="dimmed">{c.date}</Text>
+ </Group>
+ <Text size="xs" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }} lineClamp={4}>
+ {c.body}
+ </Text>
+ </Paper>
+ ))}
+ </Stack>
+ </div>
+ )}
 
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View in Jira Analytics" />
-      </Stack>
-    );
-  }
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View in Jira Analytics" />
+ </Stack>
+ );
+ }
 
-  // ── Generic Data / Insight fallback ──
-  if (!['NAVIGATE_ACTION'].includes(type)) {
-    const summaryData = Object.entries(d)
-      .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation'].includes(k))
-      .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
-    const hasNumberedItems = Object.keys(d).some(k => /^#\d+$/.test(k));
+ // ── Generic Data / Insight fallback ──
+ if (!['NAVIGATE_ACTION'].includes(type)) {
+ const summaryData = Object.entries(d)
+ .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation'].includes(k))
+ .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
+ const hasNumberedItems = Object.keys(d).some(k => /^#\d+$/.test(k));
 
-    if (summaryData.length === 0 && !hasNumberedItems) {
-      // No structured data — witty empty state
-      return (
-        <Stack gap="sm">
-          <WittyEmptyState message={result.response.message} />
-          {result.response.drillDown && (
-            <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
-          )}
-        </Stack>
-      );
-    }
+ if (summaryData.length === 0 && !hasNumberedItems) {
+ // No structured data — witty empty state
+ return (
+ <Stack gap="sm">
+ <WittyEmptyState message={result.response.message} />
+ {result.response.drillDown && (
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
+ )}
+ </Stack>
+ );
+ }
 
-    return (
-      <Stack gap="sm">
-        <SummaryRow data={d} excludeKeys={['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation']} />
-        {hasNumberedItems && <NumberedItemList data={d} onNavigate={onNavigateWithToast} />}
-        <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
-      </Stack>
-    );
-  }
+ return (
+ <Stack gap="sm">
+ <SummaryRow data={d} excludeKeys={['entityName', 'listType', 'filterValue', 'filterRole', 'filterLocation']} />
+ {hasNumberedItems && <NumberedItemList data={d} onNavigate={onNavigateWithToast} />}
+ <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View full report" />
+ </Stack>
+ );
+ }
 
-  return null;
+ return null;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2240,137 +2240,137 @@ function CardBody({
 // ══════════════════════════════════════════════════════════════════════════════
 
 function str(val: unknown): string {
-  if (val == null) return '–';
-  return String(val);
+ if (val == null) return '–';
+ return String(val);
 }
 
 // ── Info Tile (improved) ──
 
 function InfoTile({
-  icon, label, value, accent, highlight,
+ icon, label, value, accent, highlight,
 }: {
-  icon: React.ReactNode; label: string; value: string; accent: string; highlight?: boolean;
+ icon: React.ReactNode; label: string; value: string; accent: string; highlight?: boolean;
 }) {
-  return (
-    <Paper
-      p="xs"
-      radius="md"
-      withBorder
-      className="nlp-info-tile"
-      style={{
-        borderLeft: `3px solid var(--mantine-color-${accent}-5)`,
-        backgroundColor: highlight ? `var(--mantine-color-${accent}-0)` : undefined,
-      }}
-    >
-      <Group gap={8} wrap="nowrap">
-        <ThemeIcon size={26} variant="light" color={accent} radius="md">
-          {icon}
-        </ThemeIcon>
-        <div style={{ minWidth: 0 }}>
-          <Text size="xs" c="dimmed" lh={1.2} tt="uppercase" fw={600} style={{ letterSpacing: '0.04em' }}>{label}</Text>
-          <Text size="sm" fw={600} lh={1.3} truncate style={{ fontFamily: FONT_FAMILY }}>
-            {value}
-          </Text>
-        </div>
-      </Group>
-    </Paper>
-  );
+ return (
+ <Paper
+ p="xs"
+ radius="md"
+ withBorder
+ className="nlp-info-tile"
+ style={{
+ borderLeft: `3px solid var(--mantine-color-${accent}-5)`,
+ backgroundColor: highlight ? `var(--mantine-color-${accent}-0)` : undefined,
+ }}
+ >
+ <Group gap={8} wrap="nowrap">
+ <ThemeIcon size={26} variant="light" color={accent} radius="md">
+ {icon}
+ </ThemeIcon>
+ <div style={{ minWidth: 0 }}>
+ <Text size="xs" c="dimmed" lh={1.2} tt="uppercase" fw={600} style={{ letterSpacing: '0.04em' }}>{label}</Text>
+ <Text size="sm" fw={600} lh={1.3} truncate style={{ fontFamily: FONT_FAMILY }}>
+ {value}
+ </Text>
+ </div>
+ </Group>
+ </Paper>
+ );
 }
 
 // ── Drill-down button ──
 
 function DrillDownButton({
-  route, onNavigate, label,
+ route, onNavigate, label,
 }: {
-  route: string | null | undefined; onNavigate: (route: string) => void; label: string;
+ route: string | null | undefined; onNavigate: (route: string) => void; label: string;
 }) {
-  if (!route) return null;
-  return (
-    <Anchor
-      size="sm"
-      fw={500}
-      onClick={() => onNavigate(route)}
-      style={{ cursor: 'pointer', color: AQUA, fontFamily: FONT_FAMILY, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-    >
-      {label} <IconExternalLink size={14} />
-    </Anchor>
-  );
+ if (!route) return null;
+ return (
+ <Anchor
+ size="sm"
+ fw={500}
+ onClick={() => onNavigate(route)}
+ style={{ cursor: 'pointer', color: AQUA, fontFamily: FONT_FAMILY, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+ >
+ {label} <IconExternalLink size={14} />
+ </Anchor>
+ );
 }
 
 // ── Section label ──
 
 function SectionLabel({ text }: { text: string }) {
-  return (
-    <Text size="xs" c="dimmed" fw={700} tt="uppercase" mb={4} style={{ letterSpacing: '0.06em' }}>{text}</Text>
-  );
+ return (
+ <Text size="xs" c="dimmed" fw={700} tt="uppercase" mb={4} style={{ letterSpacing: '0.06em' }}>{text}</Text>
+ );
 }
 
 // ── Count header ──
 
 function CountHeader({ title, count, unit, color }: { title: string; count: unknown; unit: string; color?: string }) {
-  return (
-    <Group gap="xs">
-      <Text size="sm" fw={700} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{title}</Text>
-      <Badge className="nlp-count-animate" variant="filled" size="sm" radius="sm" style={{ backgroundColor: color === 'orange' ? 'var(--mantine-color-orange-6)' : AQUA }}>
-        {str(count)} {unit}(s)
-      </Badge>
-    </Group>
-  );
+ return (
+ <Group gap="xs">
+ <Text size="sm" fw={700} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{title}</Text>
+ <Badge className="nlp-count-animate" variant="filled" size="sm" radius="sm" style={{ backgroundColor: color === 'orange' ? 'var(--mantine-color-orange-6)' : AQUA }}>
+ {str(count)} {unit}(s)
+ </Badge>
+ </Group>
+ );
 }
 
 // ── Role badge (for hour breakdowns) ──
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
-  Dev: 'indigo', QA: 'orange', BSA: 'cyan', TL: 'red',
+ Dev: 'indigo', QA: 'orange', BSA: 'cyan', TL: 'red',
 };
 
 function RoleBadge({ role, value }: { role: string; value: string }) {
-  return (
-    <Badge variant="light" size="xs" radius="sm" color={ROLE_BADGE_COLORS[role] ?? 'gray'} style={{ fontFamily: FONT_FAMILY }}>
-      {role}: {value}h
-    </Badge>
-  );
+ return (
+ <Badge variant="light" size="xs" radius="sm" color={ROLE_BADGE_COLORS[role] ?? 'gray'} style={{ fontFamily: FONT_FAMILY }}>
+ {role}: {value}h
+ </Badge>
+ );
 }
 
 // ── Badge list section (comma-separated → badges) ──
 
 function BadgeListSection({ label, items, color }: { label: string; items: string; color: string }) {
-  if (!items || items === '–') return null;
-  const names = items.split(', ').filter(Boolean);
-  if (names.length === 0) return null;
-  return (
-    <Box>
-      <SectionLabel text={label} />
-      <Group gap={6}>
-        {names.map((name) => (
-          <Badge key={name} variant="light" color={color} size="sm" radius="sm" style={{ textTransform: 'none' }}>
-            {name}
-          </Badge>
-        ))}
-      </Group>
-    </Box>
-  );
+ if (!items || items === '–') return null;
+ const names = items.split(', ').filter(Boolean);
+ if (names.length === 0) return null;
+ return (
+ <Box>
+ <SectionLabel text={label} />
+ <Group gap={6}>
+ {names.map((name) => (
+ <Badge key={name} variant="light" color={color} size="sm" radius="sm" style={{ textTransform: 'none' }}>
+ {name}
+ </Badge>
+ ))}
+ </Group>
+ </Box>
+ );
 }
 
 // ── Summary row (key-value pairs, excluding _ keys and specific keys) ──
 
 function SummaryRow({ data, excludeKeys }: { data: Record<string, unknown>; excludeKeys: string[] }) {
-  const entries = Object.entries(data)
-    .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !excludeKeys.includes(k))
-    .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
-  if (entries.length === 0) return null;
-  return (
-    <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
-      {entries.map(([key, val], idx) => (
-        <Group key={key} gap="xs" justify="space-between" px="sm" py={6}
-          style={{ borderBottom: idx < entries.length - 1 ? '1px solid var(--mantine-color-default-border)' : undefined }}
-        >
-          <Text size="xs" c="dimmed" fw={600} style={{ fontFamily: FONT_FAMILY }}>{key}</Text>
-          <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{String(val)}</Text>
-        </Group>
-      ))}
-    </Paper>
-  );
+ const entries = Object.entries(data)
+ .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !excludeKeys.includes(k))
+ .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
+ if (entries.length === 0) return null;
+ return (
+ <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
+ {entries.map(([key, val], idx) => (
+ <Group key={key} gap="xs" justify="space-between" px="sm" py={6}
+ style={{ borderBottom: idx < entries.length - 1 ? '1px solid var(--mantine-color-default-border)' : undefined }}
+ >
+ <Text size="xs" c="dimmed" fw={600} style={{ fontFamily: FONT_FAMILY }}>{key}</Text>
+ <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{String(val)}</Text>
+ </Group>
+ ))}
+ </Paper>
+ );
 }
 
 // ── Numbered item list (for #1, #2, ... keys from LIST-type responses) ──
@@ -2378,218 +2378,218 @@ function SummaryRow({ data, excludeKeys }: { data: Record<string, unknown>; excl
 const NLP_LIST_PAGE_SIZE = 5;
 
 function NumberedItemList({ data, onNavigate }: { data: Record<string, unknown>; onNavigate: (route: string, entityName?: string) => void }) {
-  const [listPage, setListPage] = useState(1);
+ const [listPage, setListPage] = useState(1);
 
-  const allItems = useMemo(() =>
-    Object.entries(data)
-      .filter(([k]) => /^#\d+$/.test(k))
-      .sort(([a], [b]) => parseInt(a.slice(1)) - parseInt(b.slice(1))),
-    [data]
-  );
-  if (allItems.length === 0) return null;
+ const allItems = useMemo(() =>
+ Object.entries(data)
+ .filter(([k]) => /^#\d+$/.test(k))
+ .sort(([a], [b]) => parseInt(a.slice(1)) - parseInt(b.slice(1))),
+ [data]
+ );
+ if (allItems.length === 0) return null;
 
-  const itemIds = Array.isArray(data._itemIds) ? (data._itemIds as number[]) : [];
-  const itemType = typeof data._itemType === 'string' ? data._itemType : null;
-  const totalPages = Math.ceil(allItems.length / NLP_LIST_PAGE_SIZE);
-  const startIdx = (listPage - 1) * NLP_LIST_PAGE_SIZE;
-  const pageItems = allItems.slice(startIdx, startIdx + NLP_LIST_PAGE_SIZE);
+ const itemIds = Array.isArray(data._itemIds) ? (data._itemIds as number[]) : [];
+ const itemType = typeof data._itemType === 'string' ? data._itemType : null;
+ const totalPages = Math.ceil(allItems.length / NLP_LIST_PAGE_SIZE);
+ const startIdx = (listPage - 1) * NLP_LIST_PAGE_SIZE;
+ const pageItems = allItems.slice(startIdx, startIdx + NLP_LIST_PAGE_SIZE);
 
-  const getItemRoute = (index: number): string | null => {
-    if (!itemType || index >= itemIds.length) return null;
-    const id = itemIds[index];
-    switch (itemType) {
-      case 'PROJECT': return `/projects/${id}`;
-      case 'POD': return `/pods/${id}`;
-      case 'RESOURCE': return `/resources?highlight=${id}`;
-      default: return null;
-    }
-  };
+ const getItemRoute = (index: number): string | null => {
+ if (!itemType || index >= itemIds.length) return null;
+ const id = itemIds[index];
+ switch (itemType) {
+ case 'PROJECT': return `/projects/${id}`;
+ case 'POD': return `/pods/${id}`;
+ case 'RESOURCE': return `/resources?highlight=${id}`;
+ default: return null;
+ }
+ };
 
-  return (
-    <Stack gap={4}>
-      {pageItems.map(([key, val], idx) => {
-        const globalIdx = startIdx + idx;
-        const text = String(val);
-        // Parse: "Name [Priority] — Status (extra)" or "Name — Detail · Detail"
-        const match = text.match(/^(.+?)(?:\s*\[(.+?)\])?\s*(?:—|–|-)\s*(.+)$/);
-        const name = match ? match[1].trim() : text;
-        const priority = match ? match[2] : null;
-        const rest = match ? match[3].trim() : null;
-        // Check if rest contains a known status
-        const statusMatch = rest?.match(/^(Active|Completed|In Discovery|Not Started|On Hold|Cancelled)/);
-        const status = statusMatch ? statusMatch[1] : null;
-        const extra = status && rest ? rest.slice(status.length).replace(/^\s*\(?/, '').replace(/\)?\s*$/, '').trim() : rest;
-        const statusColor = STATUS_COLORS[status ?? ''] ?? 'gray';
-        // Extract role and location from "Role · PodName · Location" pattern
-        const parts = rest?.split(/\s*·\s*/) ?? [];
-        const detectedRole = parts.find(p => Object.keys(ROLE_COLORS).includes(p.trim())) ?? null;
-        const detectedLocation = parts.find(p => Object.keys(LOCATION_COLORS).includes(p.trim())) ?? null;
-        const route = getItemRoute(globalIdx);
-        const isClickable = !!route;
+ return (
+ <Stack gap={4}>
+ {pageItems.map(([key, val], idx) => {
+ const globalIdx = startIdx + idx;
+ const text = String(val);
+ // Parse: "Name [Priority] — Status (extra)" or "Name — Detail · Detail"
+ const match = text.match(/^(.+?)(?:\s*\[(.+?)\])?\s*(?:—|–|-)\s*(.+)$/);
+ const name = match ? match[1].trim() : text;
+ const priority = match ? match[2] : null;
+ const rest = match ? match[3].trim() : null;
+ // Check if rest contains a known status
+ const statusMatch = rest?.match(/^(Active|Completed|In Discovery|Not Started|On Hold|Cancelled)/);
+ const status = statusMatch ? statusMatch[1] : null;
+ const extra = status && rest ? rest.slice(status.length).replace(/^\s*\(?/, '').replace(/\)?\s*$/, '').trim() : rest;
+ const statusColor = STATUS_COLORS[status ?? ''] ?? 'gray';
+ // Extract role and location from "Role · PodName · Location" pattern
+ const parts = rest?.split(/\s*·\s*/) ?? [];
+ const detectedRole = parts.find(p => Object.keys(ROLE_COLORS).includes(p.trim())) ?? null;
+ const detectedLocation = parts.find(p => Object.keys(LOCATION_COLORS).includes(p.trim())) ?? null;
+ const route = getItemRoute(globalIdx);
+ const isClickable = !!route;
 
-        return (
-          <Paper
-            key={key}
-            px="sm"
-            py={8}
-            radius="md"
-            withBorder
-            className={`nlp-list-item nlp-stagger-item`}
-            onClick={isClickable ? () => onNavigate(route!, name) : undefined}
-            style={{
-              borderLeft: `3px solid ${AQUA}`,
-              cursor: isClickable ? 'pointer' : 'default',
-              animationDelay: `${idx * 50}ms`,
-            }}
-          >
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                <Text size="xs" fw={700} c="dimmed" style={{ fontFamily: FONT_FAMILY, flexShrink: 0 }}>
-                  {key.slice(1)}
-                </Text>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <Text size="sm" fw={600} truncate style={{ fontFamily: FONT_FAMILY, color: isClickable ? DEEP_BLUE : undefined }}>
-                    {name}
-                  </Text>
-                  {extra && (
-                    <Text size="xs" c="dimmed" truncate style={{ fontFamily: FONT_FAMILY }}>
-                      {extra}
-                    </Text>
-                  )}
-                </div>
-              </Group>
-              <Group gap={6} style={{ flexShrink: 0 }}>
-                {priority && (
-                  <Badge variant="light" size="xs" radius="sm" color={priority === 'P0' ? 'red' : priority === 'P1' ? 'orange' : 'blue'}
-                    style={{ fontFamily: FONT_FAMILY }}>
-                    {priority}
-                  </Badge>
-                )}
-                {status && (
-                  <Badge variant="light" size="xs" radius="sm" color={statusColor}
-                    style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
-                    {status}
-                  </Badge>
-                )}
-                {detectedRole && (
-                  <Badge variant="light" size="xs" radius="sm" color={ROLE_COLORS[detectedRole] ?? 'gray'}
-                    style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
-                    {detectedRole}
-                  </Badge>
-                )}
-                {detectedLocation && (
-                  <Badge variant="light" size="xs" radius="sm" color={LOCATION_COLORS[detectedLocation] ?? 'gray'}
-                    style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
-                    {detectedLocation}
-                  </Badge>
-                )}
-                {isClickable && (
-                  <IconChevronRight size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
-                )}
-              </Group>
-            </Group>
-          </Paper>
-        );
-      })}
+ return (
+ <Paper
+ key={key}
+ px="sm"
+ py={8}
+ radius="md"
+ withBorder
+ className={`nlp-list-item nlp-stagger-item`}
+ onClick={isClickable ? () => onNavigate(route!, name) : undefined}
+ style={{
+ borderLeft: `3px solid ${AQUA}`,
+ cursor: isClickable ? 'pointer' : 'default',
+ animationDelay: `${idx * 50}ms`,
+ }}
+ >
+ <Group justify="space-between" wrap="nowrap">
+ <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+ <Text size="xs" fw={700} c="dimmed" style={{ fontFamily: FONT_FAMILY, flexShrink: 0 }}>
+ {key.slice(1)}
+ </Text>
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <Text size="sm" fw={600} truncate style={{ fontFamily: FONT_FAMILY, color: isClickable ? DEEP_BLUE : undefined }}>
+ {name}
+ </Text>
+ {extra && (
+ <Text size="xs" c="dimmed" truncate style={{ fontFamily: FONT_FAMILY }}>
+ {extra}
+ </Text>
+ )}
+ </div>
+ </Group>
+ <Group gap={6} style={{ flexShrink: 0 }}>
+ {priority && (
+ <Badge variant="light" size="xs" radius="sm" color={priority === 'P0' ? 'red' : priority === 'P1' ? 'orange' : 'blue'}
+ style={{ fontFamily: FONT_FAMILY }}>
+ {priority}
+ </Badge>
+ )}
+ {status && (
+ <Badge variant="light" size="xs" radius="sm" color={statusColor}
+ style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
+ {status}
+ </Badge>
+ )}
+ {detectedRole && (
+ <Badge variant="light" size="xs" radius="sm" color={ROLE_COLORS[detectedRole] ?? 'gray'}
+ style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
+ {detectedRole}
+ </Badge>
+ )}
+ {detectedLocation && (
+ <Badge variant="light" size="xs" radius="sm" color={LOCATION_COLORS[detectedLocation] ?? 'gray'}
+ style={{ fontFamily: FONT_FAMILY, textTransform: 'none' }}>
+ {detectedLocation}
+ </Badge>
+ )}
+ {isClickable && (
+ <IconChevronRight size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+ )}
+ </Group>
+ </Group>
+ </Paper>
+ );
+ })}
 
-      {/* Pagination controls for NLP lists */}
-      {totalPages > 1 && (
-        <Group justify="space-between" mt={4}>
-          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            {startIdx + 1}–{Math.min(startIdx + NLP_LIST_PAGE_SIZE, allItems.length)} of {allItems.length} items
-          </Text>
-          <Group gap={4}>
-            <ActionIcon
-              size="xs"
-              variant="subtle"
-              color="gray"
-              disabled={listPage <= 1}
-              onClick={() => setListPage(p => p - 1)}
-              aria-label="Previous page"
-            >
-              <IconChevronRight size={12} style={{ transform: 'rotate(180deg)' }} />
-            </ActionIcon>
-            <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>
-              {listPage}/{totalPages}
-            </Text>
-            <ActionIcon
-              size="xs"
-              variant="subtle"
-              color="gray"
-              disabled={listPage >= totalPages}
-              onClick={() => setListPage(p => p + 1)}
-              aria-label="Next page"
-            >
-              <IconChevronRight size={12} />
-            </ActionIcon>
-          </Group>
-        </Group>
-      )}
-    </Stack>
-  );
+ {/* Pagination controls for NLP lists */}
+ {totalPages > 1 && (
+ <Group justify="space-between" mt={4}>
+ <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ {startIdx + 1}–{Math.min(startIdx + NLP_LIST_PAGE_SIZE, allItems.length)} of {allItems.length} items
+ </Text>
+ <Group gap={4}>
+ <ActionIcon
+ size="xs"
+ variant="subtle"
+ color="gray"
+ disabled={listPage <= 1}
+ onClick={() => setListPage(p => p - 1)}
+ aria-label="Previous page"
+ >
+ <IconChevronRight size={12} style={{ transform: 'rotate(180deg)' }} />
+ </ActionIcon>
+ <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>
+ {listPage}/{totalPages}
+ </Text>
+ <ActionIcon
+ size="xs"
+ variant="subtle"
+ color="gray"
+ disabled={listPage >= totalPages}
+ onClick={() => setListPage(p => p + 1)}
+ aria-label="Next page"
+ >
+ <IconChevronRight size={12} />
+ </ActionIcon>
+ </Group>
+ </Group>
+ )}
+ </Stack>
+ );
 }
 
 // ── Notes box ──
 
 function NotesBox({ text }: { text: string }) {
-  return (
-    <Paper p="xs" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-gray-5)` }}>
-      <Group gap={6} wrap="nowrap" align="flex-start">
-        <ThemeIcon size={24} variant="light" color="gray" radius="sm"><IconNotes size={16} /></ThemeIcon>
-        <div>
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Notes</Text>
-          <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{text}</Text>
-        </div>
-      </Group>
-    </Paper>
-  );
+ return (
+ <Paper p="xs" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-gray-5)` }}>
+ <Group gap={6} wrap="nowrap" align="flex-start">
+ <ThemeIcon size={24} variant="light" color="gray" radius="sm"><IconNotes size={16} /></ThemeIcon>
+ <div>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Notes</Text>
+ <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{text}</Text>
+ </div>
+ </Group>
+ </Paper>
+ );
 }
 
 // ── Comparison Table ────────────────────────────────────────────────────────
 
 function ComparisonTable({ data }: { data: Record<string, unknown> }) {
-  const entityA = String(data.entityA ?? '');
-  const entityB = String(data.entityB ?? '');
+ const entityA = String(data.entityA ?? '');
+ const entityB = String(data.entityB ?? '');
 
-  const metricsA: [string, string][] = [];
-  const metricsB: [string, string][] = [];
+ const metricsA: [string, string][] = [];
+ const metricsB: [string, string][] = [];
 
-  Object.entries(data).forEach(([key, val]) => {
-    if (key.startsWith('_') || key === 'compareType' || key === 'entityA' || key === 'entityB') return;
-    if (key.startsWith(entityA + ' ')) {
-      metricsA.push([key.replace(entityA + ' ', ''), String(val)]);
-    } else if (key.startsWith(entityB + ' ')) {
-      metricsB.push([key.replace(entityB + ' ', ''), String(val)]);
-    }
-  });
+ Object.entries(data).forEach(([key, val]) => {
+ if (key.startsWith('_') || key === 'compareType' || key === 'entityA' || key === 'entityB') return;
+ if (key.startsWith(entityA + ' ')) {
+ metricsA.push([key.replace(entityA + ' ', ''), String(val)]);
+ } else if (key.startsWith(entityB + ' ')) {
+ metricsB.push([key.replace(entityB + ' ', ''), String(val)]);
+ }
+ });
 
-  return (
-    <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ backgroundColor: DEEP_BLUE }}>
-            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: FONT_FAMILY, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Metric</th>
-            <th style={{ textAlign: 'center', padding: '8px 12px' }}>
-              <Badge variant="filled" size="xs" style={{ backgroundColor: AQUA }}>{entityA}</Badge>
-            </th>
-            <th style={{ textAlign: 'center', padding: '8px 12px' }}>
-              <Badge variant="filled" size="xs" color="grape">{entityB}</Badge>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {metricsA.map(([metric, valA], i) => {
-            const valB = metricsB[i]?.[1] ?? '–';
-            return (
-              <tr key={metric} style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
-                <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, fontFamily: FONT_FAMILY }}>{metric}</td>
-                <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>{valA}</td>
-                <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>{valB}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Paper>
-  );
+ return (
+ <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
+ <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+ <thead>
+ <tr style={{ backgroundColor: DEEP_BLUE }}>
+ <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: FONT_FAMILY, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Metric</th>
+ <th style={{ textAlign: 'center', padding: '8px 12px' }}>
+ <Badge variant="filled" size="xs" style={{ backgroundColor: AQUA }}>{entityA}</Badge>
+ </th>
+ <th style={{ textAlign: 'center', padding: '8px 12px' }}>
+ <Badge variant="filled" size="xs" color="grape">{entityB}</Badge>
+ </th>
+ </tr>
+ </thead>
+ <tbody>
+ {metricsA.map(([metric, valA], i) => {
+ const valB = metricsB[i]?.[1] ?? '–';
+ return (
+ <tr key={metric} style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+ <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, fontFamily: FONT_FAMILY }}>{metric}</td>
+ <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>{valA}</td>
+ <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>{valB}</td>
+ </tr>
+ );
+ })}
+ </tbody>
+ </table>
+ </Paper>
+ );
 }

@@ -2,17 +2,18 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Title, Button, Group, Table, Modal, TextInput, Select, Switch, NumberInput, Stack, Text, ActionIcon, SimpleGrid,
-  Badge, Tooltip, Checkbox,
+  Badge, Tooltip, Checkbox, ScrollArea, ThemeIcon,
 } from '@mantine/core';
-import { AQUA, AQUA_TINTS } from '../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconTrash, IconUsers, IconCode, IconTestPipe, IconUserStar, IconMapPin,
   IconAlertTriangle, IconSearch, IconUserOff, IconClock, IconBuildingSkyscraper,
-  IconDownload,
+  IconDownload, IconWand,
 } from '@tabler/icons-react';
 import { useResources, useCreateResource, useDeleteResource, useUpdateResource, useSetAssignment, useAllAvailability } from '../api/resources';
 import { usePods } from '../api/pods';
+import { useJiraUsers, useAutoMatchSuggestions, useApplyAutoMatch } from '../api/jiraBuffer';
 import { Role, Location, formatRole } from '../types';
 import type { ResourceRequest, ResourceResponse } from '../types';
 import SummaryCard from '../components/charts/SummaryCard';
@@ -29,26 +30,40 @@ import { downloadCsv } from '../utils/csv';
 import { useTableSort } from '../hooks/useTableSort';
 import { usePagination } from '../hooks/usePagination';
 import { useRowSelection } from '../hooks/useRowSelection';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const FULL_TIME_HOURS = [176, 176, 168, 176, 176, 184, 168, 176, 176, 168, 184, 168];
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0]?.substring(0, 2)?.toUpperCase() ?? '?';
+}
 
 const roleOptions = Object.values(Role).map(r => ({ value: r, label: formatRole(r) }));
 const locationOptions = Object.values(Location).map(l => ({ value: l, label: l }));
 
 const emptyForm: ResourceRequest = {
   name: '',
+  email: null,
   role: Role.DEVELOPER,
   location: Location.US,
   active: true,
   countsInCapacity: true,
   homePodId: null,
   capacityFte: 1.0,
+  jiraDisplayName: null,
+  jiraAccountId: null,
 };
 
 export default function ResourcesPage() {
+  const isDark = useDarkMode();
   const { data: resources, isLoading, error } = useResources();
   const { data: pods } = usePods();
   const { data: availability } = useAllAvailability();
+  const { data: jiraUsers } = useJiraUsers();
+  const { data: suggestions } = useAutoMatchSuggestions();
+  const autoMatchMut = useApplyAutoMatch();
   const createMutation = useCreateResource();
   const deleteMutation = useDeleteResource();
   const updateMutation = useUpdateResource();
@@ -166,6 +181,11 @@ export default function ResourcesPage() {
   const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
   const podFilterOptions = [{ value: '__none__', label: 'No POD assigned' }, ...podOptions];
 
+  const jiraUserOptions = useMemo(() => (jiraUsers ?? []).map(j => ({
+    value: j.displayName,
+    label: `${j.displayName}${j.hoursLogged > 0 ? ` (${Math.round(j.hoursLogged)}h)` : ''}`,
+  })), [jiraUsers]);
+
   const stats = useMemo(() => {
     const all = resources ?? [];
     const active   = all.filter(r => r.active).length;
@@ -224,12 +244,15 @@ export default function ResourcesPage() {
   const openEdit = (r: ResourceResponse) => {
     setForm({
       name: r.name,
+      email: r.email ?? null,
       role: r.role,
       location: r.location,
       active: r.active,
       countsInCapacity: r.countsInCapacity,
       homePodId: r.podAssignment?.podId ?? null,
       capacityFte: r.podAssignment?.capacityFte ?? 1.0,
+      jiraDisplayName: r.jiraDisplayName ?? null,
+      jiraAccountId: r.jiraAccountId ?? null,
     });
     setEditId(r.id);
     setModalOpen(true);
@@ -322,7 +345,7 @@ export default function ResourcesPage() {
       <NlpBreadcrumb />
       <Group justify="space-between" className="slide-in-left">
         <Group gap="sm">
-          <Title order={2}>Resources</Title>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Resources</Title>
           {totalOverAlloc > 0 && (
             <Tooltip label={`${overAllocMap.size} resource(s) have availability hours exceeding their FTE capacity`}>
               <Badge color="orange" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
@@ -332,6 +355,37 @@ export default function ResourcesPage() {
           )}
         </Group>
         <Group gap="sm">
+          {suggestions && suggestions.length > 0 && (
+            <Tooltip label={`${suggestions.length} Jira users can be auto-matched to resources`}>
+              <Button
+                variant="light"
+                color="teal"
+                size="sm"
+                leftSection={<IconWand size={16} />}
+                loading={autoMatchMut.isPending}
+                onClick={() => {
+                  autoMatchMut.mutate(0.50, {
+                    onSuccess: (data) => {
+                      notifications.show({
+                        title: 'Auto-Match Complete',
+                        message: `${data} resource(s) matched to Jira users`,
+                        color: 'teal',
+                      });
+                    },
+                    onError: () => {
+                      notifications.show({
+                        title: 'Error',
+                        message: 'Failed to auto-match resources',
+                        color: 'red',
+                      });
+                    },
+                  });
+                }}
+              >
+                Auto-Match ({suggestions.length})
+              </Button>
+            </Tooltip>
+          )}
           <CsvToolbar
             data={resources ?? []}
             columns={resourceColumns}
@@ -341,12 +395,15 @@ export default function ResourcesPage() {
                 const podMatch = (pods ?? []).find(p => p.name.toLowerCase() === (row['podAssignment.podName'] ?? '').toLowerCase());
                 createMutation.mutate({
                   name: row.name ?? '',
+                  email: row.email ?? null,
                   role: row.role ?? 'DEVELOPER',
                   location: row.location ?? 'US',
                   active: (row.active ?? 'Yes').toLowerCase() !== 'no',
                   countsInCapacity: (row.countsInCapacity ?? 'Yes').toLowerCase() !== 'no',
                   homePodId: podMatch?.id ?? null,
                   capacityFte: Number(row['podAssignment.capacityFte']) || 1.0,
+                  jiraDisplayName: row.jiraDisplayName ?? null,
+                  jiraAccountId: row.jiraAccountId ?? null,
                 });
               });
             }}
@@ -491,8 +548,8 @@ export default function ResourcesPage() {
       </Group>
 
       {/* ── Table ───────────────────────────────────────────── */}
-      <Table.ScrollContainer minWidth={800}>
-        <Table striped highlightOnHover withTableBorder withColumnBorders>
+      <ScrollArea>
+        <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 40 }}>
@@ -513,6 +570,7 @@ export default function ResourcesPage() {
               </Table.Th>
               <Table.Th style={{ width: 40 }}>#</Table.Th>
               <SortableHeader sortKey="name" currentKey={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
+              <Table.Th>Jira User</Table.Th>
               <SortableHeader sortKey="role" currentKey={sortKey} dir={sortDir} onSort={onSort}>Role</SortableHeader>
               <SortableHeader sortKey="location" currentKey={sortKey} dir={sortDir} onSort={onSort}>Location</SortableHeader>
               <SortableHeader sortKey="active" currentKey={sortKey} dir={sortDir} onSort={onSort}>Active</SortableHeader>
@@ -525,7 +583,7 @@ export default function ResourcesPage() {
           <Table.Tbody>
             {pagedResources.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={10} style={{ textAlign: 'center', padding: '2rem' }}>
+                <Table.Td colSpan={11} style={{ textAlign: 'center', padding: '2rem' }}>
                   <Text c="dimmed" size="sm">No resources match the current filters.</Text>
                 </Table.Td>
               </Table.Tr>
@@ -543,8 +601,11 @@ export default function ResourcesPage() {
                       backgroundColor: AQUA_TINTS[10],
                       transition: 'background-color 1s ease-out',
                       boxShadow: `0 0 0 2px ${AQUA}`,
+                    } : overCount ? {
+                      background: isDark ? 'rgba(250,82,82,0.04)' : 'rgba(250,82,82,0.03)',
+                    } : !r.active ? {
+                      background: isDark ? 'rgba(144,146,150,0.06)' : 'rgba(0,0,0,0.02)',
                     } : {}),
-                    ...(overCount ? { backgroundColor: 'rgba(255, 0, 0, 0.03)' } : {}),
                   }}
                   onClick={() => openEdit(r)}
                 >
@@ -555,22 +616,65 @@ export default function ResourcesPage() {
                       aria-label={`Select ${r.name}`}
                     />
                   </Table.Td>
-                  <Table.Td c="dimmed" style={{ fontSize: 12 }}>{pagination.startIndex + idx + 1}</Table.Td>
                   <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Text size="sm" fw={500}>{r.name}</Text>
-                      {overCount && (
-                        <Tooltip label={`${overCount} month(s) exceed ${Math.round(fte * 100)}% FTE capacity`}>
-                          <IconAlertTriangle size={16} color="orange" />
-                        </Tooltip>
-                      )}
+                    <Text size="xs" c="dimmed" fw={500}>{pagination.startIndex + idx + 1}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <ThemeIcon size={26} radius="xl" color={r.active ? 'blue' : 'gray'} variant="light">
+                        <Text size="xs" fw={700}>{initials(r.name)}</Text>
+                      </ThemeIcon>
+                      <div>
+                        <Group gap={4} wrap="nowrap">
+                          <Text size="xs" fw={500}>{r.name}</Text>
+                          {overCount && (
+                            <Tooltip label={`${overCount} month(s) exceed ${Math.round(fte * 100)}% FTE capacity`}>
+                              <IconAlertTriangle size={14} color="orange" />
+                            </Tooltip>
+                          )}
+                          {!r.active && <Badge size="xs" color="gray" variant="light">Inactive</Badge>}
+                        </Group>
+                        {r.email && (
+                          <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>{r.email}</Text>
+                        )}
+                      </div>
                     </Group>
                   </Table.Td>
-                  <Table.Td>{formatRole(r.role)}</Table.Td>
-                  <Table.Td>{r.location}</Table.Td>
-                  <Table.Td>{r.active ? 'Yes' : 'No'}</Table.Td>
-                  <Table.Td>{r.countsInCapacity ? 'Yes' : 'No'}</Table.Td>
-                  <Table.Td>{r.podAssignment?.podName ?? '-'}</Table.Td>
+                  <Table.Td>
+                    {r.jiraDisplayName ? (
+                      <Badge size="xs" variant="light" color="teal">{r.jiraDisplayName}</Badge>
+                    ) : (
+                      <Text size="xs" c="dimmed">—</Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge size="xs" variant="light" color={
+                      r.role === 'DEVELOPER' ? 'violet' :
+                      r.role === 'QA' ? 'orange' :
+                      r.role === 'BSA' ? 'pink' :
+                      r.role === 'TECH_LEAD' ? 'yellow' : 'gray'
+                    }>{formatRole(r.role)}</Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge size="xs" variant="light" color={r.location === 'US' ? 'blue' : 'teal'}>
+                      {r.location}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    {r.active
+                      ? <Badge size="xs" color="green" variant="light">Yes</Badge>
+                      : <Badge size="xs" color="gray" variant="light">No</Badge>
+                    }
+                  </Table.Td>
+                  <Table.Td>
+                    {r.countsInCapacity
+                      ? <Badge size="xs" color="green" variant="light">Yes</Badge>
+                      : <Badge size="xs" color="gray" variant="light">No</Badge>
+                    }
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="xs">{r.podAssignment?.podName ?? <Text span size="xs" c="dimmed">—</Text>}</Text>
+                  </Table.Td>
                   <Table.Td>
                     {r.podAssignment ? (
                       <Badge
@@ -592,7 +696,7 @@ export default function ResourcesPage() {
             })}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </ScrollArea>
 
       <TablePagination {...pagination} />
 
@@ -628,6 +732,26 @@ export default function ResourcesPage() {
             }}
             error={nameError}
             required
+          />
+          <TextInput
+            label="Email"
+            placeholder="e.g. john.smith@company.com"
+            description="Optional — used for accurate Jira resource matching"
+            value={form.email ?? ''}
+            onChange={e => setForm({ ...form, email: e.target.value || null })}
+          />
+          <Select
+            label="Jira User"
+            placeholder="Search Jira user..."
+            description="Map this resource to a Jira display name"
+            data={jiraUserOptions}
+            value={form.jiraDisplayName}
+            onChange={v => {
+              const match = (jiraUsers ?? []).find(j => j.displayName === v);
+              setForm({ ...form, jiraDisplayName: v || null, jiraAccountId: match?.accountId ?? null });
+            }}
+            searchable
+            clearable
           />
           <Select label="Role" data={roleOptions} value={form.role} onChange={v => setForm({ ...form, role: v as Role })} required />
           <Select label="Location" data={locationOptions} value={form.location} onChange={v => setForm({ ...form, location: v as Location })} required />

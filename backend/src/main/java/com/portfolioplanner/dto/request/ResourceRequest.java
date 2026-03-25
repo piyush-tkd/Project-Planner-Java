@@ -7,9 +7,12 @@ import jakarta.validation.constraints.NotNull;
 
 public record ResourceRequest(
         @NotBlank String name,
+        String email,
         @NotNull Role role,
         @NotNull Location location,
         Boolean active,
-        Boolean countsInCapacity
+        Boolean countsInCapacity,
+        String jiraDisplayName,
+        String jiraAccountId
 ) {
 }

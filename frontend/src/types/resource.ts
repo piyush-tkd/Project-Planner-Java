@@ -9,22 +9,28 @@ export interface ResourcePodAssignmentInfo {
 export interface ResourceResponse {
   id: number;
   name: string;
+  email: string | null;
   role: string;
   location: string;
   active: boolean;
   countsInCapacity: boolean;
   actualRate: number | null;
   podAssignment: ResourcePodAssignmentInfo | null;
+  jiraDisplayName: string | null;
+  jiraAccountId: string | null;
 }
 
 export interface ResourceRequest {
   name: string;
+  email: string | null;
   role: string;
   location: string;
   active: boolean;
   countsInCapacity: boolean;
   homePodId: number | null;
   capacityFte: number;
+  jiraDisplayName: string | null;
+  jiraAccountId: string | null;
 }
 
 export interface ResourcePodAssignment {

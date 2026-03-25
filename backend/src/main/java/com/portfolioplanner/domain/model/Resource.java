@@ -38,6 +38,18 @@ public class Resource {
     @Column(name = "counts_in_capacity", nullable = false)
     private Boolean countsInCapacity = true;
 
+    /** Optional email for Jira account matching. */
+    @Column(length = 255)
+    private String email;
+
+    /** Jira display name mapped to this resource. */
+    @Column(name = "jira_display_name", length = 255)
+    private String jiraDisplayName;
+
+    /** Jira account ID mapped to this resource. */
+    @Column(name = "jira_account_id", length = 255)
+    private String jiraAccountId;
+
     /** Individual hourly rate override — takes precedence over the role+location CostRate when set. */
     @Column(name = "actual_rate", precision = 10, scale = 2)
     private BigDecimal actualRate;

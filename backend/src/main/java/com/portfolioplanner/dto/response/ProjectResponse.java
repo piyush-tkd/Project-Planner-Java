@@ -4,6 +4,7 @@ import com.portfolioplanner.domain.model.enums.Priority;
 import com.portfolioplanner.domain.model.enums.ProjectStatus;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record ProjectResponse(
         Long id,
@@ -20,6 +21,7 @@ public record ProjectResponse(
         LocalDate targetDate,
         LocalDate startDate,
         String capacityNote,
-        String client
+        String client,
+        LocalDateTime createdAt
 ) {
 }

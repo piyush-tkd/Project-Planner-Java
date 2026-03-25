@@ -14,4 +14,10 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     List<Resource> findByActiveTrueAndCountsInCapacityTrue();
 
     java.util.Optional<Resource> findByNameIgnoreCase(String name);
+
+    /** All resources that have a Jira display name mapped */
+    List<Resource> findByJiraDisplayNameIsNotNull();
+
+    /** Check if a Jira display name is already mapped to a resource */
+    java.util.Optional<Resource> findByJiraDisplayName(String jiraDisplayName);
 }

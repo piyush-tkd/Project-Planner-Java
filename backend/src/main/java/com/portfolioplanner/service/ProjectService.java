@@ -149,8 +149,29 @@ public class ProjectService {
         copy.setClient(original.getClient());
 
         copy = projectRepository.save(copy);
+
+        // ── Also copy all POD assignments and their estimates ──
+        List<ProjectPodPlanning> originalPlannings = planningRepository.findByProjectId(id);
+        for (ProjectPodPlanning orig : originalPlannings) {
+            ProjectPodPlanning cloned = new ProjectPodPlanning();
+            cloned.setProject(copy);
+            cloned.setPod(orig.getPod());
+            cloned.setTshirtSize(orig.getTshirtSize());
+            cloned.setComplexityOverride(orig.getComplexityOverride());
+            cloned.setEffortPattern(orig.getEffortPattern());
+            cloned.setPodStartMonth(orig.getPodStartMonth());
+            cloned.setDurationOverride(orig.getDurationOverride());
+            cloned.setDevHours(orig.getDevHours());
+            cloned.setQaHours(orig.getQaHours());
+            cloned.setBsaHours(orig.getBsaHours());
+            cloned.setTechLeadHours(orig.getTechLeadHours());
+            cloned.setContingencyPct(orig.getContingencyPct());
+            cloned.setTargetRelease(orig.getTargetRelease());
+            planningRepository.save(cloned);
+        }
+
         auditLogService.log("Project", copy.getId(), copy.getName(), "COPY",
-                "Copied from project ID " + id);
+                "Copied from project ID " + id + " with " + originalPlannings.size() + " POD assignment(s)");
         return mapper.toProjectResponse(copy);
     }
 

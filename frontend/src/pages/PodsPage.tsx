@@ -2,20 +2,29 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Title, Stack, Table, NumberInput, Button, Text, Group, Modal, TextInput,
+ScrollArea, ThemeIcon,
 } from '@mantine/core';
-import { AQUA, AQUA_TINTS } from '../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { usePods, useCreatePod, useUpdatePod, useBauAssumptions, useUpdateBauAssumptions } from '../api/pods';
 import { Role, formatRole } from '../types';
 import type { BauAssumptionRequest } from '../types';
+import { useDarkMode } from '../hooks/useDarkMode';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import CsvToolbar from '../components/common/CsvToolbar';
 import TablePagination from '../components/common/TablePagination';
 import { podColumns, bauColumns } from '../utils/csvColumns';
 import { usePagination } from '../hooks/usePagination';
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0]?.substring(0, 2)?.toUpperCase() ?? '?';
+}
+
 export default function PodsPage() {
+  const isDark = useDarkMode();
   const navigate = useNavigate();
   const { data: pods, isLoading: podsLoading } = usePods();
   const { data: bauData, isLoading: bauLoading } = useBauAssumptions();
@@ -115,7 +124,7 @@ export default function PodsPage() {
   return (
     <Stack className="page-enter stagger-children">
       <Group justify="space-between" className="slide-in-left">
-        <Title order={2}>PODs</Title>
+        <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>PODs</Title>
         <Group gap="sm">
           <CsvToolbar
             data={pods ?? []}
@@ -146,7 +155,7 @@ export default function PodsPage() {
         <Text size="sm" c="dimmed">{filteredPods.length} of {(pods ?? []).length} PODs</Text>
       </Group>
 
-      <Table withTableBorder withColumnBorders>
+      <Table fz="xs" withTableBorder withColumnBorders>
         <Table.Thead>
           <Table.Tr>
             <Table.Th style={{ width: 40 }}>#</Table.Th>
@@ -198,7 +207,7 @@ export default function PodsPage() {
       <TablePagination {...podPagination} />
 
       <Group justify="space-between" mt="xl">
-        <Title order={3}>BAU Assumptions (% by Role)</Title>
+        <Title order={3} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>BAU Assumptions (% by Role)</Title>
         <Group gap="sm">
           <CsvToolbar
             data={bauData ?? []}
@@ -222,8 +231,8 @@ export default function PodsPage() {
         </Group>
       </Group>
 
-      <Table.ScrollContainer minWidth={800}>
-        <Table withTableBorder withColumnBorders>
+      <ScrollArea>
+        <Table fz="xs" withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>POD</Table.Th>
@@ -256,7 +265,7 @@ export default function PodsPage() {
             ))}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </ScrollArea>
 
       <Modal opened={addModal} onClose={() => setAddModal(false)} title="Add POD">
         <Stack>

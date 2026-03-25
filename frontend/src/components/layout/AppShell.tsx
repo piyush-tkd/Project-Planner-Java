@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
 import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
@@ -71,6 +71,7 @@ import {
   IconBrain,
   IconMessageReport,
   IconLayoutDashboard,
+  IconTrendingUp,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ExcelUploadModal from '../common/ExcelUploadModal';
@@ -80,6 +81,7 @@ import FeedbackWidget from '../common/FeedbackWidget';
 import { useAuth } from '../../auth/AuthContext';
 import apiClient from '../../api/client';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
+import { useSidebarOrder } from '../../api/widgetPreferences';
 import {
   DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS,
   FONT_FAMILY, SHADOW, SURFACE_SIDEBAR, BORDER_DEFAULT,
@@ -139,9 +141,11 @@ const navGroups: NavGroup[] = [
       { label: 'Project Gantt',       path: '/reports/gantt',              icon: <IconCalendar size={17} />,         pageKey: 'project_gantt' },
       { label: 'Budget & Cost',       path: '/reports/budget',             icon: <IconCurrencyDollar size={17} />,   pageKey: 'budget' },
       { label: 'Resource ROI',        path: '/reports/resource-roi',       icon: <IconCoin size={17} />,             pageKey: 'resource_roi' },
+      { label: 'Resource Performance', path: '/reports/resource-performance', icon: <IconTrendingUp size={17} />,    pageKey: 'resource_performance' },
       { label: 'DORA Metrics',        path: '/reports/dora',               icon: <IconRocket size={17} />,           pageKey: 'dora_metrics' },
       { label: 'Jira Analytics',      path: '/reports/jira-analytics',     icon: <IconChartInfographic size={17} />, pageKey: 'jira_analytics' },
       { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={17} />, pageKey: 'jira_dashboard_builder' },
+      { label: 'Eng. Productivity',  path: '/reports/engineering-productivity', icon: <IconTrendingUp size={17} />,     pageKey: 'engineering_productivity' },
     ],
   },
   {
@@ -172,10 +176,13 @@ const navGroups: NavGroup[] = [
       { label: 'Jira Boards',      path: '/settings/jira',             icon: <IconTicket size={17} />,   pageKey: 'settings' },
       { label: 'Release Versions', path: '/settings/releases',         icon: <IconTag size={17} />,      pageKey: 'settings' },
       { label: 'Support Boards',   path: '/settings/support-boards',   icon: <IconHeadset size={17} />,  pageKey: 'settings' },
+      { label: 'Resource Mapping', path: '/settings/jira-resource-mapping', icon: <IconUsers size={17} />,   pageKey: 'jira_resource_mapping' },
+      { label: 'Release Mapping',  path: '/settings/jira-release-mapping',  icon: <IconPackage size={17} />,  pageKey: 'jira_release_mapping' },
       { label: 'NLP / AI',         path: '/settings/nlp',              icon: <IconBrain size={17} />,    pageKey: 'nlp_settings' },
       { label: 'NLP Optimizer',    path: '/settings/nlp-optimizer',    icon: <IconBrain size={17} />,    pageKey: 'nlp_optimizer' },
       { label: 'Feedback Hub',    path: '/settings/feedback-hub',     icon: <IconMessageReport size={17} />, pageKey: 'feedback_hub' },
       { label: 'Error Log',       path: '/settings/error-log',        icon: <IconAlertTriangle size={17} />,   pageKey: 'error_log' },
+      { label: 'Sidebar Order',  path: '/settings/sidebar-order',    icon: <IconArrowsShuffle size={17} />,   pageKey: 'sidebar_order' },
       { label: 'Users',            path: '/settings/users',            icon: <IconUserCog size={17} />,  pageKey: '__admin_only__' },
       { label: 'Audit Log',        path: '/settings/audit-log',        icon: <IconHistory size={17} />,  pageKey: '__admin_only__' },
       { label: 'Tables',           path: '/settings/tables',           icon: <IconDatabase size={17} />, pageKey: '__admin_only__' },
@@ -202,6 +209,7 @@ export default function AppShellLayout() {
   const alerts = useAlertCounts();
   const { opened: searchOpened, setOpened: setSearchOpened } = useGlobalSearch();
   const { opened: shortcutsOpened, setOpened: setShortcutsOpened } = useShortcutsPanel();
+  const { sidebarOrder } = useSidebarOrder();
 
   async function handleExportReconciliation() {
     setDownloading(true);
@@ -245,17 +253,47 @@ export default function AppShellLayout() {
   })();
   const roleInfo = role ? (ROLE_LABELS[role] ?? { label: role, color: 'gray' }) : null;
 
-  // Filter nav groups based on user's page permissions
-  const visibleGroups = navGroups
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => {
-        if (item.pageKey === '__admin_only__') return isAdmin;
-        if (!item.pageKey) return true;
-        return canAccess(item.pageKey);
-      }),
-    }))
-    .filter(group => group.items.length > 0);
+  // Apply saved sidebar order, then filter by permissions
+  const visibleGroups = useMemo(() => {
+    // 1. Start with default groups, apply saved group order
+    let orderedGroups = [...navGroups];
+    if (sidebarOrder.groupOrder.length > 0) {
+      const groupMap = new Map(orderedGroups.map(g => [g.label, g]));
+      const sorted: NavGroup[] = [];
+      for (const label of sidebarOrder.groupOrder) {
+        const g = groupMap.get(label);
+        if (g) { sorted.push(g); groupMap.delete(label); }
+      }
+      for (const g of groupMap.values()) sorted.push(g);
+      orderedGroups = sorted;
+    }
+
+    // 2. Apply saved item order within each group
+    const reordered = orderedGroups.map(group => {
+      const savedItems = sidebarOrder.itemOrder[group.label];
+      if (!savedItems || savedItems.length === 0) return group;
+      const itemMap = new Map(group.items.map(i => [i.label, i]));
+      const sorted: NavItem[] = [];
+      for (const label of savedItems) {
+        const item = itemMap.get(label);
+        if (item) { sorted.push(item); itemMap.delete(label); }
+      }
+      for (const item of itemMap.values()) sorted.push(item);
+      return { ...group, items: sorted };
+    });
+
+    // 3. Filter by permissions
+    return reordered
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => {
+          if (item.pageKey === '__admin_only__') return isAdmin;
+          if (!item.pageKey) return true;
+          return canAccess(item.pageKey);
+        }),
+      }))
+      .filter(group => group.items.length > 0);
+  }, [sidebarOrder, isAdmin, canAccess]);
 
   // ── Collapsible nav groups ────────────────────────────────────────────────
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -618,7 +656,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v2.8
+              Portfolio Planner v6.2
             </Text>
           </div>
         </MantineAppShell.Section>

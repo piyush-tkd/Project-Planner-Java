@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  Title, Stack, Table, Button, Group, Modal, Select, NumberInput, TextInput, Text, ActionIcon,
-  Badge, Tooltip,
+ Title, Stack, Table, Button, Group, Modal, Select, NumberInput, TextInput, Text, ActionIcon,
+ Badge, Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconEdit, IconTrash, IconAlertTriangle } from '@tabler/icons-react';
@@ -16,213 +16,216 @@ import { useTableSort } from '../hooks/useTableSort';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatResourceName } from '../utils/formatting';
+import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const emptyForm: OverrideRequest = {
-  resourceId: 0,
-  toPodId: 0,
-  startMonth: 1,
-  endMonth: 3,
-  allocationPct: 100,
-  notes: null,
+ resourceId: 0,
+ toPodId: 0,
+ startMonth: 1,
+ endMonth: 3,
+ allocationPct: 100,
+ notes: null,
 };
 
 export default function OverridesPage() {
-  const { data: overrides, isLoading } = useOverrides();
-  const { data: resources } = useResources();
-  const { data: pods } = usePods();
-  const { monthLabels } = useMonthLabels();
-  const createMutation = useCreateOverride();
-  const updateMutation = useUpdateOverride();
-  const deleteMutation = useDeleteOverride();
+ const isDark = useDarkMode();
+ const { data: overrides, isLoading } = useOverrides();
+ const { data: resources } = useResources();
+ const { data: pods } = usePods();
+ const { monthLabels } = useMonthLabels();
+ const createMutation = useCreateOverride();
+ const updateMutation = useUpdateOverride();
+ const deleteMutation = useDeleteOverride();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState<OverrideRequest>(emptyForm);
+ const [modalOpen, setModalOpen] = useState(false);
+ const [editId, setEditId] = useState<number | null>(null);
+ const [form, setForm] = useState<OverrideRequest>(emptyForm);
 
-  const resourceOptions = (resources ?? []).map(r => ({ value: String(r.id), label: r.name }));
-  const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
+ const resourceOptions = (resources ?? []).map(r => ({ value: String(r.id), label: r.name }));
+ const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
 
-  /* ── FTE lookup and total allocation per resource ── */
-  const fteMap = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const r of resources ?? []) {
-      map.set(r.id, r.podAssignment?.capacityFte ?? 1);
-    }
-    return map;
-  }, [resources]);
+ /* ── FTE lookup and total allocation per resource ── */
+ const fteMap = useMemo(() => {
+ const map = new Map<number, number>();
+ for (const r of resources ?? []) {
+ map.set(r.id, r.podAssignment?.capacityFte ?? 1);
+ }
+ return map;
+ }, [resources]);
 
-  // Total allocation % per resource across all overrides
-  const totalAllocMap = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const o of overrides ?? []) {
-      map.set(o.resourceId, (map.get(o.resourceId) ?? 0) + o.allocationPct);
-    }
-    return map;
-  }, [overrides]);
+ // Total allocation % per resource across all overrides
+ const totalAllocMap = useMemo(() => {
+ const map = new Map<number, number>();
+ for (const o of overrides ?? []) {
+ map.set(o.resourceId, (map.get(o.resourceId) ?? 0) + o.allocationPct);
+ }
+ return map;
+ }, [overrides]);
 
-  const openCreate = () => {
-    setForm(emptyForm);
-    setEditId(null);
-    setModalOpen(true);
-  };
+ const openCreate = () => {
+ setForm(emptyForm);
+ setEditId(null);
+ setModalOpen(true);
+ };
 
-  const openEdit = (o: NonNullable<typeof overrides>[number]) => {
-    setForm({
-      resourceId: o.resourceId,
-      toPodId: o.toPodId,
-      startMonth: o.startMonth,
-      endMonth: o.endMonth,
-      allocationPct: o.allocationPct,
-      notes: o.notes,
-    });
-    setEditId(o.id);
-    setModalOpen(true);
-  };
+ const openEdit = (o: NonNullable<typeof overrides>[number]) => {
+ setForm({
+ resourceId: o.resourceId,
+ toPodId: o.toPodId,
+ startMonth: o.startMonth,
+ endMonth: o.endMonth,
+ allocationPct: o.allocationPct,
+ notes: o.notes,
+ });
+ setEditId(o.id);
+ setModalOpen(true);
+ };
 
-  const handleSubmit = () => {
-    if (editId) {
-      updateMutation.mutate({ id: editId, data: form }, {
-        onSuccess: () => {
-          setModalOpen(false);
-          notifications.show({ title: 'Updated', message: 'Override updated', color: 'green' });
-        },
-      });
-    } else {
-      createMutation.mutate(form, {
-        onSuccess: () => {
-          setModalOpen(false);
-          notifications.show({ title: 'Created', message: 'Override created', color: 'green' });
-        },
-      });
-    }
-  };
+ const handleSubmit = () => {
+ if (editId) {
+ updateMutation.mutate({ id: editId, data: form }, {
+ onSuccess: () => {
+ setModalOpen(false);
+ notifications.show({ title: 'Updated', message: 'Override updated', color: 'green' });
+ },
+ });
+ } else {
+ createMutation.mutate(form, {
+ onSuccess: () => {
+ setModalOpen(false);
+ notifications.show({ title: 'Created', message: 'Override created', color: 'green' });
+ },
+ });
+ }
+ };
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => notifications.show({ title: 'Deleted', message: 'Override deleted', color: 'red' }),
-    });
-  };
+ const handleDelete = (id: number) => {
+ deleteMutation.mutate(id, {
+ onSuccess: () => notifications.show({ title: 'Deleted', message: 'Override deleted', color: 'red' }),
+ });
+ };
 
-  const { sorted: sortedOverrides, sortKey, sortDir, onSort } = useTableSort(overrides ?? []);
+ const { sorted: sortedOverrides, sortKey, sortDir, onSort } = useTableSort(overrides ?? []);
 
-  if (isLoading) return <LoadingSpinner variant="table" message="Loading overrides..." />;
+ if (isLoading) return <LoadingSpinner variant="table" message="Loading overrides..." />;
 
-  return (
-    <Stack className="page-enter stagger-children">
-      <Group justify="space-between" className="slide-in-left">
-        <Title order={2}>Temporary Overrides</Title>
-        <Group gap="sm">
-          <CsvToolbar
-            data={overrides ?? []}
-            columns={overrideColumns}
-            filename="overrides"
-            onImport={(rows) => {
-              rows.forEach(row => {
-                const resMatch = (resources ?? []).find(r => r.name.toLowerCase() === (row.resourceName ?? '').toLowerCase());
-                const podMatch = (pods ?? []).find(p => p.name.toLowerCase() === (row.toPodName ?? '').toLowerCase());
-                if (!resMatch || !podMatch) return;
-                createMutation.mutate({
-                  resourceId: resMatch.id,
-                  toPodId: podMatch.id,
-                  startMonth: Number(row.startMonth) || 1,
-                  endMonth: Number(row.endMonth) || 3,
-                  allocationPct: Number(row.allocationPct) || 100,
-                  notes: row.notes || null,
-                });
-              });
-            }}
-          />
-          <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>Add Override</Button>
-        </Group>
-      </Group>
+ return (
+ <Stack className="page-enter stagger-children">
+ <Group justify="space-between" className="slide-in-left">
+ <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Temporary Overrides</Title>
+ <Group gap="sm">
+ <CsvToolbar
+ data={overrides ?? []}
+ columns={overrideColumns}
+ filename="overrides"
+ onImport={(rows) => {
+ rows.forEach(row => {
+ const resMatch = (resources ?? []).find(r => r.name.toLowerCase() === (row.resourceName ?? '').toLowerCase());
+ const podMatch = (pods ?? []).find(p => p.name.toLowerCase() === (row.toPodName ?? '').toLowerCase());
+ if (!resMatch || !podMatch) return;
+ createMutation.mutate({
+ resourceId: resMatch.id,
+ toPodId: podMatch.id,
+ startMonth: Number(row.startMonth) || 1,
+ endMonth: Number(row.endMonth) || 3,
+ allocationPct: Number(row.allocationPct) || 100,
+ notes: row.notes || null,
+ });
+ });
+ }}
+ />
+ <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>Add Override</Button>
+ </Group>
+ </Group>
 
-      <Table withTableBorder withColumnBorders striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th style={{ width: 40 }}>#</Table.Th>
-            <SortableHeader sortKey="resourceName" currentKey={sortKey} dir={sortDir} onSort={onSort}>Resource</SortableHeader>
-            <SortableHeader sortKey="toPodName" currentKey={sortKey} dir={sortDir} onSort={onSort}>To POD</SortableHeader>
-            <SortableHeader sortKey="startMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>Start Month</SortableHeader>
-            <SortableHeader sortKey="endMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End Month</SortableHeader>
-            <SortableHeader sortKey="allocationPct" currentKey={sortKey} dir={sortDir} onSort={onSort}>Allocation %</SortableHeader>
-            <Table.Th>Resource FTE</Table.Th>
-            <Table.Th>Notes</Table.Th>
-            <Table.Th>Actions</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedOverrides.map((o, idx) => {
-            const fte = fteMap.get(o.resourceId) ?? 1;
-            const isPartTime = fte < 1;
-            const totalAlloc = totalAllocMap.get(o.resourceId) ?? 0;
-            const fteAsPct = Math.round(fte * 100);
-            const isOverAlloc = totalAlloc > fteAsPct;
-            return (
-              <Table.Tr key={o.id}>
-                <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
-                <Table.Td>
-                  <Group gap={6} wrap="nowrap">
-                    {formatResourceName(o.resourceName)}
-                    {isOverAlloc && (
-                      <Tooltip label={`Total overrides (${totalAlloc}%) exceed ${fteAsPct}% FTE capacity`}>
-                        <IconAlertTriangle size={16} color="orange" />
-                      </Tooltip>
-                    )}
-                  </Group>
-                </Table.Td>
-                <Table.Td>{o.toPodName}</Table.Td>
-                <Table.Td>{monthLabels[o.startMonth] ?? `M${o.startMonth}`}</Table.Td>
-                <Table.Td>{monthLabels[o.endMonth] ?? `M${o.endMonth}`}</Table.Td>
-                <Table.Td>{o.allocationPct}%</Table.Td>
-                <Table.Td>
-                  <Badge variant="light" color={isPartTime ? 'orange' : 'green'} size="sm">
-                    {isPartTime ? `${fteAsPct}%` : '100%'}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{o.notes ?? '-'}</Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    <ActionIcon variant="subtle" onClick={() => openEdit(o)}><IconEdit size={16} /></ActionIcon>
-                    <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(o.id)}><IconTrash size={16} /></ActionIcon>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            );
-          })}
-          {(overrides ?? []).length === 0 && (
-            <Table.Tr>
-              <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="md">No overrides</Text></Table.Td>
-            </Table.Tr>
-          )}
-        </Table.Tbody>
-      </Table>
+ <Table fz="xs" withTableBorder withColumnBorders highlightOnHover>
+ <Table.Thead>
+ <Table.Tr>
+ <Table.Th style={{ width: 40 }}>#</Table.Th>
+ <SortableHeader sortKey="resourceName" currentKey={sortKey} dir={sortDir} onSort={onSort}>Resource</SortableHeader>
+ <SortableHeader sortKey="toPodName" currentKey={sortKey} dir={sortDir} onSort={onSort}>To POD</SortableHeader>
+ <SortableHeader sortKey="startMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>Start Month</SortableHeader>
+ <SortableHeader sortKey="endMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End Month</SortableHeader>
+ <SortableHeader sortKey="allocationPct" currentKey={sortKey} dir={sortDir} onSort={onSort}>Allocation %</SortableHeader>
+ <Table.Th>Resource FTE</Table.Th>
+ <Table.Th>Notes</Table.Th>
+ <Table.Th>Actions</Table.Th>
+ </Table.Tr>
+ </Table.Thead>
+ <Table.Tbody>
+ {sortedOverrides.map((o, idx) => {
+ const fte = fteMap.get(o.resourceId) ?? 1;
+ const isPartTime = fte < 1;
+ const totalAlloc = totalAllocMap.get(o.resourceId) ?? 0;
+ const fteAsPct = Math.round(fte * 100);
+ const isOverAlloc = totalAlloc > fteAsPct;
+ return (
+ <Table.Tr key={o.id}>
+ <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
+ <Table.Td>
+ <Group gap={6} wrap="nowrap">
+ {formatResourceName(o.resourceName)}
+ {isOverAlloc && (
+ <Tooltip label={`Total overrides (${totalAlloc}%) exceed ${fteAsPct}% FTE capacity`}>
+ <IconAlertTriangle size={16} color="orange" />
+ </Tooltip>
+ )}
+ </Group>
+ </Table.Td>
+ <Table.Td>{o.toPodName}</Table.Td>
+ <Table.Td>{monthLabels[o.startMonth] ?? `M${o.startMonth}`}</Table.Td>
+ <Table.Td>{monthLabels[o.endMonth] ?? `M${o.endMonth}`}</Table.Td>
+ <Table.Td>{o.allocationPct}%</Table.Td>
+ <Table.Td>
+ <Badge variant="light" color={isPartTime ? 'orange' : 'green'} size="sm">
+ {isPartTime ? `${fteAsPct}%` : '100%'}
+ </Badge>
+ </Table.Td>
+ <Table.Td>{o.notes ?? '-'}</Table.Td>
+ <Table.Td>
+ <Group gap={4}>
+ <ActionIcon variant="subtle" onClick={() => openEdit(o)}><IconEdit size={16} /></ActionIcon>
+ <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(o.id)}><IconTrash size={16} /></ActionIcon>
+ </Group>
+ </Table.Td>
+ </Table.Tr>
+ );
+ })}
+ {(overrides ?? []).length === 0 && (
+ <Table.Tr>
+ <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="md">No overrides</Text></Table.Td>
+ </Table.Tr>
+ )}
+ </Table.Tbody>
+ </Table>
 
-      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Edit Override' : 'Add Override'}>
-        <Stack>
-          <Select label="Resource" data={resourceOptions} value={form.resourceId ? String(form.resourceId) : null} onChange={v => setForm({ ...form, resourceId: Number(v) })} required searchable />
-          <Select label="To POD" data={podOptions} value={form.toPodId ? String(form.toPodId) : null} onChange={v => setForm({ ...form, toPodId: Number(v) })} required searchable />
-          <Group grow>
-            <NumberInput label="Start Month" value={form.startMonth} onChange={v => setForm({ ...form, startMonth: Number(v) })} min={1} max={12} />
-            <NumberInput label="End Month" value={form.endMonth} onChange={v => setForm({ ...form, endMonth: Number(v) })} min={1} max={12} />
-          </Group>
-          <NumberInput
-            label="Allocation %"
-            value={form.allocationPct}
-            onChange={v => setForm({ ...form, allocationPct: Number(v) })}
-            min={0}
-            max={100}
-            error={
-              form.resourceId && form.allocationPct > Math.round((fteMap.get(form.resourceId) ?? 1) * 100)
-                ? `Exceeds resource's ${Math.round((fteMap.get(form.resourceId) ?? 1) * 100)}% FTE capacity`
-                : undefined
-            }
-          />
-          <TextInput label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
-          <Button onClick={handleSubmit} loading={createMutation.isPending || updateMutation.isPending}>
-            {editId ? 'Update' : 'Create'}
-          </Button>
-        </Stack>
-      </Modal>
-    </Stack>
-  );
+ <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Edit Override' : 'Add Override'}>
+ <Stack>
+ <Select label="Resource" data={resourceOptions} value={form.resourceId ? String(form.resourceId) : null} onChange={v => setForm({ ...form, resourceId: Number(v) })} required searchable />
+ <Select label="To POD" data={podOptions} value={form.toPodId ? String(form.toPodId) : null} onChange={v => setForm({ ...form, toPodId: Number(v) })} required searchable />
+ <Group grow>
+ <NumberInput label="Start Month" value={form.startMonth} onChange={v => setForm({ ...form, startMonth: Number(v) })} min={1} max={12} />
+ <NumberInput label="End Month" value={form.endMonth} onChange={v => setForm({ ...form, endMonth: Number(v) })} min={1} max={12} />
+ </Group>
+ <NumberInput
+ label="Allocation %"
+ value={form.allocationPct}
+ onChange={v => setForm({ ...form, allocationPct: Number(v) })}
+ min={0}
+ max={100}
+ error={
+ form.resourceId && form.allocationPct > Math.round((fteMap.get(form.resourceId) ?? 1) * 100)
+ ? `Exceeds resource's ${Math.round((fteMap.get(form.resourceId) ?? 1) * 100)}% FTE capacity`
+ : undefined
+ }
+ />
+ <TextInput label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
+ <Button onClick={handleSubmit} loading={createMutation.isPending || updateMutation.isPending}>
+ {editId ? 'Update' : 'Create'}
+ </Button>
+ </Stack>
+ </Modal>
+ </Stack>
+ );
 }

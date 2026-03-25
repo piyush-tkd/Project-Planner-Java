@@ -8,12 +8,15 @@ import java.math.BigDecimal;
 public record ResourceResponse(
         Long id,
         String name,
+        String email,
         Role role,
         Location location,
         Boolean active,
         Boolean countsInCapacity,
         BigDecimal actualRate,
-        PodAssignment podAssignment
+        PodAssignment podAssignment,
+        String jiraDisplayName,
+        String jiraAccountId
 ) {
     public record PodAssignment(
             Long podId,

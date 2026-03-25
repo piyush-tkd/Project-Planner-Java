@@ -14,6 +14,7 @@ export interface ProjectResponse {
   startDate: string | null;
   capacityNote: string | null;
   client: string | null;
+  createdAt: string | null;
 }
 
 export interface ProjectRequest {

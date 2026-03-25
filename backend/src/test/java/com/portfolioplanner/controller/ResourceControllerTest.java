@@ -40,7 +40,7 @@ class ResourceControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("creates a resource and returns 201 with the saved entity")
         void createSuccess() throws Exception {
-            var req = new ResourceRequest("Alice", Role.DEVELOPER, Location.US, true, true);
+            var req = new ResourceRequest("Alice", null, Role.DEVELOPER, Location.US, true, true, null, null);
 
             mockMvc.perform(post("/api/resources").contentType(JSON).content(json(req)))
                     .andExpect(status().isCreated())
@@ -54,7 +54,7 @@ class ResourceControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("returns 400 when name is blank")
         void blankNameReturns400() throws Exception {
-            var req = new ResourceRequest("", Role.DEVELOPER, Location.US, true, true);
+            var req = new ResourceRequest("", null, Role.DEVELOPER, Location.US, true, true, null, null);
 
             mockMvc.perform(post("/api/resources").contentType(JSON).content(json(req)))
                     .andExpect(status().isBadRequest());
@@ -147,7 +147,7 @@ class ResourceControllerTest extends BaseControllerTest {
         void updateSuccess() throws Exception {
             Long id = createResource("Alice", Role.DEVELOPER, Location.US);
 
-            var updated = new ResourceRequest("Alice Updated", Role.TECH_LEAD, Location.INDIA, false, false);
+            var updated = new ResourceRequest("Alice Updated", null, Role.TECH_LEAD, Location.INDIA, false, false, null, null);
 
             mockMvc.perform(put("/api/resources/{id}", id).contentType(JSON).content(json(updated)))
                     .andExpect(status().isOk())
@@ -164,7 +164,7 @@ class ResourceControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("returns 404 when updating a non-existent resource")
         void updateNotFound() throws Exception {
-            var req = new ResourceRequest("X", Role.QA, Location.US, true, true);
+            var req = new ResourceRequest("X", null, Role.QA, Location.US, true, true, null, null);
 
             mockMvc.perform(put("/api/resources/{id}", 99999L).contentType(JSON).content(json(req)))
                     .andExpect(status().isNotFound());
@@ -224,7 +224,7 @@ class ResourceControllerTest extends BaseControllerTest {
 
     /** POST /api/resources and return the new id. */
     private Long createResource(String name, Role role, Location location) throws Exception {
-        var req = new ResourceRequest(name, role, location, true, true);
+        var req = new ResourceRequest(name, null, role, location, true, true, null, null);
         String resp = mockMvc.perform(post("/api/resources").contentType(JSON).content(json(req)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
