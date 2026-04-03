@@ -205,8 +205,26 @@ export default function OverridesPage() {
  <Select label="Resource" data={resourceOptions} value={form.resourceId ? String(form.resourceId) : null} onChange={v => setForm({ ...form, resourceId: Number(v) })} required searchable />
  <Select label="To POD" data={podOptions} value={form.toPodId ? String(form.toPodId) : null} onChange={v => setForm({ ...form, toPodId: Number(v) })} required searchable />
  <Group grow>
- <NumberInput label="Start Month" value={form.startMonth} onChange={v => setForm({ ...form, startMonth: Number(v) })} min={1} max={12} />
- <NumberInput label="End Month" value={form.endMonth} onChange={v => setForm({ ...form, endMonth: Number(v) })} min={1} max={12} />
+ <Select
+   label="Start Month"
+   data={Array.from({ length: 12 }, (_, i) => ({
+     value: String(i + 1),
+     label: monthLabels[i + 1] ?? `Month ${i + 1}`,
+   }))}
+   value={String(form.startMonth)}
+   onChange={v => setForm({ ...form, startMonth: Number(v) })}
+   required
+ />
+ <Select
+   label="End Month"
+   data={Array.from({ length: 12 }, (_, i) => ({
+     value: String(i + 1),
+     label: monthLabels[i + 1] ?? `Month ${i + 1}`,
+   })).filter(o => Number(o.value) >= form.startMonth)}
+   value={String(form.endMonth)}
+   onChange={v => setForm({ ...form, endMonth: Number(v) })}
+   required
+ />
  </Group>
  <NumberInput
  label="Allocation %"

@@ -453,7 +453,7 @@ function MapperView({
  }, [selectedJiraProject, form.matchType]);
 
  const unmappedProjects = ppProjects.filter(
- p => p.status === 'ACTIVE' && !mappings.some(m => m.ppProjectId === p.id)
+ p => !['COMPLETED', 'CANCELLED'].includes(p.status) && !mappings.some(m => m.ppProjectId === p.id)
  );
 
  const enabledPods = watchConfig.filter(p => p.enabled && p.boardKeys.length > 0);
@@ -589,8 +589,8 @@ function MapperView({
  required
  searchable
  data={ppProjects
- .filter(p => p.status === 'ACTIVE')
- .map(p => ({ value: String(p.id), label: p.name }))}
+ .filter(p => !['COMPLETED', 'CANCELLED'].includes(p.status))
+ .map(p => ({ value: String(p.id), label: `${p.name}${p.status !== 'ACTIVE' ? ` (${p.status.replace('_', ' ')})` : ''}` }))}
  value={form.ppProjectId}
  onChange={v => setForm(f => ({ ...f, ppProjectId: v ?? '' }))}
  />

@@ -4,11 +4,15 @@ import com.portfolioplanner.domain.model.JiraIssueWorklog;
 import com.portfolioplanner.domain.model.JiraPod;
 import com.portfolioplanner.domain.model.JiraPodBoard;
 import com.portfolioplanner.domain.model.JiraSyncedIssue;
+import com.portfolioplanner.domain.model.Resource;
 import com.portfolioplanner.domain.repository.JiraIssueWorklogRepository;
 import com.portfolioplanner.domain.repository.JiraPodRepository;
 import com.portfolioplanner.domain.repository.JiraSyncedIssueRepository;
+import com.portfolioplanner.domain.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +49,8 @@ public class JiraWorklogService {
     private final JiraPodRepository            podRepo;
     private final JiraIssueWorklogRepository   worklogRepo;
     private final JiraSyncedIssueRepository    issueRepo;
+    private final ResourceRepository           resourceRepository;
+    private final JdbcTemplate                 jdbcTemplate;
 
     // ── DTOs ──────────────────────────────────────────────────────────
 
@@ -60,7 +66,10 @@ public class JiraWorklogService {
             String author,
             double totalHours,
             Map<String, Double> issueTypeBreakdown,  // e.g. {"Story":12.5,"Bug":4.0}
-            List<WorklogIssueEntry> issues
+            List<WorklogIssueEntry> issues,
+            String homePodName,          // planning POD the resource is formally assigned to (null if unmatched)
+            boolean isBuffer,            // true if this author logged hours to any non-home POD
+            List<String> bufferPods      // list of POD names where they acted as a buffer contributor
     ) {}
 
     public record WorklogMonthReport(
@@ -173,9 +182,34 @@ public class JiraWorklogService {
             teamTypeBreakdown.merge(issueType, hours, Double::sum);
         }
 
+        // Enrich authors with home-POD and buffer information
+        Map<String, String> projectToPodName = buildProjectPodMap();
+        List<Resource> allResources = resourceRepository.findAll();
+        Map<String, Resource> jiraNameToResource = buildJiraNameLookup(allResources);
+        Map<Long, String> homePodByResourceId = buildHomePodLookup();
+
         // Build sorted user rows: highest total hours first
         List<WorklogUserRow> users = authorMap.values().stream()
-                .map(AuthorAgg::toRow)
+                .map(agg -> {
+                    Resource res = jiraNameToResource.get(normalise(agg.author));
+                    Long resourceId = res != null ? res.getId() : null;
+                    String homePodName = resourceId != null ? homePodByResourceId.get(resourceId) : null;
+
+                    // Determine which Jira PODs this author worked on
+                    Set<String> workedOnPods = agg.issueMap.values().stream()
+                            .map(ia -> projectToPodName.get(ia.project))
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+                    // Buffer pods = PODs they worked on that don't match their home POD
+                    List<String> bufferPods = workedOnPods.stream()
+                            .filter(pod -> !namesMatch(homePodName, pod))
+                            .sorted()
+                            .collect(Collectors.toList());
+
+                    boolean isBuffer = !bufferPods.isEmpty();
+                    return agg.toRow(homePodName, isBuffer, bufferPods);
+                })
                 .sorted(Comparator.comparingDouble(WorklogUserRow::totalHours).reversed())
                 .collect(Collectors.toList());
 
@@ -238,6 +272,69 @@ public class JiraWorklogService {
 
     // ── Helpers ───────────────────────────────────────────────────────
 
+    /** Maps Jira project key → JiraPod display name for all enabled pods. */
+    private Map<String, String> buildProjectPodMap() {
+        List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
+        Map<String, String> map = new HashMap<>();
+        for (JiraPod pod : pods) {
+            for (JiraPodBoard board : pod.getBoards()) {
+                map.put(board.getJiraProjectKey(), pod.getPodDisplayName());
+            }
+        }
+        return map;
+    }
+
+    /** Builds a normalised Jira display-name → Resource lookup (same logic as PodHoursService). */
+    private Map<String, Resource> buildJiraNameLookup(List<Resource> resources) {
+        Map<String, Resource> map = new HashMap<>();
+        for (Resource r : resources) {
+            if (r.getJiraDisplayName() != null && !r.getJiraDisplayName().isBlank()) {
+                map.put(normalise(r.getJiraDisplayName()), r);
+            }
+        }
+        try {
+            jdbcTemplate.query(
+                "SELECT jrm.resource_id, jrm.jira_display_name FROM jira_resource_mapping jrm " +
+                "WHERE jrm.jira_display_name IS NOT NULL",
+                (RowCallbackHandler) rs -> {
+                    Long rid = rs.getLong("resource_id");
+                    String jiraName = rs.getString("jira_display_name");
+                    resources.stream()
+                        .filter(r -> r.getId().equals(rid))
+                        .findFirst()
+                        .ifPresent(r -> map.putIfAbsent(normalise(jiraName), r));
+                }
+            );
+        } catch (Exception ex) {
+            log.warn("Could not query jira_resource_mapping: {}", ex.getMessage());
+        }
+        return map;
+    }
+
+    /** Builds resourceId → planning Pod name lookup via resource_pod_assignment. */
+    private Map<Long, String> buildHomePodLookup() {
+        Map<Long, String> map = new HashMap<>();
+        try {
+            jdbcTemplate.query(
+                "SELECT rpa.resource_id, p.name FROM resource_pod_assignment rpa " +
+                "JOIN pod p ON rpa.pod_id = p.id",
+                (RowCallbackHandler) rs -> map.put(rs.getLong("resource_id"), rs.getString("name"))
+            );
+        } catch (Exception ex) {
+            log.warn("Could not query resource_pod_assignment: {}", ex.getMessage());
+        }
+        return map;
+    }
+
+    private static String normalise(String s) {
+        return s == null ? "" : s.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static boolean namesMatch(String homePodName, String jiraPodName) {
+        if (homePodName == null || jiraPodName == null) return false;
+        return normalise(homePodName).equals(normalise(jiraPodName));
+    }
+
     private List<String> resolveProjectKeys(String projectKey) {
         if (projectKey != null && !projectKey.isBlank()) {
             return List.of(projectKey.trim());
@@ -279,7 +376,7 @@ public class JiraWorklogService {
                     .addHours(hours);
         }
 
-        WorklogUserRow toRow() {
+        WorklogUserRow toRow(String homePodName, boolean isBuffer, List<String> bufferPods) {
             Map<String, Double> rounded = new LinkedHashMap<>();
             typeHours.forEach((k, v) -> rounded.put(k, Math.round(v * 100.0) / 100.0));
 
@@ -288,7 +385,15 @@ public class JiraWorklogService {
                     .sorted(Comparator.comparingDouble(WorklogIssueEntry::hoursLogged).reversed())
                     .collect(Collectors.toList());
 
-            return new WorklogUserRow(author, Math.round(totalHours * 100.0) / 100.0, rounded, issues);
+            return new WorklogUserRow(
+                    author,
+                    Math.round(totalHours * 100.0) / 100.0,
+                    rounded,
+                    issues,
+                    homePodName,
+                    isBuffer,
+                    bufferPods
+            );
         }
     }
 

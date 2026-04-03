@@ -66,7 +66,10 @@ export function useCreateResource() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: ResourceRequest) => apiClient.post('/resources', data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['resources'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -75,7 +78,10 @@ export function useUpdateResource() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: ResourceRequest }) =>
       apiClient.put(`/resources/${id}`, data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['resources'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -83,7 +89,10 @@ export function useDeleteResource() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => apiClient.delete(`/resources/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['resources'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 

@@ -12,11 +12,11 @@ import {
  IconClock, IconChevronDown, IconChevronRight, IconRefresh,
  IconAlertTriangle, IconUser, IconBug, IconCheck, IconBolt,
  IconSubtask, IconTicket, IconExternalLink, IconSearch, IconHistory,
- IconX,
+ IconX, IconArrowsLeftRight,
 } from '@tabler/icons-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Legend } from 'recharts';
 import {
- useJiraStatus, useWorklogReport, useWorklogUserHistory,
+ useJiraStatus, useWorklogReport, useWorklogUserHistory, useJiraProjectsSimple,
  WorklogUserRow, WorklogIssueEntry,
 } from '../api/jira';
 import ChartCard from '../components/common/ChartCard';
@@ -47,6 +47,7 @@ function currentMonth() {
 function monthOptions() {
  const opts = [];
  const d = new Date();
+ d.setDate(1); // prevent month overflow (e.g. Mar 29 → Feb 29 wraps back to Mar)
  for (let i = 0; i < 12; i++) {
  const y = d.getFullYear();
  const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -86,6 +87,9 @@ export default function JiraWorklogPage() {
  isLoading: historyLoading,
  } = useWorklogUserHistory(historyAuthor, Number(historyMonths));
 
+ // All Jira projects from the API (not just ones in the current month's report)
+ const { data: allProjects = [] } = useJiraProjectsSimple();
+
  if (statusLoading) return <LoadingSpinner variant="table" message="Loading worklog data..." />;
 
  if (!status?.configured) {
@@ -108,12 +112,16 @@ export default function JiraWorklogPage() {
  return allUsers.filter(u => u.author.toLowerCase().includes(q));
  }, [allUsers, search]);
 
- // Collect all project keys that appear in this report (for filter dropdown)
+ // Project filter options — all projects from Jira, not just ones in the current month
  const projectKeys = useMemo(() => {
+ if (allProjects.length > 0) {
+ return allProjects.map(p => ({ value: p.key, label: `${p.key} — ${p.name}` }));
+ }
+ // Fallback: derive from current report if API projects not loaded yet
  const keys = new Set<string>();
  allUsers.forEach(u => u.issues.forEach(i => keys.add(i.projectKey)));
  return Array.from(keys).sort().map(k => ({ value: k, label: k }));
- }, [allUsers]);
+ }, [allProjects, allUsers]);
 
  // Team-level issue-type chart data sorted by hours
  const typeBreakdown = useMemo(() => {
@@ -246,9 +254,9 @@ export default function JiraWorklogPage() {
  ? `${Math.round(report.totalHours / report.totalUsers)} h`
  : '—'}
  color="#2e7d32" />
- <KpiCard label="Issue Types"
- value={String(typeBreakdown.length)}
- color="#6a4c93" />
+ <KpiCard label="Buffer Contributors"
+ value={String(allUsers.filter(u => u.isBuffer).length)}
+ color="#e65100" />
  </SimpleGrid>
 
  {/* ── Team issue-type breakdown ─────────────────────────── */}
@@ -308,6 +316,7 @@ export default function JiraWorklogPage() {
  <Table.Th style={{ color: 'white', width: 32 }} />{/* expand */}
  <Table.Th style={{ color: 'white', width: 44, textAlign: 'center' }}>#</Table.Th>
  <Table.Th style={{ color: 'white' }}>Team Member</Table.Th>
+ <Table.Th style={{ color: 'white', width: 160 }}>Home POD</Table.Th>
  <Table.Th style={{ color: 'white' }}>Hours Logged</Table.Th>
  <Table.Th style={{ color: 'white' }}>Breakdown by Type</Table.Th>
  <Table.Th style={{ color: 'white', textAlign: 'right' }}>Issues</Table.Th>
@@ -516,12 +525,49 @@ function UserRows({
 
  {/* Name */}
  <Table.Td>
- <Group gap="xs">
- <ThemeIcon size={28} radius="xl" color="gray" variant="light">
- <IconUser size={14} />
+ <Group gap="xs" wrap="nowrap">
+ <ThemeIcon size={28} radius="xl" color={user.isBuffer ? 'orange' : 'gray'} variant="light" style={{ flexShrink: 0 }}>
+ {user.isBuffer ? <IconArrowsLeftRight size={14} /> : <IconUser size={14} />}
  </ThemeIcon>
- <Text size="sm" fw={500}>{user.author}</Text>
+ <div>
+ <Text size="sm" fw={500} style={{ lineHeight: 1.2 }}>{user.author}</Text>
+ {user.isBuffer && (
+ <Badge size="xs" color="orange" variant="light" mt={2}>
+ BUFFER
+ </Badge>
+ )}
+ </div>
  </Group>
+ </Table.Td>
+
+ {/* Home POD */}
+ <Table.Td>
+ {user.homePodName ? (
+ <Tooltip
+ label={user.isBuffer ? `Assigned to: ${user.homePodName}${user.bufferPods.length > 0 ? ` · Also logged to: ${user.bufferPods.join(', ')}` : ''}` : `Assigned to: ${user.homePodName}`}
+ withArrow
+ multiline
+ maw={320}
+ >
+ <Stack gap={2}>
+ <Badge size="xs" color="teal" variant="light"
+ style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}>
+ {user.homePodName}
+ </Badge>
+ {user.bufferPods.slice(0, 2).map(bp => (
+ <Badge key={bp} size="xs" color="orange" variant="dot"
+ style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}>
+ {bp}
+ </Badge>
+ ))}
+ {user.bufferPods.length > 2 && (
+ <Text size="xs" c="dimmed">+{user.bufferPods.length - 2} more</Text>
+ )}
+ </Stack>
+ </Tooltip>
+ ) : (
+ <Text size="xs" c="dimmed">—</Text>
+ )}
  </Table.Td>
 
  {/* Hours bar */}
@@ -583,7 +629,7 @@ function UserRows({
  {/* Expanded issue list */}
  {expanded && (
  <Table.Tr>
- <Table.Td colSpan={7} style={{ padding: 0, background: isDark ? '#1a1b1e' : '#f8f9fa' }}>
+ <Table.Td colSpan={8} style={{ padding: 0, background: isDark ? '#1a1b1e' : '#f8f9fa' }}>
  <IssueList
  issues={user.issues}
  jiraBaseUrl={jiraBaseUrl}

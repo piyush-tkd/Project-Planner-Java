@@ -109,7 +109,16 @@ public interface EntityMapper {
                 releaseName,
                 planning.getEffortPattern(),
                 planning.getPodStartMonth(),
-                planning.getDurationOverride()
+                planning.getDurationOverride(),
+                planning.getDevStartDate(),
+                planning.getDevEndDate(),
+                planning.getQaStartDate(),
+                planning.getQaEndDate(),
+                planning.getUatStartDate(),
+                planning.getUatEndDate(),
+                planning.getScheduleLocked(),
+                planning.getDevCount() != null ? planning.getDevCount() : 1,
+                planning.getQaCount() != null ? planning.getQaCount() : 1
         );
     }
 

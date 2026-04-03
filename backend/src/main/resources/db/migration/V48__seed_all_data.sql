@@ -8,6 +8,16 @@ BEGIN TRANSACTION;
 INSERT INTO public.app_user VALUES (1, 'admin', '$2a$10$/420kSA4neTTyR2LyTC.9uLD8VZChgyUqjGxANGuXTimRYIqSLuP2', 'ADMIN', true, 'Piyush Baheti') ON CONFLICT (id) DO NOTHING;
 SELECT setval('app_user_id_seq', (SELECT COALESCE(MAX(id), 0) FROM app_user), true);
 
+-- pod (moved before bau_assumption, jira_pod etc. — all have FK on pod.id)
+INSERT INTO public.pod VALUES (120, 'Portal V1', 1.00, 1, true, '2026-03-16 13:57:13.17926', '2026-03-16 13:57:13.17927') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (121, 'Portal V2', 1.00, 2, true, '2026-03-16 13:57:13.187681', '2026-03-16 13:57:13.187686') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (122, 'Integrations', 1.00, 3, true, '2026-03-16 13:57:13.188362', '2026-03-20 01:17:14.261306') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (123, 'Accessioning', 1.00, 4, true, '2026-03-16 13:57:13.188826', '2026-03-20 01:17:14.962153') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (124, 'Epic', 1.00, 5, true, '2026-03-16 13:57:13.189321', '2026-03-20 01:17:15.641921') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (125, 'LIS/Reporting', 1.00, 6, true, '2026-03-16 13:57:13.189954', '2026-03-20 01:17:17.325835') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.pod VALUES (126, 'Enterprise Systems', 1.00, 7, true, '2026-03-16 13:57:13.19038', '2026-03-20 01:17:20.177011') ON CONFLICT (id) DO NOTHING;
+SELECT setval('pod_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pod), true);
+
 -- audit_log
 INSERT INTO public.audit_log VALUES (1, 'Project', 829, 'SG NIPT - NATERA', 'CREATE', 'system', '2026-03-19 10:37:21.476721-05', NULL) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.audit_log VALUES (2, 'Project', 830, 'Data Sharing Project - Natera', 'CREATE', 'system', '2026-03-19 10:44:38.985892-05', NULL) ON CONFLICT (id) DO NOTHING;
@@ -366,16 +376,6 @@ INSERT INTO public.page_permission VALUES (4, 'READ_WRITE', 'pods', true) ON CON
 INSERT INTO public.page_permission VALUES (1, 'READ_WRITE', 'dashboard', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.page_permission VALUES (97, 'READ_WRITE', 'nlp_landing', true) ON CONFLICT (id) DO NOTHING;
 SELECT setval('page_permission_id_seq', (SELECT COALESCE(MAX(id), 0) FROM page_permission), true);
-
--- pod
-INSERT INTO public.pod VALUES (120, 'Portal V1', 1.00, 1, true, '2026-03-16 13:57:13.17926', '2026-03-16 13:57:13.17927') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (121, 'Portal V2', 1.00, 2, true, '2026-03-16 13:57:13.187681', '2026-03-16 13:57:13.187686') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (122, 'Integrations', 1.00, 3, true, '2026-03-16 13:57:13.188362', '2026-03-20 01:17:14.261306') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (123, 'Accessioning', 1.00, 4, true, '2026-03-16 13:57:13.188826', '2026-03-20 01:17:14.962153') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (124, 'Epic', 1.00, 5, true, '2026-03-16 13:57:13.189321', '2026-03-20 01:17:15.641921') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (125, 'LIS/Reporting', 1.00, 6, true, '2026-03-16 13:57:13.189954', '2026-03-20 01:17:17.325835') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (126, 'Enterprise Systems', 1.00, 7, true, '2026-03-16 13:57:13.19038', '2026-03-20 01:17:20.177011') ON CONFLICT (id) DO NOTHING;
-SELECT setval('pod_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pod), true);
 
 -- project
 INSERT INTO public.project VALUES (829, 'SG NIPT - NATERA', 'P0', 'BD', 2, 2, 1, 'Flat', 'Launch is on May 10th - 264h effort', 'ACTIVE', NULL, '2026-04-28', '2026-04-01', NULL, '2026-03-19 10:37:21.440322', '2026-03-19 10:48:19.089726', NULL) ON CONFLICT (id) DO NOTHING;

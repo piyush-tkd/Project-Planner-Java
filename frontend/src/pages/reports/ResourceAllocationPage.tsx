@@ -39,11 +39,10 @@ export default function ResourceAllocationPage() {
  const map = new Map<number, number>();
  if (!availability) return map;
  for (const row of availability) {
- if (row.capacityFte >= 1) continue;
  let count = 0;
  for (let m = 1; m <= 12; m++) {
  const hours = row.months[m] ?? 0;
- const max = Math.round((workingHoursPerMonth[m] ?? 160) * row.capacityFte);
+ const max = Math.round((workingHoursPerMonth[m] ?? 160) * (row.capacityFte ?? 1));
  if (hours > max) count++;
  }
  if (count > 0) map.set(row.resourceId, count);

@@ -2,9 +2,11 @@ package com.portfolioplanner.service.jira;
 
 import com.portfolioplanner.domain.model.JiraIssueFixVersion;
 import com.portfolioplanner.domain.model.JiraPodBoard;
+import com.portfolioplanner.domain.model.JiraSupportBoard;
 import com.portfolioplanner.domain.model.JiraSyncedIssue;
 import com.portfolioplanner.domain.repository.JiraIssueFixVersionRepository;
 import com.portfolioplanner.domain.repository.JiraPodRepository;
+import com.portfolioplanner.domain.repository.JiraSupportBoardRepository;
 import com.portfolioplanner.domain.repository.JiraSyncedIssueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +27,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DoraJiraService {
 
-    private final JiraCredentialsService       creds;
-    private final JiraPodRepository            podRepo;
-    private final JiraSyncedIssueRepository    issueRepo;
-    private final JiraIssueFixVersionRepository fixVersionRepo;
+    private final JiraCredentialsService         creds;
+    private final JiraPodRepository              podRepo;
+    private final JiraSupportBoardRepository     supportBoardRepo;
+    private final JiraSyncedIssueRepository      issueRepo;
+    private final JiraIssueFixVersionRepository  fixVersionRepo;
 
     /* ── Public entry point ──────────────────────────────────────────── */
 
@@ -51,8 +54,9 @@ public class DoraJiraService {
         // ── 3  Change Failure Rate  (bug ratio) ─────────────────────────
         Map<String, Object> cfr = computeChangeFailureRate(projectKeys, cutoffDt);
 
-        // ── 4  MTTR  (high-priority bug resolution time) ────────────────
-        Map<String, Object> mttr = computeMTTR(projectKeys, cutoffDt);
+        // ── 4  MTTR  (avg ticket age from support board snapshots; fall back to sprint bugs) ──
+        Map<String, Object> mttr = computeMTTRFromSupport(cutoff, lookbackMonths);
+        if (mttr == null) mttr = computeMTTR(projectKeys, cutoffDt);
 
         // ── Monthly trend (issues resolved per month + bugs per month) ──
         List<Map<String, Object>> trend = computeMonthlyTrend(projectKeys, cutoffDt);
@@ -63,7 +67,7 @@ public class DoraJiraService {
         // ── Assemble response ───────────────────────────────────────────
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("lookbackMonths", lookbackMonths);
-        response.put("source", "db");
+        response.put("source", "jira");
         response.put("projectKeys", projectKeys);
         response.put("deploymentFrequency", deployFreq);
         response.put("leadTimeForChanges", leadTime);
@@ -264,6 +268,93 @@ public class DoraJiraService {
         return result;
     }
 
+    /* ═══════════════════════════════════════════════════════════════════
+       4b  MTTR from support board resolved issues (preferred over sprint bugs)
+       Uses resolved tickets from JSM/support project keys (synced to
+       jira_synced_issue).  Cycle time = created → resolved per ticket.
+       Returns null if no support boards are configured or no resolved issues.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    private Map<String, Object> computeMTTRFromSupport(LocalDate cutoff, int lookbackMonths) {
+        List<String> supportKeys = getSupportProjectKeys();
+        if (supportKeys.isEmpty()) return null;
+
+        LocalDateTime since = cutoff.atStartOfDay();
+        List<JiraSyncedIssue> resolved = issueRepo.findResolvedNonEpicSince(supportKeys, since);
+        if (resolved.isEmpty()) return null;
+
+        List<Long> recoveryTimes = new ArrayList<>();
+        List<Map<String, Object>> details = new ArrayList<>();
+
+        for (JiraSyncedIssue issue : resolved) {
+            if (issue.getCreatedAt() == null || issue.getResolutionDate() == null) continue;
+            long days = ChronoUnit.DAYS.between(issue.getCreatedAt(), issue.getResolutionDate());
+            if (days < 0) continue;
+            recoveryTimes.add(days);
+            if (details.size() < 20) {
+                Map<String, Object> d = new LinkedHashMap<>();
+                d.put("key", issue.getIssueKey());
+                d.put("summary", truncate(issue.getSummary(), 60));
+                d.put("recoveryDays", days);
+                d.put("created", issue.getCreatedAt().toLocalDate().toString());
+                d.put("resolved", issue.getResolutionDate().toLocalDate().toString());
+                if (issue.getPriorityName() != null) d.put("priority", issue.getPriorityName());
+                details.add(d);
+            }
+        }
+
+        if (recoveryTimes.isEmpty()) return null;
+
+        double avgDays = recoveryTimes.stream().mapToLong(Long::longValue).average().orElse(0);
+        String level;
+        if (avgDays < 1)       level = "elite";
+        else if (avgDays <= 1) level = "high";
+        else if (avgDays <= 7) level = "medium";
+        else                   level = "low";
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("value", Math.round(avgDays * 10.0) / 10.0);
+        result.put("level", level);
+        result.put("unit", "days");
+        result.put("recoveryEvents", recoveryTimes.size());
+        result.put("source", "support_boards");
+        result.put("details", details);
+        return result;
+    }
+
+    /**
+     * Compute per-month MTTR from resolved support issues.
+     * Returns a map of monthKey → avg cycle days (or null if no support boards configured).
+     */
+    private Map<String, Double> computeMonthlyMTTRFromSupport(LocalDate cutoff, List<String> monthKeys) {
+        List<String> supportKeys = getSupportProjectKeys();
+        if (supportKeys.isEmpty()) return null;
+
+        LocalDateTime since = cutoff.atStartOfDay();
+        List<JiraSyncedIssue> resolved = issueRepo.findResolvedNonEpicSince(supportKeys, since);
+        if (resolved.isEmpty()) return null;
+
+        Map<String, List<Long>> byMonth = new LinkedHashMap<>();
+        for (String mk : monthKeys) byMonth.put(mk, new ArrayList<>());
+
+        for (JiraSyncedIssue issue : resolved) {
+            if (issue.getCreatedAt() == null || issue.getResolutionDate() == null) continue;
+            long days = ChronoUnit.DAYS.between(issue.getCreatedAt(), issue.getResolutionDate());
+            if (days < 0) continue;
+            LocalDate rd = issue.getResolutionDate().toLocalDate();
+            String mk = rd.getYear() + "-" + String.format("%02d", rd.getMonthValue());
+            if (byMonth.containsKey(mk)) byMonth.get(mk).add(days);
+        }
+
+        Map<String, Double> result = new LinkedHashMap<>();
+        for (String mk : monthKeys) {
+            List<Long> vals = byMonth.get(mk);
+            result.put(mk, vals.isEmpty() ? 0.0 :
+                    vals.stream().mapToLong(Long::longValue).average().orElse(0));
+        }
+        return result;
+    }
+
     /* ── Monthly trend ────────────────────────────────────────────────── */
 
     private List<Map<String, Object>> computeMonthlyTrend(List<String> projectKeys, LocalDateTime since) {
@@ -347,6 +438,9 @@ public class DoraJiraService {
         }
         Collections.reverse(monthKeys);
 
+        // Monthly MTTR from support board snapshots (preferred)
+        Map<String, Double> supportMttrByMonth = computeMonthlyMTTRFromSupport(cutoff, monthKeys);
+
         // Bucket issues by resolution month
         Map<String, List<JiraSyncedIssue>> issuesByMonth = new LinkedHashMap<>();
         for (String mk : monthKeys) issuesByMonth.put(mk, new ArrayList<>());
@@ -420,18 +514,26 @@ public class DoraJiraService {
                     "value", Math.round(cfrVal * 10.0) / 10.0, "level", cfrLevel, "unit", "%",
                     "bugCount", bugs, "totalIssues", total));
 
-            // 4. MTTR
-            List<Long> mttrTimes = monthIssues.stream()
-                    .filter(i -> isBugType(i.getIssueType()))
-                    .filter(i -> i.getCreatedAt() != null && i.getResolutionDate() != null)
-                    .map(i -> ChronoUnit.DAYS.between(i.getCreatedAt(), i.getResolutionDate()))
-                    .filter(d -> d >= 0)
-                    .collect(Collectors.toList());
-            double avgMttr = mttrTimes.stream().mapToLong(Long::longValue).average().orElse(0);
+            // 4. MTTR — prefer support board snapshots; fall back to sprint bug cycle time
+            double avgMttr;
+            int recoveryEvents;
+            if (supportMttrByMonth != null && supportMttrByMonth.containsKey(mk)) {
+                avgMttr = supportMttrByMonth.getOrDefault(mk, 0.0);
+                recoveryEvents = avgMttr > 0 ? 1 : 0;
+            } else {
+                List<Long> mttrTimes = monthIssues.stream()
+                        .filter(i -> isBugType(i.getIssueType()))
+                        .filter(i -> i.getCreatedAt() != null && i.getResolutionDate() != null)
+                        .map(i -> ChronoUnit.DAYS.between(i.getCreatedAt(), i.getResolutionDate()))
+                        .filter(d -> d >= 0)
+                        .collect(Collectors.toList());
+                avgMttr = mttrTimes.stream().mapToLong(Long::longValue).average().orElse(0);
+                recoveryEvents = mttrTimes.size();
+            }
             String mttrLevel = avgMttr < 1 ? "elite" : avgMttr <= 1 ? "high" : avgMttr <= 7 ? "medium" : "low";
             card.put("meanTimeToRecovery", Map.of(
                     "value", Math.round(avgMttr * 10.0) / 10.0, "level", mttrLevel, "unit", "days",
-                    "recoveryEvents", mttrTimes.size()));
+                    "recoveryEvents", recoveryEvents));
 
             card.put("totalIssues", total);
             card.put("totalReleases", releaseCount);
@@ -448,6 +550,19 @@ public class DoraJiraService {
                 .stream()
                 .flatMap(p -> p.getBoards().stream())
                 .map(JiraPodBoard::getJiraProjectKey)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the Jira project keys for enabled support boards (JSM/service-desk).
+     * These are used for MTTR — production bugs live here, not in sprint boards.
+     * Returns an empty list if no support boards are configured.
+     */
+    private List<String> getSupportProjectKeys() {
+        return supportBoardRepo.findByEnabledTrue().stream()
+                .map(JiraSupportBoard::getProjectKey)
+                .filter(k -> k != null && !k.isBlank())
                 .distinct()
                 .collect(Collectors.toList());
     }

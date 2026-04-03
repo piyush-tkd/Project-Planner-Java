@@ -13,6 +13,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -42,6 +44,8 @@ public class CalculationEngine {
     private final UtilizationCalculator utilizationCalculator;
     private final HiringForecastCalculator hiringForecastCalculator;
     private final ConcurrencyRiskCalculator concurrencyRiskCalculator;
+    private final HolidayCalendarRepository holidayCalendarRepository;
+    private final LeaveEntryRepository leaveEntryRepository;
 
     @Cacheable("calculations")
     public CalculationSnapshot compute() {
@@ -164,9 +168,17 @@ public class CalculationEngine {
                 plannings, patternMap, podMap, projectMap);
         log.info("Demand calculated for {} pods", demandData.size());
 
+        // Build holiday deduction map for the planning year (8 hrs per holiday)
+        int planningYear = getPlanningYear();
+        Map<String, Map<Integer, BigDecimal>> holidayDeductions = buildHolidayDeductionMap(planningYear);
+
+        // Build leave deduction map for the planning year (planned/sick leave per resource)
+        Map<Long, Map<Integer, BigDecimal>> leaveDeductions = buildLeaveDeductionMap(planningYear);
+
         Map<Long, Map<Role, Map<Integer, BigDecimal>>> capacityData = capacityCalculator.calculate(
-                resources, assignmentMap, availabilities, overrides, bauByPodRole);
-        log.info("Capacity calculated for {} pods", capacityData.size());
+                resources, assignmentMap, availabilities, overrides, bauByPodRole, holidayDeductions, leaveDeductions);
+        log.info("Capacity calculated for {} pods (holiday + leave deductions applied for year {})",
+                capacityData.size(), planningYear);
 
         // Gap analysis
         List<PodMonthGap> gaps = gapAnalyzer.analyze(demandData, capacityData, podMap, workingHoursMap);
@@ -220,6 +232,63 @@ public class CalculationEngine {
             workingHoursMap.putIfAbsent(m, BigDecimal.valueOf(160));
         }
         return workingHoursMap;
+    }
+
+    /**
+     * Returns the planning year from the first TimelineConfig, or the current year as a fallback.
+     */
+    private int getPlanningYear() {
+        return timelineConfigRepository.findAll().stream()
+            .findFirst()
+            .map(TimelineConfig::getStartYear)
+            .orElse(LocalDate.now().getYear());
+    }
+
+    /**
+     * Builds a holiday deduction map: location → monthIndex → hours to deduct.
+     * Each holiday counts as 8 hours.  "ALL" location holidays are merged into
+     * both US and INDIA buckets so no cross-location holidays are missed.
+     */
+    private Map<String, Map<Integer, BigDecimal>> buildHolidayDeductionMap(int year) {
+        List<HolidayCalendar> holidays = holidayCalendarRepository.findByYearOrderByHolidayDateAsc(year);
+
+        Map<String, Map<Integer, BigDecimal>> deductions = new HashMap<>();
+        for (HolidayCalendar h : holidays) {
+            String loc = h.getLocation();
+            int month = h.getHolidayDate().getMonthValue();
+            BigDecimal hrs = BigDecimal.valueOf(8);
+
+            if ("ALL".equals(loc)) {
+                // Add to both US and INDIA
+                deductions.computeIfAbsent("US",    k -> new HashMap<>()).merge(month, hrs, BigDecimal::add);
+                deductions.computeIfAbsent("INDIA", k -> new HashMap<>()).merge(month, hrs, BigDecimal::add);
+            } else {
+                deductions.computeIfAbsent(loc, k -> new HashMap<>()).merge(month, hrs, BigDecimal::add);
+            }
+        }
+        log.info("Holiday deductions for {}: {} location buckets, {} total holidays",
+            year, deductions.size(), holidays.size());
+        return deductions;
+    }
+
+    /**
+     * Builds a leave deduction map: resourceId → monthIndex → hours to deduct.
+     * Aggregates all leave entries for the given year.
+     */
+    private Map<Long, Map<Integer, BigDecimal>> buildLeaveDeductionMap(int year) {
+        List<Object[]> rows = leaveEntryRepository.sumLeaveHoursByResourceAndMonth(year);
+        Map<Long, Map<Integer, BigDecimal>> deductions = new HashMap<>();
+        for (Object[] row : rows) {
+            Long resourceId = ((Number) row[0]).longValue();
+            int  monthIndex = ((Number) row[1]).intValue();
+            BigDecimal hrs  = new BigDecimal(row[2].toString());
+            deductions.computeIfAbsent(resourceId, k -> new HashMap<>())
+                      .put(monthIndex, hrs);
+        }
+        if (!deductions.isEmpty()) {
+            log.info("Leave deductions for {}: {} resources with leave entries", year, deductions.size());
+        }
+        return deductions;
     }
 
     private Map<String, Map<String, Map<Integer, BigDecimal>>> toNamedMap(

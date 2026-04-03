@@ -392,14 +392,28 @@ public class JiraResourceMappingService {
             .map(JiraResourceMapping::getJiraDisplayName)
             .collect(Collectors.toSet());
 
+        // Build a secondary lookup: jira_display_name set directly on the Resource entity.
+        // This covers the case where a resource was linked via the jira_display_name column
+        // but the jira_resource_mapping table entry has resource_id = null (or doesn't exist).
+        Map<String, Resource> jiraNameToResource = resourceRepository.findByJiraDisplayNameIsNotNull()
+            .stream()
+            .collect(Collectors.toMap(Resource::getJiraDisplayName, r -> r, (a, b) -> a));
+
         // Build response from existing mappings
         List<ResourceMappingResponse> result = new ArrayList<>(mappings.stream().map(m -> {
             JiraNameInfo info = nameInfoMap.getOrDefault(m.getJiraDisplayName(),
                 new JiraNameInfo(m.getJiraDisplayName(), m.getJiraAccountId(), 0, 0));
 
+            // Prefer the resource linked in the mapping table; fall back to
+            // the Resource entity's jira_display_name column.  This prevents a
+            // person from appearing as BUFFER when they are in fact a resource.
+            Resource effectiveResource = m.getResource() != null
+                ? m.getResource()
+                : jiraNameToResource.get(m.getJiraDisplayName());
+
             // Determine resource category
             String category;
-            if (m.getResource() != null) {
+            if (effectiveResource != null) {
                 category = "MAX_BILLING";
             } else if (bufferDetails.containsKey(m.getJiraDisplayName())) {
                 category = "BUFFER";
@@ -409,20 +423,24 @@ public class JiraResourceMappingService {
 
             return new ResourceMappingResponse(
                 m.getId(), m.getJiraDisplayName(), m.getJiraAccountId(),
-                m.getResource() != null ? m.getResource().getId() : null,
-                m.getResource() != null ? m.getResource().getName() : null,
-                m.getResource() != null ? m.getResource().getRole().name() : null,
-                m.getResource() != null ? m.getResource().getEmail() : null,
+                effectiveResource != null ? effectiveResource.getId() : null,
+                effectiveResource != null ? effectiveResource.getName() : null,
+                effectiveResource != null ? effectiveResource.getRole().name() : null,
+                effectiveResource != null ? effectiveResource.getEmail() : null,
                 m.getMappingType(), m.getConfidence(), m.getConfirmed(),
                 info.issueCount, info.hoursLogged, category
             );
         }).toList());
 
-        // Add buffer people who are NOT yet in the mapping table —
-        // these are people who logged hours in configured PODs but haven't
-        // been auto-matched or manually mapped yet
+        // Names known to belong to a resource (via mapping table OR direct column)
+        Set<String> allKnownResourceJiraNames = new HashSet<>(mappedNames);
+        allKnownResourceJiraNames.addAll(jiraNameToResource.keySet());
+
+        // Add buffer people who are NOT yet in the mapping table AND not already
+        // a known resource — these are people who logged hours in configured PODs
+        // but haven't been auto-matched or manually mapped yet.
         for (BufferDetail bd : bufferDetails.values()) {
-            if (!mappedNames.contains(bd.displayName)) {
+            if (!allKnownResourceJiraNames.contains(bd.displayName)) {
                 result.add(new ResourceMappingResponse(
                     null, bd.displayName, bd.accountId,
                     null, null, null, null,
@@ -610,21 +628,31 @@ public class JiraResourceMappingService {
         List<JiraResourceMapping> all = mappingRepository.findAllByOrderByJiraDisplayNameAsc();
         Set<String> mappedNames = all.stream()
             .map(JiraResourceMapping::getJiraDisplayName).collect(Collectors.toSet());
+        // Also include names set directly on the Resource entity (jira_display_name column)
+        Set<String> resourceDirectNames = resourceRepository.findByJiraDisplayNameIsNotNull().stream()
+            .map(Resource::getJiraDisplayName)
+            .collect(Collectors.toSet());
         // Max Billing = total resources from the Resource tab
         long maxBillingCount = resources;
         // How many of those resources actually have a Jira user mapped to them
+        // (via mapping table OR via direct jira_display_name column)
         Set<Long> mappedResourceIds = all.stream()
             .filter(m -> m.getResource() != null)
             .map(m -> m.getResource().getId())
             .collect(Collectors.toSet());
+        resourceRepository.findByJiraDisplayNameIsNotNull()
+            .forEach(r -> mappedResourceIds.add(r.getId()));
         long maxBillingMapped = mappedResourceIds.size();
-        // Buffer = people in buffer set who are NOT mapped to a resource
-        // (includes those not yet in the mapping table at all)
+        // Buffer = people in buffer set who are NOT a known resource via either source
+        Set<String> allKnownResourceNames = new HashSet<>(mappedNames);
+        allKnownResourceNames.addAll(resourceDirectNames);
         long bufferInTable = all.stream()
-            .filter(m -> m.getResource() == null && bufferNames.contains(m.getJiraDisplayName()))
+            .filter(m -> m.getResource() == null
+                && !resourceDirectNames.contains(m.getJiraDisplayName())
+                && bufferNames.contains(m.getJiraDisplayName()))
             .count();
         long bufferNotInTable = bufferNames.stream()
-            .filter(n -> !mappedNames.contains(n))
+            .filter(n -> !allKnownResourceNames.contains(n))
             .count();
         long bufferCount = bufferInTable + bufferNotInTable;
 

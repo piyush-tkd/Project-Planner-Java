@@ -11,7 +11,7 @@ import {
  IconAlertTriangle, IconPlus, IconTrash, IconGripVertical,
 } from '@tabler/icons-react';
 import {
- useJiraStatus, useJiraProjectsSimple, useClearJiraCache,
+ useJiraStatus, useJiraAllProjectsSimple, useClearJiraCache,
  usePodWatchConfig, useSavePodWatchConfig,
  PodConfigRequest,
 } from '../../api/jira';
@@ -39,8 +39,8 @@ export default function JiraSettingsPage() {
  const navigate = useNavigate();
 
  const { data: status, isLoading: statusLoading } = useJiraStatus();
- // Lightweight hook — only fetches key+name, not epics/labels
- const { data: jiraProjects = [], isLoading: projectsLoading, refetch: refetchProjects } = useJiraProjectsSimple();
+ // Full project list — needed so users can pick any Jira project for a new POD mapping
+ const { data: jiraProjects = [], isLoading: projectsLoading, refetch: refetchProjects } = useJiraAllProjectsSimple();
  const { data: savedConfig = [], isLoading: configLoading } = usePodWatchConfig();
  const { data: ppPods = [], isLoading: ppPodsLoading } = usePods();
  const save = useSavePodWatchConfig();

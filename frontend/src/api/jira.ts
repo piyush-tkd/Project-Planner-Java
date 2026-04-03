@@ -335,8 +335,15 @@ export function useSavePodWatchConfig() {
     mutationFn: (reqs: PodConfigRequest[]) =>
       apiClient.post('/jira/pods/config', reqs).then(r => r.data),
     onSuccess: () => {
+      // Re-fetch pod config itself
       qc.invalidateQueries({ queryKey: ['jira', 'pods', 'config'] });
       qc.removeQueries({ queryKey: ['jira', 'pods'] });
+      // Invalidate every page that uses jira_pod_board data so they re-fetch
+      // with the new project-key → POD mapping straight away
+      qc.invalidateQueries({ queryKey: ['pod-hours'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'worklog'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'projects'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
     },
   });
 }
@@ -371,13 +378,27 @@ export interface SimpleProject {
 }
 
 /**
- * Fetches just project key + name — no epics or labels.
- * Used by board pickers in Settings so we don't pay the full project load cost.
+ * Fetches only the Jira projects that are mapped to a POD board.
+ * Used in filter dropdowns on data pages (Worklog Breakdown, etc.)
+ * so users only see projects their PODs actively track.
  */
 export function useJiraProjectsSimple() {
   return useQuery<SimpleProject[]>({
     queryKey: ['jira', 'projects', 'simple'],
     queryFn: () => apiClient.get('/jira/projects/simple').then(r => r.data),
+    ...JIRA_CHEAP_OPTS,
+  });
+}
+
+/**
+ * Fetches all Jira projects visible to the configured account.
+ * Used in settings pages that need the full project list
+ * (Jira Board Settings board-picker, Projects page linking).
+ */
+export function useJiraAllProjectsSimple() {
+  return useQuery<SimpleProject[]>({
+    queryKey: ['jira', 'projects', 'all-simple'],
+    queryFn: () => apiClient.get('/jira/projects/all-simple').then(r => r.data),
     ...JIRA_CHEAP_OPTS,
   });
 }
@@ -871,6 +892,9 @@ export interface WorklogUserRow {
   totalHours: number;
   issueTypeBreakdown: Record<string, number>;
   issues: WorklogIssueEntry[];
+  homePodName: string | null;   // planning POD the resource is formally assigned to
+  isBuffer: boolean;            // true if this person logged to any non-home POD
+  bufferPods: string[];         // POD names where they contributed as buffer
 }
 
 export interface WorklogMonthReport {
@@ -1127,10 +1151,19 @@ export function useTriggerJiraSync() {
       apiClient.post('/jira/sync/trigger', null, { params: { fullSync } }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jira', 'sync', 'status'] });
-      // After sync completes, analytics cache should be refreshed
-      setTimeout(() => {
+      // Sync runs @Async on the backend — invalidate all data caches in multiple waves
+      // so the UI refreshes as soon as the sync completes regardless of how long it takes.
+      const invalidateAll = () => {
         qc.invalidateQueries({ queryKey: ['jira', 'analytics'] });
-      }, 5000);
+        qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
+        qc.invalidateQueries({ queryKey: ['jira', 'worklog'] });
+        qc.invalidateQueries({ queryKey: ['jira', 'capex'] });
+        qc.invalidateQueries({ queryKey: ['reports'] });      // DORA, productivity, etc.
+        qc.invalidateQueries({ queryKey: ['jira', 'sync', 'status'] });
+      };
+      setTimeout(invalidateAll, 5000);   // fast syncs
+      setTimeout(invalidateAll, 15000);  // medium syncs
+      setTimeout(invalidateAll, 30000);  // large syncs
     },
   });
 }

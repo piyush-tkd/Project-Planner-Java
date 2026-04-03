@@ -1,169 +1,232 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea} from '@mantine/core';
+import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea, Tooltip } from '@mantine/core';
 import { useProjects } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import PriorityBadge from '../../components/common/PriorityBadge';
+import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const PRIORITY_COLORS: Record<string, string> = {
- P0: '#dc2626',
- P1: '#ea580c',
- P2: '#2563eb',
- P3: '#64748b',
+  P0: '#dc2626',
+  P1: '#ea580c',
+  P2: '#2563eb',
+  P3: '#64748b',
+};
+
+// Visual treatment per status — opacity + pattern overlay
+const STATUS_STYLE: Record<string, { opacity: number; stripes?: boolean; label: string; chipColor: string }> = {
+  NOT_STARTED:  { opacity: 0.45, stripes: true,  label: 'Not Started',  chipColor: 'gray' },
+  IN_DISCOVERY: { opacity: 0.65, stripes: true,  label: 'In Discovery', chipColor: 'violet' },
+  ACTIVE:       { opacity: 1.00, stripes: false, label: 'Active',       chipColor: 'green' },
+  ON_HOLD:      { opacity: 0.50, stripes: true,  label: 'On Hold',      chipColor: 'yellow' },
+  COMPLETED:    { opacity: 0.30, stripes: false, label: 'Completed',    chipColor: 'blue' },
+  CANCELLED:    { opacity: 0.20, stripes: false, label: 'Cancelled',    chipColor: 'red' },
 };
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+const ALL_STATUSES = Object.keys(STATUS_STYLE);
+const DEFAULT_STATUSES = ['NOT_STARTED', 'IN_DISCOVERY', 'ACTIVE', 'ON_HOLD'];
 
 export default function ProjectGanttPage() {
- const { data: projects, isLoading } = useProjects();
- const { monthLabels, currentMonthIndex } = useMonthLabels();
- const navigate = useNavigate();
- const dark = useDarkMode();
- const months = Array.from({ length: 12 }, (_, i) => i + 1);
- const [selectedPriorities, setSelectedPriorities] = useState<string[]>(PRIORITIES);
+  const { data: projects, isLoading } = useProjects();
+  const { monthLabels, currentMonthIndex } = useMonthLabels();
+  const navigate = useNavigate();
+  const dark = useDarkMode();
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>(PRIORITIES);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(DEFAULT_STATUSES);
 
- const activeProjects = useMemo(() => {
- if (!projects) return [];
- return projects
- .filter(p => p.status === 'ACTIVE' && selectedPriorities.includes(p.priority))
- .sort((a, b) => {
- const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
- return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || a.startMonth - b.startMonth;
- });
- }, [projects, selectedPriorities]);
+  const visibleProjects = useMemo(() => {
+    if (!projects) return [];
+    return projects
+      .filter(p =>
+        selectedPriorities.includes(p.priority) &&
+        selectedStatuses.includes(p.status)
+      )
+      .sort((a, b) => {
+        const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+        return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || a.startMonth - b.startMonth;
+      });
+  }, [projects, selectedPriorities, selectedStatuses]);
 
- if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
+  if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
 
- return (
- <Stack className="page-enter stagger-children">
- <Group className="slide-in-left">
- <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Project Gantt</Title>
- <Text size="sm" c="dimmed">
- {activeProjects.length} active projects sorted by priority then start month
- </Text>
- </div>
- </Group>
+  return (
+    <Stack className="page-enter stagger-children">
+      <Group className="slide-in-left" justify="space-between" align="flex-start">
+        <div>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Project Gantt</Title>
+          <Text size="sm" c="dimmed">
+            {visibleProjects.length} of {projects?.length ?? 0} projects · sorted by priority then start month
+          </Text>
+        </div>
+      </Group>
 
- <Group gap="xs" className="stagger-children">
- <Text size="xs" fw={600} c="dimmed">Filter by priority:</Text>
- <Chip.Group multiple value={selectedPriorities} onChange={setSelectedPriorities}>
- <Group gap={6}>
- {PRIORITIES.map(pri => (
- <Chip key={pri} value={pri} size="xs" variant="filled" color={
- pri === 'P0' ? 'red' : pri === 'P1' ? 'orange' : pri === 'P2' ? 'blue' : 'gray'
- }>
- {pri}
- </Chip>
- ))}
- </Group>
- </Chip.Group>
- </Group>
+      {/* ── Filters ── */}
+      <Stack gap={6} className="stagger-children">
+        <Group gap="xs" align="center">
+          <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Priority:</Text>
+          <Chip.Group multiple value={selectedPriorities} onChange={setSelectedPriorities}>
+            <Group gap={6}>
+              {PRIORITIES.map(pri => (
+                <Chip key={pri} value={pri} size="xs" variant="filled" color={
+                  pri === 'P0' ? 'red' : pri === 'P1' ? 'orange' : pri === 'P2' ? 'blue' : 'gray'
+                }>
+                  {pri}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+        </Group>
 
- <Box mb="xs" style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: 12 }}>
- {Object.entries(PRIORITY_COLORS).map(([pri, color]) => (
- <Box key={pri} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
- <Box style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
- <Text size="xs">{pri}</Text>
- </Box>
- ))}
- </Box>
+        <Group gap="xs" align="center">
+          <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Status:</Text>
+          <Chip.Group multiple value={selectedStatuses} onChange={setSelectedStatuses}>
+            <Group gap={6}>
+              {ALL_STATUSES.map(s => (
+                <Chip key={s} value={s} size="xs" variant="filled" color={STATUS_STYLE[s].chipColor}>
+                  {STATUS_STYLE[s].label}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+        </Group>
+      </Stack>
 
- <ScrollArea>
- <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
- <Table.Thead>
- <Table.Tr>
- <Table.Th style={{ width: 200 }}>Project</Table.Th>
- <Table.Th style={{ width: 50 }}>Pri</Table.Th>
- <Table.Th style={{ width: 70 }}>Owner</Table.Th>
- {months.map(m => (
- <Table.Th
- key={m}
- style={{
- textAlign: 'center',
- fontSize: 11,
- width: 65,
- ...(m < currentMonthIndex ? { color: '#94a3b8', fontWeight: 400, fontStyle: 'italic' } : {}),
- }}
- >
- {monthLabels[m] ?? `M${m}`}
- </Table.Th>
- ))}
- <Table.Th style={{ width: 60 }}>Dur</Table.Th>
- </Table.Tr>
- </Table.Thead>
- <Table.Tbody>
- {activeProjects.map(project => {
- const startIdx = project.startMonth;
- const endIdx = startIdx + project.durationMonths - 1;
- const color = PRIORITY_COLORS[project.priority] ?? '#64748b';
+      {/* ── Legend ── */}
+      <Group gap={20} mb={4}>
+        <Group gap={16}>
+          {Object.entries(PRIORITY_COLORS).map(([pri, color]) => (
+            <Box key={pri} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Box style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
+              <Text size="xs">{pri}</Text>
+            </Box>
+          ))}
+        </Group>
+        <Text size="xs" c="dimmed">|</Text>
+        <Group gap={14}>
+          <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Box style={{ width: 28, height: 10, background: 'repeating-linear-gradient(45deg, #888 0px, #888 3px, transparent 3px, transparent 7px)', borderRadius: 2 }} />
+            <Text size="xs" c="dimmed">Planning / On Hold</Text>
+          </Box>
+          <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Box style={{ width: 28, height: 10, background: '#888', borderRadius: 2 }} />
+            <Text size="xs" c="dimmed">Active</Text>
+          </Box>
+        </Group>
+      </Group>
 
- return (
- <Table.Tr
- key={project.id}
- style={{ cursor: 'pointer' }}
- onClick={() => navigate(`/projects/${project.id}`)}
- >
- <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
- {project.name}
- </Table.Td>
- <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
- <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
- {months.map(m => {
- const active = m >= startIdx && m <= endIdx;
- const isFirst = m === startIdx;
- const isLast = m === endIdx || m === Math.min(endIdx, 12);
- const isPast = m < currentMonthIndex;
+      <ScrollArea>
+        <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th style={{ width: 200 }}>Project</Table.Th>
+              <Table.Th style={{ width: 50 }}>Pri</Table.Th>
+              <Table.Th style={{ width: 90 }}>Status</Table.Th>
+              <Table.Th style={{ width: 70 }}>Owner</Table.Th>
+              {months.map(m => (
+                <Table.Th
+                  key={m}
+                  style={{
+                    textAlign: 'center',
+                    fontSize: 11,
+                    width: 65,
+                    background: m === currentMonthIndex
+                      ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
+                      : undefined,
+                    ...(m < currentMonthIndex ? { color: '#94a3b8', fontWeight: 400, fontStyle: 'italic' } : {}),
+                  }}
+                >
+                  {monthLabels[m] ?? `M${m}`}
+                </Table.Th>
+              ))}
+              <Table.Th style={{ width: 60 }}>Dur</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {visibleProjects.map(project => {
+              const startIdx = project.startMonth;
+              const endIdx = startIdx + project.durationMonths - 1;
+              const color = PRIORITY_COLORS[project.priority] ?? '#64748b';
+              const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
+              const useStripes = st.stripes;
 
- if (!active) {
- return (
- <Table.Td
- key={m}
- style={{
- padding: 0,
- background: isPast
- ? (dark ? 'rgba(255,255,255,0.02)' : '#f1f5f9')
- : (dark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
- }}
- />
- );
- }
+              return (
+                <Table.Tr
+                  key={project.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <Tooltip label={project.name} openDelay={400}>
+                      <span>{project.name}</span>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
+                  <Table.Td><StatusBadge status={project.status} /></Table.Td>
+                  <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
+                  {months.map(m => {
+                    const inRange = m >= startIdx && m <= endIdx;
+                    const isFirst = m === startIdx;
+                    const isLast = m === endIdx || m === Math.min(endIdx, 12);
+                    const isPast = m < currentMonthIndex;
+                    const isCurrent = m === currentMonthIndex;
 
- return (
- <Table.Td
- key={m}
- style={{
- padding: 0,
- background: color,
- borderRadius: `${isFirst ? '6px' : '0'} ${isLast ? '6px' : '0'} ${isLast ? '6px' : '0'} ${isFirst ? '6px' : '0'}`,
- ...(isPast ? { opacity: 0.4 } : {}),
- }}
- >
- {isFirst && endIdx - startIdx >= 2 && (
- <Text size="xs" c="white" fw={600} style={{ padding: '0 4px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '22px' }}>
- {project.name}
- </Text>
- )}
- </Table.Td>
- );
- })}
- <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
- </Table.Tr>
- );
- })}
- {activeProjects.length === 0 && (
- <Table.Tr>
- <Table.Td colSpan={months.length + 4}>
- <Text ta="center" c="dimmed" py="md">No active projects</Text>
- </Table.Td>
- </Table.Tr>
- )}
- </Table.Tbody>
- </Table>
- </ScrollArea>
- </Stack>
- );
+                    if (!inRange) {
+                      return (
+                        <Table.Td
+                          key={m}
+                          style={{
+                            padding: 0,
+                            background: isCurrent
+                              ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
+                              : isPast
+                                ? (dark ? 'rgba(255,255,255,0.02)' : '#f1f5f9')
+                                : (dark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
+                          }}
+                        />
+                      );
+                    }
+
+                    const barBg = useStripes
+                      ? `repeating-linear-gradient(45deg, ${color} 0px, ${color} 4px, ${color}88 4px, ${color}88 9px)`
+                      : color;
+
+                    return (
+                      <Table.Td
+                        key={m}
+                        style={{
+                          padding: 0,
+                          background: barBg,
+                          opacity: isPast ? Math.min(st.opacity, 0.4) : st.opacity,
+                          borderRadius: `${isFirst ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isFirst ? '5px' : '0'}`,
+                        }}
+                      >
+                        {isFirst && endIdx - startIdx >= 2 && (
+                          <Text size="xs" c="white" fw={700} style={{ padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '24px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                            {project.name}
+                          </Text>
+                        )}
+                      </Table.Td>
+                    );
+                  })}
+                  <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
+                </Table.Tr>
+              );
+            })}
+            {visibleProjects.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={months.length + 5}>
+                  <Text ta="center" c="dimmed" py="md">No projects match the selected filters</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
+    </Stack>
+  );
 }

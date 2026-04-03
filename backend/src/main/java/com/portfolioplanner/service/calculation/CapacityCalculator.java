@@ -25,11 +25,14 @@ public class CapacityCalculator {
     /**
      * Computes available capacity per pod, role, and month.
      *
-     * @param resources      all active resources that count in capacity
-     * @param assignmentMap  resource id -> pod assignment
-     * @param availabilities all resource availability records
-     * @param overrides      all temporary overrides (loans between pods)
-     * @param bauByPodRole   podId -> role -> BAU percentage (0-100)
+     * @param resources                  all active resources that count in capacity
+     * @param assignmentMap              resource id -> pod assignment
+     * @param availabilities             all resource availability records
+     * @param overrides                  all temporary overrides (loans between pods)
+     * @param bauByPodRole               podId -> role -> BAU percentage (0-100)
+     * @param holidayDeductionByLocation location ("US"/"INDIA") -> monthIndex -> hours to deduct
+     *                                   (8 hrs per holiday; pre-combined with "ALL" holidays)
+     * @param leaveHoursByResource       resourceId -> monthIndex -> leave hours to deduct
      * @return nested map: podId -> role -> monthIndex -> hours
      */
     public Map<Long, Map<Role, Map<Integer, BigDecimal>>> calculate(
@@ -37,7 +40,9 @@ public class CapacityCalculator {
             Map<Long, ResourcePodAssignment> assignmentMap,
             List<ResourceAvailability> availabilities,
             List<TemporaryOverride> overrides,
-            Map<Long, Map<Role, BigDecimal>> bauByPodRole) {
+            Map<Long, Map<Role, BigDecimal>> bauByPodRole,
+            Map<String, Map<Integer, BigDecimal>> holidayDeductionByLocation,
+            Map<Long, Map<Integer, BigDecimal>> leaveHoursByResource) {
 
         Map<Long, Map<Role, Map<Integer, BigDecimal>>> capacity = new HashMap<>();
 
@@ -83,10 +88,35 @@ public class CapacityCalculator {
                          resource.getName(), resourceId);
             }
 
+            // Holiday deduction map for this resource's location
+            String locationKey = resource.getLocation() != null ? resource.getLocation().name() : "";
+            Map<Integer, BigDecimal> locationHolidayDeductions =
+                holidayDeductionByLocation.getOrDefault(locationKey, Map.of());
+
+            // Leave hours deduction map for this resource
+            Map<Integer, BigDecimal> resourceLeaveDeductions =
+                leaveHoursByResource.getOrDefault(resourceId, Map.of());
+
             for (int m = 1; m <= 12; m++) {
                 BigDecimal availHours = resourceAvail.getOrDefault(m, BigDecimal.ZERO);
                 if (availHours.compareTo(BigDecimal.ZERO) == 0) {
                     continue;
+                }
+
+                // Deduct public holiday hours (8 hrs per holiday) for this location/month
+                BigDecimal holidayHours = locationHolidayDeductions.getOrDefault(m, BigDecimal.ZERO);
+                if (holidayHours.compareTo(BigDecimal.ZERO) > 0) {
+                    availHours = availHours.subtract(holidayHours).max(BigDecimal.ZERO);
+                    log.debug("Holiday deduction for {} ({}): month {} → -{} hrs → {} hrs available",
+                        resource.getName(), locationKey, m, holidayHours, availHours);
+                }
+
+                // Deduct planned/sick leave hours for this resource/month
+                BigDecimal leaveHours = resourceLeaveDeductions.getOrDefault(m, BigDecimal.ZERO);
+                if (leaveHours.compareTo(BigDecimal.ZERO) > 0) {
+                    availHours = availHours.subtract(leaveHours).max(BigDecimal.ZERO);
+                    log.debug("Leave deduction for {}: month {} → -{} hrs → {} hrs available",
+                        resource.getName(), m, leaveHours, availHours);
                 }
 
                 BigDecimal baseCapacity = availHours

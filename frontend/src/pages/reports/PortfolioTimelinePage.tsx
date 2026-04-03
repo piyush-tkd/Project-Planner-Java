@@ -1,0 +1,92 @@
+import { useState } from 'react';
+import { Tabs, Box, Title, Text, Group } from '@mantine/core';
+import { IconTimeline, IconCalendar, IconCalendarStats } from '@tabler/icons-react';
+import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
+import RoadmapTimelinePage from './RoadmapTimelinePage';
+import ProjectGanttPage from './ProjectGanttPage';
+import TeamCalendarPage from '../TeamCalendarPage';
+
+export default function PortfolioTimelinePage() {
+  const dark = useDarkMode();
+  const [activeTab, setActiveTab] = useState<string | null>('roadmap');
+
+  return (
+    <Box p="lg">
+      <Group mb="md">
+        <Box>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+            Portfolio Timeline
+          </Title>
+          <Text size="sm" c="dimmed" mt={2}>
+            Roadmap · Gantt · Team calendar — three views, one portfolio
+          </Text>
+        </Box>
+      </Group>
+
+      <Tabs
+        value={activeTab}
+        onChange={setActiveTab}
+        styles={{
+          root: { '--tabs-color': AQUA },
+          list: {
+            padding: '4px 6px', gap: 2,
+            background: dark ? 'rgba(255,255,255,0.04)' : 'rgba(12,35,64,0.04)',
+            borderRadius: 12,
+            border: `1px solid ${dark ? 'rgba(45,204,211,0.12)' : 'rgba(12,35,64,0.08)'}`,
+            marginBottom: 20,
+            '&::before': { display: 'none' },
+          },
+          tab: {
+            fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 13,
+            borderRadius: 8, padding: '8px 16px', border: 'none',
+            color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(12,35,64,0.55)',
+            '&[data-active]': {
+              background: dark ? 'rgba(45,204,211,0.14)' : '#ffffff',
+              color: dark ? AQUA : DEEP_BLUE,
+              borderBottom: `2.5px solid ${AQUA}`,
+              boxShadow: dark ? 'none' : '0 1px 6px rgba(12,35,64,0.12)',
+            },
+            '&:hover:not([data-active])': {
+              background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(12,35,64,0.05)',
+            },
+          },
+          panel: { paddingTop: 4 },
+        }}
+      >
+        <Tabs.List>
+          <Tabs.Tab
+            value="roadmap"
+            leftSection={<IconTimeline size={15} color={activeTab === 'roadmap' ? AQUA : undefined} />}
+          >
+            Roadmap
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="gantt"
+            leftSection={<IconCalendar size={15} color={activeTab === 'gantt' ? '#34d399' : undefined} />}
+          >
+            Gantt
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="team-calendar"
+            leftSection={<IconCalendarStats size={15} color={activeTab === 'team-calendar' ? '#818cf8' : undefined} />}
+          >
+            Team Calendar
+          </Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="roadmap">
+          <RoadmapTimelinePage />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="gantt">
+          <ProjectGanttPage />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="team-calendar">
+          <TeamCalendarPage />
+        </Tabs.Panel>
+      </Tabs>
+    </Box>
+  );
+}

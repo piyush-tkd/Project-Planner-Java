@@ -6,7 +6,9 @@ import {
  IconUsers, IconBriefcase, IconFlame, IconAlertTriangle,
  IconChartBar, IconChartAreaLine, IconUserPlus, IconCalendar,
  IconTag, IconHexagons, IconArrowRight, IconHeadset, IconSparkles,
+ IconArrowsLeftRight,
 } from '@tabler/icons-react';
+import { usePodHours } from '../api/podHours';
 import {
  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -44,6 +46,10 @@ export default function DashboardPage() {
  const navigate = useNavigate();
  const dark = useDarkMode();
  const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+
+ // POD Hours for current month — used for buffer alert widget
+ const now = new Date();
+ const { data: podHoursData } = usePodHours(now.getFullYear(), 'MONTHLY', now.getMonth() + 1);
 
  // Jira integration summary (cheap DB-backed calls — no Jira API hits)
  const { data: jiraStatus } = useJiraStatus();
@@ -565,6 +571,59 @@ export default function DashboardPage() {
  </ChartCard>
  )}
  </Widget>
+
+ {/* ── Buffer Alert Widget ── */}
+ {(() => {
+ const highBufferPods = (podHoursData?.podSummaries ?? []).filter(pod => {
+ if (pod.totalHours <= 0) return false;
+ // Need to compute buffer hours for this pod from resources
+ const bufferHours = (podHoursData?.resources ?? [])
+ .flatMap(r => r.pods.filter(p => p.podName === pod.podName && p.buffer))
+ .reduce((s, p) => s + p.hours, 0);
+ return (bufferHours / pod.totalHours) > 0.5;
+ });
+ if (highBufferPods.length === 0) return null;
+ return (
+ <Widget id="buffer-alerts" title="Buffer Alerts">
+ <Group mb="sm" gap="xs" align="center">
+ <ThemeIcon size={28} radius="md" color="orange" variant="light">
+ <IconArrowsLeftRight size={16} />
+ </ThemeIcon>
+ <div>
+ <Text size="sm" fw={700} c="orange">High Buffer Contribution Alert</Text>
+ <Text size="xs" c="dimmed">{podHoursData?.periodLabel ?? 'Current month'} · {highBufferPods.length} POD{highBufferPods.length > 1 ? 's' : ''} with &gt;50% buffer hours</Text>
+ </div>
+ </Group>
+ <Stack gap="xs">
+ {highBufferPods.map(pod => {
+ const bufferHours = (podHoursData?.resources ?? [])
+ .flatMap(r => r.pods.filter(p => p.podName === pod.podName && p.buffer))
+ .reduce((s, p) => s + p.hours, 0);
+ const bufferPct = Math.round((bufferHours / pod.totalHours) * 100);
+ return (
+ <Paper key={pod.podId} withBorder p="xs" radius="sm"
+ style={{ borderLeft: '3px solid #fd7e14', background: dark ? 'rgba(253,126,20,0.05)' : '#fff8f0' }}>
+ <Group justify="space-between" wrap="nowrap">
+ <div>
+ <Text size="sm" fw={600}>{pod.podName}</Text>
+ <Text size="xs" c="dimmed">{bufferHours.toFixed(1)} h buffer / {pod.totalHours.toFixed(1)} h total</Text>
+ </div>
+ <Group gap="xs">
+ <Badge color="orange" variant="filled" size="sm">{bufferPct}% buffer</Badge>
+ <Button size="xs" variant="subtle" color="orange"
+ rightSection={<IconArrowRight size={12} />}
+ onClick={() => navigate('/reports/pod-hours')}>
+ View
+ </Button>
+ </Group>
+ </Group>
+ </Paper>
+ );
+ })}
+ </Stack>
+ </Widget>
+ );
+ })()}
 
  {/* ── Quick Links ── */}
  <Widget id="quick-links" title="Quick Links">

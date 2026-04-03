@@ -76,6 +76,7 @@ export interface DoraMetricValue {
   unit: string;
   details?: Record<string, unknown>[];
   specialReleases?: number;
+  hotfixes?: number;
   totalReleases?: number;
   totalIssues?: number;
   bugCount?: number;
@@ -86,7 +87,7 @@ export interface DoraMetricValue {
 
 export interface DoraMetricsData {
   lookbackMonths: number;
-  source: 'jira' | 'release_calendar';
+  source: 'jira' | 'db' | 'release_calendar';
   projectKeys?: string[];
   totalReleases: number;
   totalSprints: number;
@@ -125,7 +126,7 @@ export interface DoraMonthCard {
 
 export interface DoraMonthlyData {
   lookbackMonths: number;
-  source: 'jira' | 'release_calendar';
+  source: 'jira' | 'db' | 'release_calendar';
   months: DoraMonthCard[];
 }
 

@@ -167,6 +167,15 @@ public class ProjectService {
             cloned.setTechLeadHours(orig.getTechLeadHours());
             cloned.setContingencyPct(orig.getContingencyPct());
             cloned.setTargetRelease(orig.getTargetRelease());
+            cloned.setDevStartDate(orig.getDevStartDate());
+            cloned.setDevEndDate(orig.getDevEndDate());
+            cloned.setQaStartDate(orig.getQaStartDate());
+            cloned.setQaEndDate(orig.getQaEndDate());
+            cloned.setUatStartDate(orig.getUatStartDate());
+            cloned.setUatEndDate(orig.getUatEndDate());
+            cloned.setScheduleLocked(orig.getScheduleLocked());
+            cloned.setDevCount(orig.getDevCount());
+            cloned.setQaCount(orig.getQaCount());
             planningRepository.save(cloned);
         }
 
@@ -331,6 +340,21 @@ public class ProjectService {
             } else {
                 planning.setTargetRelease(null);                  // null = clear the release link
             }
+
+            // Phase scheduling dates
+            planning.setDevStartDate(req.devStartDate());
+            planning.setDevEndDate(req.devEndDate());
+            planning.setQaStartDate(req.qaStartDate());
+            planning.setQaEndDate(req.qaEndDate());
+            planning.setUatStartDate(req.uatStartDate());
+            planning.setUatEndDate(req.uatEndDate());
+            if (req.scheduleLocked() != null) {
+                planning.setScheduleLocked(req.scheduleLocked());
+            }
+
+            // Resource counts
+            if (req.devCount() != null) planning.setDevCount(req.devCount());
+            if (req.qaCount() != null) planning.setQaCount(req.qaCount());
 
             result.add(planningRepository.save(planning));
         }

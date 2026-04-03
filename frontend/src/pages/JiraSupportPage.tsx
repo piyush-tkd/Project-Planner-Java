@@ -244,15 +244,15 @@ function HBar({ data, color = '#339af0', height = 180, onBarClick }: {
 // ── Vertical Bar ───────────────────────────────────────────────────────────────
 
 function VBar({ data, onBarClick }: {
- data: { date: string; count: number }[];
- onBarClick?: (date: string) => void;
+ data: { date: string; label: string; count: number }[];
+ onBarClick?: (isoDate: string) => void;
 }) {
  if (data.every(d => d.count === 0)) return <Center h={160}><Text size="sm" c="dimmed">No tickets in this period</Text></Center>;
  return (
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={data} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" vertical={false} />
- <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+ <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
  <RTooltip formatter={(v: number) => [v, 'created']} contentStyle={{ fontSize: 12 }} />
  <Bar
@@ -1271,7 +1271,8 @@ export default function JiraSupportPage() {
  }, [autoRefresh, qc]);
 
  function handleRefresh() {
- qc.invalidateQueries({ queryKey: ['jira', 'support', 'snapshot'] });
+ // Invalidate all support data so snapshot, tickets, history and throughput all reload
+ qc.invalidateQueries({ queryKey: ['jira', 'support'] });
  }
 
  // ── Derived data ───────────────────────────────────────────────────────────
@@ -1328,7 +1329,8 @@ export default function JiraSupportPage() {
  buckets[d.toISOString().split('T')[0]] = 0;
  }
  allTickets.forEach(t => { if (t.created) { const k = t.created.split('T')[0]; if (k in buckets) buckets[k]++; } });
- return Object.entries(buckets).map(([d, c]) => ({ date: d.slice(5).replace('-', '/'), count: c }));
+ // date = ISO "YYYY-MM-DD" (used for filtering), label = "MM/DD" (displayed on axis)
+ return Object.entries(buckets).map(([d, c]) => ({ date: d, label: d.slice(5).replace('-', '/'), count: c }));
  }, [allTickets]);
 
  const labelOptions = useMemo(() => [
@@ -1543,7 +1545,7 @@ export default function JiraSupportPage() {
  <SimpleGrid cols={{ base: 1, md: multiBoard ? 2 : 1 }} spacing="sm">
  <ChartPanel title="Created — Last 14 Days">
  <VBar data={timelineData}
- onBarClick={date => setKpiModal({ title: `Created on ${date}`, tickets: allTickets.filter(t => t.created.startsWith(date)) })} />
+ onBarClick={isoDate => setKpiModal({ title: `Created on ${isoDate.slice(5).replace('-', '/')}`, tickets: allTickets.filter(t => t.created?.startsWith(isoDate)) })} />
  </ChartPanel>
  {multiBoard && (
  <ChartPanel title="Board Health Comparison">

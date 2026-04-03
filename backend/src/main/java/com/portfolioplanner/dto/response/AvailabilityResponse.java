@@ -7,6 +7,7 @@ public record AvailabilityResponse(
         Long resourceId,
         String resourceName,
         BigDecimal capacityFte,
-        Map<Integer, BigDecimal> months
+        Map<Integer, BigDecimal> months,
+        String location
 ) {
 }

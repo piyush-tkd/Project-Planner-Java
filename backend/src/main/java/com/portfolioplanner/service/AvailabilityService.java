@@ -48,7 +48,8 @@ public class AvailabilityService {
         return resources.stream()
                 .map(r -> new AvailabilityResponse(r.getId(), r.getName(),
                         fteByResource.getOrDefault(r.getId(), BigDecimal.ONE),
-                        byResource.getOrDefault(r.getId(), new HashMap<>())))
+                        byResource.getOrDefault(r.getId(), new HashMap<>()),
+                        r.getLocation() != null ? r.getLocation().name() : null))
                 .toList();
     }
 
@@ -66,7 +67,7 @@ public class AvailabilityService {
             months.put(a.getMonthIndex(), a.getHours());
         }
 
-        return new AvailabilityResponse(resource.getId(), resource.getName(), fte, months);
+        return new AvailabilityResponse(resource.getId(), resource.getName(), fte, months, resource.getLocation() != null ? resource.getLocation().name() : null);
     }
 
     @Transactional
@@ -95,6 +96,6 @@ public class AvailabilityService {
                 .map(ResourcePodAssignment::getCapacityFte)
                 .orElse(BigDecimal.ONE);
 
-        return new AvailabilityResponse(resource.getId(), resource.getName(), fte, resultMonths);
+        return new AvailabilityResponse(resource.getId(), resource.getName(), fte, resultMonths, resource.getLocation() != null ? resource.getLocation().name() : null);
     }
 }

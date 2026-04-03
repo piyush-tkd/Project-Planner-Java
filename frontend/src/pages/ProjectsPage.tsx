@@ -10,7 +10,7 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject } from '../api/projects';
 import { useEffortPatterns } from '../api/refData';
-import { useJiraProjectsSimple } from '../api/jira';
+import { useJiraAllProjectsSimple } from '../api/jira';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
 import { Priority, ProjectStatus } from '../types';
@@ -57,7 +57,7 @@ export default function ProjectsPage() {
   const createMutation = useCreateProject();
   const copyMutation = useCopyProject();
   const { data: effortPatterns } = useEffortPatterns();
-  const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraProjectsSimple();
+  const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraAllProjectsSimple();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
   const [modalOpen, setModalOpen] = useState(false);
