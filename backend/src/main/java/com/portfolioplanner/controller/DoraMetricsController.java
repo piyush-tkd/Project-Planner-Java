@@ -120,9 +120,18 @@ public class DoraMetricsController {
     private List<Map<String, Object>> computeMonthlyFromReleaseCalendar(int lookbackMonths) {
         LocalDate now = LocalDate.now();
         LocalDate cutoff = now.minusMonths(lookbackMonths);
+        // Deduplicate by release date — same date = one release event
         List<ReleaseCalendar> allReleases = releaseRepo.findAllByOrderByReleaseDateAsc().stream()
                 .filter(r -> !r.getReleaseDate().isBefore(cutoff) && !r.getReleaseDate().isAfter(now))
-                .collect(Collectors.toList());
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(
+                                ReleaseCalendar::getReleaseDate,
+                                r -> r,
+                                (a, b) -> a,
+                                LinkedHashMap::new
+                        ),
+                        map -> new ArrayList<>(map.values())
+                ));
 
         // Build month list oldest→newest
         List<String> monthKeys = new ArrayList<>();
@@ -149,31 +158,44 @@ public class DoraMetricsController {
             // Deployment Frequency
             int count = rels.size();
             String dfLevel = count >= 8 ? "elite" : count >= 4 ? "high" : count >= 1 ? "medium" : "low";
-            List<String> names = rels.stream().map(ReleaseCalendar::getName).collect(Collectors.toList());
-            card.put("deploymentFrequency", Map.of("value", count, "level", dfLevel, "unit", "releases", "releases", names));
+            List<String> names = rels.stream()
+                    .map(r -> r.getName() != null ? r.getName() : "(unnamed)")
+                    .collect(Collectors.toList());
+            Map<String, Object> dfMap = new LinkedHashMap<>();
+            dfMap.put("value", count); dfMap.put("level", dfLevel); dfMap.put("unit", "releases"); dfMap.put("releases", names);
+            card.put("deploymentFrequency", dfMap);
 
             // Lead Time
             List<Long> lts = rels.stream()
+                    .filter(r -> r.getCodeFreezeDate() != null && r.getReleaseDate() != null)
                     .map(r -> ChronoUnit.DAYS.between(r.getCodeFreezeDate(), r.getReleaseDate()))
                     .collect(Collectors.toList());
             double avgLt = lts.stream().mapToLong(Long::longValue).average().orElse(0);
             String ltLevel = avgLt <= 1 ? "elite" : avgLt <= 7 ? "high" : avgLt <= 30 ? "medium" : "low";
-            card.put("leadTimeForChanges", Map.of("value", Math.round(avgLt * 10.0) / 10.0, "level", ltLevel, "unit", "days", "sampleSize", lts.size()));
+            Map<String, Object> ltMap = new LinkedHashMap<>();
+            ltMap.put("value", Math.round(avgLt * 10.0) / 10.0); ltMap.put("level", ltLevel); ltMap.put("unit", "days"); ltMap.put("sampleSize", lts.size());
+            card.put("leadTimeForChanges", ltMap);
 
-            // CFR
-            long special = rels.stream().filter(r -> "SPECIAL".equals(r.getType())).count();
-            double cfr = count > 0 ? (double) special / count * 100 : 0;
+            // CFR — hotfix releases (name contains "hotfix") are failures; SPECIAL type = planned, not a failure
+            long hotfixes = rels.stream()
+                    .filter(r -> r.getName() != null && r.getName().toLowerCase().contains("hotfix"))
+                    .count();
+            double cfr = count > 0 ? (double) hotfixes / count * 100 : 0;
             String cfrLevel = cfr <= 5 ? "elite" : cfr <= 10 ? "high" : cfr <= 15 ? "medium" : "low";
-            card.put("changeFailureRate", Map.of("value", Math.round(cfr * 10.0) / 10.0, "level", cfrLevel, "unit", "%",
-                    "bugCount", special, "totalIssues", count));
+            Map<String, Object> cfrMonthMap = new LinkedHashMap<>();
+            cfrMonthMap.put("value", Math.round(cfr * 10.0) / 10.0); cfrMonthMap.put("level", cfrLevel); cfrMonthMap.put("unit", "%");
+            cfrMonthMap.put("bugCount", hotfixes); cfrMonthMap.put("totalIssues", count);
+            card.put("changeFailureRate", cfrMonthMap);
 
-            // MTTR
+            // MTTR — time from a hotfix to the next non-hotfix release
             double mttr = 0;
             int rec = 0;
             for (int i = 0; i < rels.size(); i++) {
-                if ("SPECIAL".equals(rels.get(i).getType())) {
+                boolean isHotfixI = rels.get(i).getName() != null && rels.get(i).getName().toLowerCase().contains("hotfix");
+                if (isHotfixI) {
                     for (int j = i + 1; j < rels.size(); j++) {
-                        if ("REGULAR".equals(rels.get(j).getType())) {
+                        boolean isHotfixJ = rels.get(j).getName() != null && rels.get(j).getName().toLowerCase().contains("hotfix");
+                        if (!isHotfixJ) {
                             mttr += ChronoUnit.DAYS.between(rels.get(i).getReleaseDate(), rels.get(j).getReleaseDate());
                             rec++;
                             break;
@@ -183,7 +205,10 @@ public class DoraMetricsController {
             }
             if (rec > 0) mttr /= rec;
             String mttrLevel = mttr < 1 ? "elite" : mttr <= 1 ? "high" : mttr <= 7 ? "medium" : "low";
-            card.put("meanTimeToRecovery", Map.of("value", Math.round(mttr * 10.0) / 10.0, "level", mttrLevel, "unit", "days", "recoveryEvents", rec));
+            Map<String, Object> mttrMonthMap = new LinkedHashMap<>();
+            mttrMonthMap.put("value", Math.round(mttr * 10.0) / 10.0); mttrMonthMap.put("level", mttrLevel);
+            mttrMonthMap.put("unit", "days"); mttrMonthMap.put("recoveryEvents", rec);
+            card.put("meanTimeToRecovery", mttrMonthMap);
 
             card.put("totalReleases", count);
             card.put("totalIssues", count);
@@ -206,14 +231,24 @@ public class DoraMetricsController {
                 .filter(r -> !r.getReleaseDate().isBefore(cutoff))
                 .collect(Collectors.toList());
 
+        // Deduplicate by release date — same date means one release event (all PODs deploy together)
         List<ReleaseCalendar> pastReleases = releases.stream()
                 .filter(r -> !r.getReleaseDate().isAfter(LocalDate.now()))
-                .collect(Collectors.toList());
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(
+                                ReleaseCalendar::getReleaseDate,
+                                r -> r,
+                                (a, b) -> a,  // keep first occurrence per date
+                                LinkedHashMap::new
+                        ),
+                        map -> new ArrayList<>(map.values())
+                ));
 
         // ── 1. Deployment Frequency ──────────────────────────────────────
         double deployFrequencyPerMonth = 0;
         String deployFrequencyLabel = "N/A";
         String deployFrequencyLevel = "low";
+        List<Map<String, Object>> deployDetails = new ArrayList<>();
 
         if (pastReleases.size() >= 2) {
             long daySpan = ChronoUnit.DAYS.between(
@@ -228,6 +263,17 @@ public class DoraMetricsController {
             else                                     { deployFrequencyLabel = "< Monthly"; deployFrequencyLevel = "low";    }
         }
 
+        // Build deploy details list
+        for (ReleaseCalendar r : pastReleases) {
+            if (r.getReleaseDate() == null) continue;
+            boolean isHotfix = r.getName() != null && r.getName().toLowerCase().contains("hotfix");
+            Map<String, Object> d = new LinkedHashMap<>();
+            d.put("release", r.getName() != null ? r.getName() : "(unnamed)");
+            d.put("releaseDate", r.getReleaseDate().toString());
+            d.put("type", isHotfix ? "HOTFIX" : (r.getType() != null ? r.getType() : "REGULAR"));
+            deployDetails.add(d);
+        }
+
         // ── 2. Lead Time for Changes ─────────────────────────────────────
         double avgLeadTimeDays = 0;
         String leadTimeLevel = "low";
@@ -236,14 +282,18 @@ public class DoraMetricsController {
         if (!pastReleases.isEmpty()) {
             List<Long> leadTimes = new ArrayList<>();
             for (ReleaseCalendar r : pastReleases) {
+                if (r.getCodeFreezeDate() == null || r.getReleaseDate() == null) continue;
                 long days = ChronoUnit.DAYS.between(r.getCodeFreezeDate(), r.getReleaseDate());
                 leadTimes.add(days);
-                leadTimeDetails.add(Map.of(
-                        "release", r.getName(),
-                        "codeFreezeDate", r.getCodeFreezeDate().toString(),
-                        "releaseDate", r.getReleaseDate().toString(),
-                        "leadTimeDays", days
-                ));
+                // Use HashMap (not Map.of) to safely handle any null values
+                boolean isHotfix = r.getName() != null && r.getName().toLowerCase().contains("hotfix");
+                Map<String, Object> detail = new LinkedHashMap<>();
+                detail.put("release", r.getName() != null ? r.getName() : "(unnamed)");
+                detail.put("codeFreezeDate", r.getCodeFreezeDate().toString());
+                detail.put("releaseDate", r.getReleaseDate().toString());
+                detail.put("leadTimeDays", days);
+                detail.put("isHotfix", isHotfix);
+                leadTimeDetails.add(detail);
             }
             avgLeadTimeDays = leadTimes.stream().mapToLong(Long::longValue).average().orElse(0);
 
@@ -254,9 +304,13 @@ public class DoraMetricsController {
         }
 
         // ── 3. Change Failure Rate ───────────────────────────────────────
-        long specialCount = pastReleases.stream().filter(r -> "SPECIAL".equals(r.getType())).count();
+        // A hotfix is a release whose name contains "hotfix" (case-insensitive).
+        // SPECIAL type = planned special release — treated the same as a regular release for CFR.
+        long hotfixCount = pastReleases.stream()
+                .filter(r -> r.getName() != null && r.getName().toLowerCase().contains("hotfix"))
+                .count();
         double changeFailureRate = pastReleases.isEmpty() ? 0 :
-                (double) specialCount / pastReleases.size() * 100;
+                (double) hotfixCount / pastReleases.size() * 100;
         String changeFailureLevel;
         if (changeFailureRate <= 5)        changeFailureLevel = "elite";
         else if (changeFailureRate <= 10)  changeFailureLevel = "high";
@@ -264,17 +318,20 @@ public class DoraMetricsController {
         else                               changeFailureLevel = "low";
 
         // ── 4. Mean Time to Recovery ─────────────────────────────────────
+        // MTTR = time from a hotfix release to the next non-hotfix release.
         double mttrDays = 0;
         String mttrLevel = "low";
         int recoveryCount = 0;
 
         for (int i = 0; i < pastReleases.size(); i++) {
-            if ("SPECIAL".equals(pastReleases.get(i).getType())) {
+            ReleaseCalendar ri = pastReleases.get(i);
+            boolean isHotfix = ri.getName() != null && ri.getName().toLowerCase().contains("hotfix");
+            if (isHotfix) {
                 for (int j = i + 1; j < pastReleases.size(); j++) {
-                    if ("REGULAR".equals(pastReleases.get(j).getType())) {
-                        mttrDays += ChronoUnit.DAYS.between(
-                                pastReleases.get(i).getReleaseDate(),
-                                pastReleases.get(j).getReleaseDate());
+                    ReleaseCalendar rj = pastReleases.get(j);
+                    boolean nextIsHotfix = rj.getName() != null && rj.getName().toLowerCase().contains("hotfix");
+                    if (!nextIsHotfix) {
+                        mttrDays += ChronoUnit.DAYS.between(ri.getReleaseDate(), rj.getReleaseDate());
                         recoveryCount++;
                         break;
                     }
@@ -294,18 +351,19 @@ public class DoraMetricsController {
             String monthKey = r.getReleaseDate().getYear() + "-" +
                     String.format("%02d", r.getReleaseDate().getMonthValue());
             monthlyReleaseCounts.merge(monthKey, 1, Integer::sum);
-            if ("SPECIAL".equals(r.getType())) {
+            boolean isHotfixR = r.getName() != null && r.getName().toLowerCase().contains("hotfix");
+            if (isHotfixR) {
                 monthlyFailures.merge(monthKey, 1, Integer::sum);
             }
         }
 
         List<Map<String, Object>> trend = new ArrayList<>();
         for (String month : monthlyReleaseCounts.keySet()) {
-            trend.add(Map.of(
-                    "month", month,
-                    "releases", monthlyReleaseCounts.getOrDefault(month, 0),
-                    "failures", monthlyFailures.getOrDefault(month, 0)
-            ));
+            Map<String, Object> trendEntry = new LinkedHashMap<>();
+            trendEntry.put("month", month);
+            trendEntry.put("releases", monthlyReleaseCounts.getOrDefault(month, 0));
+            trendEntry.put("failures", monthlyFailures.getOrDefault(month, 0));
+            trend.add(trendEntry);
         }
 
         // ── Sprint context ───────────────────────────────────────────────
@@ -320,34 +378,35 @@ public class DoraMetricsController {
         response.put("totalReleases", pastReleases.size());
         response.put("totalSprints", recentSprints.size());
 
-        response.put("deploymentFrequency", Map.of(
-                "value", Math.round(deployFrequencyPerMonth * 100.0) / 100.0,
-                "label", deployFrequencyLabel,
-                "level", deployFrequencyLevel,
-                "unit", "per month"
-        ));
+        Map<String, Object> deployFreqMap = new LinkedHashMap<>();
+        deployFreqMap.put("value", Math.round(deployFrequencyPerMonth * 100.0) / 100.0);
+        deployFreqMap.put("label", deployFrequencyLabel);
+        deployFreqMap.put("level", deployFrequencyLevel);
+        deployFreqMap.put("unit", "per month");
+        deployFreqMap.put("details", deployDetails);
+        response.put("deploymentFrequency", deployFreqMap);
 
-        response.put("leadTimeForChanges", Map.of(
-                "value", Math.round(avgLeadTimeDays * 10.0) / 10.0,
-                "level", leadTimeLevel,
-                "unit", "days",
-                "details", leadTimeDetails
-        ));
+        Map<String, Object> leadTimeMap = new LinkedHashMap<>();
+        leadTimeMap.put("value", Math.round(avgLeadTimeDays * 10.0) / 10.0);
+        leadTimeMap.put("level", leadTimeLevel);
+        leadTimeMap.put("unit", "days");
+        leadTimeMap.put("details", leadTimeDetails);
+        response.put("leadTimeForChanges", leadTimeMap);
 
-        response.put("changeFailureRate", Map.of(
-                "value", Math.round(changeFailureRate * 10.0) / 10.0,
-                "level", changeFailureLevel,
-                "unit", "%",
-                "specialReleases", specialCount,
-                "totalReleases", pastReleases.size()
-        ));
+        Map<String, Object> cfrMap = new LinkedHashMap<>();
+        cfrMap.put("value", Math.round(changeFailureRate * 10.0) / 10.0);
+        cfrMap.put("level", changeFailureLevel);
+        cfrMap.put("unit", "%");
+        cfrMap.put("hotfixes", hotfixCount);
+        cfrMap.put("totalReleases", (long) pastReleases.size());
+        response.put("changeFailureRate", cfrMap);
 
-        response.put("meanTimeToRecovery", Map.of(
-                "value", Math.round(mttrDays * 10.0) / 10.0,
-                "level", mttrLevel,
-                "unit", "days",
-                "recoveryEvents", recoveryCount
-        ));
+        Map<String, Object> mttrMap = new LinkedHashMap<>();
+        mttrMap.put("value", Math.round(mttrDays * 10.0) / 10.0);
+        mttrMap.put("level", mttrLevel);
+        mttrMap.put("unit", "days");
+        mttrMap.put("recoveryEvents", recoveryCount);
+        response.put("meanTimeToRecovery", mttrMap);
 
         response.put("trend", trend);
 

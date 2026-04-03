@@ -48,4 +48,5 @@ export interface AvailabilityData {
   resourceName: string;
   capacityFte: number;
   months: Record<number, number>;
+  location?: string | null;
 }

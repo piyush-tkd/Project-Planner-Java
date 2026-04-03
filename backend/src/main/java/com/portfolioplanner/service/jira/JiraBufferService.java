@@ -174,10 +174,23 @@ public class JiraBufferService {
         Set<String> configuredKeys = getConfiguredProjectKeys();
         if (configuredKeys.isEmpty()) return Collections.emptyList();
 
-        // Get all Jira display names that are mapped to resources
+        // Get all Jira display names that are mapped to resources.
+        // Source 1: jira_display_name column directly on the Resource entity
         Set<String> mappedJiraNames = resourceRepository.findByJiraDisplayNameIsNotNull().stream()
             .map(Resource::getJiraDisplayName)
-            .collect(Collectors.toSet());
+            .collect(Collectors.toCollection(HashSet::new));
+
+        // Source 2: jira_resource_mapping table (set via the Resource Mapping settings page).
+        // This is the source that was previously missed — causing mapped resources to still
+        // appear as buffer users.
+        try {
+            jdbcTemplate.queryForList(
+                "SELECT jira_display_name FROM jira_resource_mapping WHERE jira_display_name IS NOT NULL",
+                String.class
+            ).forEach(mappedJiraNames::add);
+        } catch (Exception ex) {
+            log.warn("Could not query jira_resource_mapping for buffer exclusion: {}", ex.getMessage());
+        }
 
         String placeholders = configuredKeys.stream().map(k -> "?").collect(Collectors.joining(","));
         Object[] keys = configuredKeys.toArray();
@@ -224,9 +237,23 @@ public class JiraBufferService {
      */
     public BufferStats getBufferStats() {
         long totalResources = resourceRepository.count();
-        long mappedResources = resourceRepository.findByJiraDisplayNameIsNotNull().size();
+
+        // Count resources mapped via either source
+        Set<Long> mappedResourceIds = new HashSet<>();
+        resourceRepository.findByJiraDisplayNameIsNotNull()
+            .forEach(r -> mappedResourceIds.add(r.getId()));
+        try {
+            jdbcTemplate.queryForList(
+                "SELECT DISTINCT resource_id FROM jira_resource_mapping WHERE jira_display_name IS NOT NULL",
+                Long.class
+            ).forEach(mappedResourceIds::add);
+        } catch (Exception ex) {
+            log.warn("Could not query jira_resource_mapping for stats: {}", ex.getMessage());
+        }
+
+        long mappedResources   = mappedResourceIds.size();
         long unmappedResources = totalResources - mappedResources;
-        long bufferCount = getBufferUsers().size();
+        long bufferCount       = getBufferUsers().size();
         return new BufferStats(totalResources, mappedResources, unmappedResources, bufferCount);
     }
 

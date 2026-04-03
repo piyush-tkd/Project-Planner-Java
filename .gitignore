@@ -19,6 +19,7 @@ backend/src/main/resources/application-local.properties
 backend/target/
 frontend/node_modules/
 frontend/dist/
+frontend/tsconfig.tsbuildinfo
 "HTML - Project Planner/deploy/tests/node_modules/"
 
 # Test coverage
@@ -27,5 +28,4 @@ backend/target/site/
 
 # Logs
 *.log
-.claude/
 .claude/

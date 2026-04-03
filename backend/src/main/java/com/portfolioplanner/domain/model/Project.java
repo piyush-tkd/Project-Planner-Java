@@ -66,6 +66,19 @@ public class Project {
     @Column(name = "client", length = 150)
     private String client;
 
+    // ── Project-level milestone dates ────────────────────────────────────────
+    @Column(name = "e2e_start_date")
+    private LocalDate e2eStartDate;
+
+    @Column(name = "e2e_end_date")
+    private LocalDate e2eEndDate;
+
+    @Column(name = "code_freeze_date")
+    private LocalDate codeFreezeDateMilestone;
+
+    @Column(name = "release_date")
+    private LocalDate releaseDateMilestone;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

@@ -169,8 +169,9 @@ export default function ResourcePodMatrixPage() {
  {podName}
  </Table.Td>
  {Array.from({ length: 12 }).map((_, i) => {
- const data = getMonthData(resource.resourceId, i);
- const isCurrentMonth = i === currentMonthIndex;
+ const monthIdx = i + 1;
+ const data = getMonthData(resource.resourceId, monthIdx);
+ const isCurrentMonth = monthIdx === currentMonthIndex;
  const bgColor = isCurrentMonth ? AQUA : 'white';
 
  if (!data || data.utilizationPct === 0) {
@@ -211,7 +212,7 @@ export default function ResourcePodMatrixPage() {
  resourceName: resource.resourceName,
  resourceId: resource.resourceId,
  podName,
- monthIndex: i,
+ monthIndex: monthIdx,
  allocatedHours: data.allocatedHours,
  availableHours: data.availableHours,
  utilizationPct: data.utilizationPct,
@@ -305,7 +306,8 @@ export default function ResourcePodMatrixPage() {
  POD
  </Table.Th>
  {Array.from({ length: 12 }).map((_, i) => {
- const isCurrentMonth = i === currentMonthIndex;
+ const monthIdx = i + 1;
+ const isCurrentMonth = monthIdx === currentMonthIndex;
  return (
  <Table.Th
  key={i}
@@ -317,7 +319,7 @@ export default function ResourcePodMatrixPage() {
  fontWeight: 600,
  }}
  >
- {monthLabels[i]}
+ {monthLabels[monthIdx]}
  </Table.Th>
  );
  })}

@@ -71,10 +71,13 @@ fi
 EXCLUDES=(
   ".git"
   ".gitignore"
+  ".claude"
+  ".idea"
+  ".vscode"
   "node_modules"
   "frontend/dist"
-  "frontend/.vite"
   "frontend/node_modules"
+  "frontend/coverage"
   "backend/target"
   "backend/.mvn/wrapper/*.jar"
   "*.class"
@@ -93,12 +96,14 @@ EXCLUDES=(
   "Thumbs.db"
   "*.log"
   "*.tmp"
-  "sync-to-ado.sh"       # don't copy this script itself
-  "DEPLOYMENT.md"        # optional: remove if you want these in ADO too
+  "sync-to-ado.sh"             # don't copy this script itself
+  "Sync to ADO.command"        # macOS double-click launcher — personal only
+  "DEPLOYMENT.md"              # optional: remove if you want these in ADO too
   "DEPLOYMENT_NO_DOCKER.md"
+  "PARKING_LOT.md"
   "sample files"
   "generate_test_excels.py"
-  ".env.example"         # handled separately below — first-time only
+  ".env.example"               # handled separately below — first-time only
 )
 
 # Build rsync --exclude flags
@@ -218,8 +223,5 @@ if ! $DO_COMMIT; then
   echo ""
   echo "  Or re-run this script with:  ./sync-to-ado.sh --commit --push"
 fi
-
-##  cd "/Users/piyushbaheti/Project Planner"
-## ./sync-to-ado.sh --commit --push --message="your message"
 
 echo ""

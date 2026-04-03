@@ -145,11 +145,21 @@ public class JiraController {
 
     /**
      * Lightweight project list — just key + name, no epics or labels.
-     * Used by the Settings board-picker to avoid loading all epic/label data.
+     * Returns only POD-board-mapped projects — used in filter dropdowns on data pages.
      */
     @GetMapping("/projects/simple")
     public ResponseEntity<List<SimpleProject>> getProjectsSimple() {
         return ResponseEntity.ok(actualsService.getSimpleProjects());
+    }
+
+    /**
+     * Returns all Jira projects visible to the configured account.
+     * Used in settings pages where the full project list is needed
+     * (board-picker, project linking).
+     */
+    @GetMapping("/projects/all-simple")
+    public ResponseEntity<List<SimpleProject>> getAllProjectsSimple() {
+        return ResponseEntity.ok(actualsService.getAllSimpleProjects());
     }
 
     /**

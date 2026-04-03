@@ -1,25 +1,28 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
- Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip,
+ Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent } from '@tabler/icons-react';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import { useProject, useProjects, useUpdateProject, useDeleteProject, useProjectPodPlannings, useUpdatePodPlannings, useCopyProject } from '../api/projects';
+import { usePhaseSchedules, useUpdatePhaseSchedules, useSchedulingRules, useUpdateSchedulingRules } from '../api/scheduling';
 import { usePods } from '../api/pods';
 import { useEffortPatterns } from '../api/refData';
 import { useReleases } from '../api/releases';
 import { Priority, ProjectStatus } from '../types';
-import type { ProjectRequest, ProjectPodPlanningRequest } from '../types';
+import type { ProjectRequest, ProjectPodPlanningRequest, PhaseScheduleRequest, SchedulingRulesResponse } from '../types';
 import { deriveTshirtSize } from '../types/project';
+import { TimelineSlider, phasesFromSchedules, phasesToRequests, SchedulingRulesPanel, CapacityPanel } from '../components/scheduling';
+import type { PhaseBar } from '../components/scheduling';
 import StatusBadge from '../components/common/StatusBadge';
 import PriorityBadge from '../components/common/PriorityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
@@ -63,6 +66,10 @@ function PodPlanForm({ plan, setPlan, releaseOptions, patternOptions }: {
  {' '}· Size: <Badge variant="light" size="sm">{deriveTshirtSize(withContingency)}</Badge>
  </Text>
  )}
+ <Group grow>
+ <NumberInput label="Dev Resources" description="Number of developers" value={plan.devCount ?? 1} onChange={v => setPlan({ ...plan, devCount: toNum(v) || 1 })} min={1} max={20} />
+ <NumberInput label="QA Resources" description="Number of QA engineers" value={plan.qaCount ?? 1} onChange={v => setPlan({ ...plan, qaCount: toNum(v) || 1 })} min={1} max={20} />
+ </Group>
  <Select
  label="Target Release"
  data={releaseOptions}
@@ -93,6 +100,8 @@ const emptyPlan = (): ProjectPodPlanningRequest => ({
  effortPattern: null,
  podStartMonth: null,
  durationOverride: null,
+ devCount: 1,
+ qaCount: 1,
 });
 
 export default function ProjectDetailPage() {
@@ -109,6 +118,146 @@ export default function ProjectDetailPage() {
  const updatePlannings = useUpdatePodPlannings();
  const deleteProject = useDeleteProject();
  const copyProject = useCopyProject();
+
+ // ── Phase Scheduling ──────────────────────────────────────────────────
+ const { data: phaseSchedules } = usePhaseSchedules(projectId);
+ const { data: schedulingRules } = useSchedulingRules(projectId);
+ const updatePhaseSchedules = useUpdatePhaseSchedules();
+ const updateSchedulingRules = useUpdateSchedulingRules();
+
+ const [timelinePhases, setTimelinePhases] = useState<PhaseBar[]>([]);
+ const [showTimeline, setShowTimeline] = useState(false);
+ const [localRules, setLocalRules] = useState<SchedulingRulesResponse | null>(null);
+
+ // Sync phase data from server
+ useMemo(() => {
+   if (phaseSchedules && phaseSchedules.length > 0) {
+     const bars = phasesFromSchedules(phaseSchedules);
+     if (bars.length > 0) {
+       setTimelinePhases(bars);
+       setShowTimeline(true);
+     }
+   }
+ }, [phaseSchedules]);
+
+ // Sync rules from server
+ useMemo(() => {
+   if (schedulingRules) {
+     setLocalRules(schedulingRules);
+   }
+ }, [schedulingRules]);
+
+ const handleSaveTimeline = () => {
+   const phaseMap = phasesToRequests(timelinePhases);
+   const requests: PhaseScheduleRequest[] = Object.entries(phaseMap).map(([id, dates]) => ({
+     podPlanningId: Number(id),
+     ...dates,
+   }));
+   updatePhaseSchedules.mutate({ projectId, data: requests }, {
+     onSuccess: () => notifications.show({ title: 'Saved', message: 'Phase schedule updated', color: 'green' }),
+   });
+ };
+
+ const handleSaveRules = () => {
+   if (!localRules) return;
+   updateSchedulingRules.mutate({ projectId, data: {
+     qaLagDays: localRules.qaLagDays,
+     uatGapDays: localRules.uatGapDays,
+     uatDurationDays: localRules.uatDurationDays,
+     e2eGapDays: localRules.e2eGapDays,
+     e2eDurationDays: localRules.e2eDurationDays,
+     devParallelPct: localRules.devParallelPct,
+     qaParallelPct: localRules.qaParallelPct,
+     uatParallelPct: localRules.uatParallelPct,
+   }}, {
+     onSuccess: () => notifications.show({ title: 'Saved', message: 'Scheduling rules updated', color: 'green' }),
+   });
+ };
+
+ const handleApplyRules = () => {
+   if (!localRules || timelinePhases.length === 0) return;
+   // Auto-recalculate QA + UAT from DEV + rules
+   const grouped: Record<number, PhaseBar[]> = {};
+   for (const p of timelinePhases) {
+     if (!grouped[p.podPlanningId]) grouped[p.podPlanningId] = [];
+     grouped[p.podPlanningId].push(p);
+   }
+
+   const updated: PhaseBar[] = [];
+   for (const [, bars] of Object.entries(grouped)) {
+     const dev = bars.find(b => b.type === 'DEV');
+     if (!dev) { updated.push(...bars); continue; }
+
+     updated.push(dev);
+
+     const qaStart = new Date(dev.start);
+     qaStart.setDate(qaStart.getDate() + localRules.qaLagDays);
+     const devDays = Math.round((dev.end.getTime() - dev.start.getTime()) / 86400000);
+     const qaEnd = new Date(qaStart);
+     qaEnd.setDate(qaEnd.getDate() + Math.ceil(devDays * 0.6));
+
+     const qa = bars.find(b => b.type === 'QA');
+     if (qa) {
+       updated.push({ ...qa, start: qaStart, end: qaEnd });
+     }
+
+     const latestEnd = new Date(Math.max(dev.end.getTime(), qaEnd.getTime()));
+     const uatStart = new Date(latestEnd);
+     uatStart.setDate(uatStart.getDate() + localRules.uatGapDays);
+     const uatEnd = new Date(uatStart);
+     uatEnd.setDate(uatEnd.getDate() + localRules.uatDurationDays);
+
+     const uat = bars.find(b => b.type === 'UAT');
+     if (uat) {
+       updated.push({ ...uat, start: uatStart, end: uatEnd });
+     }
+   }
+
+   setTimelinePhases(updated);
+   notifications.show({ title: 'Applied', message: 'Rules applied to timeline', color: 'cyan' });
+ };
+
+ // Auto-apply rules when sliders change (skip initial sync from server)
+ const rulesInitialized = useRef(false);
+ useEffect(() => {
+   if (!localRules) return;
+   // Skip first render (initial sync from server)
+   if (!rulesInitialized.current) {
+     rulesInitialized.current = true;
+     return;
+   }
+   // Only apply if timeline is visible and has phases
+   if (showTimeline && timelinePhases.length > 0) {
+     // Inline the apply logic to avoid stale closure on handleApplyRules
+     const grouped: Record<number, PhaseBar[]> = {};
+     for (const p of timelinePhases) {
+       if (!grouped[p.podPlanningId]) grouped[p.podPlanningId] = [];
+       grouped[p.podPlanningId].push(p);
+     }
+     const updated: PhaseBar[] = [];
+     for (const [, bars] of Object.entries(grouped)) {
+       const dev = bars.find(b => b.type === 'DEV');
+       if (!dev) { updated.push(...bars); continue; }
+       updated.push(dev);
+       const qaStart = new Date(dev.start);
+       qaStart.setDate(qaStart.getDate() + localRules.qaLagDays);
+       const devDays = Math.round((dev.end.getTime() - dev.start.getTime()) / 86400000);
+       const qaEnd = new Date(qaStart);
+       qaEnd.setDate(qaEnd.getDate() + Math.ceil(devDays * 0.6));
+       const qa = bars.find(b => b.type === 'QA');
+       if (qa) updated.push({ ...qa, start: qaStart, end: qaEnd });
+       const latestEnd = new Date(Math.max(dev.end.getTime(), qaEnd.getTime()));
+       const uatStart = new Date(latestEnd);
+       uatStart.setDate(uatStart.getDate() + localRules.uatGapDays);
+       const uatEnd = new Date(uatStart);
+       uatEnd.setDate(uatEnd.getDate() + localRules.uatDurationDays);
+       const uat = bars.find(b => b.type === 'UAT');
+       if (uat) updated.push({ ...uat, start: uatStart, end: uatEnd });
+     }
+     setTimelinePhases(updated);
+   }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [localRules?.qaLagDays, localRules?.uatGapDays, localRules?.uatDurationDays, localRules?.e2eGapDays, localRules?.e2eDurationDays]);
 
  const { data: effortPatterns } = useEffortPatterns();
  const patternOptions = [
@@ -151,7 +300,7 @@ export default function ProjectDetailPage() {
  const [newPlan, setNewPlan] = useState<ProjectPodPlanningRequest>(emptyPlan());
  const [editingPodId, setEditingPodId] = useState<number | null>(null);
 
- const planningToRequest = (p: { podId: number; devHours: number; qaHours: number; bsaHours: number; techLeadHours: number; contingencyPct: number; targetReleaseId: number | null; effortPattern: string | null; podStartMonth: number | null; durationOverride: number | null; }): ProjectPodPlanningRequest => ({
+ const planningToRequest = (p: { podId: number; devHours: number; qaHours: number; bsaHours: number; techLeadHours: number; contingencyPct: number; targetReleaseId: number | null; effortPattern: string | null; podStartMonth: number | null; durationOverride: number | null; devCount?: number; qaCount?: number; }): ProjectPodPlanningRequest => ({
  podId: p.podId,
  devHours: p.devHours,
  qaHours: p.qaHours,
@@ -162,6 +311,8 @@ export default function ProjectDetailPage() {
  effortPattern: p.effortPattern,
  podStartMonth: p.podStartMonth,
  durationOverride: p.durationOverride,
+ devCount: p.devCount ?? 1,
+ qaCount: p.qaCount ?? 1,
  });
 
  const handleAddPod = () => {
@@ -320,6 +471,8 @@ export default function ProjectDetailPage() {
  <Table.Th>Contingency %</Table.Th>
  <Table.Th>Total (w/ contingency)</Table.Th>
  <Table.Th>Size</Table.Th>
+ <Table.Th>Devs</Table.Th>
+ <Table.Th>QAs</Table.Th>
  <Table.Th>Target Release</Table.Th>
  <Table.Th>Actions</Table.Th>
  </Table.Tr>
@@ -335,6 +488,8 @@ export default function ProjectDetailPage() {
  <Table.Td>{p.contingencyPct > 0 ? `${p.contingencyPct}%` : '-'}</Table.Td>
  <Table.Td fw={500}>{p.totalHoursWithContingency}h</Table.Td>
  <Table.Td><Badge variant="light">{deriveTshirtSize(p.totalHoursWithContingency)}</Badge></Table.Td>
+ <Table.Td>{p.devCount || 1}</Table.Td>
+ <Table.Td>{p.qaCount || 1}</Table.Td>
  <Table.Td>{p.targetReleaseName ?? '-'}</Table.Td>
  <Table.Td>
  <Group gap="xs">
@@ -350,7 +505,7 @@ export default function ProjectDetailPage() {
  ))}
  {(plannings ?? []).length === 0 && (
  <Table.Tr>
- <Table.Td colSpan={10}>
+ <Table.Td colSpan={12}>
  <Text ta="center" c="dimmed" py="md">No PODs assigned yet</Text>
  </Table.Td>
  </Table.Tr>
@@ -358,6 +513,113 @@ export default function ProjectDetailPage() {
  </Table.Tbody>
  </Table>
 
+ {/* ── Phase Timeline ──────────────────────────────────────────────── */}
+ <Divider my="sm" />
+ <Group justify="space-between">
+   <Group gap="xs">
+     <IconCalendarEvent size={20} style={{ color: AQUA }} />
+     <Title order={3}>Phase Timeline</Title>
+   </Group>
+   <Group gap="xs">
+     {!showTimeline && (plannings ?? []).length > 0 && (
+       <Button
+         variant="light"
+         size="xs"
+         leftSection={<IconCalendarEvent size={14} />}
+         onClick={() => {
+           // Initialize timeline from plannings with capacity-aware durations
+           const today = new Date();
+           const HPD = 6; // hours per day
+           const bars: PhaseBar[] = [];
+           const devPPct = (localRules?.devParallelPct ?? 70) / 100;
+           const qaPPct = (localRules?.qaParallelPct ?? 50) / 100;
+           for (const p of (plannings ?? [])) {
+             const devN = p.devCount || 1;
+             const devStart = p.devStartDate ? new Date(p.devStartDate + 'T00:00:00') : new Date(today);
+             // Capacity-aware: seqDays + parallelDays
+             const devSeqDays = (p.devHours * (1 - devPPct)) / HPD;
+             const devParDays = (p.devHours * devPPct) / (devN * HPD);
+             const devDays = Math.max(3, Math.ceil(devSeqDays + devParDays));
+             const devEnd = p.devEndDate ? new Date(p.devEndDate + 'T00:00:00') : new Date(devStart.getTime() + devDays * 86400000);
+             bars.push({ podPlanningId: p.id, podId: p.podId, podName: p.podName, type: 'DEV', start: devStart, end: devEnd, locked: false });
+
+             if (p.qaHours > 0) {
+               const qaN = p.qaCount || 1;
+               const qaLag = localRules?.qaLagDays ?? 7;
+               const qaStart = p.qaStartDate ? new Date(p.qaStartDate + 'T00:00:00') : new Date(devStart.getTime() + qaLag * 86400000);
+               const qaSeqDays = (p.qaHours * (1 - qaPPct)) / HPD;
+               const qaParDays = (p.qaHours * qaPPct) / (qaN * HPD);
+               const qaDays = Math.max(2, Math.ceil(qaSeqDays + qaParDays));
+               const qaEnd = p.qaEndDate ? new Date(p.qaEndDate + 'T00:00:00') : new Date(qaStart.getTime() + qaDays * 86400000);
+               bars.push({ podPlanningId: p.id, podId: p.podId, podName: p.podName, type: 'QA', start: qaStart, end: qaEnd, locked: false });
+             }
+
+             const uatGap = localRules?.uatGapDays ?? 1;
+             const uatDur = localRules?.uatDurationDays ?? 5;
+             const latestEnd = bars.filter(b => b.podPlanningId === p.id && (b.type === 'DEV' || b.type === 'QA')).reduce((max, b) => Math.max(max, b.end.getTime()), 0);
+             const uatStart = p.uatStartDate ? new Date(p.uatStartDate + 'T00:00:00') : new Date(latestEnd + uatGap * 86400000);
+             const uatEnd = p.uatEndDate ? new Date(p.uatEndDate + 'T00:00:00') : new Date(uatStart.getTime() + uatDur * 86400000);
+             bars.push({ podPlanningId: p.id, podId: p.podId, podName: p.podName, type: 'UAT', start: uatStart, end: uatEnd, locked: false });
+           }
+           setTimelinePhases(bars);
+           setShowTimeline(true);
+         }}
+       >
+         Initialize Timeline
+       </Button>
+     )}
+     {showTimeline && (
+       <Button size="xs" onClick={handleSaveTimeline} loading={updatePhaseSchedules.isPending}>
+         Save Timeline
+       </Button>
+     )}
+   </Group>
+ </Group>
+
+ {showTimeline && timelinePhases.length > 0 && (
+   <Stack gap="md">
+     <TimelineSlider
+       phases={timelinePhases}
+       onPhasesChange={setTimelinePhases}
+       rules={localRules}
+       projectStartDate={project.startDate ? new Date(project.startDate + 'T00:00:00') : undefined}
+       projectEndDate={project.targetDate ? new Date(project.targetDate + 'T00:00:00') : undefined}
+     />
+
+     {localRules && (
+       <SchedulingRulesPanel
+         rules={localRules}
+         onChange={(partial) => setLocalRules(prev => prev ? { ...prev, ...partial } : prev)}
+         onApply={handleApplyRules}
+         saving={updateSchedulingRules.isPending}
+       />
+     )}
+
+     {localRules && (plannings ?? []).length > 0 && (
+       <CapacityPanel
+         plannings={plannings ?? []}
+         rules={localRules}
+         projectStartDate={project.startDate}
+         projectTargetDate={project.targetDate}
+       />
+     )}
+
+     <Group gap="sm" mt={4}>
+       <Button size="xs" variant="light" onClick={handleSaveRules} loading={updateSchedulingRules.isPending} disabled={!localRules}>
+         Save Rules
+       </Button>
+       <Button size="xs" variant="subtle" color="gray" onClick={() => setShowTimeline(false)}>
+         Hide Timeline
+       </Button>
+     </Group>
+   </Stack>
+ )}
+
+ {!showTimeline && (plannings ?? []).length === 0 && (
+   <Text size="sm" c="dimmed" ta="center" py="md">Add PODs to enable phase scheduling timeline</Text>
+ )}
+
+ <Divider my="sm" />
  <Group>
  <Button color="red" variant="outline" onClick={handleDeleteProject}>Delete Project</Button>
  </Group>
@@ -404,7 +666,13 @@ export default function ProjectDetailPage() {
  {/* Edit POD Modal */}
  <Modal opened={editPlanModal} onClose={() => setEditPlanModal(false)} title="Edit POD Assignment" size="md">
  <Stack>
- <Text fw={500} size="sm">POD: {(pods ?? []).find(p => p.id === editingPodId)?.name}</Text>
+ <Select
+ label="POD"
+ data={podOptions}
+ value={newPlan.podId ? String(newPlan.podId) : null}
+ onChange={v => setNewPlan({ ...newPlan, podId: Number(v) })}
+ required
+ />
  <PodPlanForm plan={newPlan} setPlan={setNewPlan} releaseOptions={releaseOptions} patternOptions={patternOptions} />
  <Button onClick={handleEditPlan} loading={updatePlannings.isPending}>Save</Button>
  </Stack>

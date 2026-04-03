@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Title, Text, Group, Select, Table, TextInput,
   Stack, SimpleGrid, ScrollArea, ThemeIcon, SegmentedControl,
-  Tooltip, Modal, Badge, Paper, Loader,
+  Tooltip, Modal, Badge, Paper, Loader, Box, UnstyledButton,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -84,12 +84,12 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => ({
 }));
 
 const METRIC_OPTIONS: { value: MetricView; label: string }[] = [
-  { value: 'hours', label: 'Hours Logged' },
+  { value: 'hours',   label: 'Hours Logged' },
   { value: 'dollars', label: 'Dollar Value' },
   { value: 'stories', label: 'Stories' },
-  { value: 'bugs', label: 'Bugs' },
-  { value: 'issues', label: 'Total Issues' },
-  { value: 'sp', label: 'Story Points' },
+  { value: 'bugs',    label: 'Bugs' },
+  { value: 'issues',  label: 'Total Issues' },
+  { value: 'sp',      label: 'Story Points' },
 ];
 
 // ── Issue type / status styling ─────────────────────────────────────────
@@ -113,12 +113,13 @@ function issueTypeStyle(t: string) {
 
 // ── Chart colors ────────────────────────────────────────────────────────
 const CHART_COLORS = {
-  hours: '#20c997',
+  hours:   '#20c997',
   dollars: '#40c057',
   stories: '#5c7cfa',
-  bugs: '#fa5252',
-  sp: '#fd7e14',
-  issues: '#339af0',
+  bugs:    '#fa5252',
+  sp:      '#fd7e14',
+  issues:  '#339af0',
+  commits: '#ae3ec9',
 };
 
 export default function ResourcePerformancePage() {
@@ -204,7 +205,7 @@ export default function ResourcePerformancePage() {
       stories: `rgba(92,124,250,${alpha})`,
       bugs: `rgba(250,82,82,${alpha})`,
       sp: `rgba(253,126,20,${alpha})`,
-      issues: `rgba(34,139,230,${alpha})`,
+      issues:  `rgba(34,139,230,${alpha})`,
     };
     return colors[metric];
   }
@@ -267,7 +268,7 @@ export default function ResourcePerformancePage() {
 
       {/* KPI Summary Cards */}
       {data && (
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="sm">
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 7 }} spacing="sm">
           <SummaryCard
             title="Mapped Resources"
             value={`${data.mappedResources} / ${data.totalResources}`}
@@ -364,20 +365,20 @@ export default function ResourcePerformancePage() {
                   </Table.Td>
 
                   {/* Resource name — clickable for drilldown */}
-                  <Table.Td style={{ position: 'sticky', left: 36, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1 }}>
+                  <Table.Td style={{ position: 'sticky', left: 36, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1, minWidth: 200 }}>
                     <Group
                       gap="xs" wrap="nowrap"
                       style={{ cursor: 'pointer' }}
                       onClick={() => handleDrilldown(r)}
                     >
-                      <ThemeIcon size={24} radius="xl" color="blue" variant="light">
+                      <ThemeIcon size={24} radius="xl" color="blue" variant="light" style={{ flexShrink: 0 }}>
                         <Text size="xs" fw={700} style={{ fontSize: 9 }}>{initials(r.resourceName)}</Text>
                       </ThemeIcon>
-                      <div>
-                        <Text size="xs" fw={600} style={{ lineHeight: 1.2, color: AQUA }}>
+                      <div style={{ minWidth: 0 }}>
+                        <Text size="xs" fw={600} style={{ lineHeight: 1.2, color: AQUA, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {r.resourceName}
                         </Text>
-                        <Text size="xs" c="dimmed" style={{ fontSize: 9 }}>{r.role} · {r.location}</Text>
+                        <Text size="xs" c="dimmed" style={{ fontSize: 9, whiteSpace: 'nowrap' }}>{r.role} · {r.location}</Text>
                       </div>
                     </Group>
                   </Table.Td>
@@ -563,6 +564,7 @@ export default function ResourcePerformancePage() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
+
         </SimpleGrid>
       )}
 
@@ -591,20 +593,57 @@ export default function ResourcePerformancePage() {
       >
         {/* Period selector inside modal */}
         {data && drillResource && (
-          <Group gap="xs" mb="md">
-            {(data.resources.find(r => r.resourceId === drillResource.id)?.periods ?? []).map(p => (
-              <Badge
-                key={p.periodIndex}
-                size="sm"
-                variant={drillPeriod.index === p.periodIndex ? 'filled' : 'light'}
-                color="blue"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setDrillPeriod({ index: p.periodIndex, label: p.periodLabel })}
-              >
-                {p.periodLabel.replace(` ${year}`, '')}
-              </Badge>
-            ))}
-          </Group>
+          <Box
+            mb="md"
+            style={{
+              display: 'flex',
+              gap: 4,
+              padding: '4px 6px',
+              background: 'rgba(45,204,211,0.06)',
+              borderRadius: 10,
+              border: `1px solid rgba(45,204,211,0.15)`,
+              flexWrap: 'wrap',
+            }}
+          >
+            {(data.resources.find(r => r.resourceId === drillResource.id)?.periods ?? []).map(p => {
+              const isActive = drillPeriod.index === p.periodIndex;
+              const label = p.periodLabel.replace(` ${year}`, '');
+              return (
+                <UnstyledButton
+                  key={p.periodIndex}
+                  onClick={() => setDrillPeriod({ index: p.periodIndex, label: p.periodLabel })}
+                  style={{
+                    padding: '5px 11px',
+                    borderRadius: 7,
+                    fontSize: 11,
+                    fontFamily: FONT_FAMILY,
+                    fontWeight: isActive ? 700 : 500,
+                    letterSpacing: '0.04em',
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    background: isActive ? AQUA : 'transparent',
+                    color: isActive ? '#fff' : 'rgba(45,204,211,0.75)',
+                    boxShadow: isActive ? `0 2px 8px ${AQUA}55` : 'none',
+                    border: isActive ? 'none' : '1px solid transparent',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = 'rgba(45,204,211,0.12)';
+                      (e.currentTarget as HTMLElement).style.color = AQUA;
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLElement).style.color = 'rgba(45,204,211,0.75)';
+                    }
+                  }}
+                >
+                  {label}
+                </UnstyledButton>
+              );
+            })}
+          </Box>
         )}
 
         {drillLoading && (

@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShellLayout from './components/layout/AppShell';
 import ProtectedRoute from './auth/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
@@ -9,19 +9,15 @@ import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import AvailabilityPage from './pages/AvailabilityPage';
 import OverridesPage from './pages/OverridesPage';
-import CapacityGapPage from './pages/reports/CapacityGapPage';
-import UtilizationHeatmapPage from './pages/reports/UtilizationHeatmapPage';
+import UtilizationCenterPage from './pages/reports/UtilizationCenterPage';
 import HiringForecastPage from './pages/reports/HiringForecastPage';
-import ConcurrencyRiskPage from './pages/reports/ConcurrencyRiskPage';
 import DeadlineGapPage from './pages/reports/DeadlineGapPage';
-import ResourceAllocationPage from './pages/reports/ResourceAllocationPage';
 import BudgetPage from './pages/reports/BudgetPage';
 import CapacityDemandPage from './pages/reports/CapacityDemandPage';
 import PodResourceSummaryPage from './pages/reports/PodResourceSummaryPage';
 import PodSplitsPage from './pages/reports/PodSplitsPage';
 import PodDetailPage from './pages/PodDetailPage';
 import ProjectPodMatrixPage from './pages/reports/ProjectPodMatrixPage';
-import ProjectGanttPage from './pages/reports/ProjectGanttPage';
 import PodCapacityPage from './pages/reports/PodCapacityPage';
 import JiraActualsPage from './pages/JiraActualsPage';
 import PodDashboardPage from './pages/PodDashboardPage';
@@ -42,13 +38,8 @@ import UserManagementPage from './pages/settings/UserManagementPage';
 import AuditLogPage from './pages/settings/AuditLogPage';
 import TablesPage from './pages/settings/TablesPage';
 import TeamCalendarPage from './pages/TeamCalendarPage';
-import PodProjectMatrixPage from './pages/reports/PodProjectMatrixPage';
-import SlackBufferPage from './pages/reports/SlackBufferPage';
-import ResourcePodMatrixPage from './pages/reports/ResourcePodMatrixPage';
 import OwnerDemandPage from './pages/reports/OwnerDemandPage';
-import CrossPodDependencyPage from './pages/reports/CrossPodDependencyPage';
 import ProjectHealthPage from './pages/reports/ProjectHealthPage';
-import ResourceROIPage from './pages/reports/ResourceROIPage';
 import ResourcePerformancePage from './pages/reports/ResourcePerformancePage';
 import SprintCalendarPage from './pages/SprintCalendarPage';
 import ReleaseCalendarPage from './pages/ReleaseCalendarPage';
@@ -65,8 +56,21 @@ import JiraAnalyticsPage from './pages/reports/JiraAnalyticsPage';
 import JiraDashboardBuilderPage from './pages/reports/JiraDashboardBuilderPage';
 import EngineeringProductivityPage from './pages/reports/EngineeringProductivityPage';
 import SidebarOrderPage from './pages/settings/SidebarOrderPage';
+import HolidayCalendarPage from './pages/settings/HolidayCalendarPage';
+import LeaveManagementPage from './pages/settings/LeaveManagementPage';
 import JiraResourceMappingPage from './pages/settings/JiraResourceMappingPage';
 import JiraReleaseMappingPage from './pages/settings/JiraReleaseMappingPage';
+import PortfolioHealthDashboardPage from './pages/reports/PortfolioHealthDashboardPage';
+import JiraPortfolioSyncPage from './pages/reports/JiraPortfolioSyncPage';
+import FinancialIntelligencePage from './pages/reports/FinancialIntelligencePage';
+import DeliveryPredictabilityPage from './pages/reports/DeliveryPredictabilityPage';
+import SmartNotificationsPage from './pages/reports/SmartNotificationsPage';
+import PodHoursPage from './pages/reports/PodHoursPage';
+import DependencyMapPage from './pages/reports/DependencyMapPage';
+import PortfolioTimelinePage from './pages/reports/PortfolioTimelinePage';
+import ResourceIntelligencePage from './pages/reports/ResourceIntelligencePage';
+import BudgetCapexPage from './pages/reports/BudgetCapexPage';
+import ProjectSignalsPage from './pages/reports/ProjectSignalsPage';
 
 
 export default function App() {
@@ -111,25 +115,21 @@ export default function App() {
           </Route>
 
           {/* ── Capacity Reports ─────────────────────────────── */}
-          <Route element={<ProtectedRoute pageKey="capacity_gap" />}>
-            <Route path="/reports/capacity-gap" element={<CapacityGapPage />} />
-          </Route>
-
+          {/* Merged Utilization Center (replaces capacity-gap, utilization, slack-buffer) */}
           <Route element={<ProtectedRoute pageKey="utilization" />}>
-            <Route path="/reports/utilization" element={<UtilizationHeatmapPage />} />
+            <Route path="/reports/utilization" element={<UtilizationCenterPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="slack_buffer" />}>
-            <Route path="/reports/slack-buffer" element={<SlackBufferPage />} />
-          </Route>
+          {/* Legacy redirects — keep old URLs working */}
+          <Route path="/reports/capacity-gap" element={<Navigate to="/reports/utilization" replace />} />
+          <Route path="/reports/slack-buffer" element={<Navigate to="/reports/utilization" replace />} />
 
           <Route element={<ProtectedRoute pageKey="hiring_forecast" />}>
             <Route path="/reports/hiring-forecast" element={<HiringForecastPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="concurrency_risk" />}>
-            <Route path="/reports/concurrency" element={<ConcurrencyRiskPage />} />
-          </Route>
+          {/* Concurrency Risk is now a tab inside UtilizationCenter — redirect legacy URL */}
+          <Route path="/reports/concurrency" element={<Navigate to="/reports/utilization" replace />} />
 
           <Route element={<ProtectedRoute pageKey="capacity_demand" />}>
             <Route path="/reports/capacity-demand" element={<CapacityDemandPage />} />
@@ -143,57 +143,73 @@ export default function App() {
             <Route path="/reports/pod-capacity" element={<PodCapacityPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="resource_pod_matrix" />}>
-            <Route path="/reports/resource-pod-matrix" element={<ResourcePodMatrixPage />} />
+          {/* Resource Intelligence — consolidates Allocation, POD Matrix, ROI, Forecast */}
+          <Route element={<ProtectedRoute pageKey="resource_intelligence" />}>
+            <Route path="/reports/resource-intelligence" element={<ResourceIntelligencePage />} />
           </Route>
+
+          {/* Legacy redirects for merged resource pages */}
+          <Route path="/reports/resource-pod-matrix"  element={<Navigate to="/reports/resource-intelligence" replace />} />
+          <Route path="/reports/resource-allocation"  element={<Navigate to="/reports/resource-intelligence" replace />} />
+          <Route path="/reports/resource-roi"         element={<Navigate to="/reports/resource-intelligence" replace />} />
+          <Route path="/reports/resource-forecast"    element={<Navigate to="/reports/resource-intelligence" replace />} />
 
           {/* ── Portfolio Analysis ───────────────────────────── */}
           <Route element={<ProtectedRoute pageKey="project_health" />}>
             <Route path="/reports/project-health" element={<ProjectHealthPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="cross_pod_deps" />}>
-            <Route path="/reports/cross-pod" element={<CrossPodDependencyPage />} />
+          {/* Dependency Map — consolidates Cross-POD + Team Dependencies */}
+          <Route element={<ProtectedRoute pageKey="dependency_map" />}>
+            <Route path="/reports/dependency-map" element={<DependencyMapPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="owner_demand" />}>
-            <Route path="/reports/owner-demand" element={<OwnerDemandPage />} />
+          {/* Legacy redirects for merged dependency pages */}
+          <Route path="/reports/cross-pod"              element={<Navigate to="/reports/dependency-map" replace />} />
+          <Route path="/reports/cross-team-dependency"  element={<Navigate to="/reports/dependency-map" replace />} />
+
+          {/* Portfolio Timeline — consolidates Roadmap + Gantt + Team Calendar */}
+          <Route element={<ProtectedRoute pageKey="portfolio_timeline" />}>
+            <Route path="/reports/portfolio-timeline" element={<PortfolioTimelinePage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="deadline_gap" />}>
-            <Route path="/reports/deadline-gap" element={<DeadlineGapPage />} />
+          {/* Legacy redirects for merged timeline pages */}
+          <Route path="/reports/roadmap-timeline" element={<Navigate to="/reports/portfolio-timeline" replace />} />
+          <Route path="/reports/gantt"            element={<Navigate to="/reports/portfolio-timeline" replace />} />
+
+          {/* Project Signals — consolidates Owner Demand + Deadline Gap + POD Splits */}
+          <Route element={<ProtectedRoute pageKey="project_signals" />}>
+            <Route path="/reports/project-signals" element={<ProjectSignalsPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="resource_allocation" />}>
-            <Route path="/reports/resource-allocation" element={<ResourceAllocationPage />} />
-          </Route>
+          {/* Legacy redirects for merged project-signal pages */}
+          <Route path="/reports/owner-demand" element={<Navigate to="/reports/project-signals" replace />} />
+          <Route path="/reports/deadline-gap" element={<Navigate to="/reports/project-signals" replace />} />
+          <Route path="/reports/pod-splits"   element={<Navigate to="/reports/project-signals" replace />} />
 
-          <Route element={<ProtectedRoute pageKey="pod_splits" />}>
-            <Route path="/reports/pod-splits" element={<PodSplitsPage />} />
-          </Route>
-
-          <Route element={<ProtectedRoute pageKey="pod_project_matrix" />}>
-            <Route path="/reports/pod-project-matrix" element={<PodProjectMatrixPage />} />
-          </Route>
-
+          {/* Merged POD·Project Matrix (grid + list tabs) */}
           <Route element={<ProtectedRoute pageKey="project_pod_matrix" />}>
             <Route path="/reports/project-pod-matrix" element={<ProjectPodMatrixPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="project_gantt" />}>
-            <Route path="/reports/gantt" element={<ProjectGanttPage />} />
+          {/* Legacy redirect from old separate grid page */}
+          <Route path="/reports/pod-project-matrix" element={<Navigate to="/reports/project-pod-matrix" replace />} />
+
+          {/* Budget & CapEx — consolidates Budget/Cost + CapEx/OpEx */}
+          <Route element={<ProtectedRoute pageKey="budget_capex" />}>
+            <Route path="/reports/budget-capex" element={<BudgetCapexPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="budget" />}>
-            <Route path="/reports/budget" element={<BudgetPage />} />
-          </Route>
-
-          <Route element={<ProtectedRoute pageKey="resource_roi" />}>
-            <Route path="/reports/resource-roi" element={<ResourceROIPage />} />
-          </Route>
+          {/* Legacy redirects for merged budget/capex pages */}
+          <Route path="/reports/budget" element={<Navigate to="/reports/budget-capex" replace />} />
+          <Route path="/jira-capex"     element={<Navigate to="/reports/budget-capex" replace />} />
 
           <Route element={<ProtectedRoute pageKey="resource_performance" />}>
             <Route path="/reports/resource-performance" element={<ResourcePerformancePage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="pod_hours" />}>
+            <Route path="/reports/pod-hours" element={<PodHoursPage />} />
           </Route>
 
           <Route element={<ProtectedRoute pageKey="dora_metrics" />}>
@@ -210,6 +226,27 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="engineering_productivity" />}>
             <Route path="/reports/engineering-productivity" element={<EngineeringProductivityPage />} />
+          </Route>
+
+          {/* ── Strategic Insights ────────────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="portfolio_health_dashboard" />}>
+            <Route path="/reports/portfolio-health-dashboard" element={<PortfolioHealthDashboardPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="jira_portfolio_sync" />}>
+            <Route path="/reports/jira-portfolio-sync" element={<JiraPortfolioSyncPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="financial_intelligence" />}>
+            <Route path="/reports/financial-intelligence" element={<FinancialIntelligencePage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="delivery_predictability" />}>
+            <Route path="/reports/delivery-predictability" element={<DeliveryPredictabilityPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="smart_notifications" />}>
+            <Route path="/reports/smart-notifications" element={<SmartNotificationsPage />} />
           </Route>
 
           {/* ── Integrations ─────────────────────────────────── */}
@@ -306,6 +343,14 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="sidebar_order" />}>
             <Route path="/settings/sidebar-order" element={<SidebarOrderPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="holiday_calendar" />}>
+            <Route path="/settings/holiday-calendar" element={<HolidayCalendarPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="leave_management" />}>
+            <Route path="/settings/leave-management" element={<LeaveManagementPage />} />
           </Route>
 
           {/* Admin-only pages — no pageKey needed (nav already hides them) */}

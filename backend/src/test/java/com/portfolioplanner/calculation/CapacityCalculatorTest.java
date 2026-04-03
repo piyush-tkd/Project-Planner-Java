@@ -105,7 +105,9 @@ class CapacityCalculatorTest {
                 Map.of(1L, asgn),
                 constAvail(res, 176),
                 List.of(),
-                bau
+                bau,
+                Map.of(),
+                Map.of()
             );
 
             BigDecimal cap = result.get(HOME_POD_ID).get(Role.DEVELOPER).get(1);
@@ -128,7 +130,9 @@ class CapacityCalculatorTest {
                 Map.of(1L, asgn),
                 constAvail(res, 176),
                 List.of(),
-                bau
+                bau,
+                Map.of(),
+                Map.of()
             );
 
             assertThat(result.get(HOME_POD_ID).get(Role.DEVELOPER).get(1))
@@ -151,7 +155,9 @@ class CapacityCalculatorTest {
                 Map.of(1L, asgn),
                 constAvail(res, 176),
                 List.of(),
-                bau
+                bau,
+                Map.of(),
+                Map.of()
             );
 
             assertThat(result.get(HOME_POD_ID).get(Role.QA).get(1))
@@ -170,6 +176,8 @@ class CapacityCalculatorTest {
                 Map.of(1L, asgn),
                 constAvail(res, 176),
                 List.of(),
+                Map.of(),
+                Map.of(),
                 Map.of()
             );
 
@@ -191,7 +199,8 @@ class CapacityCalculatorTest {
 
             var result = calculator.calculate(
                 List.of(res), Map.of(1L, asgn), avails, List.of(),
-                Map.of(HOME_POD_ID, Map.of(Role.DEVELOPER, BigDecimal.valueOf(20)))
+                Map.of(HOME_POD_ID, Map.of(Role.DEVELOPER, BigDecimal.valueOf(20))),
+                Map.of(), Map.of()
             );
 
             assertThat(result.get(HOME_POD_ID).get(Role.DEVELOPER)).doesNotContainKey(1);
@@ -208,7 +217,7 @@ class CapacityCalculatorTest {
 
             // Empty BAU map — should default to 20%
             var result = calculator.calculate(
-                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(), Map.of()
+                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(), Map.of(), Map.of(), Map.of()
             );
 
             // 176 × 1.0 × (1 - 0.20) = 140.80
@@ -243,7 +252,9 @@ class CapacityCalculatorTest {
                 Map.of(1L, asgn),
                 constAvail(res, 176),
                 List.of(split),
-                bau
+                bau,
+                Map.of(),
+                Map.of()
             );
 
             // Base = 176 × 1.0 = 176h
@@ -276,7 +287,7 @@ class CapacityCalculatorTest {
             TemporaryOverride split = override(res, destPod, 3, 4, BigDecimal.valueOf(40));
 
             var result = calculator.calculate(
-                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(split), bau
+                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(split), bau, Map.of(), Map.of()
             );
 
             // M1: no split — all 176 stays home
@@ -307,7 +318,7 @@ class CapacityCalculatorTest {
             TemporaryOverride split = override(res, destPod, 1, 1, BigDecimal.valueOf(50));
 
             var result = calculator.calculate(
-                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(split), bau
+                List.of(res), Map.of(1L, asgn), constAvail(res, 176), List.of(split), bau, Map.of(), Map.of()
             );
 
             // Home full without split = 176 × 0.85 = 149.60
@@ -345,7 +356,9 @@ class CapacityCalculatorTest {
                        2L, assignment(r2, homePod, BigDecimal.ONE)),
                 avails,
                 List.of(),
-                bau
+                bau,
+                Map.of(),
+                Map.of()
             );
 
             // M1: 176 + 160 = 336

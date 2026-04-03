@@ -47,6 +47,17 @@ export interface ProjectPodPlanningResponse {
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
+  // Phase scheduling
+  devStartDate: string | null;
+  devEndDate: string | null;
+  qaStartDate: string | null;
+  qaEndDate: string | null;
+  uatStartDate: string | null;
+  uatEndDate: string | null;
+  scheduleLocked: boolean;
+  // Resource counts
+  devCount: number;
+  qaCount: number;
 }
 
 export interface ProjectPodMatrixResponse {
@@ -88,6 +99,17 @@ export interface ProjectPodPlanningRequest {
   effortPattern: string | null;
   podStartMonth: number | null;
   durationOverride: number | null;
+  // Phase scheduling
+  devStartDate?: string | null;
+  devEndDate?: string | null;
+  qaStartDate?: string | null;
+  qaEndDate?: string | null;
+  uatStartDate?: string | null;
+  uatEndDate?: string | null;
+  scheduleLocked?: boolean;
+  // Resource counts
+  devCount?: number;
+  qaCount?: number;
 }
 
 // T-shirt size derived from total hours (display only)
@@ -132,4 +154,62 @@ export interface ReleaseCalendarRequest {
   codeFreezeDate: string;
   type: string;
   notes: string | null;
+}
+
+// ── Phase Scheduling Types ───────────────────────────────────────────────
+export interface PhaseScheduleResponse {
+  podPlanningId: number;
+  podId: number;
+  podName: string;
+  devStartDate: string | null;
+  devEndDate: string | null;
+  qaStartDate: string | null;
+  qaEndDate: string | null;
+  uatStartDate: string | null;
+  uatEndDate: string | null;
+  scheduleLocked: boolean;
+}
+
+export interface PhaseScheduleRequest {
+  podPlanningId: number;
+  devStartDate: string | null;
+  devEndDate: string | null;
+  qaStartDate: string | null;
+  qaEndDate: string | null;
+  uatStartDate: string | null;
+  uatEndDate: string | null;
+  scheduleLocked: boolean;
+}
+
+export interface SchedulingRulesResponse {
+  id: number | null;
+  projectId: number | null;
+  qaLagDays: number;
+  uatGapDays: number;
+  uatDurationDays: number;
+  e2eGapDays: number;
+  e2eDurationDays: number;
+  // Parallelization factors
+  devParallelPct: number;
+  qaParallelPct: number;
+  uatParallelPct: number;
+}
+
+export interface SchedulingRulesRequest {
+  qaLagDays?: number;
+  uatGapDays?: number;
+  uatDurationDays?: number;
+  e2eGapDays?: number;
+  e2eDurationDays?: number;
+  // Parallelization factors
+  devParallelPct?: number;
+  qaParallelPct?: number;
+  uatParallelPct?: number;
+}
+
+export interface ProjectMilestonesRequest {
+  e2eStartDate: string | null;
+  e2eEndDate: string | null;
+  codeFreezeDateMilestone: string | null;
+  releaseDateMilestone: string | null;
 }

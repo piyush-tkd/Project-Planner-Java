@@ -1,0 +1,489 @@
+import React, { useMemo } from 'react';
+import {
+  Title,
+  Stack,
+  SimpleGrid,
+  Card,
+  Text,
+  Group,
+  Badge,
+  Paper,
+  Table,
+  Tooltip,
+  ThemeIcon,
+  Progress,
+  RingProgress,
+  ScrollArea,
+} from '@mantine/core';
+import {
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartTooltip,
+  ResponsiveContainer,
+  Legend,
+  ComposedChart,
+  Line,
+} from 'recharts';
+import { IconCircleCheck, IconCircleX, IconAlertCircle, IconCircle } from '@tabler/icons-react';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
+import ChartCard from '../../components/common/ChartCard';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageError from '../../components/common/PageError';
+import { useProjects } from '../../api/projects';
+import { useProductivityMetrics, useDoraMetrics } from '../../api/reports';
+import { ProjectResponse } from '../../types/project';
+
+const LEVEL_COLORS: Record<string, string> = {
+  elite: '#40c057',
+  high: '#228be6',
+  medium: '#fcc419',
+  low: '#fa5252',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  COMPLETED: '#40c057',
+  ACTIVE: '#228be6',
+  IN_DISCOVERY: '#7950f2',
+  NOT_STARTED: '#868e96',
+  ON_HOLD: '#fd7e14',
+  CANCELLED: '#fa5252',
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  P0: '#fa5252',
+  P1: '#fd7e14',
+  P2: '#fcc419',
+  P3: '#228be6',
+};
+
+interface DoraMetric {
+  value: number | string;
+  level: string;
+  unit: string;
+}
+
+interface DoraMetrics {
+  deploymentFrequency: DoraMetric;
+  leadTimeForChanges: DoraMetric;
+  changeFailureRate: DoraMetric;
+  meanTimeToRecovery: DoraMetric;
+}
+
+interface ProductivityMetrics {
+  output?: {
+    completionRate?: number;
+    statusBreakdown?: Record<string, number>;
+  };
+}
+
+export const DeliveryPredictabilityPage: React.FC = () => {
+  const isDark = useDarkMode();
+  const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useProjects();
+  const { data: productivityData, isLoading: productivityLoading } = useProductivityMetrics(6);
+  const { data: doraData, isLoading: doraLoading } = useDoraMetrics(6);
+
+  const isLoading = projectsLoading || productivityLoading || doraLoading;
+  const error = projectsError;
+
+  const projects = useMemo(() => (Array.isArray(projectsData) ? projectsData : []), [projectsData]);
+
+  // Derived data
+  const completionStats = useMemo(() => {
+    const completed = projects.filter((p) => p.status === 'COMPLETED').length;
+    const total = projects.length;
+    const rate = total > 0 ? (completed / total) * 100 : 0;
+    return { completed, total, rate };
+  }, [projects]);
+
+  const statusBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    projects.forEach((p) => {
+      breakdown[p.status] = (breakdown[p.status] || 0) + 1;
+    });
+    return Object.entries(breakdown).map(([status, count]) => ({
+      name: status,
+      value: count,
+      fill: STATUS_COLORS[status] || '#999',
+    }));
+  }, [projects]);
+
+  const durationDistribution = useMemo(() => {
+    const buckets = {
+      '1-3mo': 0,
+      '4-6mo': 0,
+      '7-9mo': 0,
+      '10-12mo': 0,
+      '12+mo': 0,
+    };
+    projects.forEach((p) => {
+      const dur = p.durationMonths || 0;
+      if (dur <= 3) buckets['1-3mo']++;
+      else if (dur <= 6) buckets['4-6mo']++;
+      else if (dur <= 9) buckets['7-9mo']++;
+      else if (dur <= 12) buckets['10-12mo']++;
+      else buckets['12+mo']++;
+    });
+    return Object.entries(buckets).map(([range, count]) => ({ range, count }));
+  }, [projects]);
+
+  const projectsByClient = useMemo(() => {
+    const clientMap: Record<string, number> = {};
+    projects.forEach((p) => {
+      if (p.client) {
+        clientMap[p.client] = (clientMap[p.client] || 0) + 1;
+      }
+    });
+    return Object.entries(clientMap).map(([client, count]) => ({ client, count }));
+  }, [projects]);
+
+  const deliveryTrend = useMemo(() => {
+    const monthMap: Record<string, { created: number; completed: number }> = {};
+
+    projects.forEach((p) => {
+      const createdMonth = p.createdAt ? new Date(p.createdAt).toISOString().substring(0, 7) : null;
+      const completedMonth =
+        p.status === 'COMPLETED' && p.targetDate ? new Date(p.targetDate).toISOString().substring(0, 7) : null;
+
+      if (createdMonth) {
+        if (!monthMap[createdMonth]) monthMap[createdMonth] = { created: 0, completed: 0 };
+        monthMap[createdMonth].created++;
+      }
+
+      if (completedMonth) {
+        if (!monthMap[completedMonth]) monthMap[completedMonth] = { created: 0, completed: 0 };
+        monthMap[completedMonth].completed++;
+      }
+    });
+
+    return Object.entries(monthMap)
+      .sort(([monthA], [monthB]) => monthA.localeCompare(monthB))
+      .map(([month, data]) => ({
+        month: new Date(month + '-01').toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
+        created: data.created,
+        completed: data.completed,
+      }));
+  }, [projects]);
+
+  const sortedProjects = useMemo(() => {
+    const priorityOrder: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+    return [...projects].sort((a, b) => {
+      const priorityDiff = (priorityOrder[a.priority] ?? 999) - (priorityOrder[b.priority] ?? 999);
+      if (priorityDiff !== 0) return priorityDiff;
+      const dateA = a.targetDate ? new Date(a.targetDate).getTime() : Infinity;
+      const dateB = b.targetDate ? new Date(b.targetDate).getTime() : Infinity;
+      return dateA - dateB;
+    });
+  }, [projects]);
+
+  const getDeliveryStatus = (project: ProjectResponse) => {
+    if (project.status === 'COMPLETED') {
+      return { icon: IconCircleCheck, label: 'On Track', color: 'green' };
+    }
+    if (project.status === 'CANCELLED') {
+      return { icon: IconCircleX, label: 'Cancelled', color: 'red' };
+    }
+    if (project.targetDate) {
+      const targetTime = new Date(project.targetDate).getTime();
+      const now = Date.now();
+      if (targetTime < now && project.status !== 'COMPLETED') {
+        return { icon: IconAlertCircle, label: 'Late', color: 'yellow' };
+      }
+    }
+    return { icon: IconCircle, label: 'On Track', color: 'blue' };
+  };
+
+  const completionRateColor = useMemo(() => {
+    if (completionStats.rate > 70) return '#40c057';
+    if (completionStats.rate > 40) return '#fcc419';
+    return '#fa5252';
+  }, [completionStats.rate]);
+
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <PageError error={error} />;
+
+  return (
+    <Stack gap="lg" style={{ padding: '24px', fontFamily: FONT_FAMILY }}>
+      {/* Header */}
+      <div>
+        <Title order={1} style={{ color: isDark ? '#fff' : DEEP_BLUE, marginBottom: '8px' }}>
+          Delivery Predictability
+        </Title>
+        <Text size="sm" c="dimmed">
+          Confidence scoring, commitment tracking, and delivery analytics
+        </Text>
+      </div>
+
+      {/* DORA Snapshot */}
+      {doraData && (
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+            <Stack gap="xs">
+              <Text size="sm" fw={600} c="dimmed">
+                Deployment Frequency
+              </Text>
+              <Group justify="space-between" align="flex-end">
+                <div>
+                  <Text size="lg" fw={700}>
+                    {doraData.deploymentFrequency.value}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {doraData.deploymentFrequency.unit}
+                  </Text>
+                </div>
+                <Badge color={LEVEL_COLORS[doraData.deploymentFrequency.level]} variant="light">
+                  {doraData.deploymentFrequency.level}
+                </Badge>
+              </Group>
+            </Stack>
+          </Card>
+
+          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+            <Stack gap="xs">
+              <Text size="sm" fw={600} c="dimmed">
+                Lead Time
+              </Text>
+              <Group justify="space-between" align="flex-end">
+                <div>
+                  <Text size="lg" fw={700}>
+                    {doraData.leadTimeForChanges.value}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {doraData.leadTimeForChanges.unit}
+                  </Text>
+                </div>
+                <Badge color={LEVEL_COLORS[doraData.leadTimeForChanges.level]} variant="light">
+                  {doraData.leadTimeForChanges.level}
+                </Badge>
+              </Group>
+            </Stack>
+          </Card>
+
+          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+            <Stack gap="xs">
+              <Text size="sm" fw={600} c="dimmed">
+                Change Failure Rate
+              </Text>
+              <Group justify="space-between" align="flex-end">
+                <div>
+                  <Text size="lg" fw={700}>
+                    {doraData.changeFailureRate.value}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {doraData.changeFailureRate.unit}
+                  </Text>
+                </div>
+                <Badge color={LEVEL_COLORS[doraData.changeFailureRate.level]} variant="light">
+                  {doraData.changeFailureRate.level}
+                </Badge>
+              </Group>
+            </Stack>
+          </Card>
+
+          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+            <Stack gap="xs">
+              <Text size="sm" fw={600} c="dimmed">
+                MTTR
+              </Text>
+              <Group justify="space-between" align="flex-end">
+                <div>
+                  <Text size="lg" fw={700}>
+                    {doraData.meanTimeToRecovery.value}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {doraData.meanTimeToRecovery.unit}
+                  </Text>
+                </div>
+                <Badge color={LEVEL_COLORS[doraData.meanTimeToRecovery.level]} variant="light">
+                  {doraData.meanTimeToRecovery.level}
+                </Badge>
+              </Group>
+            </Stack>
+          </Card>
+        </SimpleGrid>
+      )}
+
+      {/* Delivery Confidence */}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+        <ChartCard title="Completion Rate">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+            <RingProgress
+              sections={[{ value: completionStats.rate, color: completionRateColor }]}
+              label={
+                <div style={{ textAlign: 'center' }}>
+                  <Text fw={700} size="xl">
+                    {completionStats.rate.toFixed(0)}%
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {completionStats.completed}/{completionStats.total}
+                  </Text>
+                </div>
+              }
+              size={200}
+              thickness={8}
+            />
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Status Distribution">
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={statusBreakdown}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {statusBreakdown.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Pie>
+              <RechartTooltip formatter={(value) => `${value} projects`} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </SimpleGrid>
+
+      {/* Commitment Tracking */}
+      <ChartCard title="Commitment Tracking">
+        <ScrollArea>
+          <Table striped highlightOnHover style={{ minWidth: '800px' }}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Project</Table.Th>
+                <Table.Th>Priority</Table.Th>
+                <Table.Th>Owner</Table.Th>
+                <Table.Th>Target Date</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>On Track</Table.Th>
+                <Table.Th>Duration</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sortedProjects.map((project) => {
+                const deliveryStatus = getDeliveryStatus(project);
+                const Icon = deliveryStatus.icon;
+                return (
+                  <Table.Tr key={project.id}>
+                    <Table.Td>
+                      <Text fw={500} size="sm">
+                        {project.name}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={PRIORITY_COLORS[project.priority] || '#999'} variant="light">
+                        {project.priority}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{project.owner || '-'}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {project.targetDate ? new Date(project.targetDate).toLocaleDateString() : '-'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={STATUS_COLORS[project.status] || '#999'} variant="light">
+                        {project.status}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Tooltip label={deliveryStatus.label}>
+                        <ThemeIcon color={deliveryStatus.color} variant="light" radius="md">
+                          <Icon size={16} />
+                        </ThemeIcon>
+                      </Tooltip>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{project.durationMonths}mo</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </ChartCard>
+
+      {/* Lead Time Analytics */}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+        <ChartCard title="Duration Distribution">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={durationDistribution}>
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
+              <XAxis dataKey="range" stroke={isDark ? '#999' : '#666'} />
+              <YAxis stroke={isDark ? '#999' : '#666'} />
+              <RechartTooltip contentStyle={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', border: `1px solid ${isDark ? '#333' : '#ddd'}` }} />
+              <Bar dataKey="count" fill={AQUA} radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Projects by Client">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={projectsByClient} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
+              <XAxis type="number" stroke={isDark ? '#999' : '#666'} />
+              <YAxis dataKey="client" type="category" width={100} stroke={isDark ? '#999' : '#666'} />
+              <RechartTooltip contentStyle={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', border: `1px solid ${isDark ? '#333' : '#ddd'}` }} />
+              <Bar dataKey="count" fill={DEEP_BLUE} radius={[0, 8, 8, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </SimpleGrid>
+
+      {/* Delivery Trend */}
+      <ChartCard title="Delivery Trend">
+        <ResponsiveContainer width="100%" height={350}>
+          <AreaChart data={deliveryTrend}>
+            <defs>
+              <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={AQUA} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={AQUA} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={DEEP_BLUE} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={DEEP_BLUE} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
+            <XAxis dataKey="month" stroke={isDark ? '#999' : '#666'} />
+            <YAxis stroke={isDark ? '#999' : '#666'} />
+            <RechartTooltip contentStyle={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', border: `1px solid ${isDark ? '#333' : '#ddd'}` }} />
+            <Legend />
+            <Area
+              type="monotone"
+              dataKey="created"
+              stroke={AQUA}
+              fillOpacity={1}
+              fill="url(#colorCreated)"
+              name="Created"
+            />
+            <Area
+              type="monotone"
+              dataKey="completed"
+              stroke={DEEP_BLUE}
+              fillOpacity={1}
+              fill="url(#colorCompleted)"
+              name="Completed"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </Stack>
+  );
+};
+
+export default DeliveryPredictabilityPage;

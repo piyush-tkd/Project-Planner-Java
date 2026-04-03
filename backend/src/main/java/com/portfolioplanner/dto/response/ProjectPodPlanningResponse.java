@@ -1,6 +1,7 @@
 package com.portfolioplanner.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public record ProjectPodPlanningResponse(
         Long id,
@@ -17,5 +18,16 @@ public record ProjectPodPlanningResponse(
         String targetReleaseName,
         String effortPattern,
         Integer podStartMonth,
-        Integer durationOverride
+        Integer durationOverride,
+        // Phase scheduling fields
+        LocalDate devStartDate,
+        LocalDate devEndDate,
+        LocalDate qaStartDate,
+        LocalDate qaEndDate,
+        LocalDate uatStartDate,
+        LocalDate uatEndDate,
+        Boolean scheduleLocked,
+        // Resource counts
+        Integer devCount,
+        Integer qaCount
 ) {}

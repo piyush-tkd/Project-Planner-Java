@@ -1,6 +1,7 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.service.jira.JiraCredentialsService;
+import com.portfolioplanner.service.jira.JiraClient;
 import com.portfolioplanner.domain.model.JiraPod;
 import com.portfolioplanner.domain.model.JiraPodBoard;
 import com.portfolioplanner.domain.repository.JiraPodRepository;
@@ -20,9 +21,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JiraPodController {
 
-    private final JiraPodService    podService;
-    private final JiraPodRepository podRepo;
+    private final JiraPodService         podService;
+    private final JiraPodRepository      podRepo;
     private final JiraCredentialsService creds;
+    private final JiraClient             jiraClient;
 
     // ── Metrics ────────────────────────────────────────────────────────
 
@@ -82,6 +84,10 @@ public class JiraPodController {
             }
             podRepo.save(pod);
         }
+
+        // Evict all Jira API caches so pages that cache data by project key
+        // (POD Dashboard, Jira Actuals, epics, sprints) pick up the new mapping immediately.
+        jiraClient.evictAllCaches();
 
         return ResponseEntity.ok(
             podRepo.findAllByOrderBySortOrderAscPodDisplayNameAsc().stream()

@@ -10,6 +10,7 @@ import com.portfolioplanner.domain.repository.ResourceRepository;
 import com.portfolioplanner.service.TimelineService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class JiraActualsService {
     private final TimelineService timelineService;
     private final JiraSyncedIssueRepository issueRepo;
     private final JiraIssueLabelRepository labelRepo;
+    private final JdbcTemplate jdbcTemplate;
 
     // Jira stores time in seconds; 1 FTE-day = 8 h = 28800 s
     private static final double SECONDS_PER_HOUR = 3600.0;
@@ -55,22 +57,77 @@ public class JiraActualsService {
     }
 
     /**
-     * Lightweight: returns only key + name for every Jira project.
-     * Used by the Settings board-picker — no epic/label data needed there.
-     * Queries from synced issues in the database instead of live API.
+     * Returns only the Jira projects that are currently mapped to a POD board.
+     * Used in filter dropdowns on data pages (Worklog Breakdown, etc.) so users
+     * only see the projects their PODs actually track.
      */
-    @Transactional(readOnly = true)
     public List<SimpleProject> getSimpleProjects() {
         if (!creds.isConfigured()) return List.of();
 
-        // Get distinct project keys from synced issues
-        return issueRepo.findAll().stream()
-                .map(JiraSyncedIssue::getProjectKey)
-                .filter(Objects::nonNull)
-                .distinct()
-                .sorted()
-                .map(key -> new SimpleProject(key, key))
-                .collect(Collectors.toList());
+        // Fetch the keys that are actively configured against POD boards
+        Set<String> podKeys;
+        try {
+            podKeys = new HashSet<>(jdbcTemplate.queryForList(
+                "SELECT DISTINCT jira_project_key FROM jira_pod_board WHERE jira_project_key IS NOT NULL",
+                String.class
+            ));
+        } catch (Exception e) {
+            log.warn("Could not query jira_pod_board for project keys: {}", e.getMessage());
+            return List.of();
+        }
+        if (podKeys.isEmpty()) return List.of();
+
+        // Enrich with display names from the Jira API cache (already paginated + cached)
+        try {
+            Map<String, String> nameByKey = jiraClient.getProjects().stream()
+                    .collect(Collectors.toMap(
+                        p -> String.valueOf(p.getOrDefault("key", "")),
+                        p -> String.valueOf(p.getOrDefault("name", p.getOrDefault("key", ""))),
+                        (a, b) -> a
+                    ));
+            return podKeys.stream()
+                    .filter(k -> !k.isBlank())
+                    .map(k -> new SimpleProject(k, nameByKey.getOrDefault(k, k)))
+                    .sorted(Comparator.comparing(SimpleProject::key))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("Could not fetch project names from Jira API, using keys as labels: {}", e.getMessage());
+            return podKeys.stream()
+                    .filter(k -> !k.isBlank())
+                    .sorted()
+                    .map(k -> new SimpleProject(k, k))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    /**
+     * Returns every Jira project visible to the configured account.
+     * Used in settings pages where the user needs to pick from the full project list
+     * (e.g., Jira Board Settings board-picker, Projects linking page).
+     */
+    public List<SimpleProject> getAllSimpleProjects() {
+        if (!creds.isConfigured()) return List.of();
+
+        try {
+            return jiraClient.getProjects().stream()
+                    .map(p -> {
+                        String key  = String.valueOf(p.getOrDefault("key",  ""));
+                        String name = String.valueOf(p.getOrDefault("name", key));
+                        return new SimpleProject(key, name);
+                    })
+                    .filter(sp -> !sp.key().isBlank())
+                    .sorted(Comparator.comparing(SimpleProject::key))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("Could not fetch all projects from Jira API, falling back to synced issues: {}", e.getMessage());
+            return issueRepo.findAll().stream()
+                    .map(JiraSyncedIssue::getProjectKey)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .sorted()
+                    .map(key -> new SimpleProject(key, key))
+                    .collect(Collectors.toList());
+        }
     }
 
     /**

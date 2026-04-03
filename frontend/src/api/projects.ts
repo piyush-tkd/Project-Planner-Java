@@ -21,7 +21,10 @@ export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: ProjectRequest) => apiClient.post('/projects', data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -30,7 +33,10 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: ProjectRequest }) =>
       apiClient.put(`/projects/${id}`, data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -38,7 +44,10 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => apiClient.delete(`/projects/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -46,7 +55,10 @@ export function useCopyProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => apiClient.post(`/projects/${id}/copy`, {}).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 

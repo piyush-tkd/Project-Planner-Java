@@ -27,20 +27,45 @@ public class JiraClient {
 
     // ── Projects ──────────────────────────────────────────────────────
 
-    /** Returns all Jira projects visible to the configured account. */
+    /**
+     * Returns ALL Jira projects visible to the configured account.
+     * Paginates through /rest/api/3/project/search (50 per page) until
+     * {@code isLast == true} so no projects are silently truncated.
+     */
     @SuppressWarnings("unchecked")
     @Cacheable("jira-projects")
     public List<Map<String, Object>> getProjects() {
-        String url = UriComponentsBuilder
-                .fromHttpUrl(creds.getBaseUrl() + "/rest/api/3/project/search")
-                .queryParam("maxResults", 100)
-                .queryParam("expand", "description")
-                .toUriString();
+        List<Map<String, Object>> all = new ArrayList<>();
+        int startAt    = 0;
+        int maxResults = 50;
 
-        Map<String, Object> resp = get(url, Map.class);
-        if (resp == null) return List.of();
-        Object values = resp.get("values");
-        return values instanceof List ? (List<Map<String, Object>>) values : List.of();
+        while (true) {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(creds.getBaseUrl() + "/rest/api/3/project/search")
+                    .queryParam("startAt",    startAt)
+                    .queryParam("maxResults", maxResults)
+                    .toUriString();
+
+            Map<String, Object> resp = get(url, Map.class);
+            if (resp == null) break;
+
+            Object values = resp.get("values");
+            if (values instanceof List) {
+                List<Map<String, Object>> page = (List<Map<String, Object>>) values;
+                all.addAll(page);
+                if (page.isEmpty()) break;
+            } else {
+                break;
+            }
+
+            // Jira sets isLast=true on the final page
+            Object isLast = resp.get("isLast");
+            if (Boolean.TRUE.equals(isLast)) break;
+
+            startAt += maxResults;
+        }
+
+        return all;
     }
 
     // ── Epics ─────────────────────────────────────────────────────────

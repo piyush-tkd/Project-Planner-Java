@@ -25,53 +25,61 @@ const EMPTY_PREFS: SidebarPrefs = { groupOrder: [], itemOrder: {} };
 /* ── Default nav structure (must match AppShell.tsx) ───────────────── */
 
 const DEFAULT_GROUPS: { label: string; items: string[] }[] = [
- {
- label: 'Dashboard',
- items: ['Dashboard', 'Ask AI'],
- },
- {
- label: 'Data Entry',
- items: [
- 'Resources', 'Projects', 'PODs', 'Availability', 'Overrides',
- 'Team Calendar', 'Sprint Calendar', 'Release Calendar', 'Sprint Planner',
- ],
- },
- {
- label: 'Capacity Reports',
- items: [
- 'Capacity Gap', 'Utilization', 'Slack & Buffer', 'Hiring Forecast',
- 'Concurrency Risk', 'Capacity vs Demand', 'POD Resources',
- 'POD Capacity', 'Resource · POD',
- ],
- },
- {
- label: 'Portfolio Analysis',
- items: [
- 'Project Health', 'Cross-POD Deps', 'Owner Demand', 'Deadline Gap',
- 'Resource Allocation', 'POD Splits', 'POD-Project Matrix',
- 'Project-POD Matrix', 'Project Gantt', 'Budget & Cost', 'Resource ROI',
- 'DORA Metrics', 'Jira Analytics', 'Dashboard Builder', 'Eng. Productivity',
- ],
- },
- {
- label: 'Integrations',
- items: [
- 'POD Dashboard', 'Releases', 'Release Notes', 'CapEx / OpEx',
- 'Jira Actuals', 'Support Queue', 'Worklog',
- ],
- },
- {
- label: 'Simulators',
- items: ['Timeline Simulator', 'Scenario Simulator'],
- },
- {
- label: 'Settings',
- items: [
- 'Timeline', 'Reference Data', 'Jira Credentials', 'Jira Boards',
- 'Release Versions', 'Support Boards', 'NLP / AI', 'NLP Optimizer',
- 'Feedback Hub', 'Error Log', 'Sidebar Order', 'Users', 'Audit Log', 'Tables',
- ],
- },
+  {
+    label: 'Dashboard',
+    items: ['Dashboard', 'Ask AI'],
+  },
+  {
+    label: 'Data Entry',
+    items: [
+      'Resources', 'Projects', 'PODs', 'Availability', 'Overrides',
+      'Team Calendar', 'Sprint Calendar', 'Release Calendar', 'Sprint Planner',
+      'Holiday Calendar',
+      'Leave Management',
+    ],
+  },
+  {
+    label: 'Capacity Reports',
+    items: [
+      'Utilization Center', 'Hiring Forecast', 'Capacity vs Demand',
+      'POD Resources', 'POD Capacity', 'Resource Intelligence', 'POD Work Hours',
+    ],
+  },
+  {
+    label: 'Portfolio Analysis',
+    items: [
+      'Project Health', 'Dependency Map', 'Portfolio Timeline',
+      'POD · Project Matrix', 'Budget & CapEx', 'Project Signals', 'Resource Performance',
+      'DORA Metrics', 'Jira Analytics', 'Dashboard Builder', 'Eng. Productivity',
+    ],
+  },
+  {
+    label: 'Strategic Insights',
+    items: [
+      'Portfolio Health', 'Jira Portfolio Sync', 'Financial Intelligence',
+      'Delivery Predict.', 'Smart Notifications',
+    ],
+  },
+  {
+    label: 'Integrations',
+    items: [
+      'POD Dashboard', 'Releases', 'Release Notes',
+      'Jira Actuals', 'Support Queue', 'Worklog',
+    ],
+  },
+  {
+    label: 'Simulators',
+    items: ['Timeline Simulator', 'Scenario Simulator'],
+  },
+  {
+    label: 'Settings',
+    items: [
+      'Timeline', 'Reference Data', 'Jira Credentials', 'Jira Boards',
+      'Release Versions', 'Support Boards', 'Resource Mapping', 'Release Mapping',
+      'NLP / AI', 'NLP Optimizer', 'Feedback Hub', 'Error Log', 'Sidebar Order',
+      'Users', 'Audit Log', 'Tables',
+    ],
+  },
 ];
 
 /* ── API hooks ────────────────────────────────────────────────────────── */

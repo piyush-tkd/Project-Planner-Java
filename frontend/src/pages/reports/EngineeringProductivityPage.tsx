@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
  Title, Stack, Text, Group, Card, SimpleGrid, Badge, Table, Select,
- Progress, Tooltip, ThemeIcon, SegmentedControl, ScrollArea} from '@mantine/core';
+ Progress, ThemeIcon, SegmentedControl, ScrollArea, Button, Paper, UnstyledButton,
+} from '@mantine/core';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
  ResponsiveContainer, PieChart, Pie, Cell,
@@ -9,9 +10,10 @@ import {
 import {
  IconCurrencyDollar, IconRocket, IconTargetArrow,
  IconBug, IconClock, IconChecklist,
- IconFlame,
+ IconFlame, IconExternalLink, IconChevronRight,
 } from '@tabler/icons-react';
-import { useProductivityMetrics, type DoraMetricValue } from '../../api/reports';
+import { useProductivityMetrics, useDoraMetrics, type DoraMetricValue } from '../../api/reports';
+import { useNavigate } from 'react-router-dom';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
@@ -40,6 +42,10 @@ const LEVEL_COLORS: Record<string, string> = {
  elite: 'green', high: 'blue', medium: 'yellow', low: 'red',
 };
 
+const LEVEL_HEX: Record<string, string> = {
+ elite: '#40c057', high: '#339af0', medium: '#fab005', low: '#fa5252',
+};
+
 const STATUS_COLORS: Record<string, string> = {
  COMPLETED: 'green', ACTIVE: 'blue', IN_DISCOVERY: 'violet',
  NOT_STARTED: 'gray', ON_HOLD: 'orange', CANCELLED: 'red',
@@ -52,22 +58,49 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 const PIE_COLORS = ['#2DCCD3', '#0C2340', '#4dabf7', '#fab005', '#ff6b6b', '#868e96'];
 
-function DoraCard({ label, icon, metric }: { label: string; icon: React.ReactNode; metric?: DoraMetricValue }) {
+function DoraCard({ label, icon, metric, onClick }: { label: string; icon: React.ReactNode; metric?: DoraMetricValue; onClick?: () => void }) {
  if (!metric) return null;
+ const borderColor = LEVEL_HEX[metric.level] ?? '#868e96';
  return (
- <Card withBorder p="md">
- <Group gap="sm" mb={4}>
- {icon}
- <Text size="xs" c="dimmed" fw={600} tt="uppercase">{label}</Text>
- </Group>
- <Group gap="xs" align="baseline">
- <Text size="xl" fw={700}>{metric.value}</Text>
- <Text size="xs" c="dimmed">{metric.unit}</Text>
- </Group>
- <Badge size="sm" color={LEVEL_COLORS[metric.level] ?? 'gray'} variant="light" mt={4}>
- {metric.level}
- </Badge>
- </Card>
+ <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%' }}>
+   <Paper
+     withBorder
+     radius="md"
+     p="lg"
+     style={{
+       borderTop: `3px solid ${borderColor}`,
+       transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+       cursor: 'pointer',
+     }}
+     onMouseEnter={e => {
+       e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+       e.currentTarget.style.transform = 'translateY(-2px)';
+     }}
+     onMouseLeave={e => {
+       e.currentTarget.style.boxShadow = '';
+       e.currentTarget.style.transform = '';
+     }}
+   >
+     <Group justify="space-between" mb="sm" wrap="nowrap">
+       <Group gap="sm" wrap="nowrap">
+         <ThemeIcon size={36} radius="md" variant="light" color={LEVEL_COLORS[metric.level] ?? 'gray'}>
+           {icon}
+         </ThemeIcon>
+         <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
+       </Group>
+       <IconChevronRight size={14} style={{ color: '#adb5bd', flexShrink: 0 }} />
+     </Group>
+     <Group align="baseline" gap={6} mb={6}>
+       <Text size="2rem" fw={800} style={{ lineHeight: 1.1 }}>
+         {metric.label ?? metric.value}
+       </Text>
+       {!metric.label && <Text size="sm" c="dimmed">{metric.unit}</Text>}
+     </Group>
+     <Badge size="sm" color={LEVEL_COLORS[metric.level] ?? 'gray'} variant="light">
+       {metric.level}
+     </Badge>
+   </Paper>
+ </UnstyledButton>
  );
 }
 
@@ -75,7 +108,10 @@ function DoraCard({ label, icon, metric }: { label: string; icon: React.ReactNod
 
 export default function EngineeringProductivityPage() {
  const [lookback, setLookback] = useState('6');
+ const navigate = useNavigate();
  const { data, isLoading, error, refetch } = useProductivityMetrics(Number(lookback));
+ // Pull DORA from the same endpoint as the DORA Metrics page so numbers always match
+ const { data: doraData } = useDoraMetrics(Number(lookback));
  const dark = useDarkMode();
  const [costView, setCostView] = useState<'delivered' | 'all'>('delivered');
 
@@ -367,32 +403,46 @@ export default function EngineeringProductivityPage() {
  </Group>
  </Title>
 
- {/* DORA snapshot */}
- {efficiency.dora && (
+ {/* DORA snapshot — sourced from the same endpoint as the DORA Metrics page */}
+ {doraData && (
  <>
- <Text size="sm" c="dimmed" mb={-4}>
- DORA Metrics (industry benchmarks) — source: {efficiency.dora.source}
+ <Group justify="space-between" align="center" mb={-4}>
+ <Text size="sm" c="dimmed">
+ DORA Metrics (industry benchmarks) — source: {doraData.source}
  </Text>
+ <Button
+ size="xs"
+ variant="subtle"
+ rightSection={<IconExternalLink size={12} />}
+ onClick={() => navigate('/reports/dora', { state: {} })}
+ >
+ Full DORA Report
+ </Button>
+ </Group>
  <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
  <DoraCard
  label="Deploy Frequency"
  icon={<IconRocket size={18} color="var(--mantine-color-green-6)" />}
- metric={efficiency.dora.deploymentFrequency}
+ metric={doraData.deploymentFrequency}
+ onClick={() => navigate('/reports/dora', { state: { openDrill: 'deploy' } })}
  />
  <DoraCard
  label="Lead Time"
  icon={<IconClock size={18} color="var(--mantine-color-blue-6)" />}
- metric={efficiency.dora.leadTimeForChanges}
+ metric={doraData.leadTimeForChanges}
+ onClick={() => navigate('/reports/dora', { state: { openDrill: 'leadTime' } })}
  />
  <DoraCard
  label="Change Failure Rate"
  icon={<IconBug size={18} color="var(--mantine-color-orange-6)" />}
- metric={efficiency.dora.changeFailureRate}
+ metric={doraData.changeFailureRate}
+ onClick={() => navigate('/reports/dora', { state: { openDrill: 'cfr' } })}
  />
  <DoraCard
  label="MTTR"
  icon={<IconFlame size={18} color="var(--mantine-color-red-6)" />}
- metric={efficiency.dora.meanTimeToRecovery}
+ metric={doraData.meanTimeToRecovery}
+ onClick={() => navigate('/reports/dora', { state: { openDrill: 'mttr' } })}
  />
  </SimpleGrid>
  </>

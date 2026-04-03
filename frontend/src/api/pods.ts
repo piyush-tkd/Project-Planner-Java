@@ -14,7 +14,10 @@ export function useCreatePod() {
   return useMutation({
     mutationFn: (data: { name: string; complexityMultiplier?: number }) =>
       apiClient.post('/pods', data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pods'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pods'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -23,7 +26,10 @@ export function useUpdatePod() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<PodResponse> }) =>
       apiClient.put(`/pods/${id}`, data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pods'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pods'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }
 
@@ -39,6 +45,9 @@ export function useUpdateBauAssumptions() {
   return useMutation({
     mutationFn: (data: BauAssumptionRequest[]) =>
       apiClient.put('/bau-assumptions', data).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bau-assumptions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bau-assumptions'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
   });
 }

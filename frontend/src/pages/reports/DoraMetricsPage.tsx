@@ -1,4 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
  Text, Badge, Group, SegmentedControl, Table, Paper, Tooltip,
  SimpleGrid, ThemeIcon, Drawer, ScrollArea, Stack,
@@ -31,6 +33,13 @@ const LEVEL_COLOR: Record<string, string> = {
  medium: '#fab005',
  low: '#fa5252',
 };
+// Mantine color name for ThemeIcon / Badge (cannot use hex in variant="light")
+const LEVEL_MANTINE: Record<string, string> = {
+ elite: 'green',
+ high: 'blue',
+ medium: 'yellow',
+ low: 'red',
+};
 const LEVEL_BG: Record<string, string> = {
  elite: 'rgba(64, 192, 87, 0.10)',
  high: 'rgba(51, 154, 240, 0.10)',
@@ -62,7 +71,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  const color = LEVEL_COLOR[metric.level] ?? '#868e96';
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  return (
- <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%' }}>
+ <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%', height: '100%', display: 'flex' }}>
  <Paper
  withBorder
  radius="md"
@@ -72,6 +81,9 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  boxShadow: SHADOW.card,
  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
  cursor: 'pointer',
+ width: '100%',
+ display: 'flex',
+ flexDirection: 'column',
  }}
  onMouseEnter={(e) => {
  e.currentTarget.style.boxShadow = SHADOW.cardHover;
@@ -84,7 +96,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  >
  <Group gap="sm" mb="md" wrap="nowrap" justify="space-between">
  <Group gap="sm" wrap="nowrap">
- <ThemeIcon size={40} radius="md" variant="light" color={color} style={{ backgroundColor: bg }}>
+ <ThemeIcon size={40} radius="md" variant="light" color={LEVEL_MANTINE[metric.level] ?? 'gray'}>
  {icon}
  </ThemeIcon>
  <div>
@@ -112,7 +124,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  <Badge
  size="md"
  variant="light"
- color={color === '#40c057' ? 'green' : color === '#339af0' ? 'blue' : color === '#fab005' ? 'yellow' : 'red'}
+ color={LEVEL_MANTINE[metric.level] ?? 'gray'}
  radius="sm"
  styles={{ root: { textTransform: 'uppercase', fontFamily: FONT_FAMILY, fontWeight: 700 } }}
  >
@@ -123,7 +135,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  </Text>
  </Group>
 
- {extra && <div style={{ marginTop: 8 }}>{extra}</div>}
+ {extra && <div style={{ marginTop: 'auto', paddingTop: 8 }}>{extra}</div>}
  </Paper>
  </UnstyledButton>
  );
@@ -295,10 +307,10 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
  >
  <Text size="sm" fw={800} style={{ color, fontFamily: FONT_FAMILY }}>
- {metric.label ?? `${metric.value}${metric.unit}`}
+ {metric.label ?? `${metric.value} ${metric.unit}`}
  </Text>
  <Badge size="xs" variant="light" radius="sm" mt={2}
- color={color === '#40c057' ? 'green' : color === '#339af0' ? 'blue' : color === '#fab005' ? 'yellow' : 'red'}
+ color={LEVEL_MANTINE[metric.level] ?? 'gray'}
  >
  {LEVEL_LABEL[metric.level]}
  </Badge>
@@ -379,14 +391,26 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  ════════════════════════════════════════════════════════════════════════════ */
 export default function DoraMetricsPage() {
  const dark = useDarkMode();
+ const qc = useQueryClient();
+ const location = useLocation();
  const [months, setMonths] = useState(6);
  const [viewMode, setViewMode] = useState<'overview' | 'monthly'>('overview');
  const { data, isLoading, isFetching, error, refetch } = useDoraMetrics(months);
 
- const handleRefresh = useCallback(() => { refetch(); }, [refetch]);
+ const handleRefresh = useCallback(() => {
+   qc.invalidateQueries({ queryKey: ['reports', 'dora'] });
+   qc.invalidateQueries({ queryKey: ['reports', 'dora-monthly'] });
+   refetch();
+ }, [qc, refetch]);
 
  // Drill-down state
  const [drill, setDrill] = useState<DrillType>(null);
+
+ // Auto-open drawer if navigated from another page with a drill key
+ useEffect(() => {
+   const openDrill = (location.state as { openDrill?: DrillType })?.openDrill;
+   if (openDrill) setDrill(openDrill);
+ }, [location.state]);
  const [trendDrill, setTrendDrill] = useState<TrendDrill | null>(null);
  const [monthDrillCard, setMonthDrillCard] = useState<DoraMonthCard | null>(null);
  const [monthDrillMetric, setMonthDrillMetric] = useState<string>('');
@@ -421,7 +445,7 @@ export default function DoraMetricsPage() {
  if (error) return <PageError context="loading DORA metrics" error={error} onRetry={() => refetch()} />;
  if (!data) return null;
 
- const isJira = data.source === 'jira';
+ const isJira = data.source === 'jira' || data.source === 'db';
 
  /* ── Drawer content based on drill type ──────────────────────────── */
  const renderDrawerContent = () => {
@@ -433,8 +457,7 @@ export default function DoraMetricsPage() {
  return (
  <Stack gap="md">
  <Group gap="xs">
- <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_COLOR[data.deploymentFrequency.level]}
- style={{ backgroundColor: LEVEL_BG[data.deploymentFrequency.level] }}>
+ <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_MANTINE[data.deploymentFrequency.level] ?? 'gray'}>
  <IconRocket size={18} />
  </ThemeIcon>
  <div>
@@ -455,8 +478,9 @@ export default function DoraMetricsPage() {
  <DetailTable
  details={details}
  columns={[
- { key: 'release', label: 'Version', render: (v) => <Text fw={600} size="sm">{String(v)}</Text> },
+ { key: 'release', label: 'Version', render: (v) => <Text fw={600} size="sm">{String(v ?? '—')}</Text> },
  { key: 'releaseDate', label: 'Release Date' },
+ { key: 'type', label: 'Type', render: (v) => <Badge size="xs" variant={v === 'HOTFIX' ? 'filled' : 'light'} color={v === 'HOTFIX' ? 'red' : v === 'SPECIAL' ? 'orange' : 'blue'} radius="sm">{String(v ?? 'REGULAR')}</Badge> },
  ]}
  />
  </>
@@ -470,8 +494,7 @@ export default function DoraMetricsPage() {
  return (
  <Stack gap="md">
  <Group gap="xs">
- <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_COLOR[data.leadTimeForChanges.level]}
- style={{ backgroundColor: LEVEL_BG[data.leadTimeForChanges.level] }}>
+ <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_MANTINE[data.leadTimeForChanges.level] ?? 'gray'}>
  <IconClock size={18} />
  </ThemeIcon>
  <div>
@@ -505,21 +528,26 @@ export default function DoraMetricsPage() {
  <DetailTable
  details={details}
  columns={isJira ? [
- { key: 'key', label: 'Issue', render: (v) => <Text fw={600} size="sm" c="blue">{String(v)}</Text> },
+ { key: 'key', label: 'Issue', render: (v) => <Text fw={600} size="sm" c="blue">{String(v ?? '—')}</Text> },
  { key: 'summary', label: 'Summary' },
  { key: 'leadTimeDays', label: 'Cycle (days)', render: (v) => (
  <Badge size="sm" variant="light"
  color={Number(v) <= 7 ? 'green' : Number(v) <= 30 ? 'yellow' : 'red'}
- radius="sm">{String(v)}d</Badge>
+ radius="sm">{v != null ? `${v}d` : '—'}</Badge>
  )},
  { key: 'created', label: 'Created' },
  { key: 'resolved', label: 'Resolved' },
  ] : [
- { key: 'release', label: 'Release', render: (v) => <Text fw={600} size="sm">{String(v)}</Text> },
+ { key: 'release', label: 'Release', render: (v, row) => (
+ <Group gap={4} wrap="nowrap">
+ <Text fw={600} size="sm">{String(v ?? '—')}</Text>
+ {!!row['isHotfix'] && <Badge size="xs" variant="filled" color="red" radius="sm">HOTFIX</Badge>}
+ </Group>
+ )},
  { key: 'leadTimeDays', label: 'Lead Time (days)', render: (v) => (
  <Badge size="sm" variant="light"
  color={Number(v) <= 7 ? 'green' : Number(v) <= 30 ? 'yellow' : 'red'}
- radius="sm">{String(v)}d</Badge>
+ radius="sm">{v != null ? `${v}d` : '—'}</Badge>
  )},
  { key: 'codeFreezeDate', label: 'Code Freeze' },
  { key: 'releaseDate', label: 'Release Date' },
@@ -535,8 +563,7 @@ export default function DoraMetricsPage() {
  return (
  <Stack gap="md">
  <Group gap="xs">
- <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_COLOR[data.changeFailureRate.level]}
- style={{ backgroundColor: LEVEL_BG[data.changeFailureRate.level] }}>
+ <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_MANTINE[data.changeFailureRate.level] ?? 'gray'}>
  <IconBug size={18} />
  </ThemeIcon>
  <div>
@@ -562,8 +589,8 @@ export default function DoraMetricsPage() {
  ) : (
  <>
  <div>
- <Text size="xs" c="dimmed">SPECIAL Releases</Text>
- <Text fw={700} c="red">{data.changeFailureRate.specialReleases ?? 0}</Text>
+ <Text size="xs" c="dimmed">Hotfixes</Text>
+ <Text fw={700} c="red">{data.changeFailureRate.hotfixes ?? data.changeFailureRate.specialReleases ?? 0}</Text>
  </div>
  <div>
  <Text size="xs" c="dimmed">Total Releases</Text>
@@ -607,8 +634,7 @@ export default function DoraMetricsPage() {
  return (
  <Stack gap="md">
  <Group gap="xs">
- <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_COLOR[data.meanTimeToRecovery.level]}
- style={{ backgroundColor: LEVEL_BG[data.meanTimeToRecovery.level] }}>
+ <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_MANTINE[data.meanTimeToRecovery.level] ?? 'gray'}>
  <IconHeartbeat size={18} />
  </ThemeIcon>
  <div>
@@ -680,7 +706,7 @@ export default function DoraMetricsPage() {
  </Paper>
  <Paper withBorder radius="sm" p="sm" style={{ textAlign: 'center' }}>
  <Text size="xl" fw={800} c="red">{trendDrill.failures}</Text>
- <Text size="xs" c="dimmed">{isJira ? 'Bugs / Incidents' : 'Failures (SPECIAL)'}</Text>
+ <Text size="xs" c="dimmed">{isJira ? 'Bugs / Incidents' : 'Hotfixes'}</Text>
  </Paper>
  </SimpleGrid>
 
@@ -734,7 +760,7 @@ export default function DoraMetricsPage() {
  return (
  <Stack gap="md">
  <Group gap="xs">
- <ThemeIcon size={32} radius="md" variant="light" color={color} style={{ backgroundColor: bg }}>
+ <ThemeIcon size={32} radius="md" variant="light" color={LEVEL_MANTINE[metric.level] ?? 'gray'}>
  {mIcon}
  </ThemeIcon>
  <div>
@@ -754,7 +780,7 @@ export default function DoraMetricsPage() {
  </Paper>
  <Paper withBorder radius="sm" p="sm" style={{ textAlign: 'center' }}>
  <Badge size="lg" variant="light" radius="sm"
- color={color === '#40c057' ? 'green' : color === '#339af0' ? 'blue' : color === '#fab005' ? 'yellow' : 'red'}
+ color={LEVEL_MANTINE[metric.level] ?? 'gray'}
  >{LEVEL_LABEL[metric.level]}</Badge>
  <Text size="xs" c="dimmed" mt={4}>Performance Level</Text>
  </Paper>
@@ -782,8 +808,8 @@ export default function DoraMetricsPage() {
  <Paper withBorder radius="sm" p="sm">
  <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>Failure Ratio</Text>
  <Group gap="lg" mb={8}>
- <div><Text size="xs" c="dimmed">Bugs/Incidents</Text><Text fw={700} c="red">{metric.bugCount ?? 0}</Text></div>
- <div><Text size="xs" c="dimmed">Total Issues</Text><Text fw={700}>{metric.totalIssues ?? 0}</Text></div>
+ <div><Text size="xs" c="dimmed">Hotfixes</Text><Text fw={700} c="red">{metric.bugCount ?? 0}</Text></div>
+ <div><Text size="xs" c="dimmed">Total Releases</Text><Text fw={700}>{metric.totalIssues ?? 0}</Text></div>
  </Group>
  <div style={{ display: 'flex', height: 24, borderRadius: 6, overflow: 'hidden', background: DEEP_BLUE_TINTS[10] }}>
  <div style={{ width: `${Math.max(metric.value, 2)}%`, background: 'linear-gradient(90deg, #fa5252, #ff6b6b)', borderRadius: '6px 0 0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -862,7 +888,7 @@ export default function DoraMetricsPage() {
  />
  </div>
  <Tooltip label={isJira
- ? `Real-time data from Jira (${(data.projectKeys ?? []).join(', ')})`
+ ? `Data from Jira synced issues (${(data.projectKeys ?? []).join(', ')})`
  : 'Computed from internal release calendar'
  }>
  <Badge
@@ -912,7 +938,7 @@ export default function DoraMetricsPage() {
  />
  <MetricCard
  title="Change Failure Rate"
- subtitle={isJira ? 'Bug/Incident ratio in resolved work' : '% of releases that are hotfixes'}
+ subtitle={isJira ? 'Bug/Incident ratio in resolved work' : '% of releases with "hotfix" in name'}
  icon={<IconBug size={20} />}
  metric={data.changeFailureRate}
  onClick={() => setDrill('cfr')}
@@ -924,7 +950,7 @@ export default function DoraMetricsPage() {
  />
  <MetricCard
  title="Mean Time to Recovery"
- subtitle={isJira ? 'High-priority bug resolution time' : 'Avg recovery after a failure'}
+ subtitle={isJira ? 'Prod bug resolution time (support boards)' : 'Avg recovery after a failure'}
  icon={<IconHeartbeat size={20} />}
  metric={data.meanTimeToRecovery}
  onClick={() => setDrill('mttr')}
@@ -981,7 +1007,7 @@ export default function DoraMetricsPage() {
  />
  <Bar
  dataKey="failures"
- name={isJira ? 'Bugs / Incidents' : 'Failures (SPECIAL)'}
+ name={isJira ? 'Bugs / Incidents' : 'Hotfixes'}
  fill="#fa5252"
  radius={[4, 4, 0, 0]}
  />
