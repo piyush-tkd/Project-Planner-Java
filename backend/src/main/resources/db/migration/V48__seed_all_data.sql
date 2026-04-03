@@ -54,34 +54,35 @@ INSERT INTO public.audit_log VALUES (31, 'Project', 843, 'Portal v2 - User Manag
 SELECT setval('audit_log_id_seq', (SELECT COALESCE(MAX(id), 0) FROM audit_log), true);
 
 -- bau_assumption
-INSERT INTO public.bau_assumption VALUES (480, 120, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (477, 120, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (478, 120, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (479, 120, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (481, 121, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (482, 121, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (483, 121, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (484, 121, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (485, 122, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (486, 122, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (487, 122, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (488, 122, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (489, 123, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (490, 123, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (491, 123, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (492, 123, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (493, 124, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (494, 124, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (495, 124, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (496, 124, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (497, 125, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (498, 125, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (499, 125, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (500, 125, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (501, 126, 'DEVELOPER', 20.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (502, 126, 'QA', 25.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (503, 126, 'BSA', 15.00) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.bau_assumption VALUES (504, 126, 'TECH_LEAD', 10.00) ON CONFLICT (id) DO NOTHING;
+-- Uses name-based subquery for pod_id so it works regardless of pod ID on this server
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Portal V1' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Portal V1' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Portal V1' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Portal V1' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Portal V2' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Portal V2' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Portal V2' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Portal V2' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Integrations' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Integrations' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Integrations' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Integrations' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Accessioning' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Accessioning' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Accessioning' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Accessioning' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Epic' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Epic' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Epic' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Epic' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'LIS/Reporting' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'LIS/Reporting' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'LIS/Reporting' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'LIS/Reporting' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'DEVELOPER', 20.00 FROM pod WHERE name = 'Enterprise Systems' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'QA', 25.00 FROM pod WHERE name = 'Enterprise Systems' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'BSA', 15.00 FROM pod WHERE name = 'Enterprise Systems' ON CONFLICT (pod_id, role) DO NOTHING;
+INSERT INTO public.bau_assumption (pod_id, role, bau_pct) SELECT id, 'TECH_LEAD', 10.00 FROM pod WHERE name = 'Enterprise Systems' ON CONFLICT (pod_id, role) DO NOTHING;
 SELECT setval('bau_assumption_id_seq', (SELECT COALESCE(MAX(id), 0) FROM bau_assumption), true);
 
 -- cost_rate
