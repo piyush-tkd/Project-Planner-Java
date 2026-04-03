@@ -9,13 +9,14 @@ INSERT INTO public.app_user VALUES (1, 'admin', '$2a$10$/420kSA4neTTyR2LyTC.9uLD
 SELECT setval('app_user_id_seq', (SELECT COALESCE(MAX(id), 0) FROM app_user), true);
 
 -- pod (moved before bau_assumption, jira_pod etc. — all have FK on pod.id)
-INSERT INTO public.pod VALUES (120, 'Portal V1', 1.00, 1, true, '2026-03-16 13:57:13.17926', '2026-03-16 13:57:13.17927') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (121, 'Portal V2', 1.00, 2, true, '2026-03-16 13:57:13.187681', '2026-03-16 13:57:13.187686') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (122, 'Integrations', 1.00, 3, true, '2026-03-16 13:57:13.188362', '2026-03-20 01:17:14.261306') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (123, 'Accessioning', 1.00, 4, true, '2026-03-16 13:57:13.188826', '2026-03-20 01:17:14.962153') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (124, 'Epic', 1.00, 5, true, '2026-03-16 13:57:13.189321', '2026-03-20 01:17:15.641921') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (125, 'LIS/Reporting', 1.00, 6, true, '2026-03-16 13:57:13.189954', '2026-03-20 01:17:17.325835') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.pod VALUES (126, 'Enterprise Systems', 1.00, 7, true, '2026-03-16 13:57:13.19038', '2026-03-20 01:17:20.177011') ON CONFLICT (id) DO NOTHING;
+-- ON CONFLICT DO NOTHING (no column) handles both id and name unique constraints
+INSERT INTO public.pod VALUES (120, 'Portal V1', 1.00, 1, true, '2026-03-16 13:57:13.17926', '2026-03-16 13:57:13.17927') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (121, 'Portal V2', 1.00, 2, true, '2026-03-16 13:57:13.187681', '2026-03-16 13:57:13.187686') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (122, 'Integrations', 1.00, 3, true, '2026-03-16 13:57:13.188362', '2026-03-20 01:17:14.261306') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (123, 'Accessioning', 1.00, 4, true, '2026-03-16 13:57:13.188826', '2026-03-20 01:17:14.962153') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (124, 'Epic', 1.00, 5, true, '2026-03-16 13:57:13.189321', '2026-03-20 01:17:15.641921') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (125, 'LIS/Reporting', 1.00, 6, true, '2026-03-16 13:57:13.189954', '2026-03-20 01:17:17.325835') ON CONFLICT DO NOTHING;
+INSERT INTO public.pod VALUES (126, 'Enterprise Systems', 1.00, 7, true, '2026-03-16 13:57:13.19038', '2026-03-20 01:17:20.177011') ON CONFLICT DO NOTHING;
 SELECT setval('pod_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pod), true);
 
 -- audit_log
