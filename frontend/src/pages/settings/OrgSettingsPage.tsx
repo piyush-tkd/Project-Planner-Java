@@ -11,7 +11,7 @@ import {
   IconAlertTriangle, IconBrain, IconMessageReport, IconArrowsShuffle,
   IconExternalLink, IconKey, IconTicket, IconPackage, IconHeadset,
   IconSettings, IconBrandAzure, IconGitBranch, IconMail, IconPlugConnected,
-  IconClock,
+  IconClock, IconCloudDownload, IconCircleCheck, IconCircleX,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import apiClient from '../../api/client';
@@ -122,6 +122,100 @@ function JiraHubPanel() {
   );
 }
 
+// ── Jira Epic Sync Panel ─────────────────────────────────────────────────────
+function JiraEpicSyncPanel() {
+  const [boardStatus, setBoardStatus]   = useState<any[]>([]);
+  const [syncing, setSyncing]           = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  const loadStatus = () => {
+    setStatusLoading(true);
+    apiClient.get('/jira-sync/status')
+      .then(({ data }) => setBoardStatus(data ?? []))
+      .catch(() => setBoardStatus([]))
+      .finally(() => setStatusLoading(false));
+  };
+
+  useEffect(() => { loadStatus(); }, []);
+
+  const handleForceSync = async () => {
+    setSyncing(true);
+    try {
+      const { data } = await apiClient.post('/jira-sync/run');
+      notifications.show({
+        title: 'Sync complete',
+        message: `Created ${data.created}, updated ${data.updated}, failed ${data.failed}`,
+        color: data.failed > 0 ? 'orange' : 'green',
+      });
+      loadStatus();
+    } catch {
+      notifications.show({ title: 'Sync failed', message: 'Could not reach Jira. Check credentials.', color: 'red' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Stack gap="sm">
+      <Group justify="space-between" align="center">
+        <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          Auto-sync discovers Jira epics across all boards and creates/updates Portfolio Planner projects.
+        </Text>
+        <Button
+          size="xs"
+          variant="light"
+          color="teal"
+          leftSection={<IconCloudDownload size={14} />}
+          loading={syncing}
+          onClick={handleForceSync}
+        >
+          Force Sync Now
+        </Button>
+      </Group>
+
+      {statusLoading ? (
+        <Center py="sm"><Loader size="sm" /></Center>
+      ) : boardStatus.length === 0 ? (
+        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          No boards found. Configure Jira credentials first.
+        </Text>
+      ) : (
+        <Stack gap={6}>
+          {boardStatus.map((b: any) => (
+            <Paper key={b.boardId} withBorder px="md" py="xs" radius="sm">
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <ThemeIcon
+                    size={22}
+                    radius="xl"
+                    color={b.hasError ? 'red' : 'teal'}
+                    variant="light"
+                  >
+                    {b.hasError
+                      ? <IconCircleX size={13} />
+                      : <IconCircleCheck size={13} />}
+                  </ThemeIcon>
+                  <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
+                    {b.boardName}
+                  </Text>
+                  <Badge size="xs" variant="light" color="gray">
+                    {b.epicCount} project{b.epicCount !== 1 ? 's' : ''}
+                  </Badge>
+                </Group>
+                <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                  {b.lastSync
+                    ? `Last sync: ${new Date(b.lastSync).toLocaleString()}`
+                    : 'Never synced'}
+                </Text>
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
 // ── Main Settings Hub ────────────────────────────────────────────────────────
 export default function OrgSettingsPage() {
   const navigate = useNav();
@@ -151,10 +245,12 @@ export default function OrgSettingsPage() {
     recipients: string;
     digestEnabled: boolean; digestCron: string;
     stalenessEnabled: boolean; stalenessCron: string;
+    jiraSyncEnabled: boolean; jiraSyncCron: string;
   }
   const [schedule, setSchedule]       = useState<ScheduleDraft>({
     recipients: '', digestEnabled: false, digestCron: '0 0 8 * * MON',
     stalenessEnabled: false, stalenessCron: '0 0 9 * * MON',
+    jiraSyncEnabled: false, jiraSyncCron: '0 0 */2 * * *',
   });
   const [scheduleLoaded, setScheduleLoaded] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
@@ -186,6 +282,8 @@ export default function OrgSettingsPage() {
           digestCron:       data.digestCron       ?? '0 0 8 * * MON',
           stalenessEnabled: data.stalenessEnabled ?? false,
           stalenessCron:    data.stalenessCron    ?? '0 0 9 * * MON',
+          jiraSyncEnabled:  data.jiraSyncEnabled  ?? false,
+          jiraSyncCron:     data.jiraSyncCron     ?? '0 0 */2 * * *',
         });
         setScheduleLoaded(true);
       }).catch(() => {});
@@ -602,6 +700,54 @@ export default function OrgSettingsPage() {
                 </Text>
               </Group>
               <JiraHubPanel />
+            </Stack>
+
+            <Divider />
+
+            {/* Jira Epic Auto-Sync (Projects SoT) */}
+            <Stack gap="sm">
+              <Group gap="xs" justify="space-between">
+                <Group gap="xs">
+                  <ThemeIcon variant="light" color="teal" size={28} radius="md">
+                    <IconCloudDownload size={15} />
+                  </ThemeIcon>
+                  <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    Project Sync (Jira Epics → PP)
+                  </Text>
+                  <Badge size="xs" color={schedule.jiraSyncEnabled ? 'teal' : 'gray'} variant="light">
+                    {schedule.jiraSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
+                  </Badge>
+                </Group>
+                <Switch
+                  size="sm"
+                  color="teal"
+                  label="Enable auto-sync"
+                  checked={schedule.jiraSyncEnabled}
+                  onChange={e => setSchedule(p => ({ ...p, jiraSyncEnabled: e.currentTarget.checked }))}
+                />
+              </Group>
+              {schedule.jiraSyncEnabled && (
+                <TextInput
+                  size="xs"
+                  label="Sync cron (Spring format)"
+                  placeholder="0 0 */2 * * *"
+                  value={schedule.jiraSyncCron}
+                  onChange={e => setSchedule(p => ({ ...p, jiraSyncCron: e.target.value }))}
+                  description="Default: every 2 hours. Changes take effect at next tick — no restart needed."
+                  style={{ maxWidth: 320 }}
+                />
+              )}
+              <Button
+                size="xs"
+                variant="subtle"
+                color="teal"
+                onClick={handleScheduleSave}
+                loading={scheduleSaving}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                Save sync settings
+              </Button>
+              <JiraEpicSyncPanel />
             </Stack>
 
             <Divider />

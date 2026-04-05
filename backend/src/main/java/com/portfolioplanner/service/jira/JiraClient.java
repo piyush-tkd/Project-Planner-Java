@@ -994,6 +994,50 @@ public class JiraClient {
         return resp.getBody();
     }
 
+    // ── Epic creation ─────────────────────────────────────────────────
+
+    /**
+     * Creates a new Epic in Jira via POST /rest/api/3/issue.
+     *
+     * @param projectKey  the Jira project key (e.g. "PMO")
+     * @param epicName    the name/summary for the new epic
+     * @param description optional plain-text description
+     * @return the created issue key (e.g. "PMO-124")
+     */
+    @SuppressWarnings("unchecked")
+    public String createEpic(String projectKey, String epicName, String description) {
+        String url = creds.getBaseUrl() + "/rest/api/3/issue";
+
+        // Build the Jira issue creation payload using the Atlassian Document Format for description
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("project",   Map.of("key", projectKey));
+        fields.put("summary",   epicName);
+        fields.put("issuetype", Map.of("name", "Epic"));
+
+        if (description != null && !description.isBlank()) {
+            fields.put("description", Map.of(
+                "type",    "doc",
+                "version", 1,
+                "content", List.of(Map.of(
+                    "type",    "paragraph",
+                    "content", List.of(Map.of(
+                        "type", "text",
+                        "text", description
+                    ))
+                ))
+            ));
+        }
+
+        Map<String, Object> payload = Map.of("fields", fields);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = post(url, payload, Map.class);
+        if (response == null || !response.containsKey("key")) {
+            throw new RuntimeException("Jira createEpic returned no issue key");
+        }
+        return (String) response.get("key");
+    }
+
     // ── HTTP ──────────────────────────────────────────────────────────
 
     private <T> T post(String url, Object body, Class<T> responseType) {

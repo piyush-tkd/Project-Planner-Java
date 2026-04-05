@@ -29,17 +29,18 @@ import java.util.stream.Collectors;
 /**
  * AI Proactive Insights Engine.
  *
- * <p>Runs five signal detectors across the live data and persists the results
+ * <p>Runs six signal detectors across the live data and persists the results
  * to the {@code insight} table.  The frontend surfaces them on the Smart
  * Notifications page via {@code GET /api/insights}.
  *
  * <h3>Detectors</h3>
  * <ol>
- *   <li><b>DEADLINE_RISK</b> — Active projects with a target date within 30 days</li>
- *   <li><b>OVERALLOCATION</b> — Resources whose bookings total &gt;100% in next 4 weeks</li>
+ *   <li><b>DEADLINE_RISK</b>     — Active projects with a target date within 30 days</li>
+ *   <li><b>OVERALLOCATION</b>    — Resources whose bookings total &gt;100% in next 4 weeks</li>
  *   <li><b>RESOURCE_CONFLICT</b> — Resources with 2+ concurrent project bookings</li>
- *   <li><b>STALE_PROJECT</b> — Active projects not updated in 45+ days</li>
- *   <li><b>OPEN_HIGH_RISK</b> — Projects with open CRITICAL or HIGH severity risk items</li>
+ *   <li><b>STALE_PROJECT</b>     — Active projects not updated in 45+ days</li>
+ *   <li><b>OPEN_HIGH_RISK</b>    — Projects with open CRITICAL or HIGH severity risk items</li>
+ *   <li><b>JIRA_SYNC_FAILURE</b> — Projects whose last Jira sync ended in an error</li>
  * </ol>
  */
 @Slf4j
@@ -53,6 +54,7 @@ public class InsightService {
     public static final String RESOURCE_CONFLICT  = "RESOURCE_CONFLICT";
     public static final String STALE_PROJECT      = "STALE_PROJECT";
     public static final String OPEN_HIGH_RISK     = "OPEN_HIGH_RISK";
+    public static final String JIRA_SYNC_FAILURE  = "JIRA_SYNC_FAILURE";
 
     private final InsightRepository        insightRepo;
     private final ProjectRepository        projectRepo;
@@ -74,6 +76,7 @@ public class InsightService {
         detectResourceConflict();
         detectStaleProjects();
         detectOpenHighRisks();
+        detectJiraSyncFailures();
         log.info("InsightService: detection complete.");
         return listUnacknowledged();
     }
@@ -345,6 +348,39 @@ public class InsightService {
 
         insightRepo.saveAll(insights);
         log.debug("InsightService [OPEN_HIGH_RISK]: {} insight(s) created", insights.size());
+    }
+
+    // ── Detector 6: Jira Sync Failures ───────────────────────────────────────
+
+    private void detectJiraSyncFailures() {
+        insightRepo.deleteUnacknowledgedByType(JIRA_SYNC_FAILURE);
+
+        List<Project> failed = projectRepo.findAll().stream()
+                .filter(p -> p.isJiraSyncError()
+                          && p.getSourceType() != null
+                          && p.getSourceType().name().contains("JIRA"))
+                .collect(Collectors.toList());
+
+        List<Insight> insights = new ArrayList<>();
+        for (Project p : failed) {
+            Insight insight = new Insight();
+            insight.setInsightType(JIRA_SYNC_FAILURE);
+            insight.setSeverity("HIGH");
+            insight.setTitle("🔴 Jira sync failed: " + p.getName());
+            insight.setDescription(String.format(
+                    "Project '%s' (epic key: %s) encountered a Jira sync error. "
+                    + "Check Jira credentials and board access in Admin Settings → Integrations.",
+                    p.getName(),
+                    p.getJiraEpicKey() != null ? p.getJiraEpicKey() : "not linked"));
+            insight.setEntityType("PROJECT");
+            insight.setEntityId(p.getId());
+            insight.setEntityName(p.getName());
+            insight.setDetectedAt(LocalDateTime.now());
+            insights.add(insight);
+        }
+
+        insightRepo.saveAll(insights);
+        log.debug("InsightService [JIRA_SYNC_FAILURE]: {} insight(s) created", insights.size());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
