@@ -7,6 +7,7 @@ import { Notifications, notifications } from '@mantine/notifications';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { logErrorToServer } from './api/errorLogs';
 import { AuthProvider } from './auth/AuthContext';
+import { OrgSettingsProvider } from './context/OrgSettingsContext';
 import App from './App';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
@@ -25,15 +26,16 @@ import {
  * Font:      DIN Next LT Pro / Arial fallback
  */
 const theme = createTheme({
-  primaryColor: 'deepBlue',
+  primaryColor: 'aqua',        // Wrike-style teal CTA buttons + focus rings
   fontFamily: FONT_FAMILY,
   headings: {
     fontFamily: FONT_FAMILY,
     sizes: {
-      h1: { fontSize: '48px', lineHeight: '1.1', fontWeight: '300' },
-      h2: { fontSize: '36px', lineHeight: '1.1', fontWeight: '300' },
-      h3: { fontSize: '24px', lineHeight: '1.1', fontWeight: '400' },
-      h4: { fontSize: '18px', lineHeight: '1.1', fontWeight: '400' },
+      // Wrike-style compact headings — bold, not oversized
+      h1: { fontSize: '22px', lineHeight: '1.3', fontWeight: '700' },
+      h2: { fontSize: '18px', lineHeight: '1.3', fontWeight: '700' },
+      h3: { fontSize: '15px', lineHeight: '1.4', fontWeight: '600' },
+      h4: { fontSize: '13px', lineHeight: '1.4', fontWeight: '600' },
     },
   },
   colors: {
@@ -183,9 +185,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            <OrgSettingsProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </OrgSettingsProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

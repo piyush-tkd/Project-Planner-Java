@@ -1,7 +1,6 @@
 package com.portfolioplanner.dto.response;
 
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,7 +15,7 @@ public record ProjectResponse(
         Integer durationMonths,
         String defaultPattern,
         String notes,
-        ProjectStatus status,
+        String status,
         Long blockedById,
         LocalDate targetDate,
         LocalDate startDate,

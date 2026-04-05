@@ -1,7 +1,6 @@
 package com.portfolioplanner.dto.request;
 
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -16,7 +15,7 @@ public record ProjectRequest(
         Integer durationMonths,
         String defaultPattern,
         String notes,
-        ProjectStatus status,
+        String status,
         Long blockedById,
         LocalDate targetDate,
         LocalDate startDate,

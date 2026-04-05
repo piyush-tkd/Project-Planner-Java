@@ -149,7 +149,7 @@ public interface EntityMapper {
                 project.getName(),
                 project.getPriority().name(),
                 project.getOwner(),
-                project.getStatus().name(),
+                project.getStatus(),
                 project.getStartMonth(),
                 project.getDurationMonths(),
                 project.getDefaultPattern(),

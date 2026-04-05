@@ -4,7 +4,6 @@ import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.ProjectPodPlanning;
 import com.portfolioplanner.domain.model.TimelineConfig;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.repository.PodRepository;
 import com.portfolioplanner.domain.repository.ReleaseCalendarRepository;
 import com.portfolioplanner.domain.model.ReleaseCalendar;
@@ -44,10 +43,10 @@ public class ProjectService {
     private final EntityMapper mapper;
     private final AuditLogService auditLogService;
 
-    public List<ProjectResponse> getAll(ProjectStatus status) {
+    public List<ProjectResponse> getAll(String status) {
         List<Project> projects;
-        if (status != null) {
-            projects = projectRepository.findByStatus(status);
+        if (status != null && !status.isBlank()) {
+            projects = projectRepository.findByStatusIgnoreCase(status);
         } else {
             projects = projectRepository.findAll();
         }
@@ -69,7 +68,7 @@ public class ProjectService {
         }
 
         Project project = mapper.toEntity(request);
-        if (project.getStatus() == null) project.setStatus(ProjectStatus.ACTIVE);
+        if (project.getStatus() == null) project.setStatus("ACTIVE");
         if (request.blockedById() != null) {
             Project blockedBy = projectRepository.findById(request.blockedById())
                     .orElseThrow(() -> new ResourceNotFoundException("Project", request.blockedById()));
@@ -114,6 +113,19 @@ public class ProjectService {
 
     @Transactional
     @CacheEvict(value = "calculations", allEntries = true)
+    public ProjectResponse patchStatus(Long id, String newStatus) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+        String before = project.getStatus();
+        project.setStatus(newStatus.toUpperCase());
+        project = projectRepository.save(project);
+        auditLogService.log("Project", project.getId(), project.getName(), "STATUS_CHANGE",
+                "status: " + before + " → " + project.getStatus());
+        return mapper.toProjectResponse(project);
+    }
+
+    @Transactional
+    @CacheEvict(value = "calculations", allEntries = true)
     public void delete(Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
@@ -141,7 +153,7 @@ public class ProjectService {
         copy.setDurationMonths(original.getDurationMonths());
         copy.setDefaultPattern(original.getDefaultPattern());
         copy.setNotes(original.getNotes());
-        copy.setStatus(ProjectStatus.NOT_STARTED);
+        copy.setStatus("NOT_STARTED");
         copy.setBlockedBy(original.getBlockedBy());
         copy.setTargetDate(original.getTargetDate());
         copy.setStartDate(original.getStartDate());

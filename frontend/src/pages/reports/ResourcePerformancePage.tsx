@@ -268,7 +268,7 @@ export default function ResourcePerformancePage() {
 
       {/* KPI Summary Cards */}
       {data && (
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 7 }} spacing="sm">
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="sm">
           <SummaryCard
             title="Mapped Resources"
             value={`${data.mappedResources} / ${data.totalResources}`}

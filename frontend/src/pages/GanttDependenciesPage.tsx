@@ -1,0 +1,603 @@
+import { useState, useMemo } from 'react';
+import {
+  Box, Title, Text, Group, Badge, Button, Paper, Card,
+  Select, Tooltip, Stack, SimpleGrid, Divider,
+  ScrollArea, SegmentedControl, Progress,
+} from '@mantine/core';
+import {
+  IconGitBranch, IconArrowRight, IconAlertTriangle,
+  IconCircleCheck, IconFilter, IconDownload, IconUsers,
+  IconCode, IconTestPipe,
+} from '@tabler/icons-react';
+import { DEEP_BLUE, AQUA } from '../brandTokens';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface RoleCount { devs: number; qa: number; ux?: number; }
+interface ResourceDep { pod: string; needs: RoleCount; }
+interface GanttProject {
+  id: number; name: string; status: string; priority: string;
+  startWeek: number; durationWeeks: number; pod: string;
+  ownUse: RoleCount; resourceDeps: ResourceDep[];
+}
+
+// ── POD headcount ─────────────────────────────────────────────────────────────
+
+const POD_CAPACITIES: Record<string, Required<RoleCount>> = {
+  'Integrations':       { devs: 5, qa: 2, ux: 0 },
+  'LIS/Reporting':      { devs: 4, qa: 2, ux: 0 },
+  'Accessioning':       { devs: 6, qa: 3, ux: 0 },
+  'Portal V2':          { devs: 8, qa: 3, ux: 1 },
+  'Portal V1':          { devs: 4, qa: 2, ux: 0 },
+  'Enterprise Systems': { devs: 5, qa: 2, ux: 0 },
+};
+
+// ── Project data ──────────────────────────────────────────────────────────────
+
+const PROJECTS: GanttProject[] = [
+  { id: 1, name: 'UKG & Azure Integrations',        status: 'ACTIVE',       priority: 'P1', startWeek: 0,  durationWeeks: 12, pod: 'Integrations',       ownUse: { devs: 4, qa: 2 }, resourceDeps: [] },
+  { id: 2, name: 'RCM Enhancements',                status: 'ACTIVE',       priority: 'P1', startWeek: 0,  durationWeeks: 10, pod: 'LIS/Reporting',      ownUse: { devs: 3, qa: 2 }, resourceDeps: [] },
+  { id: 3, name: 'New Test Catalog Design',          status: 'ACTIVE',       priority: 'P0', startWeek: 4,  durationWeeks: 10, pod: 'Accessioning',       ownUse: { devs: 4, qa: 2 }, resourceDeps: [{ pod: 'LIS/Reporting', needs: { devs: 1, qa: 0 } }] },
+  { id: 4, name: 'NextGen Accessioning',             status: 'NOT STARTED',  priority: 'P0', startWeek: 14, durationWeeks: 10, pod: 'Accessioning',       ownUse: { devs: 5, qa: 3 }, resourceDeps: [{ pod: 'Integrations', needs: { devs: 1, qa: 0 } }] },
+  { id: 5, name: 'Back Office Admin Tool',           status: 'NOT STARTED',  priority: 'P1', startWeek: 10, durationWeeks: 10, pod: 'Portal V2',          ownUse: { devs: 3, qa: 1 }, resourceDeps: [{ pod: 'Integrations', needs: { devs: 2, qa: 0 } }] },
+  { id: 6, name: 'Single Source of Truth',           status: 'NOT STARTED',  priority: 'P2', startWeek: 18, durationWeeks: 6,  pod: 'Portal V1',          ownUse: { devs: 3, qa: 2 }, resourceDeps: [{ pod: 'Accessioning', needs: { devs: 1, qa: 0 } }, { pod: 'Portal V2', needs: { devs: 1, qa: 0 } }] },
+  { id: 7, name: 'Portal V2 Launch',                status: 'IN DISCOVERY', priority: 'P1', startWeek: 2,  durationWeeks: 16, pod: 'Portal V2',          ownUse: { devs: 5, qa: 2, ux: 1 }, resourceDeps: [] },
+  { id: 8, name: 'VOB Optimization',                status: 'NOT STARTED',  priority: 'P2', startWeek: 18, durationWeeks: 6,  pod: 'Enterprise Systems', ownUse: { devs: 3, qa: 1 }, resourceDeps: [{ pod: 'Portal V2', needs: { devs: 2, qa: 1 } }] },
+];
+
+// ── Capacity helpers ──────────────────────────────────────────────────────────
+
+function podAllocatedAtWeek(podName: string, week: number, excludeId: number): Required<RoleCount> {
+  let devs = 0, qa = 0, ux = 0;
+  for (const p of PROJECTS) {
+    if (p.id === excludeId) continue;
+    if (week < p.startWeek || week >= p.startWeek + p.durationWeeks) continue;
+    if (p.pod === podName) { devs += p.ownUse.devs; qa += p.ownUse.qa; ux += p.ownUse.ux ?? 0; }
+    for (const rd of p.resourceDeps) {
+      if (rd.pod === podName) { devs += rd.needs.devs; qa += rd.needs.qa; ux += rd.needs.ux ?? 0; }
+    }
+  }
+  return { devs, qa, ux };
+}
+
+interface CapacityResult {
+  conflict: boolean;
+  minAvailDevs: number; minAvailQa: number;
+  neededDevs: number;   neededQa: number;
+  podTotalDevs: number; podTotalQa: number;
+  shortfallDevs: number; shortfallQa: number;
+}
+
+function checkCapacity(project: GanttProject, depPod: string): CapacityResult {
+  const cap = POD_CAPACITIES[depPod] ?? { devs: 0, qa: 0, ux: 0 };
+  const dep = project.resourceDeps.find(d => d.pod === depPod);
+  const neededDevs = dep?.needs.devs ?? 0;
+  const neededQa   = dep?.needs.qa   ?? 0;
+  let minAvailDevs = cap.devs, minAvailQa = cap.qa;
+  for (let w = project.startWeek; w < project.startWeek + project.durationWeeks; w++) {
+    const alloc = podAllocatedAtWeek(depPod, w, project.id);
+    minAvailDevs = Math.min(minAvailDevs, cap.devs - alloc.devs);
+    minAvailQa   = Math.min(minAvailQa,   cap.qa   - alloc.qa);
+  }
+  const shortfallDevs = Math.max(0, neededDevs - minAvailDevs);
+  const shortfallQa   = Math.max(0, neededQa   - minAvailQa);
+  return { conflict: shortfallDevs > 0 || shortfallQa > 0, minAvailDevs, minAvailQa, neededDevs, neededQa, podTotalDevs: cap.devs, podTotalQa: cap.qa, shortfallDevs, shortfallQa };
+}
+
+// ── Colours — muted, professional ────────────────────────────────────────────
+// Ordered by ALL_PODS sort: Accessioning, Enterprise Systems, Integrations, LIS/Reporting, Portal V1, Portal V2
+
+const POD_HEX: Record<string, string> = {
+  'Accessioning':       '#0891b2',  // cyan-600
+  'Enterprise Systems': '#7c3aed',  // violet-700
+  'Integrations':       '#b45309',  // amber-700
+  'LIS/Reporting':      '#1d4ed8',  // blue-700
+  'Portal V1':          '#059669',  // emerald-600
+  'Portal V2':          '#be185d',  // pink-700
+};
+const ALL_PODS = Object.keys(POD_HEX).sort();
+const getPodColor = (pod: string) => POD_HEX[pod] ?? '#64748b';
+
+const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  'ACTIVE':        { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' },
+  'NOT STARTED':   { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
+  'IN DISCOVERY':  { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+  'ON HOLD':       { bg: '#fef3c7', color: '#b45309', border: '#fde68a' },
+  'COMPLETED':     { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
+};
+const PRIORITY_COLORS: Record<string, string> = {
+  P0: '#dc2626', P1: '#ea580c', P2: '#2563eb', P3: '#16a34a',
+};
+
+// ── Gantt geometry ────────────────────────────────────────────────────────────
+
+const TOTAL_WEEKS   = 24;
+const WEEK_WIDTH    = 38;
+const ROW_HEIGHT    = 54;
+const HEADER_HEIGHT = 44;
+const LABEL_WIDTH   = 280;
+
+/** Smooth bezier path between two Gantt bars */
+function depPath(fromX: number, fromY: number, toX: number, toY: number): string {
+  // Always exit the source bar going right, then curve toward the target
+  const exitX = fromX + 14;
+  const entryX = toX;
+  // Control points pull horizontally away from each endpoint
+  const cpSpan = Math.max(40, Math.abs(entryX - exitX) * 0.45);
+  const c1x = exitX  + cpSpan;
+  const c2x = entryX - cpSpan;
+  return `M ${fromX},${fromY} L ${exitX},${fromY} C ${c1x},${fromY} ${c2x},${toY} ${entryX},${toY}`;
+}
+
+// ── Capacity progress bar (reusable) ─────────────────────────────────────────
+
+function CapBar({ label, icon, used, total, needed, conflict }: {
+  label: string; icon: React.ReactNode;
+  used: number; total: number; needed: number; conflict: boolean;
+}) {
+  const pctUsed   = Math.min(100, (used   / total) * 100);
+  const pctNeeded = Math.min(100 - pctUsed, (needed / total) * 100);
+  const avail     = total - used;
+  return (
+    <Box>
+      <Group gap={4} mb={3}>
+        {icon}
+        <Text size="10px" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
+        <Text size="10px" c="dimmed" style={{ marginLeft: 'auto' }}>
+          {avail}/{total} free — need {needed}
+        </Text>
+        {conflict
+          ? <Badge size="xs" color="red"   variant="light">−{needed - avail}</Badge>
+          : <Badge size="xs" color="green" variant="light">OK</Badge>
+        }
+      </Group>
+      <Box style={{ position: 'relative', height: 8, borderRadius: 4, background: '#e9ecef', overflow: 'hidden' }}>
+        <Box style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctUsed}%`, background: '#cbd5e1', borderRadius: 4 }} />
+        <Box style={{ position: 'absolute', left: `${pctUsed}%`, top: 0, height: '100%', width: `${pctNeeded}%`, background: conflict ? '#ef4444' : AQUA, borderRadius: 4 }} />
+      </Box>
+    </Box>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+export default function GanttDependenciesPage() {
+  const [filterPod, setFilterPod] = useState<string | null>(null);
+  const [view, setView] = useState('gantt');
+
+  const filtered = useMemo(() =>
+    filterPod ? PROJECTS.filter(p => p.pod === filterPod) : PROJECTS,
+    [filterPod]);
+
+  const capacityMap = useMemo(() => {
+    const map = new Map<string, CapacityResult>();
+    for (const p of PROJECTS)
+      for (const rd of p.resourceDeps)
+        map.set(`${p.id}::${rd.pod}`, checkCapacity(p, rd.pod));
+    return map;
+  }, []);
+
+  const projectHasConflict = (p: GanttProject) =>
+    p.resourceDeps.some(rd => capacityMap.get(`${p.id}::${rd.pod}`)?.conflict);
+
+  const conflicts = useMemo(() => {
+    const list: { project: string; depPod: string; shortfallDevs: number; shortfallQa: number }[] = [];
+    for (const p of filtered)
+      for (const rd of p.resourceDeps) {
+        const c = capacityMap.get(`${p.id}::${rd.pod}`);
+        if (c?.conflict) list.push({ project: p.name, depPod: rd.pod, shortfallDevs: c.shortfallDevs, shortfallQa: c.shortfallQa });
+      }
+    return list;
+  }, [filtered, capacityMap]);
+
+  const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i * 7);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  // Smooth bezier dependency arrows
+  const dependencyPaths = useMemo(() => {
+    const paths: { key: string; d: string; color: string; isConflict: boolean }[] = [];
+    filtered.forEach((project, projIdx) => {
+      project.resourceDeps.forEach(({ pod: depPod }) => {
+        const c = capacityMap.get(`${project.id}::${depPod}`);
+        const isConflict = c?.conflict ?? false;
+        // Find the project in depPod with the latest end that overlaps our window
+        const blocker = [...PROJECTS]
+          .filter(p => p.pod === depPod && p.id !== project.id)
+          .filter(p => p.startWeek < project.startWeek + project.durationWeeks)
+          .sort((a, b) => (b.startWeek + b.durationWeeks) - (a.startWeek + a.durationWeeks))[0];
+        if (!blocker) return;
+        const blockerIdx = filtered.findIndex(p => p.id === blocker.id);
+        if (blockerIdx === -1) return;
+        const fromX = (blocker.startWeek + blocker.durationWeeks) * WEEK_WIDTH;
+        const fromY = blockerIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+        const toX   = project.startWeek * WEEK_WIDTH;
+        const toY   = projIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+        paths.push({
+          key: `${blocker.id}->${project.id}(${depPod})`,
+          d: depPath(fromX, fromY, toX, toY),
+          color: isConflict ? '#ef4444' : AQUA,
+          isConflict,
+        });
+      });
+    });
+    return paths;
+  }, [filtered, capacityMap]);
+
+  const totalDevs = Object.values(POD_CAPACITIES).reduce((s, c) => s + c.devs, 0);
+  const totalQa   = Object.values(POD_CAPACITIES).reduce((s, c) => s + c.qa,   0);
+
+  return (
+    <Box className="page-enter" style={{ paddingBottom: 32 }}>
+
+      {/* Header */}
+      <Group justify="space-between" mb="lg">
+        <Box>
+          <Title order={1} style={{ color: DEEP_BLUE, fontWeight: 800 }}>Gantt &amp; Dependencies</Title>
+          <Text c="dimmed" size="sm" mt={2}>
+            Capacity-aware timeline — arrows only flag conflicts when a POD genuinely can't spare the headcount
+          </Text>
+        </Box>
+        <Button leftSection={<IconDownload size={15} />} variant="outline" color="teal" size="sm">Export</Button>
+      </Group>
+
+      {/* KPIs */}
+      <SimpleGrid cols={4} spacing="md" mb="lg">
+        {[
+          { label: 'Total Projects',        value: PROJECTS.length,                                           color: DEEP_BLUE },
+          { label: 'With POD Dependencies', value: PROJECTS.filter(p => p.resourceDeps.length > 0).length,   color: '#2563eb' },
+          { label: 'Capacity Conflicts',    value: conflicts.length,                                           color: conflicts.length > 0 ? '#dc2626' : '#15803d' },
+          { label: 'Eng Headcount',         value: `${totalDevs}d · ${totalQa}q`,                            color: '#7c3aed' },
+        ].map(s => (
+          <Card key={s.label} className="kpi-card-modern" withBorder radius="lg" p="md">
+            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>{s.label}</Text>
+            <Text fw={800} mt={4} style={{ color: s.color, fontSize: typeof s.value === 'string' ? 20 : 28 }}>{s.value}</Text>
+          </Card>
+        ))}
+      </SimpleGrid>
+
+      {/* Conflict banner */}
+      {conflicts.length > 0 && (
+        <Paper withBorder radius="md" p="md" mb="lg" style={{ background: '#fff5f5', borderColor: '#fecdd3' }}>
+          <Group gap="xs" mb="xs">
+            <IconAlertTriangle size={15} color="#dc2626" />
+            <Text size="sm" fw={700} c="red">{conflicts.length} capacity conflict{conflicts.length !== 1 ? 's' : ''}</Text>
+          </Group>
+          <Stack gap={3}>
+            {conflicts.map((c, i) => (
+              <Text key={i} size="sm" style={{ color: '#991b1b' }}>
+                • <strong>{c.project}</strong> needs resources from <strong>{c.depPod}</strong>
+                {c.shortfallDevs > 0 ? ` — ${c.shortfallDevs} dev${c.shortfallDevs > 1 ? 's' : ''} short` : ''}
+                {c.shortfallQa   > 0 ? `, ${c.shortfallQa} QA short` : ''}
+              </Text>
+            ))}
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Controls */}
+      <Paper withBorder radius="md" p="sm" mb="lg">
+        <Group justify="space-between">
+          <Select placeholder="All PODs" data={ALL_PODS} value={filterPod} onChange={setFilterPod}
+            clearable size="sm" leftSection={<IconFilter size={14} />} style={{ width: 210 }} />
+          <SegmentedControl size="sm" value={view} onChange={setView}
+            data={[{ label: 'Gantt Chart', value: 'gantt' }, { label: 'Capacity Detail', value: 'list' }, { label: 'POD Headcount', value: 'pods' }]}
+            style={{ background: '#f1f5f9' }}
+          />
+        </Group>
+      </Paper>
+
+      {/* ══════════ GANTT ══════════ */}
+      {view === 'gantt' && (
+        <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+          <ScrollArea type="auto">
+            <Box style={{ minWidth: LABEL_WIDTH + TOTAL_WEEKS * WEEK_WIDTH }}>
+
+              {/* Column header */}
+              <Box style={{ display: 'flex', background: DEEP_BLUE, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 10 }}>
+                <Box style={{ width: LABEL_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+                  <Text size="11px" fw={700} tt="uppercase" style={{ color: 'rgba(255,255,255,0.45)', letterSpacing: '1px' }}>Project</Text>
+                </Box>
+                {weeks.map((w, i) => (
+                  <Box key={i} style={{ width: WEEK_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: i % 4 === 0 ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(255,255,255,0.03)' }}>
+                    {i % 4 === 0 && (
+                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>{w}</Text>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+
+              {/* Rows */}
+              <Box style={{ position: 'relative' }}>
+                {filtered.map((project, ri) => {
+                  const podColor    = getPodColor(project.pod);
+                  const hasConflict = projectHasConflict(project);
+                  const hasDeps     = project.resourceDeps.length > 0;
+                  const isEven      = ri % 2 === 0;
+                  const depSummary  = project.resourceDeps.map(rd => {
+                    const c = capacityMap.get(`${project.id}::${rd.pod}`);
+                    return `${rd.pod} — need ${rd.needs.devs}d${rd.needs.qa ? `/${rd.needs.qa}q` : ''} · ${c?.conflict ? `⚠ ${c.shortfallDevs}d short` : `✓ ${c?.minAvailDevs}d free`}`;
+                  }).join('\n');
+
+                  return (
+                    <Box
+                      key={project.id}
+                      style={{
+                        display: 'flex', height: ROW_HEIGHT, alignItems: 'center',
+                        background: hasConflict
+                          ? '#fff8f8'
+                          : isEven ? '#ffffff' : '#fafbfc',
+                        borderBottom: '1px solid #edf0f4',
+                        transition: 'background 80ms',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = hasConflict ? '#fff8f8' : isEven ? '#ffffff' : '#fafbfc')}
+                    >
+                      {/* Label */}
+                      <Box style={{
+                        width: LABEL_WIDTH, flexShrink: 0, height: '100%',
+                        borderRight: '1px solid #edf0f4',
+                        display: 'flex', alignItems: 'center',
+                        padding: '0 14px 0 12px', gap: 8,
+                        borderLeft: `3px solid ${hasConflict ? '#ef4444' : podColor}`,
+                      }}>
+                        {hasDeps && (
+                          <Tooltip label={depSummary} withArrow multiline w={260} position="right">
+                            <Box style={{ flexShrink: 0, cursor: 'default', lineHeight: 1 }}>
+                              {hasConflict
+                                ? <IconAlertTriangle size={13} color="#ef4444" />
+                                : <IconGitBranch     size={13} color={AQUA} />
+                              }
+                            </Box>
+                          </Tooltip>
+                        )}
+                        <Box style={{ overflow: 'hidden', flex: 1 }}>
+                          <Text size="xs" fw={600} style={{ color: DEEP_BLUE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {project.name}
+                          </Text>
+                          <Group gap={5} mt={2}>
+                            <Text size="10px" style={{ color: podColor, fontWeight: 600 }}>{project.pod}</Text>
+                            <Text size="10px" c="dimmed">·</Text>
+                            <Text size="10px" c="dimmed">{project.ownUse.devs}d / {project.ownUse.qa}q</Text>
+                            <Badge size="xs" style={{ fontSize: 9, padding: '0 4px', background: `${PRIORITY_COLORS[project.priority]}14`, color: PRIORITY_COLORS[project.priority], border: `1px solid ${PRIORITY_COLORS[project.priority]}30` }}>
+                              {project.priority}
+                            </Badge>
+                          </Group>
+                        </Box>
+                      </Box>
+
+                      {/* Timeline cells + bar */}
+                      <Box style={{ display: 'flex', flex: 1, height: '100%', position: 'relative' }}>
+                        {weeks.map((_, wi) => (
+                          <Box key={wi} style={{
+                            width: WEEK_WIDTH, flexShrink: 0,
+                            borderLeft: wi % 4 === 0 ? '1px solid #e8ecf0' : '1px solid #f4f6f8',
+                            height: '100%',
+                          }} />
+                        ))}
+                        <Tooltip
+                          label={[
+                            `${project.name}`,
+                            `Wk ${project.startWeek} → ${project.startWeek + project.durationWeeks}  ·  ${project.status}`,
+                            `Own team: ${project.ownUse.devs} devs, ${project.ownUse.qa} QA`,
+                          ].join('\n')}
+                          withArrow multiline
+                        >
+                          <Box style={{
+                            position: 'absolute',
+                            left:  project.startWeek * WEEK_WIDTH + 3,
+                            width: project.durationWeeks * WEEK_WIDTH - 6,
+                            top: '50%', transform: 'translateY(-50%)',
+                            height: 30, borderRadius: 6,
+                            background: podColor,
+                            opacity: project.status === 'NOT STARTED' ? 0.42 : 0.82,
+                            display: 'flex', alignItems: 'center',
+                            padding: '0 10px', overflow: 'hidden',
+                            cursor: 'default', zIndex: 2,
+                          }}>
+                            <Text size="11px" fw={600} style={{ color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.01em' }}>
+                              {project.name}
+                            </Text>
+                          </Box>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  );
+                })}
+
+                {/* Smooth dependency arrows */}
+                <svg style={{
+                  position: 'absolute', top: 0, left: LABEL_WIDTH,
+                  width: TOTAL_WEEKS * WEEK_WIDTH, height: filtered.length * ROW_HEIGHT,
+                  pointerEvents: 'none', overflow: 'visible', zIndex: 5,
+                }}>
+                  <defs>
+                    <marker id="arr-ok"       markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                      <polygon points="0 1, 7 4, 0 7" fill={AQUA} />
+                    </marker>
+                    <marker id="arr-conflict" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                      <polygon points="0 1, 7 4, 0 7" fill="#ef4444" />
+                    </marker>
+                  </defs>
+                  {dependencyPaths.map(({ key, d, color, isConflict }) => (
+                    <path key={key} d={d} stroke={color} strokeWidth={1.5} fill="none"
+                      strokeDasharray={isConflict ? '6 3' : undefined}
+                      markerEnd={`url(#${isConflict ? 'arr-conflict' : 'arr-ok'})`}
+                      opacity={0.75}
+                    />
+                  ))}
+                </svg>
+              </Box>
+            </Box>
+          </ScrollArea>
+
+          {/* Legend */}
+          <Box style={{ padding: '10px 16px', borderTop: '1px solid #edf0f4', background: '#fafbfc' }}>
+            <Group gap="lg" wrap="wrap" align="center">
+              <Group gap="xs">
+                <Text size="11px" c="dimmed" fw={600}>PODs:</Text>
+                {ALL_PODS.map(pod => (
+                  <Group key={pod} gap={5}>
+                    <Box style={{ width: 10, height: 10, borderRadius: 3, background: getPodColor(pod), flexShrink: 0 }} />
+                    <Text size="11px" c="dimmed">{pod}</Text>
+                  </Group>
+                ))}
+              </Group>
+              <Divider orientation="vertical" />
+              <Group gap={5}>
+                <Box style={{ width: 20, height: 1.5, background: AQUA }} />
+                <Text size="11px" c="dimmed">capacity OK</Text>
+              </Group>
+              <Group gap={5}>
+                <Box style={{ width: 20, height: 1.5, background: '#ef4444', borderStyle: 'dashed' }} />
+                <Text size="11px" c="dimmed">conflict</Text>
+              </Group>
+              <Text size="11px" c="dimmed">Bar opacity = NOT STARTED projects are dimmed</Text>
+            </Group>
+          </Box>
+        </Paper>
+      )}
+
+      {/* ══════════ CAPACITY DETAIL ══════════ */}
+      {view === 'list' && (
+        <Stack gap="md">
+          {filtered.map(project => {
+            const podColor    = getPodColor(project.pod);
+            const statusCfg   = STATUS_COLORS[project.status] ?? STATUS_COLORS['NOT STARTED'];
+            const hasConflict = projectHasConflict(project);
+            return (
+              <Paper key={project.id} withBorder radius="md" p="lg"
+                style={{ borderLeft: `4px solid ${hasConflict ? '#ef4444' : podColor}` }}>
+                <Group justify="space-between" mb="md">
+                  <Box>
+                    <Group gap="sm">
+                      <Text fw={700} size="sm" style={{ color: DEEP_BLUE }}>{project.name}</Text>
+                      <Badge size="xs" style={{ background: `${PRIORITY_COLORS[project.priority]}14`, color: PRIORITY_COLORS[project.priority], border: `1px solid ${PRIORITY_COLORS[project.priority]}30` }}>{project.priority}</Badge>
+                      <Badge size="sm" style={{ background: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}` }}>{project.status}</Badge>
+                    </Group>
+                    <Group gap="xs" mt={4}>
+                      <IconUsers size={12} color={podColor} />
+                      <Text size="xs" c="dimmed">
+                        Wk {project.startWeek}–{project.startWeek + project.durationWeeks} · run by <strong>{project.pod}</strong> ({project.ownUse.devs}d / {project.ownUse.qa}q own team)
+                      </Text>
+                    </Group>
+                  </Box>
+                  {hasConflict
+                    ? <Badge color="red"   size="sm" leftSection={<IconAlertTriangle size={11} />}>Capacity conflict</Badge>
+                    : <Badge color="green" size="sm" leftSection={<IconCircleCheck   size={11} />}>All clear</Badge>
+                  }
+                </Group>
+
+                {project.resourceDeps.length === 0 ? (
+                  <Group gap={6}><IconCircleCheck size={14} color="#16a34a" /><Text size="xs" c="dimmed">No cross-POD resource dependencies</Text></Group>
+                ) : (
+                  <Stack gap="md">
+                    {project.resourceDeps.map(rd => {
+                      const c        = capacityMap.get(`${project.id}::${rd.pod}`)!;
+                      const depColor = getPodColor(rd.pod);
+                      const allocDevs = c.podTotalDevs - c.minAvailDevs;
+                      const allocQa   = c.podTotalQa   - c.minAvailQa;
+                      return (
+                        <Paper key={rd.pod} withBorder p="md" radius="sm"
+                          style={{ background: c.conflict ? '#fff5f5' : '#f8fffe', borderColor: c.conflict ? '#fecdd3' : '#cef0f1' }}>
+                          <Group gap="sm" mb="md">
+                            <IconUsers size={14} color={depColor} />
+                            <Text size="sm" fw={700} style={{ color: depColor }}>{rd.pod} POD</Text>
+                            <Text size="xs" c="dimmed">total: {POD_CAPACITIES[rd.pod]?.devs ?? '?'}d / {POD_CAPACITIES[rd.pod]?.qa ?? '?'}q</Text>
+                            <Text size="xs" c="dimmed" style={{ marginLeft: 'auto' }}>during wk {project.startWeek}–{project.startWeek + project.durationWeeks}</Text>
+                          </Group>
+                          <Stack gap={10}>
+                            <CapBar label="Developers"    icon={<IconCode     size={11} color="#94a3b8" />} used={allocDevs} total={c.podTotalDevs} needed={rd.needs.devs} conflict={c.shortfallDevs > 0} />
+                            <CapBar label="QA Engineers"  icon={<IconTestPipe size={11} color="#94a3b8" />} used={allocQa}   total={c.podTotalQa}   needed={rd.needs.qa}   conflict={c.shortfallQa   > 0} />
+                          </Stack>
+                          {c.conflict && (
+                            <Text size="xs" c="red" mt="sm" fw={500}>
+                              ⚠ At peak overlap, {rd.pod} has {c.minAvailDevs}d / {c.minAvailQa}q free — this project needs {rd.needs.devs}d / {rd.needs.qa}q. Consider shifting start week or rebalancing the {rd.pod} backlog.
+                            </Text>
+                          )}
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+
+      {/* ══════════ POD HEADCOUNT ══════════ */}
+      {view === 'pods' && (
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+          {ALL_PODS.map(pod => {
+            const cap        = POD_CAPACITIES[pod] ?? { devs: 0, qa: 0, ux: 0 };
+            const podColor   = getPodColor(pod);
+            const podProjects = PROJECTS.filter(p => p.pod === pod);
+            let peakDevs = 0, peakQa = 0;
+            for (let w = 0; w < TOTAL_WEEKS; w++) {
+              const alloc = podAllocatedAtWeek(pod, w, -1);
+              peakDevs = Math.max(peakDevs, alloc.devs);
+              peakQa   = Math.max(peakQa,   alloc.qa);
+            }
+            const inbound = PROJECTS.filter(p => p.pod !== pod && p.resourceDeps.some(rd => rd.pod === pod));
+            return (
+              <Paper key={pod} withBorder radius="md" p="lg" style={{ borderTop: `3px solid ${podColor}` }}>
+                <Group justify="space-between" mb="md">
+                  <Group gap={8}><IconUsers size={15} color={podColor} /><Text fw={700} size="sm" style={{ color: DEEP_BLUE }}>{pod}</Text></Group>
+                  <Badge size="sm" style={{ background: `${podColor}12`, color: podColor, border: `1px solid ${podColor}30` }}>
+                    {cap.devs}d · {cap.qa}q{cap.ux ? ` · ${cap.ux}ux` : ''}
+                  </Badge>
+                </Group>
+                <Stack gap={8} mb="md">
+                  {[
+                    { label: 'Devs', icon: <IconCode size={11} color="#94a3b8" />, peak: peakDevs, total: cap.devs },
+                    { label: 'QA',   icon: <IconTestPipe size={11} color="#94a3b8" />, peak: peakQa,   total: cap.qa   },
+                  ].map(row => (
+                    <Box key={row.label}>
+                      <Group gap={4} mb={3}>
+                        {row.icon}
+                        <Text size="10px" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>{row.label}</Text>
+                        <Text size="10px" c="dimmed" style={{ marginLeft: 'auto' }}>peak {row.peak}/{row.total}</Text>
+                      </Group>
+                      <Progress value={Math.min(100, (row.peak / row.total) * 100)}
+                        color={row.peak > row.total ? 'red' : row.peak >= row.total * 0.85 ? 'orange' : 'teal'}
+                        size={7} radius="xl" />
+                    </Box>
+                  ))}
+                </Stack>
+                <Divider mb="sm" />
+                <Text size="11px" c="dimmed" fw={600} mb={4}>Owns {podProjects.length} project{podProjects.length !== 1 ? 's' : ''}</Text>
+                {podProjects.map(p => (
+                  <Group key={p.id} gap={6} mb={3}>
+                    <Box style={{ width: 6, height: 6, borderRadius: '50%', background: podColor, flexShrink: 0, marginTop: 2 }} />
+                    <Text size="xs" style={{ color: DEEP_BLUE, flex: 1 }}>{p.name}</Text>
+                    <Text size="10px" c="dimmed">{p.ownUse.devs}d/{p.ownUse.qa}q</Text>
+                  </Group>
+                ))}
+                {inbound.length > 0 && (
+                  <>
+                    <Divider my="sm" />
+                    <Text size="11px" c="dimmed" fw={600} mb={4}>Lending to</Text>
+                    {inbound.map(p => {
+                      const rd = p.resourceDeps.find(d => d.pod === pod)!;
+                      const c  = capacityMap.get(`${p.id}::${pod}`);
+                      return (
+                        <Group key={p.id} gap={6} mb={3}>
+                          <Box style={{ width: 6, height: 6, borderRadius: '50%', background: c?.conflict ? '#ef4444' : AQUA, flexShrink: 0, marginTop: 2 }} />
+                          <Text size="xs" style={{ color: DEEP_BLUE, flex: 1 }}>{p.name}</Text>
+                          <Text size="10px" c="dimmed">{rd.needs.devs}d/{rd.needs.qa}q {c?.conflict ? '⚠' : '✓'}</Text>
+                        </Group>
+                      );
+                    })}
+                  </>
+                )}
+              </Paper>
+            );
+          })}
+        </SimpleGrid>
+      )}
+    </Box>
+  );
+}

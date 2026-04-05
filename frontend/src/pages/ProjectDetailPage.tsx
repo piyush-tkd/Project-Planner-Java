@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
- Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider,
+ Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider, Tabs, SimpleGrid, Progress, RingProgress, Center, Paper,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar } from '@tabler/icons-react';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import { useProject, useProjects, useUpdateProject, useDeleteProject, useProjectPodPlannings, useUpdatePodPlannings, useCopyProject } from '../api/projects';
 import { usePhaseSchedules, useUpdatePhaseSchedules, useSchedulingRules, useUpdateSchedulingRules } from '../api/scheduling';
@@ -395,6 +395,26 @@ export default function ProjectDetailPage() {
  deleteProject.mutate(projectId, { onSuccess: () => navigate('/projects') });
  };
 
+ // ── Project detail tab state ─────────────────────────────────────────────
+ const [activeTab, setActiveTab] = useState<string | null>('overview');
+
+ // ── RACI state ────────────────────────────────────────────────────────
+ type RaciRow = { role: string; r: boolean; a: boolean; c: boolean; i: boolean };
+ const defaultRaciRows = (): RaciRow[] => [
+   { role: project?.owner ?? 'Project Owner', r: true, a: true, c: false, i: false },
+   { role: 'Engineering Lead', r: true, a: false, c: false, i: false },
+   { role: 'Product Manager', r: false, a: false, c: true, i: true },
+   { role: 'QA Lead', r: true, a: false, c: false, i: false },
+   { role: 'Stakeholders', r: false, a: false, c: false, i: true },
+ ];
+ const [raciRows, setRaciRows] = useState<RaciRow[]>([]);
+ const [raciModalOpen, setRaciModalOpen] = useState(false);
+ const [newRoleName, setNewRoleName] = useState('');
+ // initialise once project loads
+ useEffect(() => {
+   if (project && raciRows.length === 0) setRaciRows(defaultRaciRows());
+ }, [project]);
+
  const handleCopyProject = () => {
  copyProject.mutate(projectId, {
  onSuccess: (newProject) => {
@@ -428,6 +448,17 @@ export default function ProjectDetailPage() {
  <Button variant="light" size="xs" leftSection={<IconCopy size={14} />} onClick={handleCopyProject} loading={copyProject.isPending}>Duplicate</Button>
  </Group>
 
+ {/* ── Tabbed content ──────────────────────────────────────────── */}
+ <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
+   <Tabs.List mb="md">
+     <Tabs.Tab value="overview" leftSection={<IconChartBar size={14} />}>Overview</Tabs.Tab>
+     <Tabs.Tab value="financials" leftSection={<IconCurrencyDollar size={14} />}>Financials</Tabs.Tab>
+     <Tabs.Tab value="raci" leftSection={<IconUsers size={14} />}>RACI</Tabs.Tab>
+     <Tabs.Tab value="health" leftSection={<IconHeartRateMonitor size={14} />}>Health Score</Tabs.Tab>
+   </Tabs.List>
+
+   {/* ── OVERVIEW TAB ─── */}
+   <Tabs.Panel value="overview">
  <Card withBorder padding="md">
  <Group grow>
  <div>
@@ -455,8 +486,10 @@ export default function ProjectDetailPage() {
 
  <Group justify="space-between">
  <Title order={3}>POD Assignments</Title>
- <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => { setNewPlan(emptyPlan()); setAddModal(true); }}>
- Add POD
+ <Button leftSection={<IconPlus size={16} />} size="sm"
+   style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700, paddingLeft: 16, paddingRight: 16 }}
+   onClick={() => { setNewPlan(emptyPlan()); setAddModal(true); }}>
+ + Add POD
  </Button>
  </Group>
 
@@ -623,6 +656,173 @@ export default function ProjectDetailPage() {
  <Group>
  <Button color="red" variant="outline" onClick={handleDeleteProject}>Delete Project</Button>
  </Group>
+   </Tabs.Panel>
+
+   {/* ── FINANCIALS TAB ─── */}
+   <Tabs.Panel value="financials" pt="md">
+     <SimpleGrid cols={{ base: 1, sm: 3 }} mb="lg">
+       {[
+         { label: 'Budget', value: '—', sub: 'Not configured', icon: <IconCurrencyDollar size={20} />, color: AQUA },
+         { label: 'Actuals (YTD)', value: '—', sub: 'Connect Jira worklog', icon: <IconChartBar size={20} />, color: '#6366f1' },
+         { label: 'Variance', value: '—', sub: 'Budget vs actuals', icon: <IconTrendingUp size={20} />, color: '#f59e0b' },
+       ].map(stat => (
+         <Paper key={stat.label} withBorder p="md" radius="md" style={{ background: 'linear-gradient(135deg, #fff 0%, #f8faff 100%)' }}>
+           <Group gap="sm" mb={8}>
+             <Center w={36} h={36} style={{ background: `${stat.color}15`, borderRadius: 8 }}>
+               <span style={{ color: stat.color }}>{stat.icon}</span>
+             </Center>
+             <div>
+               <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{stat.label}</Text>
+               <Text fw={700} size="lg" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>{stat.value}</Text>
+             </div>
+           </Group>
+           <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{stat.sub}</Text>
+         </Paper>
+       ))}
+     </SimpleGrid>
+     <Paper withBorder p="xl" radius="md" style={{ textAlign: 'center', background: `${AQUA}08` }}>
+       <IconCurrencyDollar size={40} color={AQUA} style={{ marginBottom: 12 }} />
+       <Title order={4} mb={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Financial tracking coming soon</Title>
+       <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+         Connect your budget, track actuals via Jira worklog hours, and monitor CapEx vs OpEx split. Set alerts for budget overruns.
+       </Text>
+     </Paper>
+   </Tabs.Panel>
+
+   {/* ── RACI TAB ─── */}
+   <Tabs.Panel value="raci" pt="md">
+     <Group justify="space-between" mb="md">
+       <Text fw={600} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Responsibility Assignment Matrix</Text>
+       <Button size="xs" style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }} leftSection={<IconPlus size={14} />}
+         onClick={() => { setNewRoleName(''); setRaciModalOpen(true); }}>
+         Add Role
+       </Button>
+     </Group>
+     <Table withTableBorder withColumnBorders fz="sm">
+       <Table.Thead>
+         <Table.Tr style={{ background: `${AQUA}10` }}>
+           <Table.Th style={{ fontFamily: FONT_FAMILY }}>Role / Person</Table.Th>
+           <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'center' }}>R — Responsible</Table.Th>
+           <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'center' }}>A — Accountable</Table.Th>
+           <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'center' }}>C — Consulted</Table.Th>
+           <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'center' }}>I — Informed</Table.Th>
+           <Table.Th style={{ width: 40 }} />
+         </Table.Tr>
+       </Table.Thead>
+       <Table.Tbody>
+         {raciRows.map((row, idx) => (
+           <Table.Tr key={idx}>
+             <Table.Td fw={500} style={{ fontFamily: FONT_FAMILY }}>{row.role}</Table.Td>
+             {(['r', 'a', 'c', 'i'] as const).map(col => (
+               <Table.Td key={col} style={{ textAlign: 'center', cursor: 'pointer' }}
+                 onClick={() => setRaciRows(prev => prev.map((r, i) => i === idx ? { ...r, [col]: !r[col] } : r))}>
+                 {row[col] ? (
+                   <Badge size="sm" variant="filled" color={col === 'r' ? 'teal' : col === 'a' ? 'blue' : col === 'c' ? 'violet' : 'gray'}>
+                     {col.toUpperCase()}
+                   </Badge>
+                 ) : (
+                   <Text c="dimmed" size="xs">—</Text>
+                 )}
+               </Table.Td>
+             ))}
+             <Table.Td>
+               <ActionIcon size="xs" color="red" variant="subtle"
+                 onClick={() => setRaciRows(prev => prev.filter((_, i) => i !== idx))}>
+                 <IconTrash size={12} />
+               </ActionIcon>
+             </Table.Td>
+           </Table.Tr>
+         ))}
+       </Table.Tbody>
+     </Table>
+     <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
+       Click any cell to toggle. Use + Add Role to add new rows.
+     </Text>
+   </Tabs.Panel>
+
+   {/* ── RACI Add Role Modal ─── */}
+   <Modal opened={raciModalOpen} onClose={() => setRaciModalOpen(false)} title="Add Role to RACI" size="sm">
+     <Stack gap="md">
+       <TextInput
+         label="Role / Person Name"
+         placeholder="e.g. DevOps Lead"
+         value={newRoleName}
+         onChange={e => setNewRoleName(e.currentTarget.value)}
+         autoFocus
+       />
+       <Group justify="flex-end">
+         <Button variant="light" onClick={() => setRaciModalOpen(false)}>Cancel</Button>
+         <Button style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}
+           disabled={!newRoleName.trim()}
+           onClick={() => {
+             if (!newRoleName.trim()) return;
+             setRaciRows(prev => [...prev, { role: newRoleName.trim(), r: false, a: false, c: false, i: false }]);
+             setRaciModalOpen(false);
+           }}>
+           Add
+         </Button>
+       </Group>
+     </Stack>
+   </Modal>
+
+   {/* ── HEALTH SCORE TAB ─── */}
+   <Tabs.Panel value="health" pt="md">
+     <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="lg">
+       {[
+         { label: 'Schedule', score: 82, color: '#10b981', icon: <IconCheck size={18} /> },
+         { label: 'Budget', score: 0, color: '#6b7280', icon: <IconCurrencyDollar size={18} /> },
+         { label: 'Scope Risk', score: 65, color: '#f59e0b', icon: <IconAlertTriangle size={18} /> },
+         { label: 'Team Health', score: 91, color: '#10b981', icon: <IconUsers size={18} /> },
+       ].map(item => (
+         <Paper key={item.label} withBorder p="md" radius="md" style={{ textAlign: 'center' }}>
+           <RingProgress
+             size={90}
+             roundCaps
+             thickness={8}
+             sections={item.score > 0 ? [{ value: item.score, color: item.color }] : [{ value: 100, color: '#e5e7eb' }]}
+             label={
+               <Center>
+                 <span style={{ color: item.score > 0 ? item.color : '#9ca3af', fontSize: 14, fontWeight: 700 }}>
+                   {item.score > 0 ? `${item.score}` : '—'}
+                 </span>
+               </Center>
+             }
+           />
+           <Text fw={600} size="sm" mt={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>{item.label}</Text>
+           {item.score > 0 && (
+             <Progress value={item.score} color={item.color} size="xs" mt={4} radius="xl" />
+           )}
+           {item.score === 0 && (
+             <Text size="xs" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>No data</Text>
+           )}
+         </Paper>
+       ))}
+     </SimpleGrid>
+     <Paper withBorder p="lg" radius="md" style={{ background: `${AQUA}06` }}>
+       <Title order={5} mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Health Signals</Title>
+       {[
+         { label: 'All PODs assigned and staffed', status: (plannings?.length ?? 0) > 0 ? 'pass' : 'warn', icon: <IconCheck size={14} /> },
+         { label: 'Target date is set', status: project.targetDate ? 'pass' : 'fail', icon: project.targetDate ? <IconCheck size={14} /> : <IconAlertTriangle size={14} /> },
+         { label: 'Owner is defined', status: project.owner ? 'pass' : 'fail', icon: project.owner ? <IconCheck size={14} /> : <IconAlertTriangle size={14} /> },
+         { label: 'Budget configured', status: 'warn', icon: <IconAlertTriangle size={14} /> },
+         { label: 'RACI matrix populated', status: 'warn', icon: <IconAlertTriangle size={14} /> },
+       ].map(signal => (
+         <Group key={signal.label} gap="sm" mb={6}>
+           <span style={{ color: signal.status === 'pass' ? '#10b981' : signal.status === 'fail' ? '#ef4444' : '#f59e0b' }}>
+             {signal.icon}
+           </span>
+           <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: signal.status === 'fail' ? '#ef4444' : DEEP_BLUE }}>
+             {signal.label}
+           </Text>
+           <Badge size="xs" variant="light" color={signal.status === 'pass' ? 'green' : signal.status === 'fail' ? 'red' : 'yellow'} ml="auto">
+             {signal.status === 'pass' ? 'OK' : signal.status === 'fail' ? 'Missing' : 'Attention'}
+           </Badge>
+         </Group>
+       ))}
+     </Paper>
+   </Tabs.Panel>
+
+ </Tabs>
 
  {/* Edit Project Modal */}
  <Modal opened={editModal} onClose={() => { setEditModal(false); setNameError(''); }} title="Edit Project" size="xl">

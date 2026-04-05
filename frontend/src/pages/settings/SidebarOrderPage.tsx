@@ -26,59 +26,41 @@ const EMPTY_PREFS: SidebarPrefs = { groupOrder: [], itemOrder: {} };
 
 const DEFAULT_GROUPS: { label: string; items: string[] }[] = [
   {
-    label: 'Dashboard',
-    items: ['Dashboard', 'Ask AI'],
+    label: 'Home',
+    items: ['Dashboard', 'Inbox', 'Ask AI'],
   },
   {
-    label: 'Data Entry',
-    items: [
-      'Resources', 'Projects', 'PODs', 'Availability', 'Overrides',
-      'Team Calendar', 'Sprint Calendar', 'Release Calendar', 'Sprint Planner',
-      'Holiday Calendar',
-      'Leave Management',
-    ],
+    label: 'Portfolio',
+    items: ['Projects', 'PODs', 'Objectives', 'Risk & Issues', 'Ideas Board'],
   },
   {
-    label: 'Capacity Reports',
-    items: [
-      'Utilization Center', 'Hiring Forecast', 'Capacity vs Demand',
-      'POD Resources', 'POD Capacity', 'Resource Intelligence', 'POD Work Hours',
-    ],
+    label: 'People',
+    items: ['Resources', 'Availability', 'Overrides', 'Bookings', 'Capacity', 'Leave & Holidays'],
   },
   {
-    label: 'Portfolio Analysis',
-    items: [
-      'Project Health', 'Dependency Map', 'Portfolio Timeline',
-      'POD · Project Matrix', 'Budget & CapEx', 'Project Signals', 'Resource Performance',
-      'DORA Metrics', 'Jira Analytics', 'Dashboard Builder', 'Eng. Productivity',
-    ],
+    label: 'Calendar',
+    items: ['Strategic Calendar', 'Sprint Planner', 'Project Templates'],
   },
   {
-    label: 'Strategic Insights',
-    items: [
-      'Portfolio Health', 'Jira Portfolio Sync', 'Financial Intelligence',
-      'Delivery Predict.', 'Smart Notifications',
-    ],
-  },
-  {
-    label: 'Integrations',
+    label: 'Delivery',
     items: [
       'POD Dashboard', 'Releases', 'Release Notes',
-      'Jira Actuals', 'Support Queue', 'Worklog',
+      'Jira Actuals', 'Support Queue', 'Worklog', 'Budget & CapEx',
     ],
   },
   {
-    label: 'Simulators',
-    items: ['Timeline Simulator', 'Scenario Simulator'],
-  },
-  {
-    label: 'Settings',
+    label: 'Analytics',
     items: [
-      'Timeline', 'Reference Data', 'Jira Credentials', 'Jira Boards',
-      'Release Versions', 'Support Boards', 'Resource Mapping', 'Release Mapping',
-      'NLP / AI', 'NLP Optimizer', 'Feedback Hub', 'Error Log', 'Sidebar Order',
-      'Users', 'Audit Log', 'Tables',
+      'Portfolio Health', 'Project Health', 'Dependency Map', 'Portfolio Timeline',
+      'Project Signals', 'Resource Performance', 'DORA Metrics', 'Jira Analytics',
+      'Dashboard Builder', 'Eng. Productivity', 'Gantt & Dependencies',
+      'Financial Intelligence', 'Delivery Predict.', 'Smart Notifications',
+      'Jira Portfolio Sync', 'Resource Intelligence', 'Timeline Simulator', 'Scenario Simulator',
     ],
+  },
+  {
+    label: 'Admin',
+    items: ['Admin Settings', 'Users', 'Audit Log'],
   },
 ];
 

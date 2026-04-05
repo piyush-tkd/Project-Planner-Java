@@ -251,7 +251,7 @@ public class ExcelExportService {
         setStr(dr, 1, p.getName(), s.normal);
         setStr(dr, 2, p.getPriority() != null ? p.getPriority().name() : "—", s.normal);
         setStr(dr, 3, nvl(p.getOwner()), s.normal);
-        setStr(dr, 4, p.getStatus().name(), s.normal);
+        setStr(dr, 4, p.getStatus() != null ? p.getStatus() : "—", s.normal);
         int startM = p.getStartMonth() != null ? p.getStartMonth() : 0;
         setStr(dr, 5, startM > 0 ? monthLabels.getOrDefault(startM, "M" + startM) : "—", s.normal);
         setNum(dr, 6, p.getDurationMonths() != null ? p.getDurationMonths() : 0, s.num);

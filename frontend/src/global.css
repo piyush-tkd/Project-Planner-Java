@@ -18,7 +18,7 @@
 
 .mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
 .mantine-Table-tr[data-striped="even"]:nth-of-type(even) {
-  background-color: #E7E9EC;
+  background-color: transparent;
 }
 
 [data-mantine-color-scheme="dark"] .mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
@@ -1362,3 +1362,212 @@
     max-width: 100% !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   WRIKE-INSPIRED DESIGN SYSTEM UPDATES — v10.0
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Tables: Wrike-exact header style ── */
+/* Wrike: sentence-case, medium weight, muted blue-gray, NO background, light border */
+.mantine-Table-thead tr,
+.mantine-Table-thead .mantine-Table-tr {
+  background: transparent !important;
+}
+.mantine-Table-thead th,
+.mantine-Table-thead .mantine-Table-th {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  white-space: nowrap;
+}
+.mantine-Table-thead th button,
+.mantine-Table-thead .mantine-Table-th button {
+  color: #94a3b8 !important;
+  font-weight: 500 !important;
+}
+.mantine-Table-thead th:hover,
+.mantine-Table-thead .mantine-Table-th:hover {
+  background: #f8fafc !important;
+  color: #64748b !important;
+}
+
+/* ── Table body: clean rows, hover-only highlight ── */
+.mantine-Table-tbody .mantine-Table-tr {
+  transition: background-color 120ms ease;
+}
+.mantine-Table-tbody .mantine-Table-tr:hover {
+  background-color: #EAFAFB !important;
+}
+.mantine-Table-tbody .mantine-Table-td {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+/* No zebra striping — clean rows only */
+.mantine-Table-tbody .mantine-Table-tr:nth-child(even) {
+  background-color: transparent !important;
+}
+
+/* ── Badges: Add thin border for polish ── */
+.mantine-Badge-root {
+  border: 1px solid currentColor;
+  border-opacity: 0.3;
+}
+
+/* ── Page headings: Wrike-style — Inter font, tight letter-spacing ── */
+.mantine-Title-root {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  letter-spacing: -0.2px;
+}
+h1.mantine-Title-root { font-weight: 700 !important; }
+h2.mantine-Title-root { font-weight: 700 !important; }
+h3.mantine-Title-root { font-weight: 600 !important; }
+h4.mantine-Title-root { font-weight: 600 !important; }
+
+/* ── Primary buttons: Wrike teal (theme primaryColor = aqua) ── */
+/* Filled aqua buttons */
+.mantine-Button-root[data-variant="filled"][data-color="aqua"] {
+  background-color: #2DCCD3 !important;
+  color: #0C2340 !important;
+  font-weight: 600 !important;
+}
+.mantine-Button-root[data-variant="filled"][data-color="aqua"]:hover {
+  background-color: #28B8BF !important;
+}
+/* Outline aqua buttons */
+.mantine-Button-root[data-variant="outline"][data-color="aqua"] {
+  border-color: #2DCCD3 !important;
+  color: #2DCCD3 !important;
+}
+.mantine-Button-root[data-variant="outline"][data-color="aqua"]:hover {
+  background-color: #eafafb !important;
+}
+/* Legacy: deep navy filled buttons also become teal */
+.mantine-Button-root[data-variant="filled"][data-color="deepBlue"],
+.mantine-Button-root[data-variant="filled"][data-color="dark"] {
+  background-color: #2DCCD3 !important;
+  color: #0C2340 !important;
+  font-weight: 600 !important;
+}
+.mantine-Button-root[data-variant="filled"][data-color="deepBlue"]:hover,
+.mantine-Button-root[data-variant="filled"][data-color="dark"]:hover {
+  background-color: #28B8BF !important;
+}
+
+/* ── KPI Cards: Top accent border ── */
+.kpi-card-modern::before {
+  background: #2DCCD3 !important;
+  height: 3px;
+}
+
+/* ── Sidebar section labels: More readable ── */
+.mantine-NavLink-section {
+  opacity: 0.65 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+}
+
+/* ── View switcher tabs: Wrike-style pill tabs ── */
+.view-switcher-tabs .mantine-Tabs-tab {
+  border-radius: 6px !important;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+}
+.view-switcher-tabs .mantine-Tabs-tab[data-active] {
+  background: #0C2340;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+.view-switcher-tabs .mantine-Tabs-list {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 4px;
+  border: none !important;
+  gap: 2px;
+}
+
+/* ── Wrike green primary buttons (new class to use in JSX) ── */
+.btn-wrike-primary {
+  background: #2DCCD3 !important;
+  color: #0C2340 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+}
+.btn-wrike-primary:hover {
+  background: #28B8BF !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 204, 211, 0.35) !important;
+}
+
+/* ── Kanban board styles ── */
+.kanban-column {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 400px;
+  border: 1px solid #e7e9ec;
+  flex: 1;
+  min-width: 240px;
+  max-width: 320px;
+}
+.kanban-column-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid;
+}
+.kanban-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #e7e9ec;
+  box-shadow: 0 1px 3px rgba(12,35,64,0.06);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.kanban-card:hover {
+  border-color: #2DCCD3;
+  box-shadow: 0 4px 12px rgba(45,204,211,0.12);
+  transform: translateY(-1px);
+}
+
+[data-mantine-color-scheme="dark"] .kanban-column {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-mantine-color-scheme="dark"] .kanban-card {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* ── Resource bookings timeline ── */
+.booking-bar {
+  border-radius: 4px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.booking-bar:hover {
+  opacity: 0.85;
+  transform: scaleY(1.05);
+}
+
+

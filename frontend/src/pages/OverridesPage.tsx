@@ -89,6 +89,7 @@ export default function OverridesPage() {
  setModalOpen(false);
  notifications.show({ title: 'Updated', message: 'Override updated', color: 'green' });
  },
+ onError: () => notifications.show({ title: 'Error', message: 'Failed to update override', color: 'red' }),
  });
  } else {
  createMutation.mutate(form, {
@@ -96,6 +97,7 @@ export default function OverridesPage() {
  setModalOpen(false);
  notifications.show({ title: 'Created', message: 'Override created', color: 'green' });
  },
+ onError: () => notifications.show({ title: 'Error', message: 'Failed to create override', color: 'red' }),
  });
  }
  };

@@ -1,7 +1,6 @@
 package com.portfolioplanner.domain.model;
 
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -45,9 +44,10 @@ public class Project {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ProjectStatus status = ProjectStatus.ACTIVE;
+    /** Free-form status string. Well-known values: NOT_STARTED, IN_DISCOVERY, ACTIVE,
+     *  ON_HOLD, COMPLETED, CANCELLED. Custom swimlane names are also stored here. */
+    @Column(nullable = false, length = 100)
+    private String status = "ACTIVE";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocked_by_id")

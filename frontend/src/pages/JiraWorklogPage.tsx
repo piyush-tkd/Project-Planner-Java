@@ -483,6 +483,20 @@ export default function JiraWorklogPage() {
 
 // ── User row (collapsed + expanded) ───────────────────────────────────
 
+// Calculate expected hours for the month up to today (8h per working day Mon-Fri)
+function calcExpectedHours(month: string): number {
+ const today = new Date();
+ const [y, m] = month.split('-').map(Number);
+ const isCurrentMonth = today.getFullYear() === y && today.getMonth() + 1 === m;
+ const endDay = isCurrentMonth ? today.getDate() : new Date(y, m, 0).getDate();
+ let working = 0;
+ for (let d = 1; d <= endDay; d++) {
+   const dow = new Date(y, m - 1, d).getDay();
+   if (dow !== 0 && dow !== 6) working++;
+ }
+ return working * 8;
+}
+
 function UserRows({
  rank,
  user,
@@ -505,10 +519,20 @@ function UserRows({
  const isDark = useDarkMode();
  const typeEntries = Object.entries(user.issueTypeBreakdown).sort(([, a], [, b]) => b - a);
 
+ const expectedHours = calcExpectedHours(month);
+ const noHours = user.totalHours === 0;
+ const fallingBehind = !noHours && expectedHours > 0 && user.totalHours < expectedHours * 0.6;
+
+ const rowBg = noHours
+   ? (isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2')
+   : fallingBehind
+   ? (isDark ? 'rgba(245,158,11,0.15)' : '#fffbeb')
+   : undefined;
+
  return (
  <>
  <Table.Tr
- style={{ cursor: 'pointer' }}
+ style={{ cursor: 'pointer', background: rowBg }}
  onClick={onToggle}
  >
  {/* Expand toggle */}
@@ -526,16 +550,14 @@ function UserRows({
  {/* Name */}
  <Table.Td>
  <Group gap="xs" wrap="nowrap">
- <ThemeIcon size={28} radius="xl" color={user.isBuffer ? 'orange' : 'gray'} variant="light" style={{ flexShrink: 0 }}>
+ <ThemeIcon size={28} radius="xl" color={noHours ? 'red' : fallingBehind ? 'yellow' : user.isBuffer ? 'orange' : 'gray'} variant="light" style={{ flexShrink: 0 }}>
  {user.isBuffer ? <IconArrowsLeftRight size={14} /> : <IconUser size={14} />}
  </ThemeIcon>
  <div>
- <Text size="sm" fw={500} style={{ lineHeight: 1.2 }}>{user.author}</Text>
- {user.isBuffer && (
- <Badge size="xs" color="orange" variant="light" mt={2}>
- BUFFER
- </Badge>
- )}
+ <Text size="sm" fw={500} style={{ lineHeight: 1.2, color: noHours ? '#dc2626' : fallingBehind ? '#b45309' : undefined }}>{user.author}</Text>
+ {noHours && <Badge size="xs" color="red" variant="light" mt={2}>No hours logged</Badge>}
+ {fallingBehind && <Badge size="xs" color="yellow" variant="light" mt={2}>Behind ({user.totalHours}h / {expectedHours}h expected)</Badge>}
+ {user.isBuffer && !noHours && !fallingBehind && <Badge size="xs" color="orange" variant="light" mt={2}>BUFFER</Badge>}
  </div>
  </Group>
  </Table.Td>

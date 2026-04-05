@@ -1,7 +1,6 @@
 package com.portfolioplanner.service.calculation;
 
 import com.portfolioplanner.domain.model.*;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.model.enums.Role;
 import com.portfolioplanner.domain.repository.*;
 import com.portfolioplanner.dto.request.SimulationRequest;
@@ -321,7 +320,7 @@ public class CalculationEngine {
 
         int totalResources = resources.size();
         int activeProjects = (int) projects.stream()
-                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count();
+                .filter(p -> "ACTIVE".equalsIgnoreCase(p.getStatus())).count();
         int totalPods = pods.size();
 
         // Overall utilization: weighted average by capacity hours (demand / capacity * 100)

@@ -4,7 +4,6 @@ import com.portfolioplanner.domain.model.EffortPattern;
 import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.ProjectPodPlanning;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.model.enums.Role;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -46,7 +45,7 @@ public class DemandCalculator {
 
         for (ProjectPodPlanning pp : plannings) {
             Project project = projects.get(pp.getProject().getId());
-            if (project == null || project.getStatus() == ProjectStatus.CANCELLED) {
+            if (project == null || "CANCELLED".equalsIgnoreCase(project.getStatus())) {
                 continue;
             }
 

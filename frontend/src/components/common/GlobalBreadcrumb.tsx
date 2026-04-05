@@ -1,91 +1,138 @@
 /**
  * GlobalBreadcrumb — Route-aware breadcrumb navigation.
  *
- * Uses an explicit mapping from each route to its full breadcrumb trail,
- * so every page gets a correct, sensible hierarchy.  Hidden on Dashboard.
+ * Improvements in v11.2:
+ *  • Home crumb at the start of every trail
+ *  • All section labels are now clickable links
+ *  • Full route coverage (all pages, new and old)
+ *  • Dynamic entity names for /projects/:id, /pods/:id, /jira-pods/:id
+ *  • Admin section links to the consolidated /settings/org hub
  */
 import { useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useComputedColorScheme } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
 import { IconHome, IconChevronRight, IconArrowLeft } from '@tabler/icons-react';
+import apiClient from '../../api/client';
 import {
   DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS,
   DEEP_BLUE_TINTS, BORDER_DEFAULT, SURFACE_SIDEBAR,
 } from '../../brandTokens';
 
-/* ── Breadcrumb trail definitions ──────────────────────────────────── */
+/* ── Types ─────────────────────────────────────────────────────────── */
 interface Crumb {
   label: string;
-  path?: string;        // if omitted, crumb is not a link (group label)
+  path?: string;
+  isHome?: boolean;
 }
 
+/* ── Section anchors (all clickable) ───────────────────────────────── */
+const H: Crumb = { label: 'Home', path: '/', isHome: true };
+
+const SEC = {
+  DATA:      { label: 'Data Entry',      path: '/resources' } as Crumb,
+  CAPACITY:  { label: 'Capacity',        path: '/capacity' } as Crumb,
+  PORTFOLIO: { label: 'Portfolio',       path: '/reports/project-health' } as Crumb,
+  STRATEGY:  { label: 'Strategy',        path: '/objectives' } as Crumb,
+  PLANNING:  { label: 'Planning',        path: '/sprint-planner' } as Crumb,
+  INTEG:     { label: 'Integrations',    path: '/jira-pods' } as Crumb,
+  SIM:       { label: 'Simulators',      path: '/simulator/timeline' } as Crumb,
+  ADMIN:     { label: 'Admin',           path: '/settings/org' } as Crumb,
+};
+
+/* ── Full route trail map ───────────────────────────────────────────── */
 const ROUTE_TRAILS: Record<string, Crumb[]> = {
-  /* ── Dashboard ── */
-  '/nlp':                [{ label: 'Dashboard' }, { label: 'Ask AI', path: '/nlp' }],
+  /* ── Ask AI ── */
+  '/nlp': [H, { label: 'Ask AI', path: '/nlp' }],
+
+  /* ── Inbox ── */
+  '/inbox': [H, { label: 'Inbox', path: '/inbox' }],
 
   /* ── Data Entry ── */
-  '/resources':           [{ label: 'Data Entry' }, { label: 'Resources', path: '/resources' }],
-  '/projects':            [{ label: 'Data Entry' }, { label: 'Projects', path: '/projects' }],
-  '/projects/:id':        [{ label: 'Data Entry' }, { label: 'Projects', path: '/projects' }, { label: 'Project Detail' }],
-  '/pods':                [{ label: 'Data Entry' }, { label: 'PODs', path: '/pods' }],
-  '/pods/:id':            [{ label: 'Data Entry' }, { label: 'PODs', path: '/pods' }, { label: 'POD Detail' }],
-  '/availability':        [{ label: 'Data Entry' }, { label: 'Availability', path: '/availability' }],
-  '/overrides':           [{ label: 'Data Entry' }, { label: 'Overrides', path: '/overrides' }],
-  '/team-calendar':       [{ label: 'Data Entry' }, { label: 'Team Calendar', path: '/team-calendar' }],
-  '/sprint-calendar':     [{ label: 'Data Entry' }, { label: 'Sprint Calendar', path: '/sprint-calendar' }],
-  '/release-calendar':    [{ label: 'Data Entry' }, { label: 'Release Calendar', path: '/release-calendar' }],
-  '/sprint-planner':      [{ label: 'Data Entry' }, { label: 'Sprint Planner', path: '/sprint-planner' }],
+  '/resources':         [H, SEC.DATA, { label: 'Resources',         path: '/resources' }],
+  '/projects':          [H, SEC.DATA, { label: 'Projects',           path: '/projects' }],
+  '/projects/:id':      [H, SEC.DATA, { label: 'Projects',           path: '/projects' }, { label: '…' }],
+  '/pods':              [H, SEC.DATA, { label: 'PODs',               path: '/pods' }],
+  '/pods/:id':          [H, SEC.DATA, { label: 'PODs',               path: '/pods' },     { label: '…' }],
+  '/overrides':         [H, SEC.DATA, { label: 'Overrides',          path: '/overrides' }],
+  '/availability':      [H, SEC.DATA, { label: 'Availability',       path: '/availability' }],
+  '/resource-bookings': [H, SEC.DATA, { label: 'Resource Bookings',  path: '/resource-bookings' }],
+  '/project-templates': [H, SEC.DATA, { label: 'Project Templates',  path: '/project-templates' }],
+  '/leave':             [H, SEC.DATA, { label: 'Leave Hub',          path: '/leave' }],
 
-  /* ── Capacity Reports ── */
-  '/reports/capacity-gap':       [{ label: 'Capacity Reports' }, { label: 'Capacity Gap', path: '/reports/capacity-gap' }],
-  '/reports/utilization':        [{ label: 'Capacity Reports' }, { label: 'Utilization', path: '/reports/utilization' }],
-  '/reports/slack-buffer':       [{ label: 'Capacity Reports' }, { label: 'Slack & Buffer', path: '/reports/slack-buffer' }],
-  '/reports/hiring-forecast':    [{ label: 'Capacity Reports' }, { label: 'Hiring Forecast', path: '/reports/hiring-forecast' }],
-  '/reports/concurrency':        [{ label: 'Capacity Reports' }, { label: 'Concurrency Risk', path: '/reports/concurrency' }],
-  '/reports/capacity-demand':    [{ label: 'Capacity Reports' }, { label: 'Capacity vs Demand', path: '/reports/capacity-demand' }],
-  '/reports/pod-resources':      [{ label: 'Capacity Reports' }, { label: 'POD Resources', path: '/reports/pod-resources' }],
-  '/reports/pod-capacity':       [{ label: 'Capacity Reports' }, { label: 'POD Capacity', path: '/reports/pod-capacity' }],
-  '/reports/resource-pod-matrix':[{ label: 'Capacity Reports' }, { label: 'Resource · POD Matrix', path: '/reports/resource-pod-matrix' }],
+  /* ── Strategy ── */
+  '/objectives':    [H, SEC.STRATEGY, { label: 'Objectives',    path: '/objectives' }],
+  '/risk-register': [H, SEC.STRATEGY, { label: 'Risk Register', path: '/risk-register' }],
+  '/ideas':         [H, SEC.STRATEGY, { label: 'Ideas Board',   path: '/ideas' }],
+
+  /* ── Planning / Calendar ── */
+  '/calendar':          [H, SEC.PLANNING, { label: 'Calendar Hub',    path: '/calendar' }],
+  '/team-calendar':     [H, SEC.PLANNING, { label: 'Team Calendar',   path: '/team-calendar' }],
+  '/sprint-calendar':   [H, SEC.PLANNING, { label: 'Sprint Calendar', path: '/sprint-calendar' }],
+  '/release-calendar':  [H, SEC.PLANNING, { label: 'Release Calendar',path: '/release-calendar' }],
+  '/sprint-planner':    [H, SEC.PLANNING, { label: 'Sprint Planner',  path: '/sprint-planner' }],
+
+  /* ── Capacity ── */
+  '/capacity':                       [H, SEC.CAPACITY, { label: 'Capacity Hub',             path: '/capacity' }],
+  '/reports/utilization':            [H, SEC.CAPACITY, { label: 'Utilization Center',        path: '/reports/utilization' }],
+  '/reports/hiring-forecast':        [H, SEC.CAPACITY, { label: 'Hiring Forecast',           path: '/reports/hiring-forecast' }],
+  '/reports/capacity-demand':        [H, SEC.CAPACITY, { label: 'Capacity vs Demand',        path: '/reports/capacity-demand' }],
+  '/reports/pod-resources':          [H, SEC.CAPACITY, { label: 'POD Resources',             path: '/reports/pod-resources' }],
+  '/reports/pod-capacity':           [H, SEC.CAPACITY, { label: 'POD Capacity',              path: '/reports/pod-capacity' }],
+  '/reports/resource-intelligence':  [H, SEC.CAPACITY, { label: 'Resource Intelligence',     path: '/reports/resource-intelligence' }],
+  '/reports/workload-chart':         [H, SEC.CAPACITY, { label: 'Workload Chart',            path: '/reports/workload-chart' }],
 
   /* ── Portfolio Analysis ── */
-  '/reports/project-health':      [{ label: 'Portfolio Analysis' }, { label: 'Project Health', path: '/reports/project-health' }],
-  '/reports/cross-pod':           [{ label: 'Portfolio Analysis' }, { label: 'Cross-POD Deps', path: '/reports/cross-pod' }],
-  '/reports/owner-demand':        [{ label: 'Portfolio Analysis' }, { label: 'Owner Demand', path: '/reports/owner-demand' }],
-  '/reports/deadline-gap':        [{ label: 'Portfolio Analysis' }, { label: 'Deadline Gap', path: '/reports/deadline-gap' }],
-  '/reports/resource-allocation': [{ label: 'Portfolio Analysis' }, { label: 'Resource Allocation', path: '/reports/resource-allocation' }],
-  '/reports/pod-splits':          [{ label: 'Portfolio Analysis' }, { label: 'POD Splits', path: '/reports/pod-splits' }],
-  '/reports/pod-project-matrix':  [{ label: 'Portfolio Analysis' }, { label: 'POD-Project Matrix', path: '/reports/pod-project-matrix' }],
-  '/reports/project-pod-matrix':  [{ label: 'Portfolio Analysis' }, { label: 'Project-POD Matrix', path: '/reports/project-pod-matrix' }],
-  '/reports/gantt':               [{ label: 'Portfolio Analysis' }, { label: 'Project Gantt', path: '/reports/gantt' }],
-  '/reports/budget':              [{ label: 'Portfolio Analysis' }, { label: 'Budget & Cost', path: '/reports/budget' }],
-  '/reports/resource-roi':        [{ label: 'Portfolio Analysis' }, { label: 'Resource ROI', path: '/reports/resource-roi' }],
+  '/reports/project-health':             [H, SEC.PORTFOLIO, { label: 'Project Health',             path: '/reports/project-health' }],
+  '/reports/dependency-map':             [H, SEC.PORTFOLIO, { label: 'Dependency Map',             path: '/reports/dependency-map' }],
+  '/reports/portfolio-timeline':         [H, SEC.PORTFOLIO, { label: 'Portfolio Timeline',         path: '/reports/portfolio-timeline' }],
+  '/reports/project-signals':            [H, SEC.PORTFOLIO, { label: 'Project Signals',            path: '/reports/project-signals' }],
+  '/reports/project-pod-matrix':         [H, SEC.PORTFOLIO, { label: 'Project-POD Matrix',         path: '/reports/project-pod-matrix' }],
+  '/reports/budget-capex':               [H, SEC.PORTFOLIO, { label: 'Budget & CapEx',             path: '/reports/budget-capex' }],
+  '/reports/resource-performance':       [H, SEC.PORTFOLIO, { label: 'Resource Performance',       path: '/reports/resource-performance' }],
+  '/reports/pod-hours':                  [H, SEC.PORTFOLIO, { label: 'POD Hours',                  path: '/reports/pod-hours' }],
+  '/reports/dora':                       [H, SEC.PORTFOLIO, { label: 'DORA Metrics',               path: '/reports/dora' }],
+  '/reports/jira-analytics':             [H, SEC.PORTFOLIO, { label: 'Jira Analytics',             path: '/reports/jira-analytics' }],
+  '/reports/jira-dashboard-builder':     [H, SEC.PORTFOLIO, { label: 'Dashboard Builder',          path: '/reports/jira-dashboard-builder' }],
+  '/reports/engineering-productivity':   [H, SEC.PORTFOLIO, { label: 'Engineering Productivity',   path: '/reports/engineering-productivity' }],
+  '/reports/portfolio-health-dashboard': [H, SEC.PORTFOLIO, { label: 'Portfolio Health',           path: '/reports/portfolio-health-dashboard' }],
+  '/reports/jira-portfolio-sync':        [H, SEC.PORTFOLIO, { label: 'Portfolio Sync',             path: '/reports/jira-portfolio-sync' }],
+  '/reports/financial-intelligence':     [H, SEC.PORTFOLIO, { label: 'Financial Intelligence',     path: '/reports/financial-intelligence' }],
+  '/reports/delivery-predictability':    [H, SEC.PORTFOLIO, { label: 'Delivery Predictability',    path: '/reports/delivery-predictability' }],
+  '/reports/smart-notifications':        [H, SEC.PORTFOLIO, { label: 'Smart Notifications',        path: '/reports/smart-notifications' }],
+  '/reports/gantt-dependencies':         [H, SEC.PORTFOLIO, { label: 'Gantt Dependencies',         path: '/reports/gantt-dependencies' }],
 
   /* ── Integrations ── */
-  '/jira-pods':          [{ label: 'Integrations' }, { label: 'POD Dashboard', path: '/jira-pods' }],
-  '/jira-pods/:id':      [{ label: 'Integrations' }, { label: 'POD Dashboard', path: '/jira-pods' }, { label: 'POD Detail' }],
-  '/jira-releases':      [{ label: 'Integrations' }, { label: 'Releases', path: '/jira-releases' }],
-  '/release-notes':      [{ label: 'Integrations' }, { label: 'Release Notes', path: '/release-notes' }],
-  '/jira-capex':         [{ label: 'Integrations' }, { label: 'CapEx / OpEx', path: '/jira-capex' }],
-  '/jira-actuals':       [{ label: 'Integrations' }, { label: 'Jira Actuals', path: '/jira-actuals' }],
-  '/jira-support':       [{ label: 'Integrations' }, { label: 'Support Queue', path: '/jira-support' }],
-  '/jira-worklog':       [{ label: 'Integrations' }, { label: 'Worklog', path: '/jira-worklog' }],
+  '/jira-pods':       [H, SEC.INTEG, { label: 'POD Dashboard', path: '/jira-pods' }],
+  '/jira-pods/:id':   [H, SEC.INTEG, { label: 'POD Dashboard', path: '/jira-pods' }, { label: '…' }],
+  '/jira-releases':   [H, SEC.INTEG, { label: 'Releases',       path: '/jira-releases' }],
+  '/release-notes':   [H, SEC.INTEG, { label: 'Release Notes',  path: '/release-notes' }],
+  '/jira-actuals':    [H, SEC.INTEG, { label: 'Jira Actuals',   path: '/jira-actuals' }],
+  '/jira-support':    [H, SEC.INTEG, { label: 'Support Queue',  path: '/jira-support' }],
+  '/jira-worklog':    [H, SEC.INTEG, { label: 'Worklog',        path: '/jira-worklog' }],
 
   /* ── Simulators ── */
-  '/simulator/timeline': [{ label: 'Simulators' }, { label: 'Timeline Simulator', path: '/simulator/timeline' }],
-  '/simulator/scenario': [{ label: 'Simulators' }, { label: 'Scenario Simulator', path: '/simulator/scenario' }],
+  '/simulator/timeline': [H, SEC.SIM, { label: 'Timeline Simulator', path: '/simulator/timeline' }],
+  '/simulator/scenario': [H, SEC.SIM, { label: 'Scenario Simulator', path: '/simulator/scenario' }],
 
-  /* ── Settings ── */
-  '/settings/timeline':         [{ label: 'Settings' }, { label: 'Timeline', path: '/settings/timeline' }],
-  '/settings/ref-data':         [{ label: 'Settings' }, { label: 'Reference Data', path: '/settings/ref-data' }],
-  '/settings/jira':             [{ label: 'Settings' }, { label: 'Jira Boards', path: '/settings/jira' }],
-  '/settings/releases':         [{ label: 'Settings' }, { label: 'Release Versions', path: '/settings/releases' }],
-  '/settings/jira-credentials': [{ label: 'Settings' }, { label: 'Jira Credentials', path: '/settings/jira-credentials' }],
-  '/settings/support-boards':   [{ label: 'Settings' }, { label: 'Support Boards', path: '/settings/support-boards' }],
-  '/settings/nlp':              [{ label: 'Settings' }, { label: 'NLP Configuration', path: '/settings/nlp' }],
-  '/settings/nlp-optimizer':    [{ label: 'Settings' }, { label: 'NLP Optimizer', path: '/settings/nlp-optimizer' }],
-  '/settings/users':            [{ label: 'Settings' }, { label: 'User Management', path: '/settings/users' }],
-  '/settings/audit-log':        [{ label: 'Settings' }, { label: 'Audit Log', path: '/settings/audit-log' }],
-  '/settings/tables':           [{ label: 'Settings' }, { label: 'Tables', path: '/settings/tables' }],
+  /* ── Admin ── */
+  '/settings/org':                   [H, SEC.ADMIN, { label: 'Admin Settings',        path: '/settings/org' }],
+  '/settings/users':                 [H, SEC.ADMIN, { label: 'User Management',        path: '/settings/users' }],
+  '/settings/audit-log':             [H, SEC.ADMIN, { label: 'Audit Log',              path: '/settings/audit-log' }],
+  '/settings/tables':                [H, SEC.ADMIN, { label: 'DB Browser',             path: '/settings/tables' }],
+  '/settings/feedback-hub':          [H, SEC.ADMIN, { label: 'Feedback Hub',           path: '/settings/feedback-hub' }],
+  '/settings/error-log':             [H, SEC.ADMIN, { label: 'Error Log',              path: '/settings/error-log' }],
+  '/settings/sidebar-order':         [H, SEC.ADMIN, { label: 'Sidebar Order',          path: '/settings/sidebar-order' }],
+  '/settings/timeline':              [H, SEC.ADMIN, { label: 'Timeline Settings',      path: '/settings/timeline' }],
+  '/settings/ref-data':              [H, SEC.ADMIN, { label: 'Reference Data',         path: '/settings/ref-data' }],
+  '/settings/jira':                  [H, SEC.ADMIN, { label: 'Jira Boards',            path: '/settings/jira' }],
+  '/settings/releases':              [H, SEC.ADMIN, { label: 'Release Versions',       path: '/settings/releases' }],
+  '/settings/jira-credentials':      [H, SEC.ADMIN, { label: 'Jira Credentials',       path: '/settings/jira-credentials' }],
+  '/settings/support-boards':        [H, SEC.ADMIN, { label: 'Support Boards',         path: '/settings/support-boards' }],
+  '/settings/nlp':                   [H, SEC.ADMIN, { label: 'NLP Configuration',      path: '/settings/nlp' }],
+  '/settings/nlp-optimizer':         [H, SEC.ADMIN, { label: 'NLP Optimizer',          path: '/settings/nlp-optimizer' }],
+  '/settings/jira-resource-mapping': [H, SEC.ADMIN, { label: 'Resource Mapping',       path: '/settings/jira-resource-mapping' }],
+  '/settings/jira-release-mapping':  [H, SEC.ADMIN, { label: 'Release Mapping',        path: '/settings/jira-release-mapping' }],
 };
 
 /* ── Resolve a live pathname against the trail map ─────────────────── */
@@ -93,16 +140,45 @@ function resolveTrail(pathname: string): Crumb[] {
   if (ROUTE_TRAILS[pathname]) return ROUTE_TRAILS[pathname];
 
   const parts = pathname.split('/').filter(Boolean);
+  if (parts.length === 2 && parts[0] === 'projects')  return ROUTE_TRAILS['/projects/:id']  ?? [];
+  if (parts.length === 2 && parts[0] === 'pods')       return ROUTE_TRAILS['/pods/:id']      ?? [];
+  if (parts.length === 2 && parts[0] === 'jira-pods')  return ROUTE_TRAILS['/jira-pods/:id'] ?? [];
 
-  if (parts.length === 2 && parts[0] === 'projects') return ROUTE_TRAILS['/projects/:id'] ?? [];
-  if (parts.length === 2 && parts[0] === 'pods')     return ROUTE_TRAILS['/pods/:id'] ?? [];
-  if (parts.length === 2 && parts[0] === 'jira-pods') return ROUTE_TRAILS['/jira-pods/:id'] ?? [];
+  // Generic fallback
+  return [
+    H,
+    ...parts.map((seg, i) => ({
+      label: seg.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      path: '/' + parts.slice(0, i + 1).join('/'),
+    })),
+  ];
+}
 
-  // Fallback: capitalize each segment
-  return parts.map((seg, i) => ({
-    label: seg.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-    path: '/' + parts.slice(0, i + 1).join('/'),
-  }));
+/* ── Dynamic label hook — resolves real entity names ───────────────── */
+function useDynamicLabel(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean);
+  const isProjectDetail  = parts.length === 2 && parts[0] === 'projects';
+  const isPodDetail      = parts.length === 2 && parts[0] === 'pods';
+  const isJiraPodDetail  = parts.length === 2 && parts[0] === 'jira-pods';
+  const entityId = parts[1];
+
+  const { data: project } = useQuery<{ name: string }>({
+    queryKey: ['breadcrumb-project', entityId],
+    queryFn: () => apiClient.get(`/projects/${entityId}`).then(r => r.data),
+    enabled: isProjectDetail && !!entityId,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: pod } = useQuery<{ name: string }>({
+    queryKey: ['breadcrumb-pod', entityId],
+    queryFn: () => apiClient.get(`/pods/${entityId}`).then(r => r.data),
+    enabled: (isPodDetail || isJiraPodDetail) && !!entityId,
+    staleTime: 5 * 60_000,
+  });
+
+  if (isProjectDetail && project?.name) return project.name;
+  if ((isPodDetail || isJiraPodDetail) && pod?.name) return pod.name;
+  return null;
 }
 
 /* ── Component ─────────────────────────────────────────────────────── */
@@ -112,25 +188,32 @@ export default function GlobalBreadcrumb() {
   const computedColorScheme = useComputedColorScheme('light');
   const isDark = computedColorScheme === 'dark';
 
-  const trail = useMemo(() => resolveTrail(location.pathname), [location.pathname]);
+  const rawTrail = useMemo(() => resolveTrail(location.pathname), [location.pathname]);
+  const dynamicLabel = useDynamicLabel(location.pathname);
 
-  // Don't render on Dashboard or top-level pages with only one crumb (no parent to navigate to)
+  // Replace the last placeholder '…' with the real entity name when available
+  const trail: Crumb[] = useMemo(() => {
+    if (!dynamicLabel) return rawTrail;
+    return rawTrail.map((c, i) =>
+      i === rawTrail.length - 1 && c.label === '…'
+        ? { ...c, label: dynamicLabel }
+        : c
+    );
+  }, [rawTrail, dynamicLabel]);
+
+  // Hide on Dashboard and root
   if (location.pathname === '/' || trail.length <= 1) return null;
 
-  const crumbs: Crumb[] = trail;
-
-  /* ── Dark-mode aware styles ── */
+  /* ── Styles ── */
   const containerStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 0,
     marginBottom: 12,
-    padding: '8px 12px',
-    background: isDark
-      ? 'rgba(255, 255, 255, 0.04)'
-      : SURFACE_SIDEBAR,
+    padding: '6px 12px',
+    background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_SIDEBAR,
     borderRadius: 10,
-    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : BORDER_DEFAULT}`,
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : BORDER_DEFAULT}`,
     fontFamily: FONT_FAMILY,
     fontSize: 13,
     lineHeight: '20px',
@@ -138,62 +221,56 @@ export default function GlobalBreadcrumb() {
     backdropFilter: isDark ? 'blur(8px)' : undefined,
   };
 
-  const separatorStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    margin: '0 4px',
-    color: isDark ? 'rgba(255, 255, 255, 0.25)' : DEEP_BLUE_TINTS[20],
+  const sepStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center',
+    margin: '0 3px',
+    color: isDark ? 'rgba(255,255,255,0.2)' : DEEP_BLUE_TINTS[20],
     flexShrink: 0,
   };
 
   const linkStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    color: isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE,
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    color: isDark ? 'rgba(255,255,255,0.6)' : DEEP_BLUE_TINTS[60],
     textDecoration: 'none',
     cursor: 'pointer',
-    borderRadius: 3,
-    padding: '2px 4px',
+    borderRadius: 4,
+    padding: '2px 5px',
+    fontSize: 12,
+    fontWeight: 500,
     transition: 'background-color 150ms ease, color 150ms ease',
   };
 
-  const linkHoverBg = isDark ? 'rgba(45, 204, 211, 0.12)' : 'rgba(45, 204, 211, 0.08)';
-
-  const groupLabelStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    color: isDark ? 'rgba(255, 255, 255, 0.45)' : DEEP_BLUE_TINTS[50],
-    padding: '2px 4px',
-    fontSize: 12,
-    fontWeight: 500,
+  const sectionStyle: React.CSSProperties = {
+    ...linkStyle,
+    color: isDark ? 'rgba(255,255,255,0.45)' : DEEP_BLUE_TINTS[40],
+    fontWeight: 600,
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: '0.03em',
+    letterSpacing: '0.04em',
   };
 
   const activeStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    color: AQUA,
+    display: 'inline-flex', alignItems: 'center',
+    color: isDark ? '#fff' : DEEP_BLUE,
     fontWeight: 600,
-    padding: '2px 4px',
+    padding: '2px 5px',
+    fontSize: 13,
   };
 
   const backBtnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 28,
-    height: 28,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 26, height: 26,
     borderRadius: 6,
-    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : BORDER_DEFAULT}`,
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : BORDER_DEFAULT}`,
     background: 'transparent',
-    color: isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE,
+    color: isDark ? 'rgba(255,255,255,0.7)' : DEEP_BLUE,
     cursor: 'pointer',
     marginRight: 8,
     transition: 'background-color 150ms ease, color 150ms ease, border-color 150ms ease',
     flexShrink: 0,
   };
+
+  const linkHoverBg = isDark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)';
 
   return (
     <nav aria-label="Breadcrumb" style={containerStyle}>
@@ -204,31 +281,39 @@ export default function GlobalBreadcrumb() {
         title="Go back"
         style={backBtnStyle}
         onClick={() => navigate(-1)}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? 'rgba(45, 204, 211, 0.15)' : AQUA_TINTS[10];
-          (e.currentTarget as HTMLButtonElement).style.borderColor = AQUA;
-          (e.currentTarget as HTMLButtonElement).style.color = AQUA;
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = isDark ? 'rgba(45,204,211,0.15)' : AQUA_TINTS[10];
+          (e.currentTarget as HTMLElement).style.borderColor = AQUA;
+          (e.currentTarget as HTMLElement).style.color = AQUA;
         }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-          (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(255, 255, 255, 0.12)' : BORDER_DEFAULT;
-          (e.currentTarget as HTMLButtonElement).style.color = isDark ? 'rgba(255, 255, 255, 0.7)' : DEEP_BLUE;
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+          (e.currentTarget as HTMLElement).style.borderColor = isDark ? 'rgba(255,255,255,0.12)' : BORDER_DEFAULT;
+          (e.currentTarget as HTMLElement).style.color = isDark ? 'rgba(255,255,255,0.7)' : DEEP_BLUE;
         }}
       >
-        <IconArrowLeft size={16} stroke={2} />
+        <IconArrowLeft size={14} stroke={2} />
       </button>
 
-      {crumbs.map((crumb, idx) => {
-        const isLast = idx === crumbs.length - 1;
-        const isLink = !!crumb.path && !isLast;
-        const isGroupLabel = !crumb.path && !isLast;
+      {trail.map((crumb, idx) => {
+        const isLast    = idx === trail.length - 1;
+        const isHome    = !!crumb.isHome;
+        const isSection = !isLast && idx > 0 && !!crumb.path;  // mid-level with path = section
+        const isLink    = !!crumb.path && !isLast;
+
+        // Determine style
+        const style = isLast
+          ? activeStyle
+          : isSection
+            ? sectionStyle
+            : linkStyle;
 
         return (
           <span key={`${crumb.label}-${idx}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
             {/* Separator */}
             {idx > 0 && (
-              <span style={separatorStyle}>
-                <IconChevronRight size={12} stroke={1.5} />
+              <span style={sepStyle}>
+                <IconChevronRight size={11} stroke={1.5} />
               </span>
             )}
 
@@ -236,21 +321,21 @@ export default function GlobalBreadcrumb() {
             {isLink ? (
               <a
                 href={crumb.path}
-                onClick={(e) => { e.preventDefault(); navigate(crumb.path!); }}
-                style={linkStyle}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = linkHoverBg; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                onClick={e => { e.preventDefault(); navigate(crumb.path!); }}
+                style={style}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = linkHoverBg; (e.currentTarget as HTMLElement).style.color = AQUA; }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                  (e.currentTarget as HTMLElement).style.color = isSection
+                    ? (isDark ? 'rgba(255,255,255,0.45)' : DEEP_BLUE_TINTS[40])
+                    : (isDark ? 'rgba(255,255,255,0.6)' : DEEP_BLUE_TINTS[60]);
+                }}
               >
-                {idx === 0 && <IconHome size={14} stroke={1.5} />}
-                {crumb.label}
+                {isHome ? <IconHome size={13} stroke={1.5} /> : crumb.label}
               </a>
-            ) : isGroupLabel ? (
-              <span style={groupLabelStyle}>
-                {crumb.label}
-              </span>
             ) : (
-              <span style={activeStyle}>
-                {crumb.label}
+              <span style={isLast ? activeStyle : { ...sectionStyle, cursor: 'default' }}>
+                {isHome ? <IconHome size={13} stroke={1.5} /> : crumb.label}
               </span>
             )}
           </span>

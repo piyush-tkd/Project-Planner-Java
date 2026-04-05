@@ -51,12 +51,12 @@ public class ExcelImportService {
             "tech lead", Role.TECH_LEAD
     );
 
-    private static final Map<String, ProjectStatus> STATUS_MAP = Map.of(
-            "active", ProjectStatus.ACTIVE,
-            "on hold", ProjectStatus.ON_HOLD,
-            "on_hold", ProjectStatus.ON_HOLD,
-            "completed", ProjectStatus.COMPLETED,
-            "cancelled", ProjectStatus.CANCELLED
+    private static final Map<String, String> STATUS_MAP = Map.of(
+            "active", "ACTIVE",
+            "on hold", "ON_HOLD",
+            "on_hold", "ON_HOLD",
+            "completed", "COMPLETED",
+            "cancelled", "CANCELLED"
     );
 
     private static final Map<String, Location> LOCATION_MAP = Map.of(
@@ -699,8 +699,8 @@ public class ExcelImportService {
                 priority = Priority.P3;
             }
 
-            ProjectStatus status = mapStatus(statusStr);
-            if (status == null) status = ProjectStatus.ACTIVE;
+            String status = mapStatus(statusStr);
+            if (status == null) status = "ACTIVE";
 
             Integer startMonth = parseMonthKey(startMonthStr);
             Integer endMonth = parseMonthKey(endMonthStr);
@@ -948,9 +948,10 @@ public class ExcelImportService {
         }
     }
 
-    private ProjectStatus mapStatus(String val) {
+    private String mapStatus(String val) {
         if (val == null) return null;
-        return STATUS_MAP.get(val.trim().toLowerCase());
+        String mapped = STATUS_MAP.get(val.trim().toLowerCase());
+        return mapped != null ? mapped : val.trim().toUpperCase();
     }
 
     private boolean parseBoolean(String val) {
@@ -998,7 +999,7 @@ public class ExcelImportService {
     private record BauRow(String podName, Role role, BigDecimal bauPct) {}
     private record ProjectRow(String name, Priority priority, String owner, Integer startMonth,
                               Integer targetEndMonth, Integer durationMonths, String defaultPattern,
-                              ProjectStatus status, LocalDate targetDate, String notes) {}
+                              String status, LocalDate targetDate, String notes) {}
     private record PodPlanningRow(String projectName, String podName, String tshirtSize,
                                   BigDecimal complexityOverride, String effortPattern,
                                   Integer podStartMonth, Integer durationOverride) {}

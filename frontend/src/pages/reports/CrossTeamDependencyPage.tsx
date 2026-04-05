@@ -41,7 +41,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { useResources } from '../../api/resources';
 import { usePods } from '../../api/pods';
-import { useProjects } from '../../api/projects';
+import { useProjects, useProjectPodMatrix } from '../../api/projects';
 import { useCapacityGap } from '../../api/reports';
 
 interface HeatmapCell {
@@ -91,6 +91,7 @@ export default function CrossTeamDependencyPage() {
   const { data: resources, isLoading: loadingResources, error: errorResources } = useResources();
   const { data: pods, isLoading: loadingPods, error: errorPods } = usePods();
   const { data: projects, isLoading: loadingProjects, error: errorProjects } = useProjects();
+  const { data: podMatrix } = useProjectPodMatrix();
   const { data: gapData, isLoading: loadingGapData } = useCapacityGap('hours');
 
   const dark = useDarkMode();
@@ -148,7 +149,7 @@ export default function CrossTeamDependencyPage() {
     });
 
     resources.forEach((r: any) => {
-      const podName = r.pod || 'Unknown';
+      const podName = r.podAssignment?.podName || 'Unassigned';
       const role = r.role || 'Unknown';
 
       if (!rolesByPod[podName]) {
@@ -193,12 +194,12 @@ export default function CrossTeamDependencyPage() {
     });
 
     resources.forEach((r: any) => {
-      const podName = r.pod || 'Unknown';
+      const podName = r.podAssignment?.podName || 'Unassigned';
       if (!podStats[podName]) {
         podStats[podName] = { teamSize: 0, totalFte: 0 };
       }
       podStats[podName].teamSize += 1;
-      podStats[podName].totalFte += r.fte || 0;
+      podStats[podName].totalFte += r.podAssignment?.capacityFte || 0;
     });
 
     const avgTeamSize = Object.values(podStats).reduce((s, p) => s + p.teamSize, 0) / Object.keys(podStats).length;
@@ -259,7 +260,7 @@ export default function CrossTeamDependencyPage() {
   }, [projects]);
 
   const bottlenecks = useMemo(() => {
-    if (!resources || !pods || !projects) return [];
+    if (!resources || !pods) return [];
 
     const podStats: Record<
       string,
@@ -271,34 +272,27 @@ export default function CrossTeamDependencyPage() {
     });
 
     resources.forEach((r: any) => {
-      const podName = r.pod || 'Unknown';
+      const podName = r.podAssignment?.podName || 'Unassigned';
       if (!podStats[podName]) {
         podStats[podName] = { teamSize: 0, totalFte: 0, projectSet: new Set() };
       }
       podStats[podName].teamSize += 1;
-      podStats[podName].totalFte += r.fte || 0;
+      podStats[podName].totalFte += r.podAssignment?.capacityFte || 0;
     });
 
-    const projectsByPod: Record<string, Set<string>> = {};
-    pods.forEach((p: any) => {
-      projectsByPod[p.name] = new Set();
-    });
-
-    projects.forEach((proj: any) => {
-      const resourcesInProj = resources.filter(
-        (r: any) => r.projectId === proj.id
-      );
-      resourcesInProj.forEach((r: any) => {
-        const podName = r.pod || 'Unknown';
-        if (projectsByPod[podName]) {
-          projectsByPod[podName].add(proj.id);
+    // Count projects per POD from the pod matrix
+    if (podMatrix) {
+      podMatrix.forEach((row: any) => {
+        const podName = row.podName;
+        if (podStats[podName]) {
+          podStats[podName].projectSet.add(String(row.projectId));
         }
       });
-    });
+    }
 
     const result: PodBottleneck[] = Object.entries(podStats)
       .map(([podName, stats]) => {
-        const projectCount = projectsByPod[podName]?.size || 0;
+        const projectCount = stats.projectSet.size;
         const loadRatio = stats.teamSize > 0 ? projectCount / stats.teamSize : 0;
 
         let riskLevel: 'high' | 'medium' | 'low' = 'low';

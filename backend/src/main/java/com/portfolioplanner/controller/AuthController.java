@@ -1,5 +1,6 @@
 package com.portfolioplanner.controller;
 
+import com.portfolioplanner.domain.model.RolePrivilege;
 import com.portfolioplanner.domain.repository.AppUserRepository;
 import com.portfolioplanner.security.JwtUtil;
 import com.portfolioplanner.service.UserManagementService;
@@ -71,6 +72,17 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<MeResponse> me(Authentication authentication) {
         return ResponseEntity.ok(buildMeResponse(null, authentication.getName()));
+    }
+
+    /**
+     * GET /api/auth/privileges
+     * Returns granular role_privilege rows for the logged-in user's role.
+     * ADMIN/SUPER_ADMIN receive an empty list (all access is implicit).
+     */
+    @GetMapping("/privileges")
+    public ResponseEntity<List<RolePrivilege>> privileges(Authentication authentication) {
+        var user = userRepo.findByUsername(authentication.getName()).orElseThrow();
+        return ResponseEntity.ok(userManagementService.getPrivileges(user.getRole()));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

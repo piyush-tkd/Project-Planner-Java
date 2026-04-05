@@ -34,7 +34,7 @@ const emptyCostRateForm: CostRateRequest = { role: 'DEVELOPER', location: 'US', 
 
 const LOCATION_LABELS: Record<string, string> = { US: 'US', INDIA: 'India' };
 
-export default function RefDataSettingsPage() {
+export default function RefDataSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
  const dark = useDarkMode();
  const { data: patterns, isLoading: pLoading } = useEffortPatterns();
  const { data: sizes, isLoading: sLoading } = useTshirtSizes();
@@ -199,6 +199,7 @@ export default function RefDataSettingsPage() {
 
  return (
  <Container size="xl" py="md" className="page-enter stagger-children">
+ {!embedded && (
  <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
  <div>
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
@@ -209,6 +210,7 @@ export default function RefDataSettingsPage() {
  </Text>
  </div>
  </Group>
+ )}
 
  {/* ── Summary Cards ── */}
  <SimpleGrid cols={{ base: 2, sm: 3 }} mb="lg" className="stagger-grid">

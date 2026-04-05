@@ -55,6 +55,7 @@ import DoraMetricsPage from './pages/reports/DoraMetricsPage';
 import JiraAnalyticsPage from './pages/reports/JiraAnalyticsPage';
 import JiraDashboardBuilderPage from './pages/reports/JiraDashboardBuilderPage';
 import EngineeringProductivityPage from './pages/reports/EngineeringProductivityPage';
+import EngineeringIntelligencePage from './pages/reports/EngineeringIntelligencePage';
 import SidebarOrderPage from './pages/settings/SidebarOrderPage';
 import HolidayCalendarPage from './pages/settings/HolidayCalendarPage';
 import LeaveManagementPage from './pages/settings/LeaveManagementPage';
@@ -71,6 +72,19 @@ import PortfolioTimelinePage from './pages/reports/PortfolioTimelinePage';
 import ResourceIntelligencePage from './pages/reports/ResourceIntelligencePage';
 import BudgetCapexPage from './pages/reports/BudgetCapexPage';
 import ProjectSignalsPage from './pages/reports/ProjectSignalsPage';
+import ResourceBookingsPage from './pages/ResourceBookingsPage';
+import ProjectTemplatesPage from './pages/ProjectTemplatesPage';
+import WorkloadChartPage from './pages/WorkloadChartPage';
+import GanttDependenciesPage from './pages/GanttDependenciesPage';
+import OrgSettingsPage from './pages/settings/OrgSettingsPage';
+import InboxPage from './pages/InboxPage';
+import AzureDevOpsSettingsPage from './pages/settings/AzureDevOpsSettingsPage';
+import ObjectivesPage from './pages/ObjectivesPage';
+import RiskRegisterPage from './pages/RiskRegisterPage';
+import IdeasBoardPage from './pages/IdeasBoardPage';
+import CalendarHubPage from './pages/CalendarHubPage';
+import CapacityHubPage from './pages/CapacityHubPage';
+import LeaveHubPage from './pages/LeaveHubPage';
 
 
 export default function App() {
@@ -105,6 +119,43 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="availability" />}>
             <Route path="/availability" element={<AvailabilityPage />} />
           </Route>
+
+          {/* ── Phase 1/5 New Pages ───────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="inbox" />}>
+            <Route path="/inbox" element={<InboxPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="objectives" />}>
+            <Route path="/objectives" element={<ObjectivesPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="risk_register" />}>
+            <Route path="/risk-register" element={<RiskRegisterPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="ideas_board" />}>
+            <Route path="/ideas" element={<IdeasBoardPage />} />
+          </Route>
+
+          {/* ── Phase 2/3 Merged Hub Pages ────────────────── */}
+          <Route element={<ProtectedRoute pageKey="calendar_hub" />}>
+            <Route path="/calendar" element={<CalendarHubPage />} />
+          </Route>
+          {/* Legacy calendar routes redirect to hub */}
+          <Route path="/team-calendar"    element={<Navigate to="/calendar" replace />} />
+          <Route path="/sprint-calendar"  element={<Navigate to="/calendar" replace />} />
+          <Route path="/release-calendar" element={<Navigate to="/calendar" replace />} />
+          <Route path="/settings/holiday-calendar" element={<Navigate to="/leave" replace />} />
+
+          <Route element={<ProtectedRoute pageKey="capacity_hub" />}>
+            <Route path="/capacity" element={<CapacityHubPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="leave_hub" />}>
+            <Route path="/leave" element={<LeaveHubPage />} />
+          </Route>
+          {/* Legacy leave route redirect */}
+          <Route path="/settings/leave-management" element={<Navigate to="/leave" replace />} />
 
           <Route element={<ProtectedRoute pageKey="overrides" />}>
             <Route path="/overrides" element={<OverridesPage />} />
@@ -224,9 +275,11 @@ export default function App() {
             <Route path="/reports/jira-dashboard-builder" element={<JiraDashboardBuilderPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="engineering_productivity" />}>
-            <Route path="/reports/engineering-productivity" element={<EngineeringProductivityPage />} />
+          <Route element={<ProtectedRoute pageKey="engineering_intelligence" />}>
+            <Route path="/reports/engineering-intelligence" element={<EngineeringIntelligencePage />} />
           </Route>
+          {/* Legacy redirects — keep old bookmarks working */}
+          <Route path="/reports/engineering-productivity" element={<Navigate to="/reports/engineering-intelligence" replace />} />
 
           {/* ── Strategic Insights ────────────────────────────── */}
           <Route element={<ProtectedRoute pageKey="portfolio_health_dashboard" />}>
@@ -237,9 +290,7 @@ export default function App() {
             <Route path="/reports/jira-portfolio-sync" element={<JiraPortfolioSyncPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="financial_intelligence" />}>
-            <Route path="/reports/financial-intelligence" element={<FinancialIntelligencePage />} />
-          </Route>
+          <Route path="/reports/financial-intelligence" element={<Navigate to="/reports/engineering-intelligence" replace />} />
 
           <Route element={<ProtectedRoute pageKey="delivery_predictability" />}>
             <Route path="/reports/delivery-predictability" element={<DeliveryPredictabilityPage />} />
@@ -345,12 +396,33 @@ export default function App() {
             <Route path="/settings/sidebar-order" element={<SidebarOrderPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="holiday_calendar" />}>
-            <Route path="/settings/holiday-calendar" element={<HolidayCalendarPage />} />
+          <Route element={<ProtectedRoute pageKey="org_settings" />}>
+            <Route path="/settings/org" element={<OrgSettingsPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="leave_management" />}>
-            <Route path="/settings/leave-management" element={<LeaveManagementPage />} />
+          <Route element={<ProtectedRoute pageKey="azure_devops_settings" />}>
+            <Route path="/settings/azure-devops" element={<AzureDevOpsSettingsPage />} />
+          </Route>
+
+          {/* /settings/holiday-calendar and /settings/leave-management
+              redirect to /leave hub — see Phase 2 redirects above */}
+
+          {/* ── Resource Bookings & Templates ─────────────────── */}
+          <Route element={<ProtectedRoute pageKey="resource_bookings" />}>
+            <Route path="/resource-bookings" element={<ResourceBookingsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="project_templates" />}>
+            <Route path="/project-templates" element={<ProjectTemplatesPage />} />
+          </Route>
+
+          {/* ── New Reports ──────────────────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="workload_chart" />}>
+            <Route path="/reports/workload-chart" element={<WorkloadChartPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="gantt_dependencies" />}>
+            <Route path="/reports/gantt-dependencies" element={<GanttDependenciesPage />} />
           </Route>
 
           {/* Admin-only pages — no pageKey needed (nav already hides them) */}

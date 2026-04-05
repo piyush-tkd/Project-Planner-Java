@@ -5,7 +5,6 @@ import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.ProjectActual;
 import com.portfolioplanner.domain.model.enums.Location;
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.model.enums.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -210,7 +209,7 @@ class CostRateAndActualsControllerTest extends BaseControllerTest {
         Project p = new Project();
         p.setName(name);
         p.setPriority(Priority.P1);
-        p.setStatus(ProjectStatus.ACTIVE);
+        p.setStatus("ACTIVE");
         return projectRepository.save(p);
     }
 

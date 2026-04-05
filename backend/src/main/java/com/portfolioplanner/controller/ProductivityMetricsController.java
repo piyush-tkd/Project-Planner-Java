@@ -1,7 +1,6 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.domain.model.*;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.repository.*;
 import com.portfolioplanner.service.jira.DoraJiraService;
 import com.portfolioplanner.service.jira.JiraCredentialsService;
@@ -173,7 +172,7 @@ public class ProductivityMetricsController {
 
         // Status breakdown
         Map<String, Long> statusCounts = allProjects.stream()
-                .collect(Collectors.groupingBy(p -> p.getStatus().name(), Collectors.counting()));
+                .collect(Collectors.groupingBy(p -> p.getStatus() != null ? p.getStatus() : "UNKNOWN", Collectors.counting()));
         section.put("statusBreakdown", statusCounts);
 
         long completed = statusCounts.getOrDefault("COMPLETED", 0L);
@@ -193,7 +192,7 @@ public class ProductivityMetricsController {
 
         // Critical/High projects delivered
         long criticalDelivered = allProjects.stream()
-                .filter(p -> p.getStatus() == ProjectStatus.COMPLETED)
+                .filter(p -> "COMPLETED".equalsIgnoreCase(p.getStatus()))
                 .filter(p -> "CRITICAL".equals(p.getPriority().name()) || "HIGH".equals(p.getPriority().name()))
                 .count();
         section.put("criticalHighDelivered", criticalDelivered);
@@ -217,7 +216,7 @@ public class ProductivityMetricsController {
             Map<String, Object> ps = new LinkedHashMap<>();
             ps.put("id", p.getId());
             ps.put("name", p.getName());
-            ps.put("status", p.getStatus().name());
+            ps.put("status", p.getStatus());
             ps.put("priority", p.getPriority().name());
             ps.put("owner", p.getOwner());
             ps.put("pods", podCount);
@@ -436,7 +435,7 @@ public class ProductivityMetricsController {
             Map<String, Object> pc = new LinkedHashMap<>();
             pc.put("id", p.getId());
             pc.put("name", p.getName());
-            pc.put("status", p.getStatus().name());
+            pc.put("status", p.getStatus());
             pc.put("priority", p.getPriority().name());
             pc.put("owner", p.getOwner());
             pc.put("totalHours", totalHours.setScale(0, RoundingMode.HALF_UP));

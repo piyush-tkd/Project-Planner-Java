@@ -78,8 +78,8 @@ export const TEXT_SECONDARY   = DEEP_BLUE_TINTS[60]; // #6D7B8C
 export const TEXT_MUTED       = DEEP_BLUE_TINTS[50]; // #85919F
 
 /* ── Typography ───────────────────────────────────────────────────── */
-// Primary: DIN Next LT Pro  |  Fallback: Arial
-export const FONT_FAMILY       = "'DIN Next LT Pro', Arial, system-ui, -apple-system, sans-serif";
+// Primary: Inter (Wrike-inspired) — loaded via Google Fonts in index.html
+export const FONT_FAMILY       = "'Inter', system-ui, -apple-system, sans-serif";
 export const FONT_FAMILY_MONO  = "'SF Mono', 'Fira Code', 'Consolas', monospace";
 
 // Type scale (from brand guidelines p.28)
@@ -129,3 +129,27 @@ export const CHART_COLORS = [
 
 // Alternate row fill for tables (brand spec: Deep Blue 10% tint)
 export const TABLE_STRIPE = DEEP_BLUE_TINTS[10]; // #E7E9EC
+
+/* ── Wrike-Inspired Design Tokens (v10.0) ────────────────────────── */
+// Use AQUA as the primary CTA color (Wrike uses green; we use our brand teal)
+export const CTA_PRIMARY     = AQUA;           // #2DCCD3
+export const CTA_HOVER       = '#28B8BF';
+export const CTA_TEXT        = DEEP_BLUE;      // text on CTA button
+export const CTA_BG_TINT     = AQUA_TINTS[10]; // #EAFAFB — hover bg
+
+// Table design tokens
+export const TABLE_ROW_HOVER = AQUA_TINTS[10]; // #EAFAFB — no zebra, hover only
+export const TABLE_HEADER_BG = DEEP_BLUE_TINTS[10]; // #E7E9EC
+export const TABLE_ROW_HEIGHT_PX = 44; // Wrike-style generous row height
+
+// Card accent border
+export const CARD_ACCENT_BORDER = `3px solid ${AQUA}`;
+
+// Status colors (Wrike-style with border polish)
+export const STATUS_ACTIVE      = { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' };
+export const STATUS_IN_PROGRESS = { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
+export const STATUS_ON_HOLD     = { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+export const STATUS_NOT_STARTED = { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' };
+export const STATUS_COMPLETED   = { bg: '#f0fdf4', text: '#15803d', border: '#86efac' };
+export const STATUS_CANCELLED   = { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
+

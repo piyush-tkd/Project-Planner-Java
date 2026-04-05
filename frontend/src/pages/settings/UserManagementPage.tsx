@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import {
  Title, Text, Button, Table, Badge, ActionIcon, Modal, TextInput,
  Select, Switch, Group, Stack, Tabs, Paper, SimpleGrid, Checkbox,
- Tooltip, Loader, Center, Alert, NumberInput, SegmentedControl, Divider,
+ Tooltip, Alert, Divider,
 } from '@mantine/core';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
- IconUserPlus, IconPencil, IconTrash, IconShield, IconAlertCircle, IconRoute,
+ IconUserPlus, IconPencil, IconTrash, IconShield, IconAlertCircle, IconKey,
 } from '@tabler/icons-react';
-import { useTourConfig, useUpdateTourConfig } from '../../api/tour';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
@@ -43,95 +42,115 @@ type PermMap = Record<string, boolean>;
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const PAGE_KEYS = [
- // ── Core
- { key: 'dashboard', label: 'Dashboard', group: 'Core' },
- { key: 'resources', label: 'Resources', group: 'Core' },
- { key: 'projects', label: 'Projects', group: 'Core' },
- { key: 'pods', label: 'PODs', group: 'Core' },
- { key: 'availability', label: 'Availability', group: 'Core' },
- { key: 'overrides', label: 'Overrides', group: 'Core' },
- { key: 'team_calendar', label: 'Team Calendar', group: 'Core' },
- { key: 'sprint_calendar', label: 'Sprint Calendar', group: 'Core' },
- { key: 'release_calendar', label: 'Release Calendar', group: 'Core' },
- { key: 'sprint_planner', label: 'Sprint Planner', group: 'Core' },
- { key: 'holiday_calendar', label: 'Holiday Calendar', group: 'Core' },
- { key: 'leave_management', label: 'Leave Management', group: 'Core' },
- // ── Capacity Reports
- { key: 'capacity_gap', label: 'Capacity Gap', group: 'Capacity Reports' },
- { key: 'utilization', label: 'Utilization', group: 'Capacity Reports' },
- { key: 'slack_buffer', label: 'Slack & Buffer', group: 'Capacity Reports' },
- { key: 'hiring_forecast', label: 'Hiring Forecast', group: 'Capacity Reports' },
- { key: 'concurrency_risk', label: 'Concurrency Risk', group: 'Capacity Reports' },
- { key: 'capacity_demand', label: 'Capacity vs Demand', group: 'Capacity Reports' },
- { key: 'pod_resources',         label: 'POD Resources',          group: 'Capacity Reports' },
- { key: 'pod_capacity',          label: 'POD Capacity',           group: 'Capacity Reports' },
- { key: 'resource_intelligence', label: 'Resource Intelligence',  group: 'Capacity Reports' },
- { key: 'pod_hours',             label: 'POD Work Hours',         group: 'Capacity Reports' },
- // ── Legacy Capacity (kept for backward-compat permissions)
- { key: 'resource_pod_matrix',   label: 'Resource · POD Matrix (legacy)', group: 'Capacity Reports' },
- // ── Portfolio Analysis
- { key: 'project_health',        label: 'Project Health',         group: 'Portfolio Analysis' },
- { key: 'dependency_map',        label: 'Dependency Map',         group: 'Portfolio Analysis' },
- { key: 'portfolio_timeline',    label: 'Portfolio Timeline',     group: 'Portfolio Analysis' },
- { key: 'owner_demand',          label: 'Owner Demand',           group: 'Portfolio Analysis' },
- { key: 'deadline_gap',          label: 'Deadline Gap',           group: 'Portfolio Analysis' },
- { key: 'pod_splits',            label: 'POD Splits',             group: 'Portfolio Analysis' },
- { key: 'pod_project_matrix',    label: 'POD-Project Matrix',     group: 'Portfolio Analysis' },
- { key: 'project_pod_matrix',    label: 'Project-POD Matrix',     group: 'Portfolio Analysis' },
- { key: 'budget_capex',          label: 'Budget & CapEx',         group: 'Portfolio Analysis' },
- { key: 'project_signals',       label: 'Project Signals',        group: 'Portfolio Analysis' },
- { key: 'budget',                label: 'Budget & Cost (legacy)', group: 'Portfolio Analysis' },
- { key: 'dora_metrics',          label: 'DORA Metrics',           group: 'Portfolio Analysis' },
- { key: 'jira_analytics',        label: 'Jira Analytics',         group: 'Portfolio Analysis' },
- { key: 'jira_dashboard_builder',label: 'Dashboard Builder',      group: 'Portfolio Analysis' },
- { key: 'resource_performance',  label: 'Resource Performance',   group: 'Portfolio Analysis' },
- { key: 'engineering_productivity', label: 'Eng. Productivity',   group: 'Portfolio Analysis' },
- // ── Legacy Portfolio (kept for backward-compat permissions)
- { key: 'cross_pod_deps',        label: 'Cross-POD Deps (legacy)',       group: 'Portfolio Analysis' },
- { key: 'resource_allocation',   label: 'Resource Allocation (legacy)',  group: 'Portfolio Analysis' },
- { key: 'resource_roi',          label: 'Resource ROI (legacy)',         group: 'Portfolio Analysis' },
- { key: 'project_gantt',         label: 'Project Gantt (legacy)',        group: 'Portfolio Analysis' },
- // ── Strategic Insights
- { key: 'portfolio_health_dashboard', label: 'Portfolio Health',         group: 'Strategic Insights' },
- { key: 'jira_portfolio_sync',        label: 'Jira Portfolio Sync',      group: 'Strategic Insights' },
- { key: 'financial_intelligence',     label: 'Financial Intelligence',   group: 'Strategic Insights' },
- { key: 'delivery_predictability',    label: 'Delivery Predictability',  group: 'Strategic Insights' },
- { key: 'smart_notifications',        label: 'Smart Notifications',      group: 'Strategic Insights' },
- // ── Legacy Strategic (kept for backward-compat permissions)
- { key: 'roadmap_timeline',      label: 'Roadmap Timeline (legacy)',    group: 'Strategic Insights' },
- { key: 'resource_forecast',     label: 'Resource Forecast (legacy)',   group: 'Strategic Insights' },
- { key: 'cross_team_dependency', label: 'Team Dependencies (legacy)',   group: 'Strategic Insights' },
- // ── Integrations
- { key: 'jira_pods', label: 'Jira POD Dashboard', group: 'Integrations' },
- { key: 'jira_releases', label: 'Jira Releases', group: 'Integrations' },
- { key: 'jira_capex', label: 'Jira CapEx / OpEx', group: 'Integrations' },
- { key: 'jira_actuals', label: 'Jira Actuals', group: 'Integrations' },
- { key: 'jira_support', label: 'Jira Support Queue', group: 'Integrations' },
- { key: 'jira_worklog', label: 'Jira Worklog', group: 'Integrations' },
- { key: 'release_notes', label: 'Release Notes', group: 'Integrations' },
- // ── Simulators
- { key: 'timeline_simulator', label: 'Timeline Simulator', group: 'Simulators' },
- { key: 'scenario_simulator', label: 'Scenario Simulator', group: 'Simulators' },
- // ── NLP / AI
- { key: 'nlp_landing', label: 'NLP Landing (Ask AI)', group: 'NLP / AI' },
- { key: 'nlp_settings', label: 'NLP Settings', group: 'NLP / AI' },
- { key: 'nlp_optimizer', label: 'NLP Optimizer', group: 'NLP / AI' },
- // ── Feedback & Monitoring
- { key: 'feedback_hub', label: 'Feedback Hub', group: 'Feedback & Monitoring' },
- { key: 'error_log', label: 'Error Log', group: 'Feedback & Monitoring' },
- // ── Other
- { key: 'settings', label: 'Settings', group: 'Other' },
- { key: 'jira_resource_mapping', label: 'Resource Mapping', group: 'Other' },
- { key: 'jira_release_mapping', label: 'Release Mapping', group: 'Other' },
- { key: 'sidebar_order', label: 'Sidebar Order', group: 'Other' },
+ // ── Home
+ { key: 'dashboard',   label: 'Dashboard',   group: 'Home' },
+ { key: 'inbox',       label: 'Inbox',       group: 'Home' },
+ { key: 'nlp_landing', label: 'Ask AI',      group: 'Home' },
+ // ── Portfolio
+ { key: 'projects',      label: 'Projects',      group: 'Portfolio' },
+ { key: 'pods',          label: 'PODs',           group: 'Portfolio' },
+ { key: 'objectives',    label: 'Objectives',     group: 'Portfolio' },
+ { key: 'risk_register', label: 'Risk & Issues',  group: 'Portfolio' },
+ { key: 'ideas_board',   label: 'Ideas Board',    group: 'Portfolio' },
+ // ── People
+ { key: 'resources',        label: 'Resources',          group: 'People' },
+ { key: 'availability',     label: 'Availability',        group: 'People' },
+ { key: 'overrides',        label: 'Overrides',           group: 'People' },
+ { key: 'resource_bookings',label: 'Resource Bookings',   group: 'People' },
+ { key: 'capacity_hub',     label: 'Capacity Hub',        group: 'People' },
+ { key: 'leave_hub',        label: 'Leave & Holidays',    group: 'People' },
+ // ── Calendar
+ { key: 'calendar_hub',     label: 'Strategic Calendar',  group: 'Calendar' },
+ { key: 'sprint_planner',   label: 'Sprint Planner',      group: 'Calendar' },
+ { key: 'project_templates',label: 'Project Templates',   group: 'Calendar' },
+ // ── Delivery
+ { key: 'jira_pods',     label: 'POD Dashboard',    group: 'Delivery' },
+ { key: 'jira_releases', label: 'Releases',          group: 'Delivery' },
+ { key: 'release_notes', label: 'Release Notes',     group: 'Delivery' },
+ { key: 'jira_actuals',  label: 'Jira Actuals',      group: 'Delivery' },
+ { key: 'jira_support',  label: 'Support Queue',     group: 'Delivery' },
+ { key: 'jira_worklog',  label: 'Worklog',           group: 'Delivery' },
+ { key: 'budget_capex',  label: 'Budget & CapEx',    group: 'Delivery' },
+ // ── Analytics
+ { key: 'portfolio_health_dashboard', label: 'Portfolio Health',       group: 'Analytics' },
+ { key: 'project_health',             label: 'Project Health',         group: 'Analytics' },
+ { key: 'dependency_map',             label: 'Dependency Map',         group: 'Analytics' },
+ { key: 'portfolio_timeline',         label: 'Portfolio Timeline',     group: 'Analytics' },
+ { key: 'project_signals',            label: 'Project Signals',        group: 'Analytics' },
+ { key: 'resource_performance',       label: 'Resource Performance',   group: 'Analytics' },
+ { key: 'dora_metrics',               label: 'DORA Metrics',           group: 'Analytics' },
+ { key: 'jira_analytics',             label: 'Jira Analytics',         group: 'Analytics' },
+ { key: 'jira_dashboard_builder',     label: 'Dashboard Builder',      group: 'Analytics' },
+ { key: 'engineering_intelligence',    label: 'Eng. Intelligence',      group: 'Analytics' },
+ { key: 'gantt_dependencies',         label: 'Gantt & Dependencies',   group: 'Analytics' },
+ { key: 'delivery_predictability',    label: 'Delivery Predictability',group: 'Analytics' },
+ { key: 'smart_notifications',        label: 'Smart Notifications',    group: 'Analytics' },
+ { key: 'jira_portfolio_sync',        label: 'Jira Portfolio Sync',    group: 'Analytics' },
+ { key: 'resource_intelligence',      label: 'Resource Intelligence',  group: 'Analytics' },
+ { key: 'timeline_simulator',         label: 'Timeline Simulator',     group: 'Analytics' },
+ { key: 'scenario_simulator',         label: 'Scenario Simulator',     group: 'Analytics' },
+ { key: 'pod_resources',              label: 'POD Resources',          group: 'Analytics' },
+ { key: 'pod_capacity',               label: 'POD Capacity',           group: 'Analytics' },
+ { key: 'pod_hours',                  label: 'POD Work Hours',         group: 'Analytics' },
+ { key: 'hiring_forecast',            label: 'Hiring Forecast',        group: 'Analytics' },
+ { key: 'capacity_demand',            label: 'Capacity vs Demand',     group: 'Analytics' },
+ { key: 'utilization',                label: 'Utilization Center',     group: 'Analytics' },
+ { key: 'project_pod_matrix',         label: 'Project-POD Matrix',     group: 'Analytics' },
+ { key: 'workload_chart',             label: 'Workload Chart',         group: 'Analytics' },
+ // ── Admin
+ { key: 'org_settings',          label: 'Admin Settings',   group: 'Admin' },
+ { key: 'azure_devops_settings', label: 'Azure DevOps',     group: 'Admin' },
+ { key: 'settings',              label: 'Settings (sub)',   group: 'Admin' },
+ { key: 'jira_resource_mapping', label: 'Resource Mapping', group: 'Admin' },
+ { key: 'jira_release_mapping',  label: 'Release Mapping',  group: 'Admin' },
+ { key: 'sidebar_order',         label: 'Sidebar Order',    group: 'Admin' },
+ { key: 'nlp_settings',          label: 'NLP Settings',     group: 'Admin' },
+ { key: 'nlp_optimizer',         label: 'NLP Optimizer',    group: 'Admin' },
+ { key: 'feedback_hub',          label: 'Feedback Hub',     group: 'Admin' },
+ { key: 'error_log',             label: 'Error Log',        group: 'Admin' },
+ // ── Legacy (backward-compat only — these pages redirect to their replacements)
+ { key: 'team_calendar',       label: 'Team Calendar → /calendar',          group: 'Legacy' },
+ { key: 'sprint_calendar',     label: 'Sprint Calendar → /calendar',        group: 'Legacy' },
+ { key: 'release_calendar',    label: 'Release Calendar → /calendar',       group: 'Legacy' },
+ { key: 'holiday_calendar',    label: 'Holiday Calendar → /leave',          group: 'Legacy' },
+ { key: 'leave_management',    label: 'Leave Management → /leave',          group: 'Legacy' },
+ { key: 'capacity_gap',        label: 'Capacity Gap → Utilization',         group: 'Legacy' },
+ { key: 'slack_buffer',        label: 'Slack & Buffer → Utilization',       group: 'Legacy' },
+ { key: 'concurrency_risk',    label: 'Concurrency Risk → Utilization',     group: 'Legacy' },
+ { key: 'owner_demand',        label: 'Owner Demand → Project Signals',     group: 'Legacy' },
+ { key: 'deadline_gap',        label: 'Deadline Gap → Project Signals',     group: 'Legacy' },
+ { key: 'pod_splits',          label: 'POD Splits → Project Signals',       group: 'Legacy' },
+ { key: 'pod_project_matrix',  label: 'POD-Project Matrix → Project-POD',  group: 'Legacy' },
+ { key: 'budget',              label: 'Budget & Cost → Budget & CapEx',     group: 'Legacy' },
+ { key: 'jira_capex',          label: 'Jira CapEx → Budget & CapEx',        group: 'Legacy' },
+ { key: 'resource_pod_matrix', label: 'Resource-POD Matrix (merged)',       group: 'Legacy' },
+ { key: 'cross_pod_deps',      label: 'Cross-POD Deps → Dependency Map',   group: 'Legacy' },
+ { key: 'resource_allocation', label: 'Resource Allocation (merged)',       group: 'Legacy' },
+ { key: 'resource_roi',        label: 'Resource ROI (merged)',              group: 'Legacy' },
+ { key: 'project_gantt',       label: 'Project Gantt (merged)',             group: 'Legacy' },
+ { key: 'roadmap_timeline',    label: 'Roadmap Timeline (merged)',          group: 'Legacy' },
+ { key: 'resource_forecast',   label: 'Resource Forecast (merged)',         group: 'Legacy' },
+ { key: 'cross_team_dependency',label: 'Team Dependencies (merged)',        group: 'Legacy' },
 ];
 
 const ROLES = ['ADMIN', 'READ_WRITE', 'READ_ONLY'];
 
+const ROLE_OPTIONS = [
+ { value: 'ADMIN',      label: 'Admin' },
+ { value: 'READ_WRITE', label: 'Read / Write' },
+ { value: 'READ_ONLY',  label: 'Read Only' },
+];
+
+const ROLE_LABELS: Record<string, string> = {
+ ADMIN:      'Admin',
+ READ_WRITE: 'Read / Write',
+ READ_ONLY:  'Read Only',
+};
+
 const ROLE_COLOR: Record<string, string> = {
- ADMIN: 'red',
+ ADMIN:      'red',
  READ_WRITE: 'blue',
- READ_ONLY: 'gray',
+ READ_ONLY:  'gray',
 };
 
 // ── API helpers ────────────────────────────────────────────────────────────────
@@ -142,7 +161,7 @@ const fetchPerms = (role: string) =>
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function UserManagementPage() {
+export default function UserManagementPage({ embedded = false }: { embedded?: boolean } = {}) {
  const qc = useQueryClient();
  const { username: currentUsername, refreshMe } = useAuth();
 
@@ -222,6 +241,7 @@ export default function UserManagementPage() {
 
  return (
  <Stack gap="lg" className="page-enter stagger-children">
+ {!embedded && (
  <Group justify="space-between" className="slide-in-left">
  <div>
  <Title order={2} style={{ fontFamily: FONT_FAMILY }}>
@@ -232,12 +252,12 @@ export default function UserManagementPage() {
  </Text>
  </div>
  </Group>
+ )}
 
  <Tabs defaultValue="users">
  <Tabs.List>
  <Tabs.Tab value="users" leftSection={<IconShield size={15} />}>Users</Tabs.Tab>
- <Tabs.Tab value="permissions" leftSection={<IconShield size={15} />}>Page Permissions</Tabs.Tab>
- <Tabs.Tab value="tour" leftSection={<IconRoute size={15} />}>Tour Guide</Tabs.Tab>
+ <Tabs.Tab value="permissions" leftSection={<IconKey size={15} />}>Page Permissions</Tabs.Tab>
  </Tabs.List>
 
  {/* ── Users Tab ── */}
@@ -382,7 +402,8 @@ export default function UserManagementPage() {
  {PAGE_KEYS.filter(p => p.group === grp).map(({ key, label }) => {
  const allowed = perms?.[key] ?? false;
  return (
- <Paper key={key} withBorder radius="sm" p="sm">
+ <Paper key={key} withBorder radius="sm" p="sm"
+   style={grp === "Legacy" ? { opacity: 0.55, background: "rgba(0,0,0,0.02)" } : undefined}>
  <Group justify="space-between">
  <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
  {label}
@@ -405,11 +426,6 @@ export default function UserManagementPage() {
  </Stack>
  )}
  </Stack>
- </Tabs.Panel>
-
- {/* ── Tour Guide Tab ── */}
- <Tabs.Panel value="tour" pt="md">
- <TourSettingsPanel />
  </Tabs.Panel>
 
  </Tabs>
@@ -545,7 +561,7 @@ function UserFormModal({ opened, mode, initial, onClose, onSubmit, loading, erro
  />
  <Select
  label="Role"
- data={ROLES.map(r => ({ value: r, label: r }))}
+ data={ROLE_OPTIONS}
  value={role}
  onChange={v => setRole(v ?? 'READ_WRITE')}
  />
@@ -569,90 +585,5 @@ function UserFormModal({ opened, mode, initial, onClose, onSubmit, loading, erro
  </Group>
  </Stack>
  </Modal>
- );
-}
-
-// ── Tour Settings Panel ────────────────────────────────────────────────────────
-
-function TourSettingsPanel() {
- const { data: config, isLoading } = useTourConfig();
- const update = useUpdateTourConfig();
-
- if (isLoading) return <LoadingSpinner variant="form" message="Loading tour settings..." />;
-
- const freq = config?.frequency ?? 'first_login';
- const everyN = config?.everyN ?? 30;
- const enabled = config?.enabled ?? true;
-
- return (
- <Stack gap="lg" maw={560}>
- <div>
- <Text fw={600} size="sm" mb={2}>Guided Tour</Text>
- <Text size="xs" c="dimmed">
- Control when the onboarding tour is shown to users after they log in.
- The tour walks through all major sections of the app.
- </Text>
- </div>
-
- <Paper withBorder radius="md" p="md">
- <Stack gap="md">
- <Group justify="space-between">
- <div>
- <Text size="sm" fw={500}>Enable tour</Text>
- <Text size="xs" c="dimmed">When disabled, the tour is never shown to any user.</Text>
- </div>
- <Switch
- checked={enabled}
- onChange={e => update.mutate({ enabled: e.currentTarget.checked })}
- size="md"
- color="teal"
- />
- </Group>
-
- {enabled && (
- <>
- <Divider />
- <div>
- <Text size="sm" fw={500} mb={8}>Show frequency</Text>
- <SegmentedControl
- fullWidth
- value={freq}
- onChange={v => update.mutate({ frequency: v as typeof freq })}
- data={[
- { value: 'first_login', label: 'First login only' },
- { value: 'every_login', label: 'Every login' },
- { value: 'every_n', label: 'Every N days' },
- { value: 'disabled', label: 'Disabled' },
- ]}
- />
- </div>
-
- {freq === 'every_n' && (
- <Group align="flex-end" gap="sm">
- <NumberInput
- label="Days between tours"
- description="Re-show the tour after this many days"
- value={everyN}
- min={1}
- max={365}
- style={{ width: 200 }}
- onChange={v => update.mutate({ everyN: Number(v) })}
- />
- <Text size="xs" c="dimmed" pb={6}>days</Text>
- </Group>
- )}
- </>
- )}
- </Stack>
- </Paper>
-
- <Alert color="blue" variant="light" icon={<IconAlertCircle size={15} />}>
- <Text size="xs">
- Changes take effect immediately. Users who have already seen the tour
- won't see it again until the configured interval passes, except with
- <strong> Every login</strong> mode.
- </Text>
- </Alert>
- </Stack>
  );
 }

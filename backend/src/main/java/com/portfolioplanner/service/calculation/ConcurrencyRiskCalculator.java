@@ -3,7 +3,6 @@ package com.portfolioplanner.service.calculation;
 import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.ProjectPodPlanning;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.service.calculation.dto.CalculationSnapshot.PodMonthConcurrency;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +33,7 @@ public class ConcurrencyRiskCalculator {
 
         for (ProjectPodPlanning pp : plannings) {
             Project project = projects.get(pp.getProject().getId());
-            if (project == null || project.getStatus() != ProjectStatus.ACTIVE) {
+            if (project == null || !"ACTIVE".equalsIgnoreCase(project.getStatus())) {
                 continue;
             }
 

@@ -12,7 +12,7 @@ import { workingHoursColumns } from '../../utils/csvColumns';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
-export default function TimelineSettingsPage() {
+export default function TimelineSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
  const isDark = useDarkMode();
  const { data: timeline, isLoading } = useTimeline();
  const updateTimeline = useUpdateTimeline();
@@ -50,10 +50,17 @@ export default function TimelineSettingsPage() {
  if (isLoading) return <LoadingSpinner variant="form" message="Loading settings..." />;
 
  return (
- <Stack className="page-enter stagger-children">
+ <Stack className={embedded ? undefined : 'page-enter stagger-children'}>
+ {!embedded && (
  <Group className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Timeline Settings</Title>
+   <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Timeline Settings</Title>
  </Group>
+ )}
+ {embedded && (
+ <Text fw={600} size="sm" style={{ color: isDark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+   Timeline &amp; Working Hours
+ </Text>
+ )}
 
  <Card withBorder padding="md">
  <Group grow>

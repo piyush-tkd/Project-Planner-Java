@@ -1446,7 +1446,6 @@ INSERT INTO public.page_permission (id, role, page_key, allowed) VALUES (129, 'R
 INSERT INTO public.page_permission (id, role, page_key, allowed) VALUES (130, 'READ_ONLY', 'holiday_calendar', true) ON CONFLICT DO NOTHING;
 INSERT INTO public.page_permission (id, role, page_key, allowed) VALUES (131, 'READ_WRITE', 'leave_management', true) ON CONFLICT DO NOTHING;
 INSERT INTO public.page_permission (id, role, page_key, allowed) VALUES (132, 'READ_ONLY', 'leave_management', true) ON CONFLICT DO NOTHING;
-
 -- holiday_calendar (19 rows)
 INSERT INTO public.holiday_calendar (id, name, holiday_date, location, created_at, updated_at) VALUES (1, 'New Year''s Day', '2026-01-01', 'US', '2026-03-26 00:26:47.837745', '2026-03-26 00:26:47.837745') ON CONFLICT DO NOTHING;
 INSERT INTO public.holiday_calendar (id, name, holiday_date, location, created_at, updated_at) VALUES (2, 'MLK Jr Day', '2026-01-19', 'US', '2026-03-26 00:26:47.837745', '2026-03-26 00:26:47.837745') ON CONFLICT DO NOTHING;

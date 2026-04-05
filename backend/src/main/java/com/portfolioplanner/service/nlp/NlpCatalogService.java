@@ -250,7 +250,7 @@ public class NlpCatalogService {
                             p.getId(), p.getName(),
                             p.getPriority() != null ? p.getPriority().name() : "N/A",
                             p.getOwner() != null ? p.getOwner() : "Unassigned",
-                            p.getStatus() != null ? p.getStatus().name() : "N/A",
+                            p.getStatus() != null ? p.getStatus() : "N/A",
                             assignedPods, timeline, duration,
                             p.getClient()
                     );
@@ -521,8 +521,8 @@ public class NlpCatalogService {
                 .map(p -> new NlpCatalogResponse.ProjectDependencyInfo(
                         p.getId(), p.getName(),
                         p.getBlockedBy().getName(),
-                        p.getStatus() != null ? p.getStatus().name() : "N/A",
-                        p.getBlockedBy().getStatus() != null ? p.getBlockedBy().getStatus().name() : "N/A"
+                        p.getStatus() != null ? p.getStatus() : "N/A",
+                        p.getBlockedBy().getStatus() != null ? p.getBlockedBy().getStatus() : "N/A"
                 ))
                 .sorted((a, b) -> a.projectName().compareToIgnoreCase(b.projectName()))
                 .toList();

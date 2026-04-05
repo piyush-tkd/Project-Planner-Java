@@ -62,6 +62,17 @@ export function useCopyProject() {
   });
 }
 
+export function usePatchProjectStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      apiClient.patch(`/projects/${id}/status`, { status }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
 export function useProjectPodMatrix() {
   return useQuery<ProjectPodMatrixResponse[]>({
     queryKey: ['project-pod-matrix'],

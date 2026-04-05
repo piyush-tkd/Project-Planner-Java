@@ -1,6 +1,5 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.dto.request.ProjectPodPlanningRequest;
 import com.portfolioplanner.dto.request.ProjectRequest;
 import com.portfolioplanner.dto.response.ProjectPodMatrixResponse;
@@ -14,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -23,7 +23,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @GetMapping
-    public ResponseEntity<List<ProjectResponse>> getAll(@RequestParam(required = false) ProjectStatus status) {
+    public ResponseEntity<List<ProjectResponse>> getAll(@RequestParam(required = false) String status) {
         return ResponseEntity.ok(projectService.getAll(status));
     }
 
@@ -40,6 +40,22 @@ public class ProjectController {
     @PutMapping("/{id}")
     public ResponseEntity<ProjectResponse> update(@PathVariable Long id, @Valid @RequestBody ProjectRequest request) {
         return ResponseEntity.ok(projectService.update(id, request));
+    }
+
+    /**
+     * PATCH /api/projects/{id}/status
+     * Lightweight endpoint for updating only the status (e.g. drag-and-drop on kanban board).
+     * Accepts: { "status": "ACTIVE" } or any custom lane name.
+     */
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ProjectResponse> patchStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String newStatus = body.get("status");
+        if (newStatus == null || newStatus.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(projectService.patchStatus(id, newStatus));
     }
 
     @DeleteMapping("/{id}")

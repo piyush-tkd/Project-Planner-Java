@@ -1,7 +1,6 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.dto.request.ProjectRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,7 +29,7 @@ class ProjectControllerTest extends BaseControllerTest {
             var req = new ProjectRequest(
                     "Portal Rebuild", Priority.P1, "Alice",
                     1, 6, 6, "Flat", "Some notes",
-                    ProjectStatus.ACTIVE, null, null, null, null, null
+                    "ACTIVE", null, null, null, null, null
             );
 
             mockMvc.perform(post("/api/projects").contentType(JSON).content(json(req)))
@@ -84,9 +83,9 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("returns all projects when no status filter is applied")
         void returnsAllProjects() throws Exception {
-            createProject("Alpha", Priority.P0, ProjectStatus.ACTIVE);
-            createProject("Beta",  Priority.P1, ProjectStatus.ON_HOLD);
-            createProject("Gamma", Priority.P2, ProjectStatus.COMPLETED);
+            createProject("Alpha", Priority.P0, "ACTIVE");
+            createProject("Beta",  Priority.P1, "ON_HOLD");
+            createProject("Gamma", Priority.P2, "COMPLETED");
 
             mockMvc.perform(get("/api/projects"))
                     .andExpect(status().isOk())
@@ -97,8 +96,8 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("?status=ACTIVE filters to only active projects")
         void filterByActiveStatus() throws Exception {
-            createProject("Alpha", Priority.P0, ProjectStatus.ACTIVE);
-            createProject("Beta",  Priority.P1, ProjectStatus.ON_HOLD);
+            createProject("Alpha", Priority.P0, "ACTIVE");
+            createProject("Beta",  Priority.P1, "ON_HOLD");
 
             mockMvc.perform(get("/api/projects").param("status", "ACTIVE"))
                     .andExpect(status().isOk())
@@ -109,8 +108,8 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("?status=ON_HOLD returns only on-hold projects")
         void filterByOnHoldStatus() throws Exception {
-            createProject("Alpha",   Priority.P0, ProjectStatus.ACTIVE);
-            createProject("Blocked", Priority.P2, ProjectStatus.ON_HOLD);
+            createProject("Alpha",   Priority.P0, "ACTIVE");
+            createProject("Blocked", Priority.P2, "ON_HOLD");
 
             mockMvc.perform(get("/api/projects").param("status", "ON_HOLD"))
                     .andExpect(status().isOk())
@@ -121,7 +120,7 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("?status=COMPLETED returns empty when no completed projects")
         void filterByCompletedReturnsEmpty() throws Exception {
-            createProject("Alpha", Priority.P0, ProjectStatus.ACTIVE);
+            createProject("Alpha", Priority.P0, "ACTIVE");
 
             mockMvc.perform(get("/api/projects").param("status", "COMPLETED"))
                     .andExpect(status().isOk())
@@ -137,7 +136,7 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("returns a project by id")
         void foundById() throws Exception {
-            Long id = createProject("Portal", Priority.P1, ProjectStatus.ACTIVE);
+            Long id = createProject("Portal", Priority.P1, "ACTIVE");
 
             mockMvc.perform(get("/api/projects/{id}", id))
                     .andExpect(status().isOk())
@@ -161,12 +160,12 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("updates fields and persists the change")
         void updateSuccess() throws Exception {
-            Long id = createProject("Old Name", Priority.P2, ProjectStatus.ACTIVE);
+            Long id = createProject("Old Name", Priority.P2, "ACTIVE");
 
             var updated = new ProjectRequest(
                     "New Name", Priority.P0, "Bob",
                     2, 8, 6, "BackLoaded", "Updated notes",
-                    ProjectStatus.ON_HOLD, null, null, null, null, null
+                    "ON_HOLD", null, null, null, null, null
             );
 
             mockMvc.perform(put("/api/projects/{id}", id).contentType(JSON).content(json(updated)))
@@ -202,7 +201,7 @@ class ProjectControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("deletes the project and returns 204")
         void deleteSuccess() throws Exception {
-            Long id = createProject("Portal", Priority.P1, ProjectStatus.ACTIVE);
+            Long id = createProject("Portal", Priority.P1, "ACTIVE");
 
             mockMvc.perform(delete("/api/projects/{id}", id))
                     .andExpect(status().isNoContent());
@@ -214,7 +213,7 @@ class ProjectControllerTest extends BaseControllerTest {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private Long createProject(String name, Priority priority, ProjectStatus status) throws Exception {
+    private Long createProject(String name, Priority priority, String status) throws Exception {
         var req = new ProjectRequest(
                 name, priority, null,
                 1, 6, 6, "Flat", null,

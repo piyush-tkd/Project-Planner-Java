@@ -18,7 +18,10 @@ interface AuthContextValue extends AuthState {
   /** Re-fetches /auth/me and refreshes the stored auth state (e.g. after display name change). */
   refreshMe: () => Promise<void>;
   isAuthenticated: boolean;
+  /** true for ADMIN and SUPER_ADMIN */
   isAdmin: boolean;
+  /** true only for SUPER_ADMIN — bypasses every permission check */
+  isSuperAdmin: boolean;
   canAccess: (pageKey: string) => boolean;
   /** Convenience: displayName if set, otherwise username */
   displayLabel: string | null;
@@ -105,11 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auto-logout when a 401 is received (JWT expired or invalid)
   useEffect(() => onAuthExpired(logout), [logout]);
 
-  const isAdmin = auth.role === 'ADMIN';
+  const isSuperAdmin = auth.role === 'SUPER_ADMIN';
+  const isAdmin = auth.role === 'ADMIN' || isSuperAdmin;
 
   const canAccess = useCallback(
     (pageKey: string) => {
       if (!auth.token) return false;
+      // SUPER_ADMIN and ADMIN bypass all page permission checks
       if (isAdmin) return true;
       if (auth.allowedPages === null) return true;
       return auth.allowedPages.includes(pageKey);
@@ -124,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...auth,
       isAuthenticated: !!auth.token,
       isAdmin,
+      isSuperAdmin,
       canAccess,
       displayLabel,
       login,

@@ -2,17 +2,19 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Title, Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
-ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider,
+ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popover, Switch,
 } from '@mantine/core';
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck } from '@tabler/icons-react';
-import { useProjects, useCreateProject, useCopyProject } from '../api/projects';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns } from '@tabler/icons-react';
+import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus } from '../api/projects';
+import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
 import { useEffortPatterns } from '../api/refData';
 import { useJiraAllProjectsSimple } from '../api/jira';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
+import KanbanBoardView from '../components/projects/KanbanBoardView';
 import { Priority, ProjectStatus } from '../types';
 import type { ProjectRequest } from '../types';
 import StatusBadge from '../components/common/StatusBadge';
@@ -55,11 +57,24 @@ export default function ProjectsPage() {
   const isDark = useDarkMode();
   const { data: projects, isLoading, error } = useProjects();
   const createMutation = useCreateProject();
+  const updateMutation = useUpdateProject();
+  const patchStatusMutation = usePatchProjectStatus();
   const copyMutation = useCopyProject();
+
+  // ── Inline table editing ──────────────────────────────────────────────
+  type EditableField = 'name' | 'owner' | 'priority' | 'status';
+  const [editingCell, setEditingCell] = useState<{ id: number; field: EditableField } | null>(null);
+  const [editDraft, setEditDraft] = useState<string>('');
+  // Inline add-row state
+  const [addRowActive, setAddRowActive] = useState(false);
+  const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string }>({
+    name: '', priority: 'P2', owner: '', status: 'ACTIVE',
+  });
   const { data: effortPatterns } = useEffortPatterns();
   const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraAllProjectsSimple();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
+  const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [jiraImportOpen, setJiraImportOpen] = useState(false);
   const [selectedJiraKeys, setSelectedJiraKeys] = useState<Set<string>>(new Set());
@@ -68,6 +83,37 @@ export default function ProjectsPage() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
   const [nameError, setNameError] = useState<string>('');
+
+  // ── Column visibility ─────────────────────────────────────────────────
+  const ALL_COLS = ['#', 'Priority', 'Owner', 'Start', 'End', 'Duration', 'Pattern', 'Status', 'Created'] as const;
+  type ColKey = typeof ALL_COLS[number];
+  const DEFAULT_VISIBLE: Set<ColKey> = new Set(['#', 'Priority', 'Owner', 'Start', 'End', 'Status']);
+  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(DEFAULT_VISIBLE);
+  const toggleCol = (col: ColKey) => setVisibleCols(prev => {
+    const next = new Set(prev);
+    if (next.has(col)) next.delete(col); else next.add(col);
+    return next;
+  });
+
+  // ── Accordion: expanded project rows ─────────────────────────────────
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const toggleExpand = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const { data: podMatrix = [] } = useProjectPodMatrix();
+  const podsByProject = useMemo(() => {
+    const map = new Map<number, ProjectPodMatrixResponse[]>();
+    podMatrix.forEach(entry => {
+      if (!map.has(entry.projectId)) map.set(entry.projectId, []);
+      map.get(entry.projectId)!.push(entry);
+    });
+    return map;
+  }, [podMatrix]);
 
   // Existing project names for duplicate checking (case-insensitive)
   const existingNames = useMemo(() => {
@@ -248,6 +294,22 @@ export default function ProjectsPage() {
     return list;
   }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter]);
 
+  // Board view ignores the status segment filter — columns already group by status.
+  // Only apply search + owner + priority filters so all status columns show correctly.
+  const boardProjects = useMemo(() => {
+    let list = projects ?? [];
+    if (cardFilter === 'P0P1') {
+      list = list.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q));
+    }
+    if (ownerFilter) list = list.filter(p => p.owner === ownerFilter);
+    if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
+    return list;
+  }, [projects, cardFilter, search, ownerFilter, priorityFilter]);
+
   const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered, 'createdAt', 'desc');
   const { paginatedData: pagedProjects, ...pagination } = usePagination(sortedProjects, 25);
 
@@ -259,6 +321,49 @@ export default function ProjectsPage() {
     const avgDuration = all.length > 0 ? Math.round(all.reduce((s, p) => s + p.durationMonths, 0) / all.length * 10) / 10 : 0;
     return { total: all.length, active, onHold, p0p1, avgDuration };
   }, [projects]);
+
+  // ── Board drag-and-drop status change ────────────────────────────────
+  const handleBoardStatusChange = useCallback((projectId: number, newStatus: string) => {
+    patchStatusMutation.mutate({ id: projectId, status: newStatus }, {
+      onError: () => notifications.show({ color: 'red', title: 'Error', message: 'Failed to update project status' }),
+    });
+  }, [patchStatusMutation]);
+
+  // ── Inline cell editing helpers ───────────────────────────────────────
+  const startEdit = (id: number, field: EditableField, currentValue: string) => {
+    setEditingCell({ id, field });
+    setEditDraft(currentValue ?? '');
+  };
+
+  const commitEdit = (project: ProjectResponse) => {
+    if (!editingCell || editingCell.id !== project.id) return;
+    const updated = { ...project, [editingCell.field]: editDraft };
+    updateMutation.mutate(
+      { id: project.id, data: { name: updated.name, priority: updated.priority, owner: updated.owner ?? '', startMonth: updated.startMonth ?? 1, durationMonths: updated.durationMonths ?? 1, defaultPattern: updated.defaultPattern ?? 'Flat', status: updated.status, notes: updated.notes ?? null, startDate: updated.startDate ?? null, targetDate: updated.targetDate ?? null, client: updated.client ?? null } },
+      {
+        onError: () => notifications.show({ color: 'red', title: 'Error', message: 'Failed to save change' }),
+      }
+    );
+    setEditingCell(null);
+  };
+
+  const cancelEdit = () => setEditingCell(null);
+
+  // ── Inline add-row submit ─────────────────────────────────────────────
+  const submitAddRow = () => {
+    if (!addRowForm.name.trim()) { setAddRowActive(false); return; }
+    createMutation.mutate(
+      { name: addRowForm.name.trim(), priority: addRowForm.priority, owner: addRowForm.owner, startMonth: 1, durationMonths: 3, defaultPattern: 'Flat', status: addRowForm.status, notes: null, startDate: null, targetDate: null, client: null },
+      {
+        onSuccess: () => {
+          setAddRowActive(false);
+          setAddRowForm({ name: '', priority: 'P2', owner: '', status: 'ACTIVE' });
+          notifications.show({ title: 'Created', message: 'Project created', color: 'green' });
+        },
+        onError: (err: any) => notifications.show({ color: 'red', title: 'Error', message: err?.response?.data?.message || 'Failed to create project' }),
+      }
+    );
+  };
 
   const handleCreate = () => {
     // Real-time duplicate check before submitting
@@ -290,9 +395,20 @@ export default function ProjectsPage() {
 
   return (
     <Stack className="page-enter stagger-children">
-      <Group justify="space-between" className="slide-in-left">
+      <Group justify="space-between" className="slide-in-left" align="center">
         <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Projects</Title>
-        <Group gap="sm">
+        <Group gap="sm" align="center">
+          {/* View switcher — Table / Board (Kanban) */}
+          <Tabs
+            value={viewMode}
+            onChange={(v) => setViewMode(v as 'table' | 'board')}
+            className="view-switcher-tabs"
+          >
+            <Tabs.List>
+              <Tabs.Tab value="table" leftSection={<IconLayoutList size={14} />}>Table</Tabs.Tab>
+              <Tabs.Tab value="board" leftSection={<IconLayoutKanban size={14} />}>Board</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
           <CsvToolbar
             data={projects ?? []}
             columns={projectColumns}
@@ -370,14 +486,16 @@ export default function ProjectsPage() {
         />
       </SimpleGrid>
 
-      <SegmentedControl
-        value={statusFilter}
-        onChange={handleSegmentedChange}
-        data={[
-          { value: 'ALL', label: 'All' },
-          ...statusOptions,
-        ]}
-      />
+      {viewMode === 'table' && (
+        <SegmentedControl
+          value={statusFilter}
+          onChange={handleSegmentedChange}
+          data={[
+            { value: 'ALL', label: 'All' },
+            ...statusOptions,
+          ]}
+        />
+      )}
 
       <Group gap="sm" align="flex-end" wrap="wrap">
         <TextInput
@@ -416,83 +534,327 @@ export default function ProjectsPage() {
         <Text size="sm" c="dimmed" ml="auto">
           {filtered.length} of {(projects ?? []).length} projects
         </Text>
+        {/* Column visibility toggle */}
+        <Popover width={200} position="bottom-end" withArrow shadow="md">
+          <Popover.Target>
+            <Tooltip label="Toggle columns">
+              <ActionIcon variant="light" size="sm" color="gray">
+                <IconColumns size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <Text size="xs" fw={600} mb="xs" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Visible Columns</Text>
+            <Stack gap={6}>
+              {ALL_COLS.map(col => (
+                <Switch
+                  key={col}
+                  label={col}
+                  size="xs"
+                  checked={visibleCols.has(col)}
+                  onChange={() => toggleCol(col)}
+                  color="teal"
+                  styles={{ label: { fontFamily: FONT_FAMILY, fontSize: 12 } }}
+                />
+              ))}
+            </Stack>
+          </Popover.Dropdown>
+        </Popover>
       </Group>
 
-      <ScrollArea>
-        <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th style={{ width: 40 }}>#</Table.Th>
-              <SortableHeader sortKey="name" currentKey={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
-              <SortableHeader sortKey="priority" currentKey={sortKey} dir={sortDir} onSort={onSort}>Priority</SortableHeader>
-              <SortableHeader sortKey="owner" currentKey={sortKey} dir={sortDir} onSort={onSort}>Owner</SortableHeader>
-              <SortableHeader sortKey="startMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>Start</SortableHeader>
-              <SortableHeader sortKey="targetEndMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End</SortableHeader>
-              <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>
-              <Table.Th>Pattern</Table.Th>
-              <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
-              <SortableHeader sortKey="createdAt" currentKey={sortKey} dir={sortDir} onSort={onSort}>Created</SortableHeader>
-              <Table.Th style={{ width: 50 }}>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {pagedProjects.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={11} style={{ textAlign: 'center', padding: '2rem' }}>
-                  <Text c="dimmed" size="sm">No projects match the current filters.</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-            {pagedProjects.map((p, idx) => (
-              <Table.Tr
-                key={p.id}
-                ref={p.id === highlightId || p.id === flashId ? highlightRowRef : undefined}
-                style={{
-                  cursor: 'pointer',
-                  ...(p.id === flashId ? {
-                    backgroundColor: AQUA_TINTS[10],
-                    transition: 'background-color 1s ease-out',
-                    boxShadow: `0 0 0 2px ${AQUA}`,
-                  } : {}),
-                }}
-                onClick={() => navigate(`/projects/${p.id}`)}
-              >
-                <Table.Td c="dimmed" style={{ fontSize: 12 }}>{pagination.startIndex + idx + 1}</Table.Td>
-                <Table.Td fw={500}>{p.name}</Table.Td>
-                <Table.Td><PriorityBadge priority={p.priority} /></Table.Td>
-                <Table.Td>{p.owner}</Table.Td>
-                <Table.Td>{formatProjectDate(p.startDate, p.startMonth, monthLabels)}</Table.Td>
-                <Table.Td>{formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}</Table.Td>
-                <Table.Td>{p.durationMonths}m</Table.Td>
-                <Table.Td>{p.defaultPattern}</Table.Td>
-                <Table.Td><StatusBadge status={p.status} /></Table.Td>
-                <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>
-                <Table.Td>
-                  <Tooltip label="Duplicate project">
-                    <ActionIcon
-                      variant="subtle"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyMutation.mutate(p.id, {
-                          onSuccess: (newProject) => {
-                            notifications.show({ title: 'Duplicated', message: 'Project duplicated successfully', color: 'green' });
-                          },
-                        });
-                      }}
-                      loading={copyMutation.isPending}
-                    >
-                      <IconCopy size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </ScrollArea>
+      {viewMode === 'table' && (
+        <>
+          <ScrollArea>
+            <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ width: 32 }} />
+                  {visibleCols.has('#') && <Table.Th style={{ width: 40 }}>#</Table.Th>}
+                  <SortableHeader sortKey="name" currentKey={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
+                  {visibleCols.has('Priority') && <SortableHeader sortKey="priority" currentKey={sortKey} dir={sortDir} onSort={onSort}>Priority</SortableHeader>}
+                  {visibleCols.has('Owner') && <SortableHeader sortKey="owner" currentKey={sortKey} dir={sortDir} onSort={onSort}>Owner</SortableHeader>}
+                  {visibleCols.has('Start') && <SortableHeader sortKey="startMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>Start</SortableHeader>}
+                  {visibleCols.has('End') && <SortableHeader sortKey="targetEndMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End</SortableHeader>}
+                  {visibleCols.has('Duration') && <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>}
+                  {visibleCols.has('Pattern') && <Table.Th>Pattern</Table.Th>}
+                  {visibleCols.has('Status') && <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>}
+                  {visibleCols.has('Created') && <SortableHeader sortKey="createdAt" currentKey={sortKey} dir={sortDir} onSort={onSort}>Created</SortableHeader>}
+                  <Table.Th style={{ width: 50 }}>Actions</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {pagedProjects.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={12} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <Text c="dimmed" size="sm">No projects match the current filters.</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+                {pagedProjects.map((p, idx) => {
+                  const isExpanded = expandedRows.has(p.id);
+                  const pods = podsByProject.get(p.id) ?? [];
+                  const hasPods = pods.length > 0;
+                  return (
+                    <>
+                      {/* ── Project row ── */}
+                      <Table.Tr
+                        key={p.id}
+                        ref={p.id === highlightId || p.id === flashId ? highlightRowRef : undefined}
+                        style={{
+                          cursor: 'pointer',
+                          ...(p.id === flashId ? {
+                            backgroundColor: AQUA_TINTS[10],
+                            transition: 'background-color 1s ease-out',
+                            boxShadow: `0 0 0 2px ${AQUA}`,
+                          } : {}),
+                        }}
+                        onClick={() => navigate(`/projects/${p.id}`)}
+                      >
+                        {/* Expand chevron */}
+                        <Table.Td style={{ padding: '8px 6px' }}>
+                          {hasPods ? (
+                            <ActionIcon
+                              variant="subtle"
+                              size="xs"
+                              color={isExpanded ? 'teal' : 'gray'}
+                              onClick={(e) => toggleExpand(p.id, e)}
+                              style={{ transition: 'transform 150ms ease', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                            >
+                              <IconChevronRight size={14} />
+                            </ActionIcon>
+                          ) : (
+                            <Box style={{ width: 22 }} />
+                          )}
+                        </Table.Td>
+                        {visibleCols.has('#') && <Table.Td c="dimmed" style={{ fontSize: 12 }}>{pagination.startIndex + idx + 1}</Table.Td>}
+                        {/* Inline-editable name */}
+                        <Table.Td fw={600} style={{ color: isDark ? '#e2e8f0' : '#0f172a', minWidth: 160 }}
+                          onClick={e => { e.stopPropagation(); startEdit(p.id, 'name', p.name); }}>
+                          {editingCell?.id === p.id && editingCell.field === 'name' ? (
+                            <TextInput
+                              size="xs"
+                              value={editDraft}
+                              autoFocus
+                              onChange={e => setEditDraft(e.currentTarget.value)}
+                              onBlur={() => commitEdit(p)}
+                              onKeyDown={e => { if (e.key === 'Enter') commitEdit(p); if (e.key === 'Escape') cancelEdit(); }}
+                              onClick={e => e.stopPropagation()}
+                              styles={{ input: { fontWeight: 600 } }}
+                            />
+                          ) : p.name}
+                        </Table.Td>
+                        {/* Inline-editable priority */}
+                        {visibleCols.has('Priority') && (
+                          <Table.Td onClick={e => { e.stopPropagation(); startEdit(p.id, 'priority', p.priority); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'priority' ? (
+                              <Select size="xs" data={priorityOptions} value={editDraft} autoFocus
+                                onChange={v => { setEditDraft(v ?? p.priority); }}
+                                onBlur={() => commitEdit(p)}
+                                onClick={e => e.stopPropagation()}
+                              />
+                            ) : <PriorityBadge priority={p.priority} />}
+                          </Table.Td>
+                        )}
+                        {/* Inline-editable owner */}
+                        {visibleCols.has('Owner') && (
+                          <Table.Td onClick={e => { e.stopPropagation(); startEdit(p.id, 'owner', p.owner ?? ''); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'owner' ? (
+                              <TextInput size="xs" value={editDraft} autoFocus
+                                onChange={e => setEditDraft(e.currentTarget.value)}
+                                onBlur={() => commitEdit(p)}
+                                onKeyDown={e => { if (e.key === 'Enter') commitEdit(p); if (e.key === 'Escape') cancelEdit(); }}
+                                onClick={e => e.stopPropagation()}
+                              />
+                            ) : p.owner}
+                          </Table.Td>
+                        )}
+                        {visibleCols.has('Start') && <Table.Td>{formatProjectDate(p.startDate, p.startMonth, monthLabels)}</Table.Td>}
+                        {visibleCols.has('End') && <Table.Td>{formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}</Table.Td>}
+                        {visibleCols.has('Duration') && <Table.Td>{p.durationMonths}m</Table.Td>}
+                        {visibleCols.has('Pattern') && <Table.Td>{p.defaultPattern}</Table.Td>}
+                        {/* Inline-editable status */}
+                        {visibleCols.has('Status') && (
+                          <Table.Td onClick={e => { e.stopPropagation(); startEdit(p.id, 'status', p.status); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'status' ? (
+                              <Select size="xs" data={statusOptions} value={editDraft} autoFocus
+                                onChange={v => { setEditDraft(v ?? p.status); }}
+                                onBlur={() => commitEdit(p)}
+                                onClick={e => e.stopPropagation()}
+                              />
+                            ) : <StatusBadge status={p.status} />}
+                          </Table.Td>
+                        )}
+                        {visibleCols.has('Created') && <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>}
+                        <Table.Td>
+                          <Tooltip label="Duplicate project">
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyMutation.mutate(p.id, {
+                                  onSuccess: () => {
+                                    notifications.show({ title: 'Duplicated', message: 'Project duplicated successfully', color: 'green' });
+                                  },
+                                });
+                              }}
+                              loading={copyMutation.isPending}
+                            >
+                              <IconCopy size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Table.Td>
+                      </Table.Tr>
 
-      <TablePagination {...pagination} />
+                      {/* ── POD sub-rows (accordion) ── */}
+                      {isExpanded && pods.map((pod) => (
+                        <Table.Tr
+                          key={`pod-${pod.planningId}`}
+                          style={{
+                            background: isDark ? 'rgba(45,204,211,0.04)' : '#f0fdfd',
+                            cursor: 'default',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Indent indicator */}
+                          <Table.Td style={{ padding: 0 }}>
+                            <Box style={{ width: '100%', height: '100%', borderLeft: `3px solid ${AQUA}`, minHeight: 36 }} />
+                          </Table.Td>
+                          <Table.Td />
+                          <Table.Td colSpan={1}>
+                            <Group gap={6} align="center">
+                              <Box style={{ width: 6, height: 6, borderRadius: '50%', background: AQUA, flexShrink: 0 }} />
+                              <Text size="xs" fw={600} style={{ color: isDark ? AQUA : '#0e7490' }}>
+                                {pod.podName}
+                              </Text>
+                            </Group>
+                          </Table.Td>
+                          <Table.Td />
+                          <Table.Td />
+                          <Table.Td />
+                          <Table.Td />
+                          <Table.Td>
+                            <Text size="xs" c="dimmed">{pod.durationOverride ?? '—'}m</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="xs" c="dimmed">{pod.effortPattern ?? pod.defaultPattern ?? '—'}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap={6} wrap="nowrap">
+                              {[
+                                { label: 'Dev', val: pod.devHours, color: '#3b82f6' },
+                                { label: 'QA', val: pod.qaHours, color: '#8b5cf6' },
+                                { label: 'BSA', val: pod.bsaHours, color: '#f59e0b' },
+                                { label: 'TL', val: pod.techLeadHours, color: '#ef4444' },
+                              ].filter(r => r.val > 0).map(r => (
+                                <Tooltip key={r.label} label={`${r.label}: ${r.val}h`}>
+                                  <Badge
+                                    size="xs"
+                                    style={{ background: r.color + '22', color: r.color, border: `1px solid ${r.color}44`, cursor: 'default' }}
+                                  >
+                                    {r.label} {r.val}h
+                                  </Badge>
+                                </Tooltip>
+                              ))}
+                              {pod.totalHoursWithContingency > 0 && (
+                                <Text size="xs" fw={700} style={{ color: isDark ? '#94a3b8' : '#475569', whiteSpace: 'nowrap' }}>
+                                  = {Math.round(pod.totalHoursWithContingency)}h total
+                                </Text>
+                              )}
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            {pod.targetReleaseName ? (
+                              <Badge size="xs" variant="light" color="teal">{pod.targetReleaseName}</Badge>
+                            ) : <Text size="xs" c="dimmed">—</Text>}
+                          </Table.Td>
+                          <Table.Td />
+                        </Table.Tr>
+                      ))}
+                    </>
+                  );
+                })}
+                {/* ── Inline add-row ── */}
+                {addRowActive ? (
+                  <Table.Tr style={{ background: isDark ? 'rgba(45,204,211,0.06)' : '#f0fdfa' }}>
+                    <Table.Td />
+                    {visibleCols.has('#') && <Table.Td />}
+                    {/* Name */}
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        placeholder="Project name…"
+                        value={addRowForm.name}
+                        autoFocus
+                        onChange={e => setAddRowForm(f => ({ ...f, name: e.currentTarget.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') submitAddRow(); if (e.key === 'Escape') { setAddRowActive(false); } }}
+                      />
+                    </Table.Td>
+                    {/* Priority */}
+                    {visibleCols.has('Priority') && (
+                      <Table.Td>
+                        <Select size="xs" data={priorityOptions} value={addRowForm.priority}
+                          onChange={v => setAddRowForm(f => ({ ...f, priority: v ?? 'P2' }))} />
+                      </Table.Td>
+                    )}
+                    {/* Owner */}
+                    {visibleCols.has('Owner') && (
+                      <Table.Td>
+                        <TextInput size="xs" placeholder="Owner" value={addRowForm.owner}
+                          onChange={e => setAddRowForm(f => ({ ...f, owner: e.currentTarget.value }))} />
+                      </Table.Td>
+                    )}
+                    {visibleCols.has('Start') && <Table.Td />}
+                    {visibleCols.has('End') && <Table.Td />}
+                    {visibleCols.has('Duration') && <Table.Td />}
+                    {visibleCols.has('Pattern') && <Table.Td />}
+                    {/* Status */}
+                    {visibleCols.has('Status') && (
+                      <Table.Td>
+                        <Select size="xs" data={statusOptions} value={addRowForm.status}
+                          onChange={v => setAddRowForm(f => ({ ...f, status: v ?? 'ACTIVE' }))} />
+                      </Table.Td>
+                    )}
+                    {visibleCols.has('Created') && <Table.Td />}
+                    <Table.Td>
+                      <Group gap={4}>
+                        <ActionIcon size="sm" color="teal" variant="light" onClick={submitAddRow} loading={createMutation.isPending}>
+                          <IconCheck size={14} />
+                        </ActionIcon>
+                        <ActionIcon size="sm" color="red" variant="light" onClick={() => setAddRowActive(false)}>
+                          <IconX size={14} />
+                        </ActionIcon>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  <Table.Tr
+                    style={{ cursor: 'pointer', opacity: 0.6 }}
+                    onClick={() => setAddRowActive(true)}
+                  >
+                    <Table.Td colSpan={12} style={{ textAlign: 'center', padding: '8px', color: '#94a3b8', fontSize: 12 }}>
+                      <Group gap={4} justify="center">
+                        <IconPlus size={13} />
+                        <span>Add project</span>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+
+          <TablePagination {...pagination} />
+        </>
+      )}
+
+      {viewMode === 'board' && (
+        <KanbanBoardView
+          projects={boardProjects.map(p => ({ ...p, targetDate: p.targetDate ?? undefined }))}
+          onProjectClick={(id) => navigate(`/projects/${id}`)}
+          onStatusChange={handleBoardStatusChange}
+        />
+      )}
 
       <Modal opened={modalOpen} onClose={() => { setModalOpen(false); setNameError(''); }} title="Add Project" size="xl">
         <Stack>

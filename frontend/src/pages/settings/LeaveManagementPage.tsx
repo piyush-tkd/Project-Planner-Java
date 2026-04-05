@@ -20,7 +20,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export default function LeaveManagementPage() {
+export default function LeaveManagementPage({ embedded = false }: { embedded?: boolean } = {}) {
   const isDark = useDarkMode();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
@@ -105,14 +105,16 @@ export default function LeaveManagementPage() {
     <Stack gap="md">
       {/* Header */}
       <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-            Leave Management
-          </Title>
-          <Text size="sm" c="dimmed" mt={4}>
-            Planned and sick leave entries — automatically deducted from resource capacity calculations
-          </Text>
-        </div>
+        {!embedded && (
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+              Leave Management
+            </Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Planned and sick leave entries — automatically deducted from resource capacity calculations
+            </Text>
+          </div>
+        )}
         <Group gap="xs">
           <Select
             size="xs"

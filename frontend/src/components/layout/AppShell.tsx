@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useOrgSettings } from '../../context/OrgSettingsContext';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
 import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
 import GlobalBreadcrumb from '../common/GlobalBreadcrumb';
@@ -42,6 +43,7 @@ import {
   IconUsersGroup,
   IconCalendar,
   IconBuildingFactory,
+  IconBrandAzure,
   IconSun,
   IconMoon,
   IconFileSpreadsheet,
@@ -81,6 +83,10 @@ import {
   IconChartDots3,
   IconBellRinging,
   IconCalendarOff,
+  IconCalendarPlus,
+  IconTemplate,
+  IconInbox,
+  IconTruck,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ExcelUploadModal from '../common/ExcelUploadModal';
@@ -101,112 +107,109 @@ interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey
 interface NavGroup { label: string; items: NavItem[] }
 
 const navGroups: NavGroup[] = [
+  // ── HOME ───────────────────────────────────────────────────────────────────
   {
-    label: 'Dashboard',
+    label: 'Home',
     items: [
-      { label: 'Dashboard', path: '/', icon: <IconDashboard size={17} />, pageKey: 'dashboard' },
-      { label: 'Ask AI', path: '/nlp', icon: <IconBrain size={17} />, pageKey: 'nlp_landing' },
+      { label: 'Dashboard', path: '/',      icon: <IconDashboard size={17} />, pageKey: 'dashboard' },
+      { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={17} />,     pageKey: 'inbox' },
+      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={17} />,     pageKey: 'nlp_landing' },
     ],
   },
+  // ── PORTFOLIO ──────────────────────────────────────────────────────────────
   {
-    label: 'Data Entry',
+    label: 'Portfolio',
     items: [
-      { label: 'Resources',     path: '/resources',     icon: <IconUsers size={17} />,         pageKey: 'resources' },
       { label: 'Projects',      path: '/projects',      icon: <IconBriefcase size={17} />,     pageKey: 'projects' },
       { label: 'PODs',          path: '/pods',          icon: <IconHexagons size={17} />,      pageKey: 'pods' },
-      { label: 'Availability',  path: '/availability',  icon: <IconCalendarStats size={17} />, pageKey: 'availability' },
-      { label: 'Overrides',     path: '/overrides',     icon: <IconArrowsShuffle size={17} />, pageKey: 'overrides' },
-      { label: 'Team Calendar',     path: '/team-calendar',    icon: <IconCalendar size={17} />,        pageKey: 'team_calendar' },
-      { label: 'Sprint Calendar',   path: '/sprint-calendar',  icon: <IconCalendarEvent size={17} />,   pageKey: 'sprint_calendar' },
-      { label: 'Release Calendar',  path: '/release-calendar', icon: <IconRocket size={17} />,          pageKey: 'release_calendar' },
-      { label: 'Sprint Planner',    path: '/sprint-planner',   icon: <IconBrain size={17} />,           pageKey: 'sprint_planner' },
-      { label: 'Holiday Calendar',  path: '/settings/holiday-calendar', icon: <IconCalendarEvent size={17} />, pageKey: 'holiday_calendar' },
-      { label: 'Leave Management',  path: '/settings/leave-management', icon: <IconCalendarOff size={17} />,   pageKey: 'leave_management' },
+      { label: 'Objectives',    path: '/objectives',    icon: <IconTargetArrow size={17} />,   pageKey: 'objectives' },
+      { label: 'Risk & Issues', path: '/risk-register', icon: <IconAlertTriangle size={17} />, pageKey: 'risk_register' },
+      { label: 'Ideas Board',   path: '/ideas',         icon: <IconBulb size={17} />,          pageKey: 'ideas_board' },
     ],
   },
+  // ── PEOPLE ─────────────────────────────────────────────────────────────────
   {
-    label: 'Capacity Reports',
+    label: 'People',
     items: [
-      { label: 'Utilization Center',    path: '/reports/utilization',            icon: <IconFlame size={17} />,           pageKey: 'utilization' },
-      { label: 'Hiring Forecast',       path: '/reports/hiring-forecast',        icon: <IconUserPlus size={17} />,        pageKey: 'hiring_forecast' },
-      { label: 'Capacity vs Demand',    path: '/reports/capacity-demand',        icon: <IconChartAreaLine size={17} />,   pageKey: 'capacity_demand' },
-      { label: 'POD Resources',         path: '/reports/pod-resources',          icon: <IconUsersGroup size={17} />,      pageKey: 'pod_resources' },
-      { label: 'POD Capacity',          path: '/reports/pod-capacity',           icon: <IconBuildingFactory size={17} />, pageKey: 'pod_capacity' },
+      { label: 'Resources',             path: '/resources',                      icon: <IconUsers size={17} />,           pageKey: 'resources' },
+      { label: 'Availability',          path: '/availability',                   icon: <IconCalendarStats size={17} />,   pageKey: 'availability' },
+      { label: 'Overrides',             path: '/overrides',                      icon: <IconArrowsShuffle size={17} />,   pageKey: 'overrides' },
+      { label: 'Bookings',              path: '/resource-bookings',              icon: <IconCalendarPlus size={17} />,    pageKey: 'resource_bookings' },
+      { label: 'Capacity',              path: '/capacity',                       icon: <IconFlame size={17} />,           pageKey: 'capacity_hub' },
+      { label: 'Leave & Holidays',      path: '/leave',                          icon: <IconCalendarOff size={17} />,     pageKey: 'leave_hub' },
+      { label: 'Resource Performance',  path: '/reports/resource-performance',   icon: <IconTrendingUp size={17} />,      pageKey: 'resource_performance' },
       { label: 'Resource Intelligence', path: '/reports/resource-intelligence',  icon: <IconUserSearch size={17} />,      pageKey: 'resource_intelligence' },
-      { label: 'POD Work Hours',        path: '/reports/pod-hours',              icon: <IconClock size={17} />,           pageKey: 'pod_hours' },
     ],
   },
+  // ── CALENDAR ───────────────────────────────────────────────────────────────
   {
-    label: 'Portfolio Analysis',
+    label: 'Calendar',
     items: [
-      { label: 'Project Health',        path: '/reports/project-health',         icon: <IconHeartRateMonitor size={17} />, pageKey: 'project_health' },
-      { label: 'Dependency Map',        path: '/reports/dependency-map',         icon: <IconLink size={17} />,             pageKey: 'dependency_map' },
-      { label: 'Portfolio Timeline',    path: '/reports/portfolio-timeline',     icon: <IconTimeline size={17} />,         pageKey: 'portfolio_timeline' },
-      { label: 'POD · Project Matrix',  path: '/reports/project-pod-matrix',     icon: <IconHexagons size={17} />,         pageKey: 'project_pod_matrix' },
-      { label: 'Budget & CapEx',        path: '/reports/budget-capex',           icon: <IconCurrencyDollar size={17} />,   pageKey: 'budget_capex' },
-      { label: 'Project Signals',       path: '/reports/project-signals',        icon: <IconChartInfographic size={17} />, pageKey: 'project_signals' },
-      { label: 'Resource Performance',  path: '/reports/resource-performance',   icon: <IconTrendingUp size={17} />,       pageKey: 'resource_performance' },
-      { label: 'DORA Metrics',          path: '/reports/dora',                   icon: <IconRocket size={17} />,           pageKey: 'dora_metrics' },
-      { label: 'Jira Analytics',        path: '/reports/jira-analytics',         icon: <IconChartInfographic size={17} />, pageKey: 'jira_analytics' },
-      { label: 'Dashboard Builder',     path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={17} />,  pageKey: 'jira_dashboard_builder' },
-      { label: 'Eng. Productivity',     path: '/reports/engineering-productivity', icon: <IconTrendingUp size={17} />,     pageKey: 'engineering_productivity' },
+      { label: 'Strategic Calendar', path: '/calendar',           icon: <IconCalendar size={17} />,  pageKey: 'calendar_hub' },
+      { label: 'Sprint Planner',     path: '/sprint-planner',     icon: <IconBrain size={17} />,     pageKey: 'sprint_planner' },
+      { label: 'Project Templates',  path: '/project-templates',  icon: <IconTemplate size={17} />,  pageKey: 'project_templates' },
     ],
   },
+  // ── DELIVERY ───────────────────────────────────────────────────────────────
   {
-    label: 'Strategic Insights',
+    label: 'Delivery',
     items: [
-      { label: 'Portfolio Health',       path: '/reports/portfolio-health-dashboard', icon: <IconShieldCheck size={17} />,   pageKey: 'portfolio_health_dashboard' },
-      { label: 'Jira Portfolio Sync',    path: '/reports/jira-portfolio-sync',        icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync' },
-      { label: 'Financial Intelligence', path: '/reports/financial-intelligence',     icon: <IconReportMoney size={17} />,   pageKey: 'financial_intelligence' },
-      { label: 'Delivery Predict.',      path: '/reports/delivery-predictability',    icon: <IconChartDots3 size={17} />,    pageKey: 'delivery_predictability' },
-      { label: 'Smart Notifications',    path: '/reports/smart-notifications',        icon: <IconBellRinging size={17} />,   pageKey: 'smart_notifications' },
+      { label: 'POD Dashboard',  path: '/jira-pods',      icon: <IconUsersGroup size={17} />,  pageKey: 'jira_pods' },
+      { label: 'Releases',       path: '/jira-releases',  icon: <IconTag size={17} />,          pageKey: 'jira_releases' },
+      { label: 'Release Notes',  path: '/release-notes',  icon: <IconPackage size={17} />,      pageKey: 'release_notes' },
+      { label: 'Jira Actuals',   path: '/jira-actuals',   icon: <IconTicket size={17} />,       pageKey: 'jira_actuals' },
+      { label: 'Support Queue',  path: '/jira-support',   icon: <IconHeadset size={17} />,      pageKey: 'jira_support', alertKey: 'supportStale' },
+      { label: 'Worklog',        path: '/jira-worklog',   icon: <IconClock size={17} />,        pageKey: 'jira_worklog' },
+      { label: 'Budget & CapEx', path: '/reports/budget-capex', icon: <IconCurrencyDollar size={17} />, pageKey: 'budget_capex' },
     ],
   },
+  // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   {
-    label: 'Integrations',
+    label: 'Portfolio',
     items: [
-      { label: 'POD Dashboard',   path: '/jira-pods',      icon: <IconUsers size={17} />,     pageKey: 'jira_pods' },
-      { label: 'Releases',        path: '/jira-releases',  icon: <IconTag size={17} />,         pageKey: 'jira_releases' },
-      { label: 'Release Notes',   path: '/release-notes',  icon: <IconPackage size={17} />,     pageKey: 'release_notes' },
-      { label: 'Jira Actuals',  path: '/jira-actuals', icon: <IconTicket size={17} />,          pageKey: 'jira_actuals' },
-      { label: 'Support Queue', path: '/jira-support', icon: <IconHeadset size={17} />,         pageKey: 'jira_support', alertKey: 'supportStale' },
-      { label: 'Worklog',       path: '/jira-worklog', icon: <IconClock size={17} />,            pageKey: 'jira_worklog' },
+      { label: 'Portfolio Health',    path: '/reports/portfolio-health-dashboard', icon: <IconShieldCheck size={17} />,      pageKey: 'portfolio_health_dashboard' },
+      { label: 'Project Health',      path: '/reports/project-health',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'project_health' },
+      { label: 'Portfolio Timeline',  path: '/reports/portfolio-timeline',         icon: <IconTimeline size={17} />,          pageKey: 'portfolio_timeline' },
+      { label: 'Project Signals',     path: '/reports/project-signals',            icon: <IconChartInfographic size={17} />,  pageKey: 'project_signals' },
+      { label: 'Dependency Map',      path: '/reports/dependency-map',             icon: <IconLink size={17} />,              pageKey: 'dependency_map' },
+      { label: 'Gantt & Dependencies',path: '/reports/gantt-dependencies',         icon: <IconGitBranch size={17} />,         pageKey: 'gantt_dependencies' },
     ],
   },
+  // ── ENGINEERING ───────────────────────────────────────────────────────────
   {
-    label: 'Simulators',
+    label: 'Engineering',
     items: [
-      { label: 'Timeline Simulator', path: '/simulator/timeline', icon: <IconPlayerPlay size={17} />,  pageKey: 'timeline_simulator' },
-      { label: 'Scenario Simulator', path: '/simulator/scenario', icon: <IconAdjustments size={17} />, pageKey: 'scenario_simulator' },
+      { label: 'Eng. Intelligence',   path: '/reports/engineering-intelligence',   icon: <IconReportMoney size={17} />,       pageKey: 'engineering_intelligence' },
+      { label: 'DORA Metrics',        path: '/reports/dora',                       icon: <IconRocket size={17} />,            pageKey: 'dora_metrics' },
+      { label: 'Delivery Predict.',   path: '/reports/delivery-predictability',    icon: <IconChartDots3 size={17} />,        pageKey: 'delivery_predictability' },
+      { label: 'Jira Analytics',      path: '/reports/jira-analytics',             icon: <IconChartInfographic size={17} />,  pageKey: 'jira_analytics' },
+      { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder',     icon: <IconLayoutDashboard size={17} />,   pageKey: 'jira_dashboard_builder' },
     ],
   },
+  // ── SIMULATIONS & TOOLS ────────────────────────────────────────────────────
   {
-    label: 'Settings',
+    label: 'Simulations',
     items: [
-      { label: 'Timeline',         path: '/settings/timeline',         icon: <IconSettings size={17} />, pageKey: 'settings' },
-      { label: 'Reference Data',   path: '/settings/ref-data',         icon: <IconDatabase size={17} />, pageKey: 'settings' },
-      { label: 'Jira Credentials', path: '/settings/jira-credentials', icon: <IconKey size={17} />,      pageKey: 'settings' },
-      { label: 'Jira Boards',      path: '/settings/jira',             icon: <IconTicket size={17} />,   pageKey: 'settings' },
-      { label: 'Release Versions', path: '/settings/releases',         icon: <IconTag size={17} />,      pageKey: 'settings' },
-      { label: 'Support Boards',   path: '/settings/support-boards',   icon: <IconHeadset size={17} />,  pageKey: 'settings' },
-      { label: 'Resource Mapping', path: '/settings/jira-resource-mapping', icon: <IconUsers size={17} />,   pageKey: 'jira_resource_mapping' },
-      { label: 'Release Mapping',  path: '/settings/jira-release-mapping',  icon: <IconPackage size={17} />,  pageKey: 'jira_release_mapping' },
-      { label: 'NLP / AI',         path: '/settings/nlp',              icon: <IconBrain size={17} />,    pageKey: 'nlp_settings' },
-      { label: 'NLP Optimizer',    path: '/settings/nlp-optimizer',    icon: <IconBrain size={17} />,    pageKey: 'nlp_optimizer' },
-      { label: 'Feedback Hub',    path: '/settings/feedback-hub',     icon: <IconMessageReport size={17} />, pageKey: 'feedback_hub' },
-      { label: 'Error Log',       path: '/settings/error-log',        icon: <IconAlertTriangle size={17} />,   pageKey: 'error_log' },
-      { label: 'Sidebar Order',  path: '/settings/sidebar-order',    icon: <IconArrowsShuffle size={17} />,   pageKey: 'sidebar_order' },
-      { label: 'Users',            path: '/settings/users',            icon: <IconUserCog size={17} />,  pageKey: '__admin_only__' },
-      { label: 'Audit Log',        path: '/settings/audit-log',        icon: <IconHistory size={17} />,  pageKey: '__admin_only__' },
-      { label: 'Tables',           path: '/settings/tables',           icon: <IconDatabase size={17} />, pageKey: '__admin_only__' },
+      { label: 'Timeline Simulator',  path: '/simulator/timeline',              icon: <IconPlayerPlay size={17} />,    pageKey: 'timeline_simulator' },
+      { label: 'Scenario Simulator',  path: '/simulator/scenario',              icon: <IconAdjustments size={17} />,   pageKey: 'scenario_simulator' },
+      { label: 'Smart Notifications', path: '/reports/smart-notifications',     icon: <IconBellRinging size={17} />,   pageKey: 'smart_notifications' },
+      { label: 'Jira Portfolio Sync', path: '/reports/jira-portfolio-sync',     icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync' },
+    ],
+  },
+  // ── ADMIN ──────────────────────────────────────────────────────────────────
+  {
+    label: 'Admin',
+    items: [
+      { label: 'Admin Settings',   path: '/settings/org',                     icon: <IconBuildingFactory size={17} />, pageKey: 'org_settings' },
     ],
   },
 ];
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-  ADMIN:      { label: 'Admin',      color: 'red' },
-  READ_WRITE: { label: 'Read/Write', color: 'blue' },
-  READ_ONLY:  { label: 'Read Only',  color: 'gray' },
+  SUPER_ADMIN: { label: 'Super Admin', color: 'violet' },
+  ADMIN:       { label: 'Admin',       color: 'red' },
+  READ_WRITE:  { label: 'Read/Write',  color: 'blue' },
+  READ_ONLY:   { label: 'Read Only',   color: 'gray' },
 };
 
 export default function AppShellLayout() {
@@ -218,6 +221,11 @@ export default function AppShellLayout() {
   const { setColorScheme }  = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const { username, displayLabel, role, logout, canAccess, isAdmin } = useAuth();
+  const { orgSettings } = useOrgSettings();
+  const orgPrimary   = orgSettings.primaryColor;
+  const orgSecondary = orgSettings.secondaryColor;
+  const orgName      = orgSettings.orgName;
+  const orgLogoUrl   = orgSettings.logoUrl;
   const isDark = computedColorScheme === 'dark';
   const alerts = useAlertCounts();
   const { opened: searchOpened, setOpened: setSearchOpened } = useGlobalSearch();
@@ -331,7 +339,7 @@ export default function AppShellLayout() {
   }, []);
 
   function isGroupCollapsed(group: typeof visibleGroups[0]): boolean {
-    if (group.label === 'Dashboard') return false;
+    if (group.label === 'Home') return false;
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
     return !group.items.some(item =>
       item.path === '/' ? location.pathname === '/' :
@@ -352,9 +360,9 @@ export default function AppShellLayout() {
       {/* ── Header ── */}
       <MantineAppShell.Header
         style={{
-          background: `linear-gradient(135deg, ${DEEP_BLUE} 0%, #0a1c33 40%, ${DEEP_BLUE} 100%)`,
-          borderBottom: `2px solid ${AQUA}`,
-          boxShadow: `0 4px 24px rgba(12, 35, 64, 0.3), 0 0 0 1px ${AQUA}15`,
+          background: `linear-gradient(135deg, ${orgSecondary} 0%, #0a1c33 40%, ${orgSecondary} 100%)`,
+          borderBottom: `2px solid ${orgPrimary}`,
+          boxShadow: `0 4px 24px rgba(12, 35, 64, 0.3), 0 0 0 1px ${orgPrimary}15`,
           backdropFilter: 'blur(20px)',
         }}
       >
@@ -368,17 +376,25 @@ export default function AppShellLayout() {
               size="sm"
               color="white"
             />
-            {/* Baylor Genetics logo mark — Aqua triangle */}
-            <svg
-              width="28"
-              height="26"
-              viewBox="0 0 28 26"
-              fill="none"
-              className="logo-mark-animated"
-            >
-              <polygon points="14,1 27,25 1,25" fill="none" stroke={AQUA} strokeWidth="2.5" />
-              <polygon points="14,7 23,23 5,23"  fill={AQUA} opacity="0.3" />
-            </svg>
+            {/* Logo mark — shows uploaded org logo or default SVG */}
+            {orgLogoUrl ? (
+              <img
+                src={orgLogoUrl}
+                alt={orgName}
+                style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 6, flexShrink: 0 }}
+              />
+            ) : (
+              <svg
+                width="28"
+                height="26"
+                viewBox="0 0 28 26"
+                fill="none"
+                className="logo-mark-animated"
+              >
+                <polygon points="14,1 27,25 1,25" fill="none" stroke={orgPrimary} strokeWidth="2.5" />
+                <polygon points="14,7 23,23 5,23"  fill={orgPrimary} opacity="0.3" />
+              </svg>
+            )}
             <Text
               style={{
                 color: '#FFFFFF',
@@ -389,7 +405,7 @@ export default function AppShellLayout() {
                 lineHeight: 1.2,
               }}
             >
-              Engineering Portfolio Planner
+              {orgName}
             </Text>
           </Group>
 
@@ -417,7 +433,7 @@ export default function AppShellLayout() {
               >
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <IconSearch size={14} />
-                  <div className="search-ready-indicator" style={{ position: 'absolute', bottom: -2, right: -3, width: 5, height: 5, backgroundColor: AQUA, borderRadius: '50%', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                  <div className="search-ready-indicator" style={{ position: 'absolute', bottom: -2, right: -3, width: 5, height: 5, backgroundColor: orgPrimary, borderRadius: '50%', animation: 'pulse-dot 2s ease-in-out infinite' }} />
                 </div>
                 <Text size="sm" style={{ flex: 1, color: 'rgba(255,255,255,0.55)', fontFamily: FONT_FAMILY }}>Search…</Text>
                 <Kbd size="xs" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', border: 'none', fontFamily: FONT_FAMILY }}>⌘K</Kbd>
@@ -481,7 +497,7 @@ export default function AppShellLayout() {
                   <Avatar
                     size={32}
                     radius="xl"
-                    style={{ backgroundColor: AQUA, color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 600 }}
+                    style={{ backgroundColor: orgPrimary, color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 600 }}
                   >
                     {initials}
                   </Avatar>
@@ -507,7 +523,7 @@ export default function AppShellLayout() {
                 {isAdmin && (
                   <Menu.Item
                     leftSection={<IconUserCog size={16} />}
-                    onClick={() => navigate('/settings/users')}
+                    onClick={() => navigate('/settings/org?tab=users')}
                     style={{ fontFamily: FONT_FAMILY }}
                   >
                     Manage Users
@@ -548,29 +564,31 @@ export default function AppShellLayout() {
               <div key={group.label} className="nav-group-container">
                 {/* Group header — clickable to collapse/expand */}
                 <UnstyledButton
-                  onClick={() => group.label !== 'Dashboard' && toggleGroup(group.label, allLabels)}
+                  onClick={() => group.label !== 'Home' && toggleGroup(group.label, allLabels)}
                   style={{
                     width: '100%',
                     padding: '10px 8px 4px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    borderBottom: hasActive ? `1px solid ${AQUA_TINTS[30]}` : 'none',
+                    borderBottom: hasActive ? `1px solid ${orgPrimary}30` : 'none',
                     transition: 'border-color 200ms ease',
                   }}
                 >
                   <Text
-                    size="xs" fw={600} tt="uppercase"
+                    size="xs" fw={700} tt="uppercase"
                     style={{
                       color: hasActive ? DEEP_BLUE : TEXT_SECONDARY,
                       fontFamily: FONT_FAMILY,
-                      letterSpacing: '0.06em',
+                      letterSpacing: '0.8px',
                       fontSize: 10,
+                      opacity: 0.65,
+                      fontWeight: 700,
                     }}
                   >
                     {group.label}
                   </Text>
-                  {group.label !== 'Dashboard' && (
+                  {group.label !== 'Home' && (
                     <IconChevronRight
                       size={12}
                       style={{
@@ -620,23 +638,23 @@ export default function AppShellLayout() {
                         fontFamily: FONT_FAMILY,
                         fontWeight: isActive ? 600 : 400,
                         fontSize: 13,
-                        borderLeft: isActive ? `3px solid ${AQUA}` : 'none',
+                        borderLeft: isActive ? `3px solid ${orgPrimary}` : 'none',
                         paddingLeft: isActive ? 12 : 15,
                         transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                         transform: isActive ? 'translateX(2px)' : 'translateX(0)',
                         background: isActive
-                          ? `linear-gradient(90deg, ${AQUA}15, transparent)`
+                          ? `linear-gradient(90deg, ${orgPrimary}15, transparent)`
                           : undefined,
                         boxShadow: isActive
-                          ? `inset 3px 0 0 ${AQUA}, 0 2px 8px ${AQUA}10`
+                          ? `inset 3px 0 0 ${orgPrimary}, 0 2px 8px ${orgPrimary}10`
                           : undefined,
                       }}
                       styles={{
                         root: {
-                          '--nav-active-bg': `linear-gradient(90deg, ${AQUA_TINTS[10]}, transparent)`,
-                          '--nav-active-color': DEEP_BLUE,
+                          '--nav-active-bg': `linear-gradient(90deg, ${orgPrimary}10, transparent)`,
+                          '--nav-active-color': orgSecondary,
                           '&:hover': {
-                            backgroundColor: AQUA_TINTS[10],
+                            backgroundColor: `${orgPrimary}10`,
                             transform: 'translateX(2px)',
                           },
                         },
@@ -664,12 +682,12 @@ export default function AppShellLayout() {
               fontSize: 9,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              background: `linear-gradient(90deg, ${DEEP_BLUE_TINTS[50]}, ${AQUA})`,
+              background: `linear-gradient(90deg, ${orgSecondary}80, ${orgPrimary})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v9.7
+              Portfolio Planner v12.5
             </Text>
           </div>
         </MantineAppShell.Section>

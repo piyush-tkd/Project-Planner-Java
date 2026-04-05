@@ -81,6 +81,7 @@ export default function PodsPage() {
           return next;
         });
       },
+      onError: () => notifications.show({ title: 'Error', message: 'Failed to update complexity', color: 'red' }),
     });
   };
 
@@ -97,6 +98,7 @@ export default function PodsPage() {
         setBauEdits({});
         notifications.show({ title: 'Saved', message: 'BAU assumptions updated', color: 'green' });
       },
+      onError: () => notifications.show({ title: 'Error', message: 'Failed to save BAU assumptions', color: 'red' }),
     });
   };
 
@@ -116,6 +118,7 @@ export default function PodsPage() {
         setNewPodComplexity(1.0);
         notifications.show({ title: 'Created', message: 'POD created', color: 'green' });
       },
+      onError: () => notifications.show({ title: 'Error', message: 'Failed to create POD', color: 'red' }),
     });
   };
 

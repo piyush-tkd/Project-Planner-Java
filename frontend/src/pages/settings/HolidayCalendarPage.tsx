@@ -47,7 +47,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { id: null, name: '', holidayDate: null, location: 'US' };
 
-export default function HolidayCalendarPage() {
+export default function HolidayCalendarPage({ embedded = false }: { embedded?: boolean } = {}) {
   const isDark = useDarkMode();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
@@ -64,7 +64,7 @@ export default function HolidayCalendarPage() {
   const grouped = useMemo(() => {
     const visible = locFilter === 'all'
       ? holidays
-      : holidays.filter(h => h.location === locFilter.toUpperCase());
+      : holidays.filter(h => h.location === locFilter.toUpperCase() || h.location === 'ALL');
     const byMonth: Record<number, HolidayResponse[]> = {};
     for (const h of visible) {
       const m = new Date(h.holidayDate + 'T00:00:00').getMonth() + 1;
@@ -137,14 +137,16 @@ export default function HolidayCalendarPage() {
     <Stack gap="md">
       {/* Header */}
       <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-            Holiday Calendar
-          </Title>
-          <Text size="sm" c="dimmed" mt={4}>
-            Public holidays by location — used to adjust available capacity per resource per month
-          </Text>
-        </div>
+        {!embedded && (
+          <div>
+            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+              Holiday Calendar
+            </Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Public holidays by location — used to adjust available capacity per resource per month
+            </Text>
+          </div>
+        )}
         <Group gap="xs">
           <Select
             size="xs"

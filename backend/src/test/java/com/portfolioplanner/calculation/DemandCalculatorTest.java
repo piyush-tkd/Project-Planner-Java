@@ -5,7 +5,6 @@ import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.ProjectPodPlanning;
 import com.portfolioplanner.domain.model.enums.Priority;
-import com.portfolioplanner.domain.model.enums.ProjectStatus;
 import com.portfolioplanner.domain.model.enums.Role;
 import com.portfolioplanner.service.calculation.DemandCalculator;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,7 +73,7 @@ class DemandCalculatorTest {
         p.setId(id);
         p.setName("Test Project");
         p.setPriority(Priority.P1);
-        p.setStatus(ProjectStatus.ACTIVE);
+        p.setStatus("ACTIVE");
         p.setStartMonth(start);
         p.setDurationMonths(duration);
         p.setDefaultPattern(pattern);
@@ -296,7 +295,7 @@ class DemandCalculatorTest {
         void cancelledProjectProducesZeroDemand() {
             Pod pod = pod(POD_ID);
             Project project = activeProject(PROJ_ID, 1, 6, "Flat");
-            project.setStatus(ProjectStatus.CANCELLED);
+            project.setStatus("CANCELLED");
             ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
                     new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     BigDecimal.ZERO, null, null, null);

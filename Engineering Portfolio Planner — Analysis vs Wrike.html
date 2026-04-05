@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Engineering Portfolio Planner — Deep Analysis vs Wrike</title>
+<style>
+  :root {
+    --aqua: #2DCCD3; --navy: #0C2340; --slate: #1e293b;
+    --muted: #64748b; --border: #e2e8f0; --bg: #f8fafc;
+    --green: #22c55e; --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6;
+    --purple: #8b5cf6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fff; color: var(--slate); line-height: 1.6; }
+
+  /* Cover */
+  .cover { background: var(--navy); color: #fff; padding: 64px 80px 48px;
+    border-bottom: 4px solid var(--aqua); }
+  .cover h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .cover .sub { color: #94a3b8; font-size: 15px; }
+  .cover .meta { margin-top: 28px; display: flex; gap: 40px; }
+  .cover .meta span { font-size: 13px; color: #cbd5e1; }
+  .cover .meta strong { color: var(--aqua); }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 48px 80px; }
+
+  /* Section headers */
+  h2 { font-size: 22px; font-weight: 800; color: var(--navy); margin: 52px 0 6px;
+    padding-top: 8px; border-top: 2px solid var(--aqua); display: inline-block; }
+  h3 { font-size: 15px; font-weight: 700; color: var(--slate); margin: 24px 0 10px; }
+  h4 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.6px; margin: 20px 0 8px; }
+  p { font-size: 14px; color: #334155; margin-bottom: 10px; }
+
+  /* Callout boxes */
+  .callout { border-radius: 10px; padding: 16px 20px; margin: 16px 0; font-size: 13.5px; }
+  .callout.green  { background: #f0fdf4; border-left: 4px solid var(--green); }
+  .callout.amber  { background: #fffbeb; border-left: 4px solid var(--amber); }
+  .callout.red    { background: #fef2f2; border-left: 4px solid var(--red); }
+  .callout.blue   { background: #eff6ff; border-left: 4px solid var(--blue); }
+  .callout.purple { background: #f5f3ff; border-left: 4px solid var(--purple); }
+  .callout strong { display: block; margin-bottom: 4px; font-size: 13px; }
+
+  /* Comparison grid */
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 16px 0; }
+  .comp-col { padding: 0; }
+  .comp-header { padding: 12px 18px; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.3px; }
+  .comp-header.wrike { background: #1a1a2e; color: #4ade80; }
+  .comp-header.ours  { background: var(--aqua); color: var(--navy); }
+  .comp-item { padding: 10px 18px; font-size: 13px; border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px; }
+  .comp-item .icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  /* Status pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px;
+    border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill.have    { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+  .pill.partial { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .pill.missing { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .pill.new     { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+
+  /* Feature table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  thead th { background: var(--bg); padding: 10px 14px; text-align: left;
+    font-weight: 600; color: var(--muted); border-bottom: 2px solid var(--border); }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; }
+  tbody tr:hover td { background: #f8fafc; }
+  td.feature { font-weight: 600; color: var(--slate); }
+  td.action  { color: var(--muted); font-size: 12px; }
+
+  /* Priority cards */
+  .priority-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
+  .priority-card { border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .priority-card .badge { display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; margin-bottom: 10px; }
+  .priority-card.p0 .badge { background: #fef2f2; color: #dc2626; }
+  .priority-card.p1 .badge { background: #fff7ed; color: #ea580c; }
+  .priority-card.p2 .badge { background: #eff6ff; color: #2563eb; }
+  .priority-card h3 { font-size: 14px; margin-top: 0; margin-bottom: 6px; }
+  .priority-card ul { padding-left: 16px; font-size: 12.5px; color: #475569; }
+  .priority-card li { margin-bottom: 4px; }
+
+  /* Merge table */
+  .merge-row { display: grid; grid-template-columns: 200px 1fr 100px; gap: 0;
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+    overflow: hidden; font-size: 13px; }
+  .merge-row .from { padding: 10px 14px; background: #f1f5f9; font-weight: 600; }
+  .merge-row .into { padding: 10px 14px; color: #475569; }
+  .merge-row .verdict { padding: 10px 14px; font-weight: 700; text-align: center; }
+  .merge-row .verdict.merge { color: var(--amber); }
+  .merge-row .verdict.keep  { color: var(--green); }
+  .merge-row .verdict.drop  { color: var(--red); }
+
+  /* SaaS section */
+  .saas-pillar { border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-bottom: 12px; }
+  .saas-pillar h3 { margin-top: 0; color: var(--navy); font-size: 15px; }
+  .saas-pillar .status { float: right; }
+  .saas-pillar ul { font-size: 13px; color: #475569; padding-left: 18px; margin-top: 8px; }
+  .saas-pillar li { margin-bottom: 5px; }
+
+  /* Nav */
+  .toc { background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 24px; margin: 32px 0; display: grid;
+    grid-template-columns: repeat(3, 1fr); gap: 8px 24px; }
+  .toc a { font-size: 13px; color: var(--blue); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  .tag { background: #f1f5f9; color: var(--muted); padding: 2px 8px;
+    border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>Engineering Portfolio Planner</h1>
+  <div class="sub">Deep Competitive Analysis vs Wrike · Feature Audit · SaaS Readiness Roadmap</div>
+  <div class="meta">
+    <span>Current version: <strong>v10.4</strong></span>
+    <span>Date: <strong>April 4, 2026</strong></span>
+    <span>Scope: <strong>Full app vs Wrike PMO Template</strong></span>
+    <span>Vision: <strong>Multi-org SaaS Platform</strong></span>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="toc">
+  <a href="#exec-summary">1. Executive Summary</a>
+  <a href="#feature-compare">2. Feature Comparison</a>
+  <a href="#design-gaps">3. Design Gaps</a>
+  <a href="#page-audit">4. Page / Navigation Audit</a>
+  <a href="#saas">5. SaaS &amp; Multi-org Readiness</a>
+  <a href="#workflows">6. Workflow Gaps</a>
+  <a href="#roadmap">7. Recommended Roadmap</a>
+</div>
+
+
+<!-- ═══ 1. EXECUTIVE SUMMARY ═══ -->
+<h2 id="exec-summary">1. Executive Summary</h2>
+
+<p>After a live side-by-side comparison of Wrike's PMO template against the Engineering Portfolio Planner (EPP), the clear picture is this: <strong>EPP has more raw data depth than Wrike in every engineering-specific dimension</strong> — capacity math, POD planning, sprint/release tracking, and Jira integration — but Wrike wins decisively on <strong>usability, configurability, workflow design, and multi-user roles</strong>.</p>
+
+<div class="callout blue">
+  <strong>Core strategic finding</strong>
+  EPP is not a Wrike clone — it should not try to be. EPP's moat is engineering-specific intelligence (capacity math, POD matrices, DORA, Jira actuals, worklog, hiring forecast) that Wrike simply doesn't have. The opportunity is to match Wrike's <em>usability patterns</em> while keeping EPP's <em>depth advantage</em>, and architect for multi-org SaaS from the start.
+</div>
+
+<div class="callout green">
+  <strong>Where EPP is ahead of Wrike</strong>
+  POD-level capacity planning, DORA metrics, Jira actuals vs estimated, sprint/release calendar layers, workload heatmap by POD/month, hiring forecast, scenario simulators, NLP query interface, support queue monitoring, resource bookings, and budget/CapEx tracking.
+</div>
+
+<div class="callout amber">
+  <strong>Where Wrike is ahead of EPP</strong>
+  Role-based dashboards (Executive / Manager / IC), inline task management and subtasks, configurable columns per view, request intake forms, timesheets &amp; approval workflows, ideas Kanban (innovation funnel), risk &amp; issue registry with scoring, whiteboard collaboration, RACI charts, and project scoring rubrics.
+</div>
+
+
+<!-- ═══ 2. FEATURE COMPARISON ═══ -->
+<h2 id="feature-compare">2. Feature-by-Feature Comparison</h2>
+
+<h3>2.1 Dashboard &amp; Reporting</h3>
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Wrike</th><th>EPP</th><th>Gap / Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Role-based dashboards</td>
+      <td>Executive, Manager, IC — each a separate pinned dashboard</td>
+      <td>Team / Executive / Analyst tabs on one page</td>
+      <td><span class="pill partial">Partial</span> — EPP boards are good but not role-personalized</td>
+    </tr>
+    <tr>
+      <td class="feature">Widget configurability</td>
+      <td>Drag-to-reorder, show/hide, filter per widget, public links</td>
+      <td>Customize layout toggle exists, limited widget types</td>
+      <td><span class="pill partial">Partial</span> — extend widget library &amp; per-widget filters</td>
+    </tr>
+    <tr>
+      <td class="feature">KPI number cards</td>
+      <td>Single-stat cards with return %, savings, spend</td>
+      <td>KPI cards: resources, projects, utilization, deficits</td>
+      <td><span class="pill have">Have</span> — add financial KPIs (budget burn, ROI)</td>
+    </tr>
+    <tr>
+      <td class="feature">Portfolio financial report</td>
+      <td>Program financial report widget with trend bars</td>
+      <td>Budget &amp; CapEx page exists</td>
+      <td><span class="pill partial">Partial</span> — surface on dashboard as widget</td>
+    </tr>
+    <tr>
+      <td class="feature">Strategic objectives</td>
+      <td>Donut chart + goal list tied to projects</td>
+      <td>Not present</td>
+      <td><span class="pill missing">Missing</span> — OKR / strategic goals concept absent</td>
+    </tr>
+    <tr>
+      <td class="feature">Capacity vs demand chart</td>
+      <td>Not present natively</td>
+      <td>Full year line chart by month</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">DORA metrics</td>
+      <td>Not present</td>
+      <td>Dedicated DORA page</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Dashboard board tabs</td>
+      <td>Named tabs per dashboard (Overview, Escalations, Ideas)</td>
+      <td>Team / Executive / Analyst tabs</td>
+      <td><span class="pill have">Have</span> — add "Escalations" &amp; "Signals" tabs</td>
+    </tr>
+    <tr>
+      <td class="feature">Completion progress</td>
+      <td>Tasks this week, overdue tasks, pending approvals</td>
+      <td>0% completion — no completed projects in data</td>
+      <td><span class="pill partial">Partial</span> — add sprint-level completion tracking</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>2.2 Project Management</h3>
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Wrike</th><th>EPP</th><th>Gap / Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Table view</td>
+      <td>Fully configurable columns, custom fields, group-by any field</td>
+      <td>Fixed columns, sortable, accordion POD rows</td>
+      <td><span class="pill partial">Partial</span> — add column show/hide toggle</td>
+    </tr>
+    <tr>
+      <td class="feature">Board (Kanban) view</td>
+      <td>Not the default — Ideas intake uses board</td>
+      <td>Board view built with status swimlanes</td>
+      <td><span class="pill have">Have</span> — board view exists</td>
+    </tr>
+    <tr>
+      <td class="feature">Gantt view</td>
+      <td>Built-in Gantt chart with dependencies</td>
+      <td>Gantt &amp; Dependencies page exists</td>
+      <td><span class="pill have">Have</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Multiple saved views per folder</td>
+      <td>Projects / Financials / Projected vs Actuals / RACI / Scoring tabs</td>
+      <td>Table + Board toggle only</td>
+      <td><span class="pill missing">Gap</span> — add Financials, RACI, Health scoring as saved tabs</td>
+    </tr>
+    <tr>
+      <td class="feature">Custom fields per project</td>
+      <td>Fully configurable (toggle fields on/off)</td>
+      <td>Fixed schema in backend</td>
+      <td><span class="pill missing">Gap</span> — critical for multi-org SaaS</td>
+    </tr>
+    <tr>
+      <td class="feature">Project subtasks / tasks</td>
+      <td>Core feature — hierarchical tasks</td>
+      <td>No task management within projects</td>
+      <td><span class="pill missing">Missing</span> — EPP is portfolio-level, not task-level</td>
+    </tr>
+    <tr>
+      <td class="feature">Risk &amp; issue registry</td>
+      <td>Dedicated registry with risk score, probability, business impact</td>
+      <td>Project Signals page partially addresses this</td>
+      <td><span class="pill partial">Partial</span> — build dedicated risk register</td>
+    </tr>
+    <tr>
+      <td class="feature">RACI matrix</td>
+      <td>Saved view on Projects folder</td>
+      <td>Not present</td>
+      <td><span class="pill missing">Missing</span> — add as a project tab</td>
+    </tr>
+    <tr>
+      <td class="feature">Project scoring</td>
+      <td>Saved view with scoring criteria</td>
+      <td>Health score as heuristic (priority + status)</td>
+      <td><span class="pill partial">Partial</span> — build configurable scoring rubric</td>
+    </tr>
+    <tr>
+      <td class="feature">POD-level capacity planning</td>
+      <td>Not present</td>
+      <td>Full POD matrix, hours by role, contingency</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Import from Jira</td>
+      <td>Not available in PMO template</td>
+      <td>Import from Jira button, Jira credentials, boards</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>2.3 Resource &amp; Capacity Management</h3>
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Wrike</th><th>EPP</th><th>Gap / Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Workload view (person × day)</td>
+      <td>Workload chart: person rows, day columns, % utilization, task bars</td>
+      <td>Workload Chart page (POD × month heatmap)</td>
+      <td><span class="pill partial">Partial</span> — EPP is month-level, Wrike is day-level</td>
+    </tr>
+    <tr>
+      <td class="feature">Resource availability</td>
+      <td>Availability by month + role chart</td>
+      <td>Availability page + leave management</td>
+      <td><span class="pill have">Have</span> — deeper than Wrike</td>
+    </tr>
+    <tr>
+      <td class="feature">Timesheets</td>
+      <td>Weekly timesheet, submit for approval, manager approvals, reminders</td>
+      <td>Worklog page (Jira actuals import)</td>
+      <td><span class="pill partial">Partial</span> — no native timesheet entry/approval</td>
+    </tr>
+    <tr>
+      <td class="feature">Capacity demand forecast</td>
+      <td>Portfolios dashboard shows total capacity + availability this month</td>
+      <td>Hiring Forecast, Capacity vs Demand full year chart</td>
+      <td><span class="pill have">EPP Advantage</span> — more sophisticated</td>
+    </tr>
+    <tr>
+      <td class="feature">Utilization heatmap</td>
+      <td>Not present</td>
+      <td>Team Calendar (POD × month, color-coded %)</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Resource booking / overrides</td>
+      <td>Not present</td>
+      <td>Resource Bookings + Overrides pages</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>2.4 Intake, Workflow, &amp; Collaboration</h3>
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Wrike</th><th>EPP</th><th>Gap / Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Request intake forms</td>
+      <td>Configurable forms → auto-creates tasks, routes to folders</td>
+      <td>Not present</td>
+      <td><span class="pill missing">Missing</span> — high impact for SaaS; project request intake</td>
+    </tr>
+    <tr>
+      <td class="feature">Ideas Kanban (innovation funnel)</td>
+      <td>Ideas intake board: New → In review → More info needed → Approved</td>
+      <td>Not present (Feedback Hub is close but different)</td>
+      <td><span class="pill missing">Missing</span> — add Ideas/Backlog Kanban page</td>
+    </tr>
+    <tr>
+      <td class="feature">Inbox / notifications</td>
+      <td>Unified inbox: task assignments, @mentions, approvals, access changes</td>
+      <td>Smart Notifications page (alert-based)</td>
+      <td><span class="pill partial">Partial</span> — no action-based inbox feed</td>
+    </tr>
+    <tr>
+      <td class="feature">Approval workflows</td>
+      <td>Timesheet approvals, task approvals</td>
+      <td>Not present</td>
+      <td><span class="pill missing">Missing</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Comments / @mentions on projects</td>
+      <td>Full comment threads on every task/project</td>
+      <td>Not present</td>
+      <td><span class="pill missing">Missing</span> — collaboration layer entirely absent</td>
+    </tr>
+    <tr>
+      <td class="feature">Whiteboards</td>
+      <td>Visual canvas collaboration (New feature)</td>
+      <td>Not present</td>
+      <td>Nice-to-have, not priority for EPP audience</td>
+    </tr>
+    <tr>
+      <td class="feature">AI agent / Copilot</td>
+      <td>Copilot button + AI agents for intake, triage</td>
+      <td>Ask AI, NLP query, NLP Optimizer, AI-powered insights</td>
+      <td><span class="pill have">Have</span> — EPP AI features are more engineering-specific</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>2.5 Calendar &amp; Timeline</h3>
+<table>
+  <thead>
+    <tr><th>Feature</th><th>Wrike</th><th>EPP</th><th>Gap / Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">Strategic calendar</td>
+      <td>Color-coded by Objectives/Programs/Projects/Milestones layers with toggle</td>
+      <td>Portfolio Timeline, Gantt page</td>
+      <td><span class="pill partial">Partial</span> — layer toggle concept missing</td>
+    </tr>
+    <tr>
+      <td class="feature">Sprint calendar</td>
+      <td>Not present</td>
+      <td>Sprint Calendar page</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Release calendar</td>
+      <td>Not present natively</td>
+      <td>Release Calendar + Release Versions</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Holiday calendar</td>
+      <td>Not present</td>
+      <td>Holiday Calendar + Leave Management</td>
+      <td><span class="pill have">EPP Advantage</span></td>
+    </tr>
+    <tr>
+      <td class="feature">Long range plan (multi-year)</td>
+      <td>Multi-year Gantt on Executive dashboard (Q1 2022–2027)</td>
+      <td>Portfolio Timeline (shorter range)</td>
+      <td><span class="pill partial">Partial</span> — extend Timeline Simulator for multi-year</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ═══ 3. DESIGN GAPS ═══ -->
+<h2 id="design-gaps">3. Design Gaps &amp; Improvements</h2>
+
+<h3>3.1 Navigation — Too Many Top-Level Pages</h3>
+<p>EPP currently has <strong>40+ distinct sidebar items</strong> across 8 collapsible sections. Wrike's sidebar has 7 global items (Inbox, Request forms, Workload, Timesheets, Whiteboards, More + Spaces). The difference is <em>massive</em> cognitive load. Users don't know where to start.</p>
+
+<div class="callout amber">
+  <strong>Problem:</strong> The sidebar is a feature list, not a workflow. First-time users are lost. Power users get fatigued. The navigation must reflect <em>jobs-to-be-done</em>, not the database schema.
+</div>
+
+<div class="callout green">
+  <strong>Solution:</strong> Restructure navigation into 5 top-level workflow zones — Monitor, Plan, Execute, Report, Admin — and consolidate sub-pages into tabbed views within each zone. Target: max 12 sidebar items visible at any time.
+</div>
+
+<h3>3.2 Table Column Configurability</h3>
+<p>Wrike lets users toggle any field on/off, reorder columns, and save named views (Projects | Financials | RACI | Scoring). EPP has fixed columns. For a SaaS product serving multiple orgs, <strong>every org will want different columns</strong>. This is a blocker.</p>
+
+<div class="callout red">
+  <strong>Action needed:</strong> Implement a column configurator (show/hide toggle panel) for all data tables. Save preferences per user per page. Eventually, make custom fields per org configurable in the Settings layer.
+</div>
+
+<h3>3.3 Empty States &amp; Onboarding</h3>
+<p>Wrike's empty states guide you: "Create a workload chart", "Balance your team's workload at a glance", tutorial videos inline. EPP shows blank tables or "No data". For a new org onboarding, this is a critical gap.</p>
+
+<h3>3.4 Dashboard — Header Title Changes per Board</h3>
+<p>When switching between Team Dashboard / Executive Board / Analyst Board in EPP, the page title updates correctly ("Team dashboard", "Executive board") — this is good Wrike parity. Continue this pattern on other multi-view pages.</p>
+
+<h3>3.5 Status Color System</h3>
+<p>EPP's STATUS_META palette is solid. Wrike uses more muted, pastel-adjacent colors. Our colors are slightly more saturated — consider reducing saturation 10–15% for a more enterprise feel, especially on the status pills in table views.</p>
+
+<h3>3.6 Project Detail View / Slide-Over Panel</h3>
+<p>In Wrike, clicking a project opens a full slide-over panel with: description, custom fields, subtasks, comments, files, activity log. In EPP, clicking a project navigates to a detail page. The pattern works but the detail page currently lacks: <strong>comments, activity log, file attachments, and inline field editing</strong>.</p>
+
+<h3>3.7 Typography &amp; Density</h3>
+<p>EPP's dark navy header + aqua accent is distinctive but not Wrike-style (Wrike uses near-white sidebar). Consider offering a <strong>light sidebar mode</strong> as a user preference — important for accessibility and enterprise buyer perception.</p>
+
+<h3>3.8 Mobile / Responsive Gaps</h3>
+<p>Wrike has a full mobile app. EPP has no responsive breakpoints documented. For SaaS, mobile-friendly at least for dashboards and approval workflows is expected by buyers.</p>
+
+
+<!-- ═══ 4. PAGE AUDIT ═══ -->
+<h2 id="page-audit">4. Page / Navigation Audit — Merge, Keep, Drop</h2>
+
+<h3>4.1 Pages to Merge into Tabs</h3>
+
+<div class="merge-row">
+  <div class="from">Projects</div>
+  <div class="into">Add tabs: Table | Board | Gantt | Financials | RACI | Health Scoring · (Currently only Table + Board toggle)</div>
+  <div class="verdict merge">EXTEND</div>
+</div>
+<div class="merge-row">
+  <div class="from">Resources</div>
+  <div class="into">Merge: Resource Bookings + Overrides + Availability → single "Resources" page with tabs</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Calendars</div>
+  <div class="into">Merge: Team Calendar + Sprint Calendar + Release Calendar + Holiday Calendar → single Calendar page with layer toggles (like Wrike Strategic Calendar)</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Capacity Reports</div>
+  <div class="into">Merge: Hiring Forecast + Capacity vs Demand + POD Resources + POD Capacity + Utilization Center → "Capacity" page with 5 tabs</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">POD Work Hours + Resource Intelligence + Workload Chart</div>
+  <div class="into">Merge into Capacity page or a "Resources" deep-dive tab</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Portfolio Analysis</div>
+  <div class="into">Merge: Eng Productivity + Project Health + DORA + Jira Analytics + Dashboard Builder → "Analytics" page with tabs</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Strategic Insights</div>
+  <div class="into">Merge: Portfolio Health + Project Signals + Resource Performance + Budget &amp; CapEx → "Portfolio Insights" page with tabs</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Integrations</div>
+  <div class="into">Merge: POD Dashboard + Releases + Release Notes + Jira Actuals + Support Queue + Worklog → "Delivery" page with tabs</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+<div class="merge-row">
+  <div class="from">Simulators</div>
+  <div class="into">Merge Timeline Simulator + Scenario Simulator → "Simulators" stays as one page with 2 tabs · Keep in sidebar</div>
+  <div class="verdict keep">KEEP</div>
+</div>
+<div class="merge-row">
+  <div class="from">Settings (14 sub-pages)</div>
+  <div class="into">Consolidate into Settings hub with grouped tabs: Data (Reference Data, Tables, Resource/Release Mapping) | Integrations (Jira Credentials, Boards, Jira Boards, Support Boards) | Users &amp; Audit | AI | System (Error Log, Feedback)</div>
+  <div class="verdict merge">MERGE</div>
+</div>
+
+<h3>4.2 Pages to Add (Missing vs Wrike)</h3>
+<div class="callout blue">
+  <strong>New pages to build — prioritized by user impact</strong>
+  <ul style="padding-left:18px;margin-top:8px;font-size:13px;">
+    <li><strong>Project Intake / Request Forms</strong> — configurable intake form → auto-create project record</li>
+    <li><strong>Risk &amp; Issue Registry</strong> — risk score, probability, business impact, mitigation status</li>
+    <li><strong>Ideas Board (Innovation Funnel)</strong> — Kanban: New Idea → In Review → Approved → Converted to Project</li>
+    <li><strong>Notifications / Activity Inbox</strong> — assignments, @mentions, status changes, deadline alerts</li>
+    <li><strong>Timesheet / Approval Workflow</strong> — optional module; high value for enterprise orgs</li>
+    <li><strong>RACI Matrix view</strong> — tab on Projects page; generated from resource–project assignments</li>
+    <li><strong>OKR / Strategic Objectives</strong> — link projects to business goals; show progress donut on Executive board</li>
+  </ul>
+</div>
+
+<h3>4.3 Proposed 5-Zone Navigation Architecture</h3>
+
+<table>
+  <thead>
+    <tr><th>Zone</th><th>Sidebar Items</th><th>Current EPP Equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="feature">🏠 Home</td>
+      <td>Dashboard (3 boards) · Inbox · Ask AI</td>
+      <td>Dashboard + Ask AI — merge Inbox as new item</td>
+    </tr>
+    <tr>
+      <td class="feature">📋 Portfolio</td>
+      <td>Projects · PODs · Objectives · Risk &amp; Issues · Ideas Board</td>
+      <td>Projects + PODs — add 3 new items</td>
+    </tr>
+    <tr>
+      <td class="feature">👥 People</td>
+      <td>Resources · Capacity · Timesheets · Leave &amp; Holiday</td>
+      <td>Resources + 5 pages scattered across sections</td>
+    </tr>
+    <tr>
+      <td class="feature">📅 Calendar</td>
+      <td>Strategic Calendar (all layers) · Sprint Planner · Releases</td>
+      <td>4 calendar pages → collapse to 1</td>
+    </tr>
+    <tr>
+      <td class="feature">📊 Analytics</td>
+      <td>Delivery · Analytics · Simulators · Reports</td>
+      <td>~15 scattered analysis pages → collapse to 4</td>
+    </tr>
+    <tr>
+      <td class="feature">⚙️ Admin</td>
+      <td>Settings (tabbed hub)</td>
+      <td>14 settings sub-pages → 1 hub</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ═══ 5. SAAS READINESS ═══ -->
+<h2 id="saas">5. SaaS &amp; Multi-Org Readiness</h2>
+
+<p>The vision is clear: today Baylor Genetics, tomorrow any engineering org. Here is a structured assessment of what it takes to make EPP a true multi-tenant SaaS product.</p>
+
+<div class="saas-pillar">
+  <h3>🏢 Multi-Tenancy (Organizations / Workspaces) <span class="status"><span class="pill missing">Missing</span></span></h3>
+  <ul>
+    <li>Every entity in the DB (projects, resources, PODs, sprints, releases) must be scoped to an <code>org_id</code></li>
+    <li>Authentication must support per-org user pools (currently single-org users table)</li>
+    <li>Backend APIs must filter all queries by org context from JWT token claims</li>
+    <li>Flyway migrations need to support multi-tenant schema strategy (shared schema + org_id OR schema-per-org)</li>
+    <li>Org onboarding flow: create org → invite admin → configure reference data → seed with sample data</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>🔐 Role-Based Access Control (RBAC) <span class="status"><span class="pill partial">Partial</span></span></h3>
+  <ul>
+    <li>Currently: admin / user roles at the app level only</li>
+    <li>Needed: <strong>Org Admin</strong> (full settings, user management), <strong>Portfolio Manager</strong> (all projects), <strong>Team Lead</strong> (own POD only), <strong>IC / Viewer</strong> (read-only dashboard)</li>
+    <li>Page-level permissions already exist in the DB (page_permissions table) — extend to role-based visibility</li>
+    <li>Wrike's IC dashboard shows only "My tasks / My projects" — EPP needs user-scoped data views</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>⚙️ Org-Level Configuration <span class="status"><span class="pill missing">Missing</span></span></h3>
+  <ul>
+    <li>Custom project statuses per org (not hard-coded ACTIVE / IN_DISCOVERY / etc.)</li>
+    <li>Custom priority levels (P0–P3 vs High/Medium/Low vs custom)</li>
+    <li>Custom fields on projects, resources, PODs</li>
+    <li>Custom POD types / team structures</li>
+    <li>Org branding: logo, accent color, org name (currently hard-coded "Baylor Genetics")</li>
+    <li>Configurable fiscal year start month (affects all capacity/demand calculations)</li>
+    <li>Toggle modules on/off: Timesheets, Jira Integration, NLP, Support Queue, etc.</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>💳 Billing &amp; Plan Management <span class="status"><span class="pill missing">Not started</span></span></h3>
+  <ul>
+    <li>Plan tiers: Starter (1 org, 10 users), Team (50 users, all modules), Enterprise (unlimited, SSO, audit log, SLA)</li>
+    <li>Feature flags per plan: NLP/AI, Simulators, DORA, Jira Integration are natural premium features</li>
+    <li>Metering: users, projects, API calls</li>
+    <li>Stripe integration for self-serve billing; enterprise = contract</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>🔗 Integrations &amp; API <span class="status"><span class="pill partial">Partial</span></span></h3>
+  <ul>
+    <li>Jira integration exists but is org-specific (credentials in settings) — needs per-org credential vault</li>
+    <li>Webhook support for outbound events (project status changes, capacity alerts)</li>
+    <li>Public REST API for orgs to push/pull data (import/export beyond CSV)</li>
+    <li>SSO / SAML for enterprise orgs (currently username/password only)</li>
+    <li>OAuth2 for Jira, GitHub, Slack integrations</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>🌐 Deployment &amp; Infrastructure <span class="status"><span class="pill missing">Not production</span></span></h3>
+  <ul>
+    <li>Currently: localhost dev server + local PostgreSQL. No production deployment.</li>
+    <li>Needed: Dockerize Spring Boot + Vite frontend → deploy to cloud (Render, Railway, Fly.io, or AWS ECS)</li>
+    <li>Managed PostgreSQL (RDS / Supabase / Neon) with connection pooling</li>
+    <li>Environment-based config (application-prod.yml vs dev)</li>
+    <li>HTTPS, custom domain, CDN for frontend assets</li>
+    <li>Automated backups, audit log persistence, GDPR data deletion</li>
+  </ul>
+</div>
+
+<div class="saas-pillar">
+  <h3>🎨 White-Label / Org Branding <span class="status"><span class="pill missing">Missing</span></span></h3>
+  <ul>
+    <li>"Baylor Genetics" is hard-coded in the login screen and header</li>
+    <li>Needs: org name, logo, and primary accent color stored per org and applied at runtime via CSS variables</li>
+    <li>This single change makes the product visually multi-org ready immediately</li>
+  </ul>
+</div>
+
+
+<!-- ═══ 6. WORKFLOW GAPS ═══ -->
+<h2 id="workflows">6. Critical Workflow Gaps</h2>
+
+<h3>6.1 Project Intake Workflow</h3>
+<p>Wrike's Request Forms create a structured intake funnel: stakeholder submits form → lands in Requested folder → PM reviews → promotes to Active → assigns resources. EPP has no intake workflow — projects are only created manually by admins. This is a <strong>critical missing workflow</strong> for any org using EPP.</p>
+<div class="callout amber">
+  <strong>Proposed flow:</strong> New Request Form → Ideas Board (Kanban, unscored) → Portfolio Manager scores &amp; approves → converts to Project record → assigns POD, estimates, releases.
+</div>
+
+<h3>6.2 Approval &amp; Status Change Workflow</h3>
+<p>Currently any user can change any project status with no approval gate. For enterprise orgs, moving a project from In Discovery → Active or Active → On Hold should trigger a notification and optionally require a second approval.</p>
+
+<h3>6.3 Resource Booking Conflict Detection</h3>
+<p>EPP has a Resource Bookings page but no conflict detection (i.e., if the same person is booked at 200% in a sprint, there's no visual alert inline in the project planner). Wrike's Workload view shows 150% in red immediately.</p>
+
+<h3>6.4 Sprint Planning → Release → Deployment Pipeline</h3>
+<p>EPP has Sprint Planner, Sprint Calendar, Release Calendar, Release Versions — but the workflow connection between them is unclear. Does completing a sprint auto-update the release? Is there a pipeline view? This end-to-end workflow should be documented and surfaced in the UI.</p>
+
+
+<!-- ═══ 7. ROADMAP ═══ -->
+<h2 id="roadmap">7. Recommended Implementation Roadmap</h2>
+
+<p>Prioritized by user impact × SaaS readiness × engineering effort.</p>
+
+<div class="priority-grid">
+  <div class="priority-card p0">
+    <span class="badge">P0 — Do Now</span>
+    <h3>Make it usable for any org</h3>
+    <ul>
+      <li>Org name + logo configurable in Settings (remove hard-coded "Baylor Genetics")</li>
+      <li>Collapse 40+ sidebar items → 5-zone nav structure</li>
+      <li>Merge calendar pages (4 → 1 with layers)</li>
+      <li>Merge capacity report pages (7 → 1 tabbed)</li>
+      <li>Column show/hide toggle on all tables</li>
+      <li>Empty states with onboarding guidance</li>
+    </ul>
+  </div>
+  <div class="priority-card p0">
+    <span class="badge">P0 — Do Now</span>
+    <h3>Multi-org foundation</h3>
+    <ul>
+      <li>Add <code>org_id</code> to all DB tables (Flyway migration)</li>
+      <li>Scope all API queries to org from JWT</li>
+      <li>Basic RBAC: Admin, Manager, Viewer roles</li>
+      <li>Org settings page: name, logo, accent color</li>
+      <li>Remove Baylor-specific hard-codes throughout codebase</li>
+    </ul>
+  </div>
+  <div class="priority-card p1">
+    <span class="badge">P1 — This Quarter</span>
+    <h3>Missing workflows</h3>
+    <ul>
+      <li>Project intake / request form</li>
+      <li>Ideas Board (Innovation Kanban)</li>
+      <li>Risk &amp; Issue Registry</li>
+      <li>Notification / activity inbox</li>
+      <li>Status-change approval gate (optional)</li>
+    </ul>
+  </div>
+  <div class="priority-card p1">
+    <span class="badge">P1 — This Quarter</span>
+    <h3>Design &amp; UX polish</h3>
+    <ul>
+      <li>Projects page: add Financials, RACI, Health tabs</li>
+      <li>Project detail: comments + activity log</li>
+      <li>Strategic Objectives / OKR widget on Executive board</li>
+      <li>Light sidebar option (user preference)</li>
+      <li>Mobile-responsive dashboard view</li>
+    </ul>
+  </div>
+  <div class="priority-card p2">
+    <span class="badge">P2 — Next Quarter</span>
+    <h3>SaaS infrastructure</h3>
+    <ul>
+      <li>Docker + cloud deployment (Render / Railway)</li>
+      <li>Managed PostgreSQL, HTTPS, CDN</li>
+      <li>Self-serve org sign-up flow</li>
+      <li>SSO / Google OAuth</li>
+      <li>Custom fields per org</li>
+    </ul>
+  </div>
+  <div class="priority-card p2">
+    <span class="badge">P2 — Next Quarter</span>
+    <h3>Monetization-ready</h3>
+    <ul>
+      <li>Feature flags / plan tiers</li>
+      <li>Stripe billing integration</li>
+      <li>Public REST API + webhooks</li>
+      <li>Audit log per org</li>
+      <li>Data export / GDPR compliance</li>
+    </ul>
+  </div>
+</div>
+
+<hr/>
+
+<div class="callout purple">
+  <strong>Bottom line</strong>
+  EPP's engineering-specific intelligence is a genuine competitive advantage over Wrike in its target market. The path to SaaS is: (1) fix usability and navigation now so existing users can actually find things; (2) add the org_id data layer so the codebase is multi-tenant from the start; (3) build the missing intake + collaboration workflows that buyers expect; (4) deploy to production and add billing. Everything else is a feature sprint on top of that foundation.
+</div>
+
+<p style="margin-top:32px;color:#94a3b8;font-size:12px;">
+  Engineering Portfolio Planner · Analysis prepared April 4, 2026 · v10.4
+</p>
+
+</div>
+</body>
+</html>

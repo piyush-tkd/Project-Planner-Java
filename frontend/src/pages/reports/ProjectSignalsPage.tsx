@@ -12,17 +12,15 @@ export default function ProjectSignalsPage() {
   const [activeTab, setActiveTab] = useState<string | null>('owner-demand');
 
   return (
-    <Box p="lg" style={{ fontFamily: FONT_FAMILY }}>
-      <Group justify="space-between" align="flex-start" mb="md" wrap="wrap" gap="sm">
-        <Box>
-          <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-            Project Signals
-          </Title>
-          <Text size="sm" c="dimmed" mt={2}>
-            Owner demand pressure, deadline risk, and POD split analysis
-          </Text>
-        </Box>
-      </Group>
+    <Box style={{ fontFamily: FONT_FAMILY }}>
+      <Box px="lg" pt="lg">
+        <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+          Project Signals
+        </Title>
+        <Text size="sm" c="dimmed" mt={2} mb="md">
+          Owner demand pressure, deadline risk, and POD split analysis
+        </Text>
+      </Box>
 
       <Tabs
         value={activeTab}
