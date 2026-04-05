@@ -6,6 +6,7 @@ import {
  TextInput, Switch, Button,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/ui';
 import CsvToolbar from '../components/common/CsvToolbar';
 import type { CsvColumnDef } from '../utils/csv';
 import {
@@ -1370,13 +1371,13 @@ export default function JiraSupportPage() {
  return (
  <Stack gap="lg">
  <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Support Queue</Title>
- <Alert color="blue" icon={<IconSettings size={18} />} title="No support boards configured">
- Go to Settings → Support Boards to add your first support queue.
- <Text size="sm" mt={8} style={{ cursor: 'pointer', textDecoration: 'underline' }}
- onClick={() => navigate('/settings/support-boards')}>
- Open settings →
- </Text>
- </Alert>
+ <EmptyState
+ icon={<IconTicket size={40} />}
+ title="No support boards configured"
+ description="Add your first Jira support queue board to start tracking tickets, SLAs, and throughput."
+ actionLabel="Configure Support Boards"
+ onAction={() => navigate('/settings/support-boards')}
+ />
  </Stack>
  );
  }

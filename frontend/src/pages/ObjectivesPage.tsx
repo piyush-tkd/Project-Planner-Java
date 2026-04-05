@@ -17,12 +17,33 @@ import {
   Loader,
   ActionIcon,
   Menu,
+  Tooltip,
+  ThemeIcon,
+  Divider,
+  ScrollArea,
 } from '@mantine/core';
-import { IconTargetArrow, IconChartBar, IconRocket, IconEdit, IconTrash, IconDots } from '@tabler/icons-react';
+import {
+  IconTargetArrow,
+  IconEdit,
+  IconTrash,
+  IconDots,
+  IconLink,
+  IconUnlink,
+  IconBriefcase,
+  IconCircleCheck,
+  IconAlertTriangle,
+} from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+
+interface LinkedProject {
+  projectId: number;
+  name: string;
+  status: string;
+  computedProgress: number;
+}
 
 interface Objective {
   id: string;
@@ -49,6 +70,8 @@ export default function ObjectivesPage() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [linkModalObjectiveId, setLinkModalObjectiveId] = useState<string | null>(null);
+  const [addProjectId, setAddProjectId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateObjectivePayload>({
     title: '',
     description: '',
@@ -66,6 +89,49 @@ export default function ObjectivesPage() {
       const res = await apiClient.get('/objectives');
       return res.data;
     },
+  });
+
+  // Fetch all projects (for link dropdown)
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects-list'],
+    queryFn: async () => {
+      const res = await apiClient.get('/projects');
+      return res.data;
+    },
+  });
+
+  // Fetch links for current link modal objective
+  const { data: currentLinks = [], refetch: refetchLinks } = useQuery<LinkedProject[]>({
+    queryKey: ['objective-links', linkModalObjectiveId],
+    queryFn: async () => {
+      if (!linkModalObjectiveId) return [];
+      const res = await apiClient.get(`/objectives/${linkModalObjectiveId}/links`);
+      return res.data;
+    },
+    enabled: !!linkModalObjectiveId,
+  });
+
+  const addLinkMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      await apiClient.post(`/objectives/${linkModalObjectiveId}/links`, { projectId });
+    },
+    onSuccess: () => {
+      refetchLinks();
+      queryClient.invalidateQueries({ queryKey: ['objectives'] });
+      setAddProjectId(null);
+    },
+    onError: () => notifications.show({ color: 'red', message: 'Failed to add link' }),
+  });
+
+  const removeLinkMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      await apiClient.delete(`/objectives/${linkModalObjectiveId}/links/${projectId}`);
+    },
+    onSuccess: () => {
+      refetchLinks();
+      queryClient.invalidateQueries({ queryKey: ['objectives'] });
+    },
+    onError: () => notifications.show({ color: 'red', message: 'Failed to remove link' }),
   });
 
   // Create mutation
@@ -230,28 +296,47 @@ export default function ObjectivesPage() {
             <Text fw={600} style={{ fontFamily: FONT_FAMILY }}>
               {objective.title}
             </Text>
-            <Menu shadow="md">
-              <Menu.Target>
-                <ActionIcon variant="subtle" color="gray" size="sm">
-                  <IconDots size={16} />
+            <Group gap={4}>
+              <Tooltip label="Link Projects — auto-computes progress from linked project timelines">
+                <ActionIcon
+                  variant="subtle"
+                  color="blue"
+                  size="sm"
+                  onClick={() => setLinkModalObjectiveId(objective.id)}
+                >
+                  <IconLink size={14} />
                 </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconEdit size={14} />}
-                  onClick={() => openEditModal(objective)}
-                >
-                  Edit
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<IconTrash size={14} />}
-                  color="red"
-                  onClick={() => handleDelete(objective.id)}
-                >
-                  Delete
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+              </Tooltip>
+              <Menu shadow="md">
+                <Menu.Target>
+                  <ActionIcon variant="subtle" color="gray" size="sm">
+                    <IconDots size={16} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconEdit size={14} />}
+                    onClick={() => openEditModal(objective)}
+                  >
+                    Edit
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconLink size={14} />}
+                    onClick={() => setLinkModalObjectiveId(objective.id)}
+                  >
+                    Link Projects
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<IconTrash size={14} />}
+                    color="red"
+                    onClick={() => handleDelete(objective.id)}
+                  >
+                    Delete
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
           </Group>
           <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
             {objective.quarter}
@@ -267,15 +352,21 @@ export default function ObjectivesPage() {
             </Text>
           )}
         </Stack>
-        <Badge color="blue" variant="light">
-          {objective.progress}%
-        </Badge>
+        <Stack gap={4} align="flex-end">
+          <Badge color="blue" variant="light">
+            {objective.progress}%
+          </Badge>
+          <Badge color={
+            objective.status === 'COMPLETED' ? 'teal' :
+            objective.status === 'AT_RISK' ? 'red' :
+            objective.status === 'ON_TRACK' ? 'green' : 'gray'
+          } variant="dot" size="xs">
+            {objective.status.replace('_', ' ')}
+          </Badge>
+        </Stack>
       </Group>
       <Progress value={objective.progress} color={AQUA} size="md" radius="md" />
       <Group justify="space-between" mt="sm">
-        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-          Status: {objective.status}
-        </Text>
         {objective.targetDate && (
           <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
             Due: {objective.targetDate}
@@ -375,7 +466,7 @@ export default function ObjectivesPage() {
             min={0}
             max={100}
             value={formData.progress}
-            onChange={(val) => setFormData({ ...formData, progress: val || 0 })}
+            onChange={(val) => setFormData({ ...formData, progress: Number(val) || 0 })}
           />
           <TextInput
             label="Target Date"
@@ -401,6 +492,94 @@ export default function ObjectivesPage() {
               {editingId ? 'Update' : 'Create'}
             </Button>
           </Group>
+        </Stack>
+      </Modal>
+
+      {/* Link Projects Modal */}
+      <Modal
+        opened={!!linkModalObjectiveId}
+        onClose={() => { setLinkModalObjectiveId(null); setAddProjectId(null); }}
+        title={
+          <Group gap="sm">
+            <ThemeIcon color="blue" variant="light" size={28} radius="sm">
+              <IconLink size={14} />
+            </ThemeIcon>
+            <Text fw={600}>Link Projects to Objective</Text>
+          </Group>
+        }
+        size="md"
+      >
+        <Stack gap="md">
+          <Text size="xs" c="dimmed">
+            Linked project completion percentages are averaged to auto-compute objective progress.
+          </Text>
+
+          <Divider label="Add a project" labelPosition="left" />
+          <Group gap="sm">
+            <Select
+              placeholder="Select project to link…"
+              data={(allProjects as any[])
+                .filter((p: any) => !currentLinks.some(l => l.projectId === p.id))
+                .map((p: any) => ({ value: String(p.id), label: p.name }))}
+              value={addProjectId}
+              onChange={setAddProjectId}
+              searchable
+              style={{ flex: 1 }}
+              clearable
+            />
+            <Button
+              size="sm"
+              disabled={!addProjectId}
+              loading={addLinkMutation.isPending}
+              onClick={() => addProjectId && addLinkMutation.mutate(Number(addProjectId))}
+              style={{ background: AQUA, color: DEEP_BLUE }}
+            >
+              Link
+            </Button>
+          </Group>
+
+          <Divider label="Linked projects" labelPosition="left" />
+          {currentLinks.length === 0 ? (
+            <Center py="md">
+              <Stack align="center" gap="xs">
+                <IconBriefcase size={32} opacity={0.2} />
+                <Text size="sm" c="dimmed">No projects linked yet</Text>
+              </Stack>
+            </Center>
+          ) : (
+            <ScrollArea mah={240}>
+              <Stack gap="xs">
+                {currentLinks.map(lp => (
+                  <Group key={lp.projectId} justify="space-between" p="xs"
+                    style={{ borderRadius: 6, border: '1px solid var(--mantine-color-gray-2)' }}>
+                    <Group gap="sm">
+                      {lp.computedProgress >= 100
+                        ? <IconCircleCheck size={16} color="var(--mantine-color-teal-6)" />
+                        : lp.computedProgress < 30
+                        ? <IconAlertTriangle size={16} color="var(--mantine-color-yellow-6)" />
+                        : <IconBriefcase size={16} color="var(--mantine-color-blue-6)" />}
+                      <div>
+                        <Text size="sm" fw={500}>{lp.name}</Text>
+                        <Text size="xs" c="dimmed">{lp.status} · {lp.computedProgress}% complete</Text>
+                      </div>
+                    </Group>
+                    <Group gap="xs">
+                      <Progress value={lp.computedProgress} size={4} w={60} color="blue" />
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        loading={removeLinkMutation.isPending}
+                        onClick={() => removeLinkMutation.mutate(lp.projectId)}
+                      >
+                        <IconUnlink size={13} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                ))}
+              </Stack>
+            </ScrollArea>
+          )}
         </Stack>
       </Modal>
     </Stack>

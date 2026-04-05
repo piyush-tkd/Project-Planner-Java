@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portfolio Planner — Weekly Digest</title>
+  <style>
+    body  { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f4f6f9; margin: 0; padding: 0; color: #222; }
+    .wrap { max-width: 640px; margin: 32px auto; background: #fff;
+            border-radius: 8px; overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    /* Header */
+    .hdr  { background: #0C2340; color: #fff; padding: 28px 32px; }
+    .hdr h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    .hdr p  { margin: 6px 0 0; font-size: 13px; opacity: .75; }
+    /* Body */
+    .body { padding: 28px 32px; }
+    .section-title {
+      font-size: 14px; font-weight: 700; color: #0C2340;
+      border-bottom: 2px solid #1F9196; padding-bottom: 6px;
+      margin: 24px 0 12px;
+    }
+    /* KPI cards */
+    .kpi-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .kpi { flex: 1 1 120px; border: 1px solid #e0e4ea; border-radius: 6px;
+           padding: 14px 16px; text-align: center; }
+    .kpi .v { font-size: 26px; font-weight: 800; color: #0C2340; }
+    .kpi .l { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: .04em; }
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th    { background: #f0f3f7; text-align: left; padding: 8px 10px;
+            font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
+    td    { padding: 8px 10px; border-bottom: 1px solid #eee; }
+    /* Status colours */
+    .red  { color: #fa5252; font-weight: 700; }
+    .grn  { color: #51cf66; font-weight: 700; }
+    .ylw  { color: #fd7e14; font-weight: 700; }
+    .badge-red { background: #ffd8d8; color: #c92a2a; border-radius: 4px;
+                 padding: 2px 8px; font-size: 11px; font-weight: 600; }
+    .badge-grn { background: #d3f9d8; color: #2b8a3e; border-radius: 4px;
+                 padding: 2px 8px; font-size: 11px; font-weight: 600; }
+    .badge-ylw { background: #fff3cd; color: #856404; border-radius: 4px;
+                 padding: 2px 8px; font-size: 11px; font-weight: 600; }
+    /* Footer */
+    .foot { background: #f8fafb; padding: 18px 32px; font-size: 12px; color: #888;
+            border-top: 1px solid #e8ecf2; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="hdr">
+    <h1>📊 Engineering Portfolio Planner</h1>
+    <p>Weekly Digest &mdash; <span th:text="${reportDate}">April 7, 2025</span></p>
+  </div>
+
+  <div class="body">
+
+    <!-- ── At-a-Glance KPIs ─────────────────────────────────────────────── -->
+    <div class="section-title">
+      At a Glance &nbsp;
+      <span th:if="${warningCount > 0}" class="badge-red"
+            th:text="'⚠ ' + ${warningCount} + ' alert(s)'">⚠ 2 alert(s)</span>
+      <span th:if="${warningCount == 0}" class="badge-grn">✅ On Track</span>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="v" th:text="${projectCount}">12</div>
+        <div class="l">Active Projects</div>
+      </div>
+      <div class="kpi">
+        <div class="v" th:text="${resourceCount}">45</div>
+        <div class="l">Resources</div>
+      </div>
+      <div class="kpi">
+        <div class="v" th:text="${podCount}">8</div>
+        <div class="l">PODs</div>
+      </div>
+      <div class="kpi">
+        <div class="v" th:text="${utilizationPct + '%'}">72%</div>
+        <div class="l">Avg Utilization</div>
+      </div>
+      <div class="kpi">
+        <div class="v" th:text="${hiringNeed}">3</div>
+        <div class="l">Hiring Need (3m)</div>
+      </div>
+    </div>
+
+    <!-- ── Risk Highlights ──────────────────────────────────────────────── -->
+    <div th:if="${not #lists.isEmpty(riskProjects)}">
+      <div class="section-title">🔴 Projects at Risk</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Status</th>
+            <th>Risk Reason</th>
+            <th>Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="p : ${riskProjects}">
+            <td th:text="${p.name}">Project Alpha</td>
+            <td>
+              <span class="badge-red" th:text="${p.status}">At Risk</span>
+            </td>
+            <td th:text="${p.riskReason}">Capacity deficit in Sprint 24</td>
+            <td th:text="${p.owner}">J. Smith</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Capacity Alerts ───────────────────────────────────────────────── -->
+    <div th:if="${not #lists.isEmpty(capacityAlerts)}">
+      <div class="section-title">⚠️ Capacity Alerts</div>
+      <table>
+        <thead>
+          <tr>
+            <th>POD</th>
+            <th>Month</th>
+            <th>Gap (hrs)</th>
+            <th>Gap (FTE)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="g : ${capacityAlerts}">
+            <td th:text="${g.podName}">Backend POD</td>
+            <td th:text="${g.month}">May 2025</td>
+            <td class="red" th:text="${g.gapHours}">-120</td>
+            <td class="red" th:text="${g.gapFte}">-0.7</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${#lists.isEmpty(capacityAlerts)} and ${#lists.isEmpty(riskProjects)}">
+      <div class="section-title">✅ All Clear</div>
+      <p class="grn">No capacity deficits or at-risk projects this week — great work!</p>
+    </div>
+
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <div class="foot">
+    This digest was generated automatically by <strong>Engineering Portfolio Planner</strong>.
+    To unsubscribe, remove your address from <code>DIGEST_RECIPIENTS</code>.
+  </div>
+
+</div>
+</body>
+</html>

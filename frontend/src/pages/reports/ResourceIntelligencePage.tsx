@@ -3,6 +3,9 @@ import { Tabs, Box, Title, Text, Group } from '@mantine/core';
 import { IconChartPie, IconChartBar, IconCoin, IconUserSearch } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { useResources } from '../../api/resources';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/ui';
 import ResourceAllocationPage from './ResourceAllocationPage';
 import ResourcePodMatrixPage from './ResourcePodMatrixPage';
 import ResourceROIPage from './ResourceROIPage';
@@ -11,6 +14,18 @@ import ResourceForecastPage from './ResourceForecastPage';
 export default function ResourceIntelligencePage() {
   const dark = useDarkMode();
   const [activeTab, setActiveTab] = useState<string | null>('allocation');
+  const { data: resources, isLoading } = useResources();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!resources || resources.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconUserSearch size={40} stroke={1.5} />}
+        title="No resources configured"
+        description="Add team members in the Resources section to unlock allocation analysis, POD matrix, ROI rates, and workforce forecasts."
+      />
+    );
+  }
 
   return (
     <Box p="lg">

@@ -33,7 +33,9 @@ import {
   IconLayoutGrid,
   IconList,
   IconTrash,
+  IconUsers,
 } from '@tabler/icons-react';
+import { EmptyState } from '../components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
@@ -45,7 +47,8 @@ interface Resource {
   role: string;
   podAssignment?: { podName: string; capacityFte?: number } | null;
   pod?: string;
-  avatar?: string;
+  avatar?: string;       // legacy field (unused by API)
+  avatarUrl?: string | null; // Jira avatar URL from ResourceResponse
 }
 
 interface Project {
@@ -277,6 +280,16 @@ export default function ResourceBookingsPage() {
     );
   }
 
+  if (resources.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconUsers size={40} stroke={1.5} />}
+        title="No resources to book"
+        description="Add team members in the Resources section first, then return here to schedule and track their bookings."
+      />
+    );
+  }
+
   return (
     <Box className="page-enter" style={{ padding: '0 0 32px' }}>
       {/* Header */}
@@ -476,10 +489,11 @@ export default function ResourceBookingsPage() {
                       <Avatar
                         size={28}
                         radius="xl"
+                        src={resource.avatarUrl ?? resource.avatar ?? null}
                         color="teal"
                         style={{ background: AQUA, color: DEEP_BLUE, fontSize: 10, fontWeight: 700, flexShrink: 0 }}
                       >
-                        {resource.avatar || resource.name?.charAt(0)}
+                        {resource.name?.charAt(0)}
                       </Avatar>
                       <Box style={{ overflow: 'hidden' }}>
                         <Text
@@ -600,10 +614,11 @@ export default function ResourceBookingsPage() {
                     <Avatar
                       size={36}
                       radius="xl"
+                      src={resource.avatarUrl ?? resource.avatar ?? null}
                       color="teal"
                       style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}
                     >
-                      {resource.avatar || resource.name?.charAt(0)}
+                      {resource.name?.charAt(0)}
                     </Avatar>
                     <Box>
                       <Text size="sm" fw={700} style={{ color: DEEP_BLUE }}>
@@ -740,7 +755,7 @@ export default function ResourceBookingsPage() {
             min={1}
             max={100}
             value={formData.allocationPct}
-            onChange={(val) => setFormData({ ...formData, allocationPct: val || 100 })}
+            onChange={(val) => setFormData({ ...formData, allocationPct: Number(val) || 100 })}
           />
           <Select
             label="Booking Type"

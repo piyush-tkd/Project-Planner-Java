@@ -20,7 +20,8 @@ import { useUtilizationHeatmap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { IconAlertTriangle, IconCheck } from '@tabler/icons-react';
+import { EmptyState } from '../../components/ui';
+import { IconAlertTriangle, IconCheck, IconHeartRateMonitor } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 
 interface ProjectResponse {
@@ -105,8 +106,8 @@ export default function ProjectHealthPage() {
  statusSet.add(project.status);
 
  const isInCurrentMonth =
- currentMonthIndex >= project.startMonth &&
- currentMonthIndex < project.startMonth + project.durationMonths;
+ currentMonthIndex >= (project.startMonth ?? 0) &&
+ currentMonthIndex < (project.startMonth ?? 0) + project.durationMonths;
 
  let score = 0;
  const riskFactors: string[] = [];
@@ -166,7 +167,7 @@ export default function ProjectHealthPage() {
  priority: project.priority,
  status: project.status,
  owner: project.owner,
- startMonth: project.startMonth,
+ startMonth: project.startMonth ?? 0,
  durationMonths: project.durationMonths,
  blockedById: project.blockedById,
  pods: assignedPods,
@@ -207,6 +208,15 @@ export default function ProjectHealthPage() {
  }, [healthScores, selectedStatuses]);
 
  if (isLoading) return <LoadingSpinner variant="cards" message="Loading project health..." />;
+ if (healthScores.length === 0) {
+ return (
+ <EmptyState
+ icon={<IconHeartRateMonitor size={40} stroke={1.5} />}
+ title="No projects to evaluate"
+ description="Add projects to your portfolio and health scores will appear here — tracking status, priority, and delivery signals."
+ />
+ );
+ }
 
  const tableRows = filteredScores.map((health) => {
  const timelineStart = health.startMonth;
@@ -333,7 +343,6 @@ export default function ProjectHealthPage() {
 
  <Group justify="space-between" wrap="wrap" className="stagger-children">
  <SegmentedControl
- label="Sort by"
  value={sortBy}
  onChange={(value) => setSortBy(value as SortBy)}
  data={[

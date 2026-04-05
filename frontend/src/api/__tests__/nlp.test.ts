@@ -177,7 +177,7 @@ describe('NLP Query hooks', () => {
 
     expect(result.current.data?.pods).toContain('API Pod');
     expect(result.current.data?.projects).toContain('Alpha');
-    expect(result.current.data?.strategyChain).toBeUndefined(); // Not a config field
+    expect((result.current.data as unknown as Record<string, unknown>)?.strategyChain).toBeUndefined(); // Not a config field
   });
 
   it('useNlpConfig should fetch NLP configuration', async () => {

@@ -7,7 +7,7 @@ ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popov
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus } from '../api/projects';
 import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
 import { useEffortPatterns } from '../api/refData';
@@ -206,6 +206,14 @@ export default function ProjectsPage() {
   };
   // URL search params — used for both NLP navigation filters and highlight
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open Add Project modal when navigated here with ?new=true (e.g. from sidebar + button)
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setModalOpen(true);
+      setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('new'); return next; }, { replace: true });
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Read initial filter values from URL query params (e.g., /projects?priority=P0&status=ACTIVE)
   const urlPriority = searchParams.get('priority');
@@ -686,23 +694,38 @@ export default function ProjectsPage() {
                         )}
                         {visibleCols.has('Created') && <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>}
                         <Table.Td>
-                          <Tooltip label="Duplicate project">
-                            <ActionIcon
-                              variant="subtle"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyMutation.mutate(p.id, {
-                                  onSuccess: () => {
-                                    notifications.show({ title: 'Duplicated', message: 'Project duplicated successfully', color: 'green' });
-                                  },
-                                });
-                              }}
-                              loading={copyMutation.isPending}
-                            >
-                              <IconCopy size={16} />
-                            </ActionIcon>
-                          </Tooltip>
+                          <Group gap={4} wrap="nowrap">
+                            <Tooltip label="POD Planning" withArrow>
+                              <ActionIcon
+                                variant="light"
+                                size="sm"
+                                color="teal"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/projects/${p.id}`);
+                                }}
+                              >
+                                <IconHexagons size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Duplicate project">
+                              <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyMutation.mutate(p.id, {
+                                    onSuccess: () => {
+                                      notifications.show({ title: 'Duplicated', message: 'Project duplicated successfully', color: 'green' });
+                                    },
+                                  });
+                                }}
+                                loading={copyMutation.isPending}
+                              >
+                                <IconCopy size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
 

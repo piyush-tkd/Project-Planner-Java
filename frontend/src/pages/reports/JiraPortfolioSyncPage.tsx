@@ -34,6 +34,7 @@ import {
   IconTrendingUp,
   IconAlertTriangle,
   IconPackage,
+  IconLink,
 } from '@tabler/icons-react';
 
 import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
@@ -41,6 +42,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { EmptyState } from '../../components/ui';
 import { useProjects } from '../../api/projects';
 import { useProductivityMetrics } from '../../api/reports';
 
@@ -208,6 +210,16 @@ export default function JiraPortfolioSyncPage() {
 
   if (error) {
     return <PageError error="Failed to load portfolio sync data" />;
+  }
+
+  if (!projects || projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconLink size={40} stroke={1.5} />}
+        title="No projects to sync"
+        description="Add projects to the portfolio to see Jira sync status, coverage metrics, and delivery analytics."
+      />
+    );
   }
 
   return (

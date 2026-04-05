@@ -6,6 +6,7 @@ import {
  ScrollArea, Table, Box, SegmentedControl, MultiSelect, TextInput, Button,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/ui';
 import {
  IconPackage, IconAlertTriangle, IconChevronDown, IconChevronUp,
  IconExternalLink, IconSearch, IconCheck, IconTag,
@@ -570,11 +571,11 @@ export default function ReleaseNotesPage() {
 
  {/* ── Empty state: nothing tracked and nothing selected ────────── */}
  {!metricsLoading && !hasAnyResults && (
- <Alert icon={<IconTag size={16} />} color="blue" title="No Versions Selected">
- Your tracked versions will appear here automatically. You can also search for any fix version
- above to explore past or upcoming releases. To add tracked versions go to{' '}
- <strong>Settings → Release Versions</strong>.
- </Alert>
+ <EmptyState
+ icon={<IconPackage size={40} />}
+ title="No versions selected"
+ description="Your tracked release versions will appear here automatically. Search for any Jira fix version above to explore past or upcoming releases."
+ />
  )}
 
  {/* ── Results — one card per selected version ───────────────────── */}

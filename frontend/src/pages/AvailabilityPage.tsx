@@ -416,7 +416,6 @@ export default function AvailabilityPage() {
               leftSection={<IconSearch size={14} />}
               size="xs"
               w={200}
-              clearable
             />
             {/* Location filter */}
             <SegmentedControl

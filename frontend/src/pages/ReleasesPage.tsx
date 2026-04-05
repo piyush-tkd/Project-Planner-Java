@@ -8,6 +8,7 @@ import {
  Tabs, Textarea, ActionIcon,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/ui';
 import {
  IconTag, IconRefresh, IconAlertTriangle, IconSettings,
  IconSearch, IconPackage, IconClock, IconUser, IconChevronRight,
@@ -870,9 +871,11 @@ export default function ReleasesPage() {
  <Text c="dimmed" size="sm">Loading release data from Jira…</Text>
  </Group>
  ) : filtered.length === 0 ? (
- <Alert icon={<IconTag size={16} />} color="blue" title="No releases configured">
- Go to <strong>Configure</strong> to select which release versions to track for each POD.
- </Alert>
+ <EmptyState
+ icon={<IconTag size={40} />}
+ title="No releases configured"
+ description="Select which Jira fix versions to track for each POD. Use the Configure tab above to add release versions."
+ />
  ) : (
  <Grid gutter="md">
  {filtered.map(r => (

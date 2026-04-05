@@ -29,6 +29,7 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
+import { EmptyState } from '../../components/ui';
 import {
  DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, DEEP_BLUE_TINTS, AQUA_TINTS,
  UX_ERROR, UX_POSITIVE, UX_WARNING, CHART_COLORS, SURFACE_SELECTED,
@@ -1331,17 +1332,13 @@ export default function JiraDashboardBuilderPage() {
  if (!data || data.error) {
  if (data?.needsSync) {
  return (
- <Stack align="center" justify="center" gap="md" style={{ minHeight: 400 }}>
- <Text size="lg" fw={600}>No synced data yet</Text>
- <Text size="sm" c="dimmed" ta="center" maw={400}>
- Please sync Jira issues to the local database before building dashboards.
- </Text>
- <Button size="md" color="teal"
- loading={syncStatus?.syncing || triggerSync.isPending}
- onClick={() => triggerSync.mutate(true)}>
- {syncStatus?.syncing ? 'Syncing…' : 'Start Full Sync'}
- </Button>
- </Stack>
+ <EmptyState
+ icon={<IconDownload size={40} stroke={1.5} />}
+ title="No synced data yet"
+ description="Please sync Jira issues to the local database before building dashboards."
+ actionLabel={syncStatus?.syncing ? 'Syncing…' : 'Start Full Sync'}
+ onAction={() => triggerSync.mutate(true)}
+ />
  );
  }
  return <PageError context="loading dashboard data" error={new Error(data?.error ?? 'No data')} onRetry={() => refetch()} />;
@@ -1564,13 +1561,13 @@ export default function JiraDashboardBuilderPage() {
  ))}
 
  {widgets.length === 0 && (
- <Paper withBorder radius="md" p="xl" style={{ textAlign: 'center' }}>
- <Text c="dimmed" mb="md">No widgets yet. Click "Edit Layout" → "Add Widget" to get started.</Text>
- <Button variant="light" leftSection={<IconPlus size={14} />}
- onClick={() => { setEditMode(true); setAddWidgetOpen(true); }}>
- Add Your First Widget
- </Button>
- </Paper>
+ <EmptyState
+ icon={<IconLayoutGrid size={40} stroke={1.5} />}
+ title="No widgets yet"
+ description='Click "Edit Layout" → "Add Widget" to build your first dashboard.'
+ actionLabel="Add Your First Widget"
+ onAction={() => { setEditMode(true); setAddWidgetOpen(true); }}
+ />
  )}
 
  {/* ── Add Widget modal ──────────────────────────────────────── */}

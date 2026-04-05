@@ -37,4 +37,7 @@ public interface JiraSyncedSprintRepository extends JpaRepository<JiraSyncedSpri
     List<JiraSyncedSprint> findByBoardId(Long boardId);
 
     List<JiraSyncedSprint> findByBoardIdAndState(Long boardId, String state);
+
+    /** For retro sprint list: project sprints ordered by start date desc */
+    List<JiraSyncedSprint> findByProjectKeyOrderByStartDateDesc(String projectKey);
 }

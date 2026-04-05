@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Title,
   Stack,
@@ -16,7 +16,12 @@ import {
   Divider,
   ScrollArea,
   Accordion,
+  Button,
+  ActionIcon,
+  Loader,
+  Center,
 } from '@mantine/core';
+import { notifications as notif } from '@mantine/notifications';
 import {
   IconBell,
   IconAlertTriangle,
@@ -27,12 +32,17 @@ import {
   IconTrendingUp,
   IconUsers,
   IconRocket,
+  IconCheck,
+  IconRefresh,
+  IconBrain,
 } from '@tabler/icons-react';
+import apiClient from '../../api/client';
 import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { EmptyState } from '../../components/ui';
 import { useProjects } from '../../api/projects';
 import { useResources } from '../../api/resources';
 import { useProductivityMetrics, useCapacityDemandSummary } from '../../api/reports';
@@ -234,7 +244,51 @@ const SmartNotificationsPage: React.FC = () => {
     return recs;
   }, [portfolioSummary, projects, capacityData, today]);
 
-  // Thresholds summary
+  // ── AI Insights state ────────────────────────────────────────────────────
+  interface InsightDto {
+    id: number; insightType: string; severity: string;
+    title: string; description: string;
+    entityType?: string; entityId?: number; entityName?: string;
+    detectedAt: string; acknowledged: boolean;
+  }
+  const [insights, setInsights]       = useState<InsightDto[]>([]);
+  const [insightsLoading, setIL]      = useState(true);
+  const [runningDetectors, setRunning] = useState(false);
+
+  const fetchInsights = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/insights');
+      setInsights(data ?? []);
+    } catch { /* silent — backend may not have data yet */ }
+    finally { setIL(false); }
+  }, []);
+
+  useEffect(() => { fetchInsights(); }, [fetchInsights]);
+
+  const handleRunDetectors = async () => {
+    setRunning(true);
+    try {
+      const { data } = await apiClient.post('/insights/run');
+      setInsights(data ?? []);
+      notif.show({ title: 'Done', message: 'Insight detection complete', color: 'teal' });
+    } catch {
+      notif.show({ title: 'Error', message: 'Detection failed', color: 'red' });
+    } finally { setRunning(false); }
+  };
+
+  const handleAcknowledge = async (id: number) => {
+    try {
+      await apiClient.put(`/insights/${id}/ack`);
+      setInsights(prev => prev.filter(i => i.id !== id));
+    } catch {
+      notif.show({ title: 'Error', message: 'Could not acknowledge insight', color: 'red' });
+    }
+  };
+
+  const insightSeverityColor = (sev: string) =>
+    sev === 'HIGH' ? 'red' : sev === 'MEDIUM' ? 'orange' : 'yellow';
+
+  // ── Thresholds summary
   const thresholdStats = useMemo(() => {
     const overdueCount = projects?.filter(
       (p: ProjectResponse) =>
@@ -264,6 +318,16 @@ const SmartNotificationsPage: React.FC = () => {
     return <PageError error={projectsError} />;
   }
 
+  if (!projects || projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconBell size={40} stroke={1.5} />}
+        title="No notifications yet"
+        description="Add projects to your portfolio and Smart Notifications will automatically surface overdue deadlines, P0 risks, stale work, and capacity alerts."
+      />
+    );
+  }
+
   const getAlertColor = (color: string) => {
     const colorMap: Record<string, string> = {
       red: CHART_COLORS[0] || '#FF6B6B',
@@ -286,6 +350,101 @@ const SmartNotificationsPage: React.FC = () => {
           Automated alerts, weekly digest, and portfolio health monitoring
         </Text>
       </div>
+
+      {/* ── AI Proactive Insights ── */}
+      <Card
+        p="lg"
+        radius="md"
+        style={{
+          backgroundColor: isDark ? '#1f2937' : '#fff',
+          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          boxShadow: SHADOW.card,
+        }}
+      >
+        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}>
+          <Group justify="space-between">
+            <Group gap="sm">
+              <ThemeIcon color="violet" variant="light" size="lg" radius="md">
+                <IconBrain size={18} />
+              </ThemeIcon>
+              <div>
+                <Title order={3} style={{ fontSize: '18px', fontWeight: 600, color: isDark ? '#fff' : DEEP_BLUE }}>
+                  AI Proactive Insights
+                </Title>
+                <Text size="xs" c="dimmed">Automatically detected signals — refreshed daily at 07:00</Text>
+              </div>
+            </Group>
+            <Group gap="xs">
+              <Badge variant="light" color="violet">{insights.length} active</Badge>
+              <Button
+                size="xs"
+                variant="light"
+                color="violet"
+                leftSection={<IconRefresh size={13} />}
+                loading={runningDetectors}
+                onClick={handleRunDetectors}
+              >
+                Run now
+              </Button>
+            </Group>
+          </Group>
+        </Card.Section>
+        <Card.Section inheritPadding py="md">
+          {insightsLoading ? (
+            <Center py="md"><Loader size="sm" color="violet" /></Center>
+          ) : insights.length === 0 ? (
+            <Alert icon={<IconChecklist size={16} />} title="No active insights" color="teal">
+              All clear! Run the detector to scan for new signals.
+            </Alert>
+          ) : (
+            <Stack gap="sm">
+              {insights.map(ins => (
+                <Paper
+                  key={ins.id}
+                  p="sm"
+                  radius="sm"
+                  style={{
+                    backgroundColor: isDark ? '#374151' : '#f9fafb',
+                    border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
+                    borderLeft: `4px solid ${ins.severity === 'HIGH' ? '#fa5252' : ins.severity === 'MEDIUM' ? '#ff922b' : '#fab005'}`,
+                  }}
+                >
+                  <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Group gap="xs" mb={4}>
+                        <Badge size="xs" color={insightSeverityColor(ins.severity)} variant="filled">
+                          {ins.severity}
+                        </Badge>
+                        <Badge size="xs" color="gray" variant="light">{ins.insightType.replace(/_/g, ' ')}</Badge>
+                        {ins.entityName && (
+                          <Text size="xs" c="dimmed" truncate>{ins.entityName}</Text>
+                        )}
+                      </Group>
+                      <Text size="sm" fw={600} style={{ color: isDark ? '#e5e7eb' : '#1f2937' }}>
+                        {ins.title}
+                      </Text>
+                      {ins.description && (
+                        <Text size="xs" c="dimmed" mt={2}>{ins.description}</Text>
+                      )}
+                    </div>
+                    <Tooltip label="Acknowledge — removes from active feed">
+                      <ActionIcon
+                        variant="light"
+                        color="teal"
+                        size="sm"
+                        onClick={() => handleAcknowledge(ins.id)}
+                        aria-label="Acknowledge"
+                      >
+                        <IconCheck size={14} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Card.Section>
+      </Card>
 
       {/* Alert Summary */}
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">

@@ -17,6 +17,7 @@ import { formatHours } from '../../utils/formatting';
 import { ProjectStatus } from '../../types';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/ui';
 import apiClient from '../../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -205,7 +206,11 @@ export default function ScenarioSimulatorPage() {
  <ScrollArea h={500} scrollbarSize={6}>
  <Stack gap="xs">
  {activeProjects.length === 0 && (
- <Text c="dimmed" size="sm" ta="center" py="xl">No active projects</Text>
+ <EmptyState
+ icon={<IconAdjustments size={36} stroke={1.5} />}
+ title="No active projects"
+ description="Mark projects as Active to include them in scenario simulations."
+ />
  )}
  {activeProjects.map(p => {
  const s = getState(p.id);

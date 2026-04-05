@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery }  from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
@@ -13,6 +13,7 @@ import {
   IconArrowsLeftRight, IconTag, IconStar, IconDots, IconPlus,
   IconLayoutDashboard, IconPresentation, IconChartDonut, IconTable,
   IconTargetArrow, IconCheck, IconCircleDashed, IconArrowUpRight,
+  IconBrain,
 } from '@tabler/icons-react';
 import { usePodHours } from '../api/podHours';
 import {
@@ -686,6 +687,16 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
 export default function DashboardPage() {
   const [activeBoard, setActiveBoard] = useState<string>('team');
 
+  // ── AI Insights summary ───────────────────────────────────────────────────
+  const [insightCounts, setInsightCounts] = useState<{
+    high: number; medium: number; low: number; total: number;
+  } | null>(null);
+  useEffect(() => {
+    apiClient.get<{ high: number; medium: number; low: number; total: number }>('/insights/summary')
+      .then(({ data }) => setInsightCounts(data))
+      .catch(() => { /* silently ignore — widget simply won't render counts */ });
+  }, []);
+
   const { data: projects = [] } = useProjects();
   const { data: summary, isLoading: summaryLoading } = useExecutiveSummary();
   const { data: heatmapCells, isLoading: heatmapLoading } = useUtilizationHeatmap();
@@ -816,6 +827,61 @@ export default function DashboardPage() {
                 color={(summary?.podMonthsInDeficit ?? 0) > 0 ? 'red' : 'green'}
                 onClick={() => navigate('/reports/capacity-gap')} sparkData={deficitSparkline} />
             </SimpleGrid>
+          </Widget>
+
+          {/* AI Proactive Insights */}
+          <Widget id="ai-insights" title="AI Proactive Insights">
+            <Group justify="space-between" mb="sm" wrap="nowrap">
+              <Group gap="xs">
+                <ThemeIcon size={36} radius="md" variant="gradient"
+                  gradient={{ from: DEEP_BLUE, to: AQUA, deg: 135 }}>
+                  <IconBrain size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text size="sm" fw={600}>Automated signal detection</Text>
+                  <Text size="xs" c="dimmed">Deadline risk · Overallocation · Stale projects · Open risks</Text>
+                </div>
+              </Group>
+              <Button
+                size="xs"
+                variant="light"
+                rightSection={<IconArrowRight size={14} />}
+                onClick={() => navigate('/reports/smart-notifications')}
+              >
+                View all
+              </Button>
+            </Group>
+
+            {insightCounts ? (
+              <SimpleGrid cols={{ base: 2, sm: 4 }}>
+                {/* HIGH */}
+                <Paper withBorder p="md" radius="md"
+                  style={{ borderLeft: '4px solid #fa5252', background: '#fff5f5' }}>
+                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>High</Text>
+                  <Text size="xl" fw={800} c="#fa5252">{insightCounts.high}</Text>
+                </Paper>
+                {/* MEDIUM */}
+                <Paper withBorder p="md" radius="md"
+                  style={{ borderLeft: '4px solid #fd7e14', background: '#fff4e6' }}>
+                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Medium</Text>
+                  <Text size="xl" fw={800} c="#fd7e14">{insightCounts.medium}</Text>
+                </Paper>
+                {/* LOW */}
+                <Paper withBorder p="md" radius="md"
+                  style={{ borderLeft: '4px solid #339af0', background: '#e7f5ff' }}>
+                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Low</Text>
+                  <Text size="xl" fw={800} c="#339af0">{insightCounts.low}</Text>
+                </Paper>
+                {/* TOTAL */}
+                <Paper withBorder p="md" radius="md"
+                  style={{ borderLeft: `4px solid ${DEEP_BLUE}`, background: '#f8f9fa' }}>
+                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Total Active</Text>
+                  <Text size="xl" fw={800} style={{ color: DEEP_BLUE }}>{insightCounts.total}</Text>
+                </Paper>
+              </SimpleGrid>
+            ) : (
+              <Text size="sm" c="dimmed">Loading insights…</Text>
+            )}
           </Widget>
 
           {/* Jira integrations */}

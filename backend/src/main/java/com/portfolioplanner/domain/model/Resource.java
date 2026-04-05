@@ -50,6 +50,10 @@ public class Resource {
     @Column(name = "jira_account_id", length = 255)
     private String jiraAccountId;
 
+    /** Jira profile photo URL (48x48), populated when a Jira user is confirmed-mapped to this resource. */
+    @Column(name = "avatar_url", length = 512)
+    private String avatarUrl;
+
     /** Individual hourly rate override — takes precedence over the role+location CostRate when set. */
     @Column(name = "actual_rate", precision = 10, scale = 2)
     private BigDecimal actualRate;

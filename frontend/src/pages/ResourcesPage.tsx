@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Title, Button, Group, Table, Modal, TextInput, Select, Switch, NumberInput, Stack, Text, ActionIcon, SimpleGrid,
-  Badge, Tooltip, Checkbox, ScrollArea, ThemeIcon,
+  Badge, Tooltip, Checkbox, ScrollArea, ThemeIcon, Avatar,
 } from '@mantine/core';
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
@@ -621,9 +621,15 @@ export default function ResourcesPage() {
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon size={26} radius="xl" color={r.active ? 'blue' : 'gray'} variant="light">
+                      <Avatar
+                        src={r.avatarUrl ?? null}
+                        size={26}
+                        radius="xl"
+                        color={r.active ? 'blue' : 'gray'}
+                        variant="light"
+                      >
                         <Text size="xs" fw={700}>{initials(r.name)}</Text>
-                      </ThemeIcon>
+                      </Avatar>
                       <div>
                         <Group gap={4} wrap="nowrap">
                           <Text size="xs" fw={500}>{r.name}</Text>

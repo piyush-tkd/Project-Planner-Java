@@ -19,6 +19,7 @@ import {
   IconClock,
   IconChartBar,
   IconArrowRight,
+  IconRadar,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 
@@ -91,6 +92,14 @@ export default function CapacityHubPage() {
       title: 'Workload Analysis',
       description: 'Analyze workload distribution and identify overallocation risks.',
       navLink: '/reports/workload-chart',
+    },
+    {
+      value: 'capacity-forecast',
+      label: 'Forecast',
+      icon: IconRadar,
+      title: 'Capacity Forecast',
+      description: '3-month traffic-light forecast of capacity gaps per POD — identify Critical, At-Risk, and Healthy PODs before gaps occur.',
+      navLink: '/reports/capacity-forecast',
     },
   ];
 

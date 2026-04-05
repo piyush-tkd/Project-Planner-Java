@@ -3,6 +3,9 @@ import { Tabs, Box, Title, Text, Group } from '@mantine/core';
 import { IconTimeline, IconCalendar, IconCalendarStats } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { useProjects } from '../../api/projects';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/ui';
 import RoadmapTimelinePage from './RoadmapTimelinePage';
 import ProjectGanttPage from './ProjectGanttPage';
 import TeamCalendarPage from '../TeamCalendarPage';
@@ -10,6 +13,18 @@ import TeamCalendarPage from '../TeamCalendarPage';
 export default function PortfolioTimelinePage() {
   const dark = useDarkMode();
   const [activeTab, setActiveTab] = useState<string | null>('roadmap');
+  const { data: projects, isLoading } = useProjects();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!projects || projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconTimeline size={40} stroke={1.5} />}
+        title="No projects on the timeline"
+        description="Add projects with start dates and durations to see them on the roadmap, Gantt chart, and team calendar."
+      />
+    );
+  }
 
   return (
     <Box p="lg">

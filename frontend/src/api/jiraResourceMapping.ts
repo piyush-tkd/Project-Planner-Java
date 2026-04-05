@@ -135,3 +135,13 @@ export function useBulkAcceptMappings() {
     },
   });
 }
+
+export function useSyncAvatars() {
+  const qc = useQueryClient();
+  return useMutation<{ synced: number }>({
+    mutationFn: () => apiClient.post('/jira/resource-mappings/sync-avatars').then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['resources'] });
+    },
+  });
+}

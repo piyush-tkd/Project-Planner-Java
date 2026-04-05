@@ -278,6 +278,30 @@ public class JiraClient {
         return List.of();
     }
 
+    /**
+     * Fetches a single Jira user by accountId and returns the 48x48 avatar URL.
+     * Returns null if the user cannot be found or has no avatar.
+     */
+    @SuppressWarnings("unchecked")
+    public String getUserAvatarUrl(String accountId) {
+        if (accountId == null || accountId.isBlank()) return null;
+        try {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(creds.getBaseUrl() + "/rest/api/3/user")
+                    .queryParam("accountId", accountId)
+                    .toUriString();
+            Map<String, Object> user = get(url, Map.class);
+            if (user == null) return null;
+            Object avatarUrls = user.get("avatarUrls");
+            if (avatarUrls instanceof Map) {
+                return (String) ((Map<?, ?>) avatarUrls).get("48x48");
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch Jira avatar for accountId {}: {}", accountId, e.getMessage());
+        }
+        return null;
+    }
+
     // ── Search helper ─────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")

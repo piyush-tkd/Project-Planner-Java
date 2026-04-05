@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Box, Title, Text, Group, Badge, Button, Paper, Card,
   Select, Tooltip, Stack, SimpleGrid, Divider,
-  ScrollArea, SegmentedControl, Progress,
+  ScrollArea, SegmentedControl, Progress, Center, Loader,
 } from '@mantine/core';
 import {
   IconGitBranch, IconArrowRight, IconAlertTriangle,
@@ -10,6 +10,10 @@ import {
   IconCode, IconTestPipe,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA } from '../brandTokens';
+import { useProjects } from '../api/projects';
+import { useProjectPodMatrix } from '../api/projects';
+import { useResources } from '../api/resources';
+import { ResourceResponse, ProjectResponse, ProjectPodMatrixResponse } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,35 +25,80 @@ interface GanttProject {
   ownUse: RoleCount; resourceDeps: ResourceDep[];
 }
 
-// ── POD headcount ─────────────────────────────────────────────────────────────
+// ── API → GanttProject mapper ────────────────────────────────────────────────
 
-const POD_CAPACITIES: Record<string, Required<RoleCount>> = {
-  'Integrations':       { devs: 5, qa: 2, ux: 0 },
-  'LIS/Reporting':      { devs: 4, qa: 2, ux: 0 },
-  'Accessioning':       { devs: 6, qa: 3, ux: 0 },
-  'Portal V2':          { devs: 8, qa: 3, ux: 1 },
-  'Portal V1':          { devs: 4, qa: 2, ux: 0 },
-  'Enterprise Systems': { devs: 5, qa: 2, ux: 0 },
+/** Normalise backend status strings to the values STATUS_COLORS expects */
+const STATUS_NORM: Record<string, string> = {
+  ACTIVE: 'ACTIVE', NOT_STARTED: 'NOT STARTED', IN_DISCOVERY: 'IN DISCOVERY',
+  ON_HOLD: 'ON HOLD', COMPLETED: 'COMPLETED', CANCELLED: 'CANCELLED',
 };
 
-// ── Project data ──────────────────────────────────────────────────────────────
+function toGanttProject(
+  proj: ProjectResponse,
+  matrix: ProjectPodMatrixResponse[],
+): GanttProject {
+  const today  = Date.now();
+  const start  = proj.startDate  ? new Date(proj.startDate).getTime()  : today;
+  const end    = proj.targetDate ? new Date(proj.targetDate).getTime() : 0;
+  const msWeek = 7 * 86_400_000;
 
-const PROJECTS: GanttProject[] = [
-  { id: 1, name: 'UKG & Azure Integrations',        status: 'ACTIVE',       priority: 'P1', startWeek: 0,  durationWeeks: 12, pod: 'Integrations',       ownUse: { devs: 4, qa: 2 }, resourceDeps: [] },
-  { id: 2, name: 'RCM Enhancements',                status: 'ACTIVE',       priority: 'P1', startWeek: 0,  durationWeeks: 10, pod: 'LIS/Reporting',      ownUse: { devs: 3, qa: 2 }, resourceDeps: [] },
-  { id: 3, name: 'New Test Catalog Design',          status: 'ACTIVE',       priority: 'P0', startWeek: 4,  durationWeeks: 10, pod: 'Accessioning',       ownUse: { devs: 4, qa: 2 }, resourceDeps: [{ pod: 'LIS/Reporting', needs: { devs: 1, qa: 0 } }] },
-  { id: 4, name: 'NextGen Accessioning',             status: 'NOT STARTED',  priority: 'P0', startWeek: 14, durationWeeks: 10, pod: 'Accessioning',       ownUse: { devs: 5, qa: 3 }, resourceDeps: [{ pod: 'Integrations', needs: { devs: 1, qa: 0 } }] },
-  { id: 5, name: 'Back Office Admin Tool',           status: 'NOT STARTED',  priority: 'P1', startWeek: 10, durationWeeks: 10, pod: 'Portal V2',          ownUse: { devs: 3, qa: 1 }, resourceDeps: [{ pod: 'Integrations', needs: { devs: 2, qa: 0 } }] },
-  { id: 6, name: 'Single Source of Truth',           status: 'NOT STARTED',  priority: 'P2', startWeek: 18, durationWeeks: 6,  pod: 'Portal V1',          ownUse: { devs: 3, qa: 2 }, resourceDeps: [{ pod: 'Accessioning', needs: { devs: 1, qa: 0 } }, { pod: 'Portal V2', needs: { devs: 1, qa: 0 } }] },
-  { id: 7, name: 'Portal V2 Launch',                status: 'IN DISCOVERY', priority: 'P1', startWeek: 2,  durationWeeks: 16, pod: 'Portal V2',          ownUse: { devs: 5, qa: 2, ux: 1 }, resourceDeps: [] },
-  { id: 8, name: 'VOB Optimization',                status: 'NOT STARTED',  priority: 'P2', startWeek: 18, durationWeeks: 6,  pod: 'Enterprise Systems', ownUse: { devs: 3, qa: 1 }, resourceDeps: [{ pod: 'Portal V2', needs: { devs: 2, qa: 1 } }] },
-];
+  const startWeek     = Math.max(0, Math.round((start - today) / msWeek));
+  const durationWeeks = (end > start)
+    ? Math.max(1, Math.round((end - start) / msWeek))
+    : Math.max(1, Math.round((proj.durationMonths ?? 3) * 4.3));
+
+  // Primary pod = the matrix row for this project with the most dev hours
+  const podRows = matrix
+    .filter(m => m.projectId === proj.id)
+    .sort((a, b) => b.devHours - a.devHours);
+  const primaryRow = podRows[0];
+  // Estimate headcount: devHours / (durationMonths × 160 hrs/FTE/month)
+  const monthHrs = Math.max(1, (proj.durationMonths ?? 1)) * 160;
+  const devCount = primaryRow ? Math.max(1, Math.round(primaryRow.devHours / monthHrs)) : 2;
+  const qaCount  = primaryRow ? Math.max(0, Math.round(primaryRow.qaHours  / monthHrs)) : 1;
+
+  return {
+    id:            proj.id,
+    name:          proj.name,
+    status:        STATUS_NORM[proj.status] ?? proj.status,
+    priority:      proj.priority ?? 'P2',
+    startWeek,
+    durationWeeks: Math.min(durationWeeks, TOTAL_WEEKS),
+    pod:           primaryRow?.podName ?? 'Unassigned',
+    ownUse:        { devs: devCount, qa: qaCount },
+    resourceDeps:  [], // cross-POD deps not stored in DB yet
+  };
+}
+
+/** Derive POD headcount from the resources list (active + counts-in-capacity) */
+function computePodCapacities(
+  resources: ResourceResponse[],
+): Record<string, Required<RoleCount>> {
+  const caps: Record<string, Required<RoleCount>> = {};
+  resources
+    .filter(r => r.active && r.countsInCapacity && r.podAssignment)
+    .forEach(r => {
+      const pod  = r.podAssignment!.podName;
+      if (!caps[pod]) caps[pod] = { devs: 0, qa: 0, ux: 0 };
+      const role = r.role.toUpperCase();
+      if (role.includes('QA') || role.includes('QUALITY'))
+        caps[pod].qa++;
+      else if (role.includes('UX') || role.includes('DESIGN'))
+        caps[pod].ux++;
+      else
+        caps[pod].devs++;
+    });
+  return caps;
+}
 
 // ── Capacity helpers ──────────────────────────────────────────────────────────
 
-function podAllocatedAtWeek(podName: string, week: number, excludeId: number): Required<RoleCount> {
+function podAllocatedAtWeek(
+  ganttProjects: GanttProject[],
+  podName: string, week: number, excludeId: number,
+): Required<RoleCount> {
   let devs = 0, qa = 0, ux = 0;
-  for (const p of PROJECTS) {
+  for (const p of ganttProjects) {
     if (p.id === excludeId) continue;
     if (week < p.startWeek || week >= p.startWeek + p.durationWeeks) continue;
     if (p.pod === podName) { devs += p.ownUse.devs; qa += p.ownUse.qa; ux += p.ownUse.ux ?? 0; }
@@ -68,14 +117,19 @@ interface CapacityResult {
   shortfallDevs: number; shortfallQa: number;
 }
 
-function checkCapacity(project: GanttProject, depPod: string): CapacityResult {
-  const cap = POD_CAPACITIES[depPod] ?? { devs: 0, qa: 0, ux: 0 };
+function checkCapacity(
+  ganttProjects: GanttProject[],
+  podCapacities: Record<string, Required<RoleCount>>,
+  project: GanttProject,
+  depPod: string,
+): CapacityResult {
+  const cap = podCapacities[depPod] ?? { devs: 0, qa: 0, ux: 0 };
   const dep = project.resourceDeps.find(d => d.pod === depPod);
   const neededDevs = dep?.needs.devs ?? 0;
   const neededQa   = dep?.needs.qa   ?? 0;
   let minAvailDevs = cap.devs, minAvailQa = cap.qa;
   for (let w = project.startWeek; w < project.startWeek + project.durationWeeks; w++) {
-    const alloc = podAllocatedAtWeek(depPod, w, project.id);
+    const alloc = podAllocatedAtWeek(ganttProjects, depPod, w, project.id);
     minAvailDevs = Math.min(minAvailDevs, cap.devs - alloc.devs);
     minAvailQa   = Math.min(minAvailQa,   cap.qa   - alloc.qa);
   }
@@ -85,7 +139,6 @@ function checkCapacity(project: GanttProject, depPod: string): CapacityResult {
 }
 
 // ── Colours — muted, professional ────────────────────────────────────────────
-// Ordered by ALL_PODS sort: Accessioning, Enterprise Systems, Integrations, LIS/Reporting, Portal V1, Portal V2
 
 const POD_HEX: Record<string, string> = {
   'Accessioning':       '#0891b2',  // cyan-600
@@ -95,7 +148,6 @@ const POD_HEX: Record<string, string> = {
   'Portal V1':          '#059669',  // emerald-600
   'Portal V2':          '#be185d',  // pink-700
 };
-const ALL_PODS = Object.keys(POD_HEX).sort();
 const getPodColor = (pod: string) => POD_HEX[pod] ?? '#64748b';
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
@@ -165,17 +217,42 @@ export default function GanttDependenciesPage() {
   const [filterPod, setFilterPod] = useState<string | null>(null);
   const [view, setView] = useState('gantt');
 
+  // ── Live data ──────────────────────────────────────────────────────────────
+  const { data: rawProjects = [], isLoading: projLoading }   = useProjects();
+  const { data: matrix      = [], isLoading: matrixLoading } = useProjectPodMatrix();
+  const { data: resources   = [], isLoading: resLoading }    = useResources();
+
+  const ganttProjects = useMemo<GanttProject[]>(() => {
+    if (!rawProjects.length) return [];
+    return rawProjects
+      .filter(p => p.status !== 'CANCELLED' && p.status !== 'COMPLETED')
+      .map(p => toGanttProject(p as ProjectResponse, matrix as ProjectPodMatrixResponse[]));
+  }, [rawProjects, matrix]);
+
+  const podCapacities = useMemo<Record<string, Required<RoleCount>>>(
+    () => computePodCapacities(resources as ResourceResponse[]),
+    [resources],
+  );
+
+  /** Dynamic pod list derived from live data (for filter select + legend) */
+  const livePods = useMemo<string[]>(
+    () => Array.from(new Set(ganttProjects.map(p => p.pod))).sort(),
+    [ganttProjects],
+  );
+
+  const isLoading = projLoading || matrixLoading || resLoading;
+
   const filtered = useMemo(() =>
-    filterPod ? PROJECTS.filter(p => p.pod === filterPod) : PROJECTS,
-    [filterPod]);
+    filterPod ? ganttProjects.filter(p => p.pod === filterPod) : ganttProjects,
+    [filterPod, ganttProjects]);
 
   const capacityMap = useMemo(() => {
     const map = new Map<string, CapacityResult>();
-    for (const p of PROJECTS)
+    for (const p of ganttProjects)
       for (const rd of p.resourceDeps)
-        map.set(`${p.id}::${rd.pod}`, checkCapacity(p, rd.pod));
+        map.set(`${p.id}::${rd.pod}`, checkCapacity(ganttProjects, podCapacities, p, rd.pod));
     return map;
-  }, []);
+  }, [ganttProjects, podCapacities]);
 
   const projectHasConflict = (p: GanttProject) =>
     p.resourceDeps.some(rd => capacityMap.get(`${p.id}::${rd.pod}`)?.conflict);
@@ -204,7 +281,7 @@ export default function GanttDependenciesPage() {
         const c = capacityMap.get(`${project.id}::${depPod}`);
         const isConflict = c?.conflict ?? false;
         // Find the project in depPod with the latest end that overlaps our window
-        const blocker = [...PROJECTS]
+        const blocker = [...ganttProjects]
           .filter(p => p.pod === depPod && p.id !== project.id)
           .filter(p => p.startWeek < project.startWeek + project.durationWeeks)
           .sort((a, b) => (b.startWeek + b.durationWeeks) - (a.startWeek + a.durationWeeks))[0];
@@ -224,10 +301,14 @@ export default function GanttDependenciesPage() {
       });
     });
     return paths;
-  }, [filtered, capacityMap]);
+  }, [filtered, capacityMap, ganttProjects]);
 
-  const totalDevs = Object.values(POD_CAPACITIES).reduce((s, c) => s + c.devs, 0);
-  const totalQa   = Object.values(POD_CAPACITIES).reduce((s, c) => s + c.qa,   0);
+  const totalDevs = Object.values(podCapacities).reduce((s, c) => s + c.devs, 0);
+  const totalQa   = Object.values(podCapacities).reduce((s, c) => s + c.qa,   0);
+
+  if (isLoading) return (
+    <Center style={{ height: 320 }}><Loader color="teal" /></Center>
+  );
 
   return (
     <Box className="page-enter" style={{ paddingBottom: 32 }}>
@@ -246,8 +327,8 @@ export default function GanttDependenciesPage() {
       {/* KPIs */}
       <SimpleGrid cols={4} spacing="md" mb="lg">
         {[
-          { label: 'Total Projects',        value: PROJECTS.length,                                           color: DEEP_BLUE },
-          { label: 'With POD Dependencies', value: PROJECTS.filter(p => p.resourceDeps.length > 0).length,   color: '#2563eb' },
+          { label: 'Total Projects',        value: ganttProjects.length,                                           color: DEEP_BLUE },
+          { label: 'With POD Dependencies', value: ganttProjects.filter(p => p.resourceDeps.length > 0).length, color: '#2563eb' },
           { label: 'Capacity Conflicts',    value: conflicts.length,                                           color: conflicts.length > 0 ? '#dc2626' : '#15803d' },
           { label: 'Eng Headcount',         value: `${totalDevs}d · ${totalQa}q`,                            color: '#7c3aed' },
         ].map(s => (
@@ -280,7 +361,7 @@ export default function GanttDependenciesPage() {
       {/* Controls */}
       <Paper withBorder radius="md" p="sm" mb="lg">
         <Group justify="space-between">
-          <Select placeholder="All PODs" data={ALL_PODS} value={filterPod} onChange={setFilterPod}
+          <Select placeholder="All PODs" data={livePods} value={filterPod} onChange={setFilterPod}
             clearable size="sm" leftSection={<IconFilter size={14} />} style={{ width: 210 }} />
           <SegmentedControl size="sm" value={view} onChange={setView}
             data={[{ label: 'Gantt Chart', value: 'gantt' }, { label: 'Capacity Detail', value: 'list' }, { label: 'POD Headcount', value: 'pods' }]}
@@ -438,7 +519,7 @@ export default function GanttDependenciesPage() {
             <Group gap="lg" wrap="wrap" align="center">
               <Group gap="xs">
                 <Text size="11px" c="dimmed" fw={600}>PODs:</Text>
-                {ALL_PODS.map(pod => (
+                {livePods.map(pod => (
                   <Group key={pod} gap={5}>
                     <Box style={{ width: 10, height: 10, borderRadius: 3, background: getPodColor(pod), flexShrink: 0 }} />
                     <Text size="11px" c="dimmed">{pod}</Text>
@@ -505,7 +586,7 @@ export default function GanttDependenciesPage() {
                           <Group gap="sm" mb="md">
                             <IconUsers size={14} color={depColor} />
                             <Text size="sm" fw={700} style={{ color: depColor }}>{rd.pod} POD</Text>
-                            <Text size="xs" c="dimmed">total: {POD_CAPACITIES[rd.pod]?.devs ?? '?'}d / {POD_CAPACITIES[rd.pod]?.qa ?? '?'}q</Text>
+                            <Text size="xs" c="dimmed">total: {podCapacities[rd.pod]?.devs ?? '?'}d / {podCapacities[rd.pod]?.qa ?? '?'}q</Text>
                             <Text size="xs" c="dimmed" style={{ marginLeft: 'auto' }}>during wk {project.startWeek}–{project.startWeek + project.durationWeeks}</Text>
                           </Group>
                           <Stack gap={10}>
@@ -531,17 +612,17 @@ export default function GanttDependenciesPage() {
       {/* ══════════ POD HEADCOUNT ══════════ */}
       {view === 'pods' && (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-          {ALL_PODS.map(pod => {
-            const cap        = POD_CAPACITIES[pod] ?? { devs: 0, qa: 0, ux: 0 };
+          {livePods.map(pod => {
+            const cap        = podCapacities[pod] ?? { devs: 0, qa: 0, ux: 0 };
             const podColor   = getPodColor(pod);
-            const podProjects = PROJECTS.filter(p => p.pod === pod);
+            const podProjects = ganttProjects.filter(p => p.pod === pod);
             let peakDevs = 0, peakQa = 0;
             for (let w = 0; w < TOTAL_WEEKS; w++) {
-              const alloc = podAllocatedAtWeek(pod, w, -1);
+              const alloc = podAllocatedAtWeek(ganttProjects, pod, w, -1);
               peakDevs = Math.max(peakDevs, alloc.devs);
               peakQa   = Math.max(peakQa,   alloc.qa);
             }
-            const inbound = PROJECTS.filter(p => p.pod !== pod && p.resourceDeps.some(rd => rd.pod === pod));
+            const inbound = ganttProjects.filter(p => p.pod !== pod && p.resourceDeps.some(rd => rd.pod === pod));
             return (
               <Paper key={pod} withBorder radius="md" p="lg" style={{ borderTop: `3px solid ${podColor}` }}>
                 <Group justify="space-between" mb="md">

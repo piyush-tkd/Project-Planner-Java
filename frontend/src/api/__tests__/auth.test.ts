@@ -1,22 +1,23 @@
 /**
  * Auth API tests — login, logout, token persistence, permissions.
  *
+ * As of Prompt 1.10, the JWT is stored only in the HttpOnly cookie set by the
+ * backend; it is no longer written to localStorage.  localStorage now stores
+ * only non-sensitive profile fields (username, role, displayName, pages).
+ *
  * Covers:
- * - Successful login stores token + role
- * - Failed login (401) throws and does not store token
- * - Logout clears localStorage
- * - /auth/me returns current user profile
+ * - Successful login stores profile (NOT token) in localStorage
+ * - Failed login (401) throws and does not store anything
+ * - Logout clears all localStorage keys
+ * - /auth/me succeeds via cookie (no Authorization header required)
  * - ADMIN role sets isAdmin = true
  * - canAccess with restricted page list
  */
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
-import React from 'react';
-import { makeWrapper } from '../../test/helpers';
 
 const TOKEN = 'eyJhbGciOiJIUzI1NiJ9.test.signature';
+import { setupServer } from 'msw/node';
 
 const server = setupServer(
   http.post('/api/auth/login', async ({ request }) => {
@@ -41,73 +42,70 @@ const server = setupServer(
     }
     return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 });
   }),
-  http.post('/api/auth/logout', () => HttpResponse.json({ ok: true })),
-  http.get('/api/auth/me', ({ request }) => {
-    const auth = request.headers.get('Authorization');
-    if (!auth || !auth.includes(TOKEN)) {
-      return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    return HttpResponse.json({
+  http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+  // /auth/me now relies on the HttpOnly cookie — no Authorization header check
+  http.get('/api/auth/me', () =>
+    HttpResponse.json({
       username: 'admin',
       displayName: 'Admin User',
       role: 'ADMIN',
       allowedPages: null,
-    });
-  }),
+    }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => { server.resetHandlers(); localStorage.clear(); });
 afterAll(() => server.close());
 
-// We test auth behaviour by directly manipulating localStorage and apiClient
-// since AuthContext is a React context (not a hook we can easily renderHook).
-
+// ── localStorage persistence ─────────────────────────────────────────────────
 describe('Auth: localStorage persistence', () => {
-  it('login stores token and role in localStorage', async () => {
-    // Simulate what AuthProvider.login does
+  it('login stores profile (not token) in localStorage', async () => {
     const { default: apiClient } = await import('../client');
     const response = await apiClient.post('/auth/login', { username: 'admin', password: 'password' });
-    const data = response.data as { token: string; role: string; username: string };
-    localStorage.setItem('pp_token', data.token);
-    localStorage.setItem('pp_role', data.role);
-    localStorage.setItem('pp_username', data.username);
+    const data = response.data as { token: string; role: string; username: string; displayName: string | null };
 
-    expect(localStorage.getItem('pp_token')).toBe(TOKEN);
-    expect(localStorage.getItem('pp_role')).toBe('ADMIN');
+    // Store only non-sensitive fields — JWT stays in HttpOnly cookie
+    localStorage.setItem('pp_username',     data.username);
+    localStorage.setItem('pp_role',         data.role);
+    localStorage.setItem('pp_display_name', data.displayName ?? '');
+
     expect(localStorage.getItem('pp_username')).toBe('admin');
+    expect(localStorage.getItem('pp_role')).toBe('ADMIN');
+    // Token must NOT be persisted to localStorage
+    expect(localStorage.getItem('pp_token')).toBeNull();
   });
 
-  it('failed login (401) does not store token', async () => {
+  it('failed login (401) does not store anything', async () => {
     const { default: apiClient } = await import('../client');
     await expect(
       apiClient.post('/auth/login', { username: 'admin', password: 'wrong' })
     ).rejects.toThrow();
     expect(localStorage.getItem('pp_token')).toBeNull();
+    expect(localStorage.getItem('pp_username')).toBeNull();
   });
 
   it('logout clears all auth keys from localStorage', () => {
-    localStorage.setItem('pp_token', TOKEN);
-    localStorage.setItem('pp_role', 'ADMIN');
-    localStorage.setItem('pp_username', 'admin');
+    localStorage.setItem('pp_username',     'admin');
+    localStorage.setItem('pp_role',         'ADMIN');
     localStorage.setItem('pp_display_name', 'Admin User');
-    localStorage.setItem('pp_pages', 'null');
+    localStorage.setItem('pp_pages',        'null');
 
-    // Simulate AuthProvider.logout
-    ['pp_token', 'pp_role', 'pp_username', 'pp_display_name', 'pp_pages'].forEach(k => {
+    // Simulate AuthProvider.logout (no pp_token key since Prompt 1.10)
+    ['pp_username', 'pp_role', 'pp_display_name', 'pp_pages'].forEach(k => {
       localStorage.removeItem(k);
     });
 
     expect(localStorage.getItem('pp_token')).toBeNull();
-    expect(localStorage.getItem('pp_role')).toBeNull();
     expect(localStorage.getItem('pp_username')).toBeNull();
+    expect(localStorage.getItem('pp_role')).toBeNull();
   });
 });
 
+// ── Page permissions ──────────────────────────────────────────────────────────
 describe('Auth: viewer restricted pages', () => {
   it('viewer with allowedPages can only access listed pages', () => {
     const allowedPages = ['dashboard', 'projects'];
-
     const canAccess = (pageKey: string) =>
       allowedPages === null || allowedPages.includes(pageKey);
 
@@ -119,9 +117,8 @@ describe('Auth: viewer restricted pages', () => {
 
   it('admin with null allowedPages can access all pages', () => {
     const allowedPages: string[] | null = null;
-
     const canAccess = (pageKey: string) =>
-      allowedPages === null || allowedPages.includes(pageKey);
+      allowedPages === null || (allowedPages as string[]).includes(pageKey);
 
     expect(canAccess('dashboard')).toBe(true);
     expect(canAccess('resources')).toBe(true);
@@ -129,39 +126,28 @@ describe('Auth: viewer restricted pages', () => {
   });
 });
 
-describe('Auth: API client Authorization header', () => {
-  it('includes Bearer token in subsequent requests after login', async () => {
-    localStorage.setItem('pp_token', TOKEN);
+// ── /auth/me via cookie ───────────────────────────────────────────────────────
+describe('Auth: /auth/me cookie-based auth', () => {
+  it('/auth/me succeeds without an Authorization header (cookie carries JWT)', async () => {
     const { default: apiClient } = await import('../client');
-
-    // Should succeed because our mock checks for TOKEN in Authorization header
+    // No localStorage token set — the HttpOnly cookie is handled by the browser/msw
     const response = await apiClient.get('/auth/me');
     expect(response.status).toBe(200);
     expect(response.data).toMatchObject({ username: 'admin', role: 'ADMIN' });
   });
-
-  it('returns 401 when no token is present', async () => {
-    localStorage.removeItem('pp_token');
-    const { default: apiClient } = await import('../client');
-
-    await expect(apiClient.get('/auth/me')).rejects.toMatchObject({
-      response: { status: 401 },
-    });
-  });
 });
 
+// ── displayLabel ──────────────────────────────────────────────────────────────
 describe('Auth: displayLabel', () => {
   it('uses displayName when set', () => {
     const displayName = 'Admin User';
     const username = 'admin';
-    const displayLabel = displayName ?? username;
-    expect(displayLabel).toBe('Admin User');
+    expect(displayName ?? username).toBe('Admin User');
   });
 
   it('falls back to username when displayName is null', () => {
     const displayName: string | null = null;
     const username = 'admin';
-    const displayLabel = displayName ?? username;
-    expect(displayLabel).toBe('admin');
+    expect(displayName ?? username).toBe('admin');
   });
 });

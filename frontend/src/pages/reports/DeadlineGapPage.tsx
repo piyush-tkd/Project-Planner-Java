@@ -50,7 +50,7 @@ export default function DeadlineGapPage() {
  const activeProjects = projects.filter(p => p.status === 'ACTIVE');
 
  return activeProjects.map(project => {
- const startM = project.startMonth;
+ const startM = project.startMonth ?? 0;
  const endM = startM + project.durationMonths - 1;
 
  // Sum demand and capacity across the project's active months (all PODs)

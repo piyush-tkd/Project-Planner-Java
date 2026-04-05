@@ -3,9 +3,11 @@ import { Role } from './common';
 export interface PodResponse {
   id: number;
   name: string;
-  complexityMultiplier: number;
+  complexityMultiplier: number | null;
   displayOrder: number;
   active: boolean;
+  description?: string | null;
+  podType?: string | null;
 }
 
 export interface BauAssumptionResponse {

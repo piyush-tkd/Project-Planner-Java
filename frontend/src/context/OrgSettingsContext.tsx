@@ -12,6 +12,7 @@ export interface OrgConfig {
   timezone: string;
   dateFormat: string;
   fiscalYearStart: string;
+  features: Record<string, boolean>;
 }
 
 const DEFAULTS: OrgConfig = {
@@ -23,6 +24,13 @@ const DEFAULTS: OrgConfig = {
   timezone:        'America/Chicago',
   dateFormat:      'MMM DD, YYYY',
   fiscalYearStart: 'January',
+  features: {
+    ai:         true,
+    okr:        true,
+    risk:       true,
+    ideas:      true,
+    financials: true,
+  },
 };
 
 interface OrgSettingsCtx {

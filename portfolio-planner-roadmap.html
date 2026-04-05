@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Planner — Product Roadmap v13–v16</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --border: #2e3346; --text: #e2e4eb; --muted: #8b8fa3;
+    --accent: #6c5ce7; --accent2: #00cec9; --accent3: #fd79a8;
+    --green: #00b894; --yellow: #fdcb6e; --orange: #e17055; --red: #d63031;
+    --blue: #0984e3; --gold: #f9ca24; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .container { max-width:1400px; margin:0 auto; padding:32px 24px; }
+
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:2.2rem; font-weight:700; background:linear-gradient(135deg,var(--gold),var(--orange)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:0.95rem; max-width:800px; margin:0 auto; }
+  .header .strategy { display:inline-block; margin-top:16px; padding:8px 20px; border-radius:24px; background:rgba(249,202,36,.1); border:1px solid rgba(249,202,36,.25); color:var(--gold); font-size:0.85rem; font-weight:600; }
+
+  /* Phase selector */
+  .phases { display:flex; gap:4px; margin-bottom:32px; background:var(--surface); border-radius:var(--radius); padding:4px; width:fit-content; margin-left:auto; margin-right:auto; flex-wrap:wrap; }
+  .phase-btn { padding:10px 24px; border-radius:10px; cursor:pointer; font-size:0.88rem; color:var(--muted); border:none; background:none; transition:all .2s; white-space:nowrap; }
+  .phase-btn.active { background:var(--accent); color:#fff; }
+
+  /* Summary cards */
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px; }
+  .sum-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; text-align:center; }
+  .sum-card .num { font-size:2rem; font-weight:800; }
+  .sum-card .label { color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+
+  /* Phase container */
+  .phase-content { display:none; }
+  .phase-content.active { display:block; }
+
+  .phase-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; padding:20px 24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+  .phase-header h2 { font-size:1.3rem; }
+  .phase-header .phase-meta { display:flex; gap:20px; }
+  .phase-meta-item { font-size:0.82rem; color:var(--muted); }
+  .phase-meta-item strong { color:var(--text); }
+
+  /* Feature cards */
+  .features { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:16px; margin-bottom:40px; }
+  .feat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; transition:all .3s; }
+  .feat-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+
+  .feat-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .feat-title { font-weight:700; font-size:0.95rem; }
+  .feat-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .tag { font-size:0.65rem; padding:3px 8px; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
+  .tag-security { background:rgba(214,48,49,.15); color:var(--red); }
+  .tag-moat { background:rgba(249,202,36,.15); color:var(--gold); }
+  .tag-ux { background:rgba(108,92,231,.15); color:var(--accent); }
+  .tag-infra { background:rgba(0,206,201,.15); color:var(--accent2); }
+  .tag-ai { background:rgba(253,121,168,.15); color:var(--accent3); }
+  .tag-integration { background:rgba(9,132,227,.15); color:var(--blue); }
+  .tag-saas { background:rgba(0,184,148,.15); color:var(--green); }
+
+  .feat-desc { font-size:0.84rem; color:var(--muted); margin-bottom:12px; line-height:1.5; }
+  .feat-why { font-size:0.78rem; padding:10px 12px; background:var(--surface2); border-radius:8px; margin-bottom:12px; }
+  .feat-why strong { color:var(--gold); font-size:0.72rem; text-transform:uppercase; letter-spacing:.3px; }
+  .feat-why p { color:var(--muted); margin-top:4px; }
+
+  .feat-meta { display:flex; gap:16px; font-size:0.75rem; color:var(--muted); flex-wrap:wrap; }
+  .feat-meta span strong { color:var(--text); }
+
+  /* Moat section */
+  .moat-section { background:var(--surface); border:1px solid rgba(249,202,36,.25); border-radius:var(--radius); padding:32px; margin-bottom:40px; }
+  .moat-section h2 { color:var(--gold); font-size:1.2rem; margin-bottom:16px; }
+  .moat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .moat-item { background:var(--surface2); border-radius:8px; padding:16px; }
+  .moat-item h4 { font-size:0.9rem; margin-bottom:6px; }
+  .moat-item p { font-size:0.82rem; color:var(--muted); }
+  .moat-item .moat-competitors { font-size:0.75rem; color:var(--orange); margin-top:8px; }
+
+  /* Timeline */
+  .timeline-section { margin-bottom:48px; }
+  .timeline-section h2 { font-size:1.2rem; margin-bottom:20px; text-align:center; }
+  .timeline { position:relative; }
+  .timeline::before { content:''; position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--border); transform:translateX(-50%); }
+  .tl-item { display:flex; margin-bottom:24px; position:relative; }
+  .tl-item:nth-child(odd) { justify-content:flex-start; padding-right:52%; }
+  .tl-item:nth-child(even) { justify-content:flex-end; padding-left:52%; }
+  .tl-dot { position:absolute; left:50%; top:16px; width:14px; height:14px; border-radius:50%; border:3px solid var(--bg); transform:translateX(-50%); z-index:1; }
+  .tl-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 18px; width:100%; }
+  .tl-card h4 { font-size:0.88rem; margin-bottom:4px; }
+  .tl-card p { font-size:0.78rem; color:var(--muted); }
+  .tl-card .tl-date { font-size:0.72rem; color:var(--gold); font-weight:600; margin-bottom:4px; }
+
+  /* Observations */
+  .obs-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:32px; margin-bottom:40px; }
+  .obs-section h2 { font-size:1.2rem; margin-bottom:16px; }
+  .obs-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .obs-col h3 { font-size:0.9rem; color:var(--accent2); margin-bottom:12px; }
+  .obs-item { padding:8px 0; border-bottom:1px solid var(--border); font-size:0.84rem; }
+  .obs-item:last-child { border-bottom:none; }
+  .obs-item strong { color:var(--text); }
+  .obs-item span { color:var(--muted); display:block; font-size:0.78rem; margin-top:2px; }
+
+  /* Design system section */
+  .ds-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; margin-bottom:24px; }
+  .ds-section h3 { font-size:1rem; margin-bottom:12px; color:var(--accent2); }
+  .ds-section p { font-size:0.84rem; color:var(--muted); margin-bottom:10px; line-height:1.6; }
+  .ds-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:16px; }
+  .ds-card { background:var(--surface2); border-radius:8px; padding:16px; border-left:3px solid var(--accent); }
+  .ds-card h4 { font-size:0.88rem; margin-bottom:6px; color:var(--text); }
+  .ds-card p { font-size:0.8rem; color:var(--muted); margin:0; }
+  .ds-card .ds-lib { font-size:0.72rem; color:var(--accent2); margin-top:8px; font-weight:600; }
+  .ds-card.priority-high { border-left-color:var(--red); }
+  .ds-card.priority-mid { border-left-color:var(--gold); }
+  .ds-card.priority-low { border-left-color:var(--green); }
+  .ds-comparison { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+  .ds-compare-item { background:var(--surface2); border-radius:8px; padding:16px; }
+  .ds-compare-item h4 { font-size:0.88rem; margin-bottom:8px; }
+  .ds-compare-item .verdict { font-size:0.78rem; padding:8px; background:rgba(108,92,231,.1); border-radius:6px; margin-top:8px; color:var(--accent); }
+  .ds-badge { display:inline-block; font-size:0.65rem; padding:2px 8px; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; margin-right:4px; }
+  .ds-badge-rec { background:rgba(0,206,201,.15); color:var(--accent2); }
+  .ds-badge-current { background:rgba(108,92,231,.15); color:var(--accent); }
+  .ds-badge-alt { background:rgba(253,121,168,.15); color:var(--accent3); }
+
+  .admin-obs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+  .admin-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+  .admin-card h4 { font-size:0.9rem; margin-bottom:8px; color:var(--text); }
+  .admin-card p { font-size:0.82rem; color:var(--muted); line-height:1.5; }
+  .admin-card .admin-verdict { font-size:0.78rem; padding:8px 12px; background:var(--surface2); border-radius:6px; margin-top:10px; }
+  .admin-card .admin-verdict strong { color:var(--gold); }
+
+  .footer { text-align:center; color:var(--muted); font-size:0.78rem; padding-top:32px; border-top:1px solid var(--border); }
+
+  @media (max-width:768px) {
+    .summary { grid-template-columns:1fr 1fr; }
+    .features { grid-template-columns:1fr; }
+    .obs-grid { grid-template-columns:1fr; }
+    .timeline::before { left:20px; }
+    .tl-item, .tl-item:nth-child(even) { justify-content:flex-start; padding-left:48px; padding-right:0; }
+    .tl-dot { left:20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Portfolio Planner — Product Roadmap</h1>
+    <p>v13 through v16 · Grounded in PRD v12.5, full UI review (30+ pages), and competitive landscape analysis of 14 market tools.</p>
+    <div class="strategy">Strategy: Widen the Moat — No one else unifies PM + Capacity + Eng Intelligence + AI</div>
+  </div>
+
+  <div class="summary">
+    <div class="sum-card"><div class="num" style="color:var(--red)">6</div><div class="label">Security & Foundation</div></div>
+    <div class="sum-card"><div class="num" style="color:var(--gold)">12</div><div class="label">Moat-Widening Features</div></div>
+    <div class="sum-card"><div class="num" style="color:var(--accent)">18</div><div class="label">UX, Polish & Design System</div></div>
+    <div class="sum-card"><div class="num" style="color:var(--green)">6</div><div class="label">SaaS-Ready Infra</div></div>
+  </div>
+
+  <div class="phases">
+    <button class="phase-btn active" onclick="showPhase('obs')">UI Observations</button>
+    <button class="phase-btn" onclick="showPhase('p1')">v13 · Foundation (Now–8wk)</button>
+    <button class="phase-btn" onclick="showPhase('p2')">v14 · Moat (8–18wk)</button>
+    <button class="phase-btn" onclick="showPhase('p3')">v15 · Scale (18–30wk)</button>
+    <button class="phase-btn" onclick="showPhase('p4')">v16 · SaaS Ready (30–44wk)</button>
+    <button class="phase-btn" onclick="showPhase('moat')">Moat Strategy</button>
+    <button class="phase-btn" onclick="showPhase('admin')">Admin & Deep Pages</button>
+    <button class="phase-btn" onclick="showPhase('design')">UI / Design System</button>
+  </div>
+
+  <!-- ============ UI OBSERVATIONS ============ -->
+  <div id="phase-obs" class="phase-content active">
+    <div class="obs-section">
+      <h2>What I Saw Walking Through the Live UI</h2>
+      <div class="obs-grid">
+        <div class="obs-col">
+          <h3>Strengths I Observed</h3>
+          <div class="obs-item"><strong>Dashboard is genuinely useful.</strong><span>The Team Dashboard with utilization heatmap (POD x Month with color-coded percentages) is immediately actionable. Portal V2 at 158% utilization jumps off the page — that's the kind of signal that saves a conversation. The 3-tab layout (Team / Executive / Analyst) is smart role segmentation.</span></div>
+          <div class="obs-item"><strong>Engineering Intelligence is the crown jewel.</strong><span>The 3-tab hub (Financial / Productivity / Git) with Investment → Output → Efficiency → Impact framework is more structured than anything in Jellyfish. "$7.4M annual spend" with costliest POD breakdown gives CTOs exactly what they need. The DORA metrics integration in the Efficiency section closes the loop.</span></div>
+          <div class="obs-item"><strong>AI Assistant has real personality.</strong><span>"Good afternoon, Piyush! Lunchtime productivity? I'm here for it." — this feels human. The proactive insights ("23 critical P0 projects active", "2 projects on hold") and quick-action buttons are more useful than a blank chatbox. This is ahead of any PM tool's AI.</span></div>
+          <div class="obs-item"><strong>Portfolio Health is data-rich.</strong><span>Status distribution chart + Priority distribution + Risk Register + Capacity Trend + Owner Workload all on one page. The risk register showing real projects (NATERA, VA PGx, EPIC) with reasons makes this a living document, not a template.</span></div>
+          <div class="obs-item"><strong>Capacity Hub tabs are well-organized.</strong><span>7 sub-views (Utilization, Hiring Forecast, Capacity vs Demand, POD Resources, POD Capacity, Work Hours, Workload) cover every angle. This replaces what most orgs do in 3+ spreadsheets.</span></div>
+          <div class="obs-item"><strong>Jira POD Dashboard links back to Atlassian.</strong><span>Direct links to CEP, OPP, INT, EPICAURA boards in Baylor Genetics Atlassian. This is smart — don't replace Jira, augment it. The "19 Open" support queue with board monitoring is operational gold.</span></div>
+        </div>
+        <div class="obs-col">
+          <h3>Friction & Gaps I Noticed</h3>
+          <div class="obs-item"><strong>Sidebar has 45+ items — confirmed in the UI.</strong><span>Even with collapsible groups (Home, Portfolio, People, Calendar, Delivery, Engineering, Simulations, Admin), full-access users face a wall of options. The "Projects" link lives under no group header — it's accessed via breadcrumb "Data Entry" which is confusing. Need: search/command palette, pinnable favorites, recent pages.</span></div>
+          <div class="obs-item"><strong>Projects table is functional but flat.</strong><span>47 projects in a table with status/priority/owner/dates — this is fine for data entry but doesn't tell a story. Missing: inline sparklines for progress, visual timeline bars, drag-to-reprioritize. The Board view tab exists but I didn't see visual differentiation from Table view. Compared to Linear's or Monday's board views, this feels spreadsheet-era.</span></div>
+          <div class="obs-item"><strong>Capacity Hub tabs are "View Full Report" stubs.</strong><span>Several capacity sub-views (Utilization, Hiring Forecast, etc.) show a description card with a "View Full Report" button rather than inline content. This adds unnecessary click depth. The data should render inline with the tab selection.</span></div>
+          <div class="obs-item"><strong>Timeline Simulator uses number spinners.</strong><span>Each project has Start Month and Duration spinners — adjusting 20+ projects one by one is tedious. A drag-on-Gantt interaction (like Planview) would make this 10x more usable. No visual preview until you click "Simulate."</span></div>
+          <div class="obs-item"><strong>Git Intelligence shows "Azure DevOps not connected."</strong><span>A full tab devoted to an empty state. If ADO isn't connected, this should degrade gracefully — show setup guidance inline, or collapse the tab. An empty tab undermines confidence in the platform.</span></div>
+          <div class="obs-item"><strong>Financial Intelligence: 3.2% capacity utilization.</strong><span>Either the data is early-month or the metric needs context. A "3.2% — Below expected" badge without benchmarks or trends looks alarming. Add sparkline trend, target line, and month-over-month delta.</span></div>
+          <div class="obs-item"><strong>Widget customization modal blocks context.</strong><span>The "Customize layout" modal lists widgets with eye/drag controls but you can't see the dashboard behind it. An inline drag-to-reorder (like Monday or Notion) would feel more modern.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PHASE 1: FOUNDATION ============ -->
+  <div id="phase-p1" class="phase-content">
+    <div class="phase-header">
+      <div>
+        <h2>v13 · Foundation & Security</h2>
+        <div style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Fix what blocks enterprise adoption. No new features until the floor is solid.</div>
+      </div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><strong>Duration:</strong> 8 weeks</div>
+        <div class="phase-meta-item"><strong>Squad:</strong> Full team</div>
+        <div class="phase-meta-item"><strong>Theme:</strong> Trust & reliability</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">JWT → HttpOnly Cookies</span><div class="feat-tags"><span class="tag tag-security">Security</span></div></div>
+        <div class="feat-desc">Migrate token storage from localStorage to HttpOnly secure cookies. Update Spring Security cookie-setting endpoint, remove manual token management from React, handle CSRF protection.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Every enterprise security review will flag localStorage JWT. This is the #1 blocker to wider rollout. Your PRD already identifies this as critical.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks (1 BE + 1 FE)</span><span><strong>Risk:</strong> Low — well-documented pattern</span><span><strong>Impact:</strong> Unblocks enterprise adoption</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Automated Test Foundation</span><div class="feat-tags"><span class="tag tag-security">Security</span><span class="tag tag-infra">Infra</span></div></div>
+        <div class="feat-desc">JUnit 5 + Mockito for service layer, Spring Boot Test + Testcontainers for controllers, Playwright for 5 critical E2E flows (login, project CRUD, capacity view, AI query, Jira sync). CI gate: no merge without green tests.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>79 migrations and 50+ controllers with 0 tests = regression roulette. Every feature in v14–v16 will be safer with this in place. Start with the critical paths, expand coverage as you go.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks (2 BE + 1 FE)</span><span><strong>Target:</strong> 40% service layer + 5 E2E</span><span><strong>Impact:</strong> Confidence to ship fast</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Persist Feature Flags to DB</span><div class="feat-tags"><span class="tag tag-infra">Infra</span></div></div>
+        <div class="feat-desc">Wire Workspace feature-flag toggles (AI, Ideas, Risk, OKR, Financials) to OrgSettings table. Add backend enforcement: flagged routes return 403 when disabled. Add migration V80.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>UI-only flags that don't persist are a false promise. Future multi-tenancy needs flags that work per-org. 1–2 day effort with massive downstream value.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 days</span><span><strong>Risk:</strong> Minimal</span><span><strong>Impact:</strong> Real feature gating</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Email Notification Delivery (SMTP)</span><div class="feat-tags"><span class="tag tag-infra">Infra</span></div></div>
+        <div class="feat-desc">Wire DigestController to live SMTP service. Enable 2 highest-value alerts first: weekly AI digest and support queue staleness. Add Slack webhook as alternative channel.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>6 alert types are stubs. Users can't trust a platform that promises notifications but delivers none. Start with 2, build trust, add the rest in v14.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1 week</span><span><strong>Impact:</strong> Operational reliability</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Command Palette (Cmd+K)</span><div class="feat-tags"><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Global search overlay: search pages, projects, resources, PODs, and AI queries from one keyboard shortcut. Reduces sidebar navigation fatigue for the 45+ item nav. Include recent pages, pinned favorites.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>I counted 45+ nav items in the sidebar. Even with good grouping, power users will drown. Linear's Cmd+K is why people love it. This is the highest-leverage UX investment at near-zero risk.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1 week (FE only)</span><span><strong>Impact:</strong> Navigation speed 5x</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Graceful Empty States</span><div class="feat-tags"><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Replace blank/error states across the app. Git Intelligence "not connected" tab gets inline setup wizard. Capacity Hub stubs render inline data instead of "View Full Report" buttons. Strategic Objectives empty state gets CTA.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>I saw "Azure DevOps not connected" filling an entire tab, Capacity Hub tabs as description stubs, and "No objectives found" on the dashboard. Empty states are first impressions — they should teach, not disappoint.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 4 days</span><span><strong>Impact:</strong> Professional polish</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PHASE 2: MOAT ============ -->
+  <div id="phase-p2" class="phase-content">
+    <div class="phase-header">
+      <div>
+        <h2>v14 · Widen the Moat</h2>
+        <div style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Ship the features that make Portfolio Planner irreplaceable. No competitor can match this combination.</div>
+      </div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><strong>Duration:</strong> 10 weeks</div>
+        <div class="phase-meta-item"><strong>Squad:</strong> Full team (parallel tracks)</div>
+        <div class="phase-meta-item"><strong>Theme:</strong> Competitive differentiation</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">AI Proactive Insights Engine</span><div class="feat-tags"><span class="tag tag-ai">AI</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Extend the NLP layer to proactively surface anomalies: "Portal V2 at 158% utilization for 3 consecutive months — suggest reallocation", "NATERA project velocity dropped 40% this sprint", "3 projects competing for the same 2 FE developers in June." Push to inbox + email digest.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Your AI assistant already has the data context (Jira sync, capacity, financials). The leap from "answer questions" to "surface problems before you ask" is what makes this a moat. Jellyfish does this for eng metrics — you can do it across the entire portfolio.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks</span><span><strong>Beats:</strong> Jellyfish, Planview</span><span><strong>Impact:</strong> "Platform that thinks for you"</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Visual Timeline Simulator (Gantt Drag)</span><div class="feat-tags"><span class="tag tag-ux">UX</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Replace the spinners-based Timeline Simulator with a drag-on-Gantt canvas. Grab project bars to slide dates. Show cascading dependency impacts in real-time. Color-code resource conflicts. "Save as scenario" button to persist.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>I saw 20+ projects with individual Start Month / Duration spinners. This is unusable at scale. Planview's simulation UX is the gold standard — yours has the data model (scenarios, overrides) but the UI doesn't match. This is the biggest UX gap in the app.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks (complex FE)</span><span><strong>Beats:</strong> Every mid-market tool</span><span><strong>Impact:</strong> "Planning feels like a game"</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">AI Impact Measurement Dashboard</span><div class="feat-tags"><span class="tag tag-ai">AI</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">New tab under Engineering Intelligence: track AI tool adoption across the org. Measure: Copilot usage per developer, AI-assisted PR ratio, velocity delta before/after AI rollout, cost per AI-assisted story point. Benchmark against pre-AI baseline.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>This is Jellyfish's hottest feature in 2026 and every CTO is asking for it. You already have the Jira data + resource data + Git data. Connecting the dots to show "AI is saving us $X/month" is the kind of insight that justifies the platform to leadership.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Beats:</strong> Jellyfish's AI Impact</span><span><strong>Impact:</strong> CTO presentation-ready</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Software Capitalization Automation</span><div class="feat-tags"><span class="tag tag-moat">Moat</span><span class="tag tag-integration">Integration</span></div></div>
+        <div class="feat-desc">Auto-classify Jira issues as CapEx vs OpEx based on configurable rules (issue type, labels, project). Generate audit-ready capitalization reports by period, project, and resource. Export to Excel for finance teams.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>You already track CapEx/OpEx at the issue level. Automating the classification + report generation replaces what most orgs do with painful quarterly spreadsheet exercises. Jellyfish charges premium for this — you can build it natively.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Beats:</strong> Jellyfish (paid add-on)</span><span><strong>Impact:</strong> Finance team adoption</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Azure Boards Integration (Parity with Jira)</span><div class="feat-tags"><span class="tag tag-integration">Integration</span></div></div>
+        <div class="feat-desc">Add Azure Boards work item sync: sprints, velocity, cycle time. Add pipeline data (build success rate, deployment frequency) to Git Intelligence for full DORA coverage from ADO. Map ADO work items to PP projects.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Git Intelligence shows "Azure DevOps not connected" as an empty tab. Orgs running ADO for both code and work items are locked out of half the platform's value. Pipeline data also closes the DORA metrics gap for ADO-native teams.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks</span><span><strong>Impact:</strong> Doubles addressable market</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Project Board View (Kanban Upgrade)</span><div class="feat-tags"><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Redesign the Board tab on the Projects page. Draggable cards across status columns with inline priority badges, owner avatars, and timeline sparklines. Filter by owner/POD/priority. Support custom columns.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>The Projects page Table view is solid for data entry but the Board view needs to compete with Monday and Linear's visual appeal. A well-designed Kanban board is table-stakes for any PM tool in 2026.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1.5 weeks</span><span><strong>Impact:</strong> PM daily driver UX</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Inline Capacity Hub (Kill the Stubs)</span><div class="feat-tags"><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Replace "View Full Report" button stubs on Capacity Hub tabs with inline rendered content. Each tab (Utilization, Hiring Forecast, Capacity vs Demand, etc.) should render its report directly when the tab is clicked.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>I clicked through 7 Capacity Hub tabs and most showed a description card with a button rather than actual data. This adds unnecessary click depth and makes the hub feel incomplete. The data exists — just render it inline.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1 week</span><span><strong>Impact:</strong> Removes friction on core feature</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Financial Intelligence Trends & Benchmarks</span><div class="feat-tags"><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Add sparkline trends, month-over-month deltas, and configurable target lines to Financial Intelligence KPIs. The "3.2% utilization — Below expected" badge needs context: trend direction, target, and industry benchmark.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>A metric without context is just a number. Adding trends and targets transforms Financial Intelligence from a snapshot into a decision tool. This is what separates "reporting" from "intelligence."</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1 week</span><span><strong>Impact:</strong> Executive confidence</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PHASE 3: SCALE ============ -->
+  <div id="phase-p3" class="phase-content">
+    <div class="phase-header">
+      <div>
+        <h2>v15 · Scale & Collaboration</h2>
+        <div style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Make it real-time, mobile-friendly, and ready for teams beyond your own.</div>
+      </div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><strong>Duration:</strong> 12 weeks</div>
+        <div class="phase-meta-item"><strong>Squad:</strong> Full team (3 parallel tracks)</div>
+        <div class="phase-meta-item"><strong>Theme:</strong> Collaboration & reach</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">WebSocket Real-Time Layer</span><div class="feat-tags"><span class="tag tag-infra">Infra</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Spring WebSocket channels for live updates. Start with: project status changes, risk register edits, dashboard KPIs, support queue alerts. Show "Piyush is editing…" presence indicators. Optimistic UI updates with conflict detection.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Last-write-wins is a dealbreaker at team scale. Every competing tool has real-time. Start with read-heavy surfaces (dashboards, status) where the implementation is simplest, then expand to edit-heavy pages.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 4 weeks</span><span><strong>Impact:</strong> Team-scale adoption</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Responsive Design (Top 8 Pages)</span><div class="feat-tags"><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Mobile-responsive breakpoints for: Dashboard, Portfolio Health, Ask AI, Projects, Capacity Hub, POD Dashboard, Eng Intelligence, and Inbox. Collapsible sidebar → bottom nav on mobile. PWA manifest for home screen install.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Engineering leaders check portfolio health on the go. Desktop-only limits executive adoption. You don't need a native app — responsive + PWA is sufficient. Prioritize the 8 most-viewed pages.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks</span><span><strong>Impact:</strong> Executive reach</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">GitHub Integration</span><div class="feat-tags"><span class="tag tag-integration">Integration</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Add GitHub as a Git intelligence source alongside Azure DevOps. PR analytics, commit frequency, branch health, code review cycle time. Supports orgs that use GitHub + Jira (extremely common).</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Git Intelligence currently only supports ADO. Most Jira-native orgs use GitHub for code. Adding GitHub triples the addressable market for the engineering intelligence module. Jellyfish supports 10+ dev tools — you need at least 2.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks (API patterns exist from ADO)</span><span><strong>Impact:</strong> 3x addressable market</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Slack / Teams Notifications</span><div class="feat-tags"><span class="tag tag-integration">Integration</span></div></div>
+        <div class="feat-desc">Webhook-based notifications to Slack and Microsoft Teams channels. Configurable per alert type: support staleness → #ops-alerts, budget overrun → #finance, AI digest → #engineering-leads.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Email is wired in v13 but teams live in Slack/Teams. Every competing tool supports this. The webhook architecture is simple and unlocks "Portfolio Planner is always in the room" presence.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1 week</span><span><strong>Impact:</strong> Platform stickiness</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Public API v1</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-infra">Infra</span></div></div>
+        <div class="feat-desc">Expose a versioned REST API with API key auth for: projects, resources, capacity, and portfolio health. OpenAPI spec + interactive docs. Rate limiting and usage tracking. Enables external tool integration and customer automation.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>You have 50+ controllers already. Wrapping the core read endpoints with API key auth and versioning is straightforward. A public API is table-stakes for SaaS and enables ecosystem integrations (BI tools, custom dashboards, CI pipelines).</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks</span><span><strong>Impact:</strong> SaaS foundation + ecosystem</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">SPACE Framework Metrics</span><div class="feat-tags"><span class="tag tag-moat">Moat</span><span class="tag tag-ai">AI</span></div></div>
+        <div class="feat-desc">Add SPACE (Satisfaction, Performance, Activity, Communication, Efficiency) framework alongside DORA. Include developer satisfaction surveys, collaboration metrics from PRs, and activity patterns. Position alongside DORA as "DORA + SPACE = complete picture."</div>
+        <div class="feat-why"><strong>Why now:</strong><p>DORA alone is output-focused. The industry is moving to SPACE for a more holistic view. Jellyfish markets DORA + SPACE as their differentiator. Adding SPACE alongside your existing DORA makes Eng Intelligence truly comprehensive.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Beats:</strong> Every tool except Jellyfish</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PHASE 4: SAAS ============ -->
+  <div id="phase-p4" class="phase-content">
+    <div class="phase-header">
+      <div>
+        <h2>v16 · SaaS-Ready Architecture</h2>
+        <div style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Architect for multi-tenancy and self-service. From internal tool to product.</div>
+      </div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><strong>Duration:</strong> 14 weeks</div>
+        <div class="phase-meta-item"><strong>Squad:</strong> Full team</div>
+        <div class="phase-meta-item"><strong>Theme:</strong> Productization</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Multi-Tenancy (RLS)</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-infra">Infra</span></div></div>
+        <div class="feat-desc">Complete the multi-org foundation (V71–V72) with PostgreSQL Row-Level Security policies across all 78+ entities. Tenant context injection in Spring Security filter chain. Data isolation verification suite. Migration path for existing single-tenant data.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Multi-tenancy is the technical gate to SaaS. RLS is the right pattern — schema-per-tenant is overkill at this stage. Your V71–V72 migrations laid the groundwork. This is the single biggest architectural investment in the roadmap.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 6 weeks</span><span><strong>Risk:</strong> High — touches every entity</span><span><strong>Impact:</strong> Unlocks SaaS model</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Self-Service Onboarding</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-ux">UX</span></div></div>
+        <div class="feat-desc">Guided setup wizard: org creation → Jira connection → board selection → resource import → first dashboard. Reduce time-to-value from hours to minutes. In-app tours (TourConfig already exists) for each major module.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>No SaaS product succeeds without self-service onboarding. You already have TourConfig infrastructure. The wizard connects existing pieces (Jira creds, board mapping, resource mapping) into a guided flow rather than hunting through Admin Settings tabs.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 3 weeks</span><span><strong>Impact:</strong> Trial → paid conversion</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Report Template Marketplace</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-moat">Moat</span></div></div>
+        <div class="feat-desc">Allow orgs to export, share, and import Dashboard Builder configurations and custom report layouts. Start with curated templates (CTO Executive, Sprint Review, Quarterly Business Review). User-contributed templates follow.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>You have 39+ reports and a custom Dashboard Builder. A template marketplace creates network effects — each new org gets value from templates built by others. This is the kind of flywheel that turns a tool into a platform.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Impact:</strong> Network effects</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">SSO / SAML + SCIM</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-security">Security</span></div></div>
+        <div class="feat-desc">SAML 2.0 SSO for enterprise identity providers (Okta, Azure AD, OneLogin). SCIM provisioning for automatic user creation/deactivation from IdP. Required for any enterprise SaaS deal.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Enterprise buyers won't create local accounts. SSO + SCIM is non-negotiable for B2B SaaS above 50 seats. Your 4-tier RBAC is already mature — SSO is the identity layer on top.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Impact:</strong> Enterprise procurement gate</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Usage Analytics & Metering</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span></div></div>
+        <div class="feat-desc">Track feature usage per org: page views, AI queries, Jira syncs, API calls. Build internal admin dashboard for health monitoring. Foundation for usage-based pricing tiers.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>You can't price a SaaS product without usage data. Start collecting now so by the time you launch externally, you have months of baseline data to inform pricing and packaging decisions.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 1.5 weeks</span><span><strong>Impact:</strong> Pricing intelligence</span></div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-top"><span class="feat-title">Audit-Ready Compliance (SOC 2 prep)</span><div class="feat-tags"><span class="tag tag-saas">SaaS</span><span class="tag tag-security">Security</span></div></div>
+        <div class="feat-desc">Extend AuditLog to cover all data mutations. Add data export/deletion for GDPR. Encrypt sensitive fields at rest. Document security architecture. Prepare for SOC 2 Type I assessment.</div>
+        <div class="feat-why"><strong>Why now:</strong><p>Your AuditLog table exists but completeness isn't guaranteed across 50+ controllers. SOC 2 is the enterprise trust badge — starting the prep work in v16 positions you for certification 6 months later.</p></div>
+        <div class="feat-meta"><span><strong>Effort:</strong> 2 weeks</span><span><strong>Impact:</strong> Enterprise trust</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MOAT STRATEGY ============ -->
+  <div id="phase-moat" class="phase-content">
+    <div class="moat-section">
+      <h2>The Moat Strategy: Why No One Can Catch You</h2>
+      <p style="color:var(--muted);margin-bottom:24px;font-size:0.9rem;">Portfolio Planner's defensibility isn't any single feature — it's the combination. Here are the 5 moat layers and how each phase deepens them.</p>
+      <div class="moat-grid">
+        <div class="moat-item">
+          <h4 style="color:var(--gold)">1. Data Gravity</h4>
+          <p>Jira sync (20+ entities), resource data, financials, Git analytics, and AI conversation history create a data flywheel. The more you use it, the harder it is to leave. v14 adds AI proactive insights that get smarter over time.</p>
+          <div class="moat-competitors">Competitors can't replicate: Your NLP self-learning system improves with every query. Jellyfish has analytics but no resource/project context. Planview has portfolio but no Jira depth.</div>
+        </div>
+        <div class="moat-item">
+          <h4 style="color:var(--gold)">2. Cross-Domain Intelligence</h4>
+          <p>No tool connects portfolio health ↔ resource capacity ↔ Jira delivery ↔ financial intelligence ↔ Git metrics in a single query. Your AI assistant can answer "Which POD is most cost-effective per story point?" because it has all the data.</p>
+          <div class="moat-competitors">To replicate: Competitor would need Jira + Tempo + Jellyfish + Planview + custom glue code. That's $80–200/user/month and 6 months of integration work.</div>
+        </div>
+        <div class="moat-item">
+          <h4 style="color:var(--gold)">3. AI-Native Architecture</h4>
+          <p>pgvector embeddings, self-learning patterns, SSE streaming, tool catalog routing — this isn't a chatbot bolted on. v14 expands to proactive insights and AI impact measurement. v15 adds SPACE framework. Each version makes the AI more valuable.</p>
+          <div class="moat-competitors">Competitors adding AI: Wrike (surface-level), Smartsheet (formula assist), Monday (automations). None have semantic search over portfolio data or self-learning from user feedback.</div>
+        </div>
+        <div class="moat-item">
+          <h4 style="color:var(--gold)">4. Scenario Simulation Engine</h4>
+          <p>Named scenarios with isolated overrides, timeline simulation, and what-if analysis — without corrupting live data. v14 upgrades this to a visual drag-on-Gantt experience that makes planning feel intuitive.</p>
+          <div class="moat-competitors">Planview has this at $45+/user. No mid-market tool (Monday, Asana, Wrike, Shortcut) offers it. Your simulation engine + AI = "show me what happens if we delay Project X and reassign 2 developers."</div>
+        </div>
+        <div class="moat-item">
+          <h4 style="color:var(--gold)">5. Engineering-Specific Financial Intelligence</h4>
+          <p>CapEx/OpEx at the Jira issue level. Cost per story point per POD. Fully loaded engineer cost attribution. Software capitalization automation (v14). This is CFO-grade intelligence built for engineering orgs.</p>
+          <div class="moat-competitors">Jellyfish charges premium for software capitalization. Kantata does PS financials but not engineering. Tempo does cost tracking but not portfolio-level intelligence. You're the only one that connects all three.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline visualization -->
+    <div class="timeline-section">
+      <h2>12-Month Roadmap Timeline</h2>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot" style="background:var(--red)"></div><div class="tl-card"><div class="tl-date">Weeks 1–8 · v13</div><h4>Foundation & Security</h4><p>JWT cookies, test foundation, feature flags, email delivery, Cmd+K palette, empty states</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--gold)"></div><div class="tl-card"><div class="tl-date">Weeks 8–18 · v14</div><h4>Widen the Moat</h4><p>AI proactive insights, visual Gantt simulator, AI impact dashboard, software capitalization, Azure Boards, Kanban upgrade, inline Capacity Hub, financial trends</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--accent)"></div><div class="tl-card"><div class="tl-date">Weeks 18–30 · v15</div><h4>Scale & Collaboration</h4><p>WebSocket real-time, responsive mobile, GitHub integration, Slack/Teams, Public API v1, SPACE metrics</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--green)"></div><div class="tl-card"><div class="tl-date">Weeks 30–44 · v16</div><h4>SaaS-Ready</h4><p>Multi-tenancy RLS, self-service onboarding, report marketplace, SSO/SAML, usage metering, SOC 2 prep</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ADMIN & DEEP PAGES REVIEW ============ -->
+  <div id="phase-admin" class="phase-content">
+    <div class="obs-section">
+      <h2>Admin Settings & Deep Page Review</h2>
+      <p style="color:var(--muted);margin-bottom:24px;font-size:0.9rem;">Full walkthrough of every accessible page beyond the initial review. Pages requiring live Jira data (DORA Metrics, Jira Analytics, Dashboard Builder, Releases, Gantt, Dependency Map, Budget & CapEx, Worklog, etc.) were noted but couldn't render without backend connection.</p>
+    </div>
+
+    <div class="admin-obs-grid">
+      <div class="admin-card">
+        <h4>Admin Settings — 8 Tabs, Deeply Configurable</h4>
+        <p><strong>Branding:</strong> Org name, slug, logo upload, live-preview color picker for primary/secondary accent — this is SaaS-ready white-labeling. Smart.<br><br><strong>Workspace:</strong> Timezone, fiscal year start, feature flags (AI, Ideas, Risk, OKR, Financials), working hours per month with CSV import/export. The 12-month working hours table is enterprise-grade.<br><br><strong>Users & Access:</strong> User management table + Page Permissions matrix — per-role toggle for every page, organized by nav group. I counted 65+ permission toggles. Legacy page redirects are thoughtfully handled.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> This is one of the most comprehensive admin panels I've seen in a mid-market tool. The page-level RBAC alone puts you ahead of Monday, Asana, and Wrike. Missing: bulk user import, role cloning, permission templates.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Reference Data — T-Shirt Sizes, Effort Patterns, Cost Rates</h4>
+        <p><strong>T-Shirt Sizes (12):</strong> From 150hrs to 35,000hrs (Program). Fully editable with CSV import/export.<br><br><strong>Effort Patterns (12):</strong> Monthly weight distributions (Flat, Ramp Up, Ramp Down, QA Late Peak, BSA Early, Tech Lead Light, etc.) — this is the kind of planning intelligence that Tempo and Planview charge premium for.<br><br><strong>Cost Rates (8):</strong> Role × Location hourly rates (BSA India $45, Developer US $69.61, Tech Lead US $87.50). Feeds into Budget & CapEx calculations.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Effort patterns are a genuine differentiator. No mid-market tool lets you define 12 monthly weight curves per role/project. This is how PP produces realistic capacity plans instead of flat-line assumptions. Recommend: visual curve preview when editing patterns.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Integrations — Jira + Azure DevOps</h4>
+        <p><strong>Jira Config:</strong> Credentials, board mapping to PODs, support boards, release mapping, resource mapping — 5 sub-sections covering the full Jira connection surface.<br><br><strong>Azure DevOps:</strong> Org URL, project, PAT, repositories + Git Intelligence. Currently shows "not connected" state.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Jira integration depth is excellent (boards, releases, resources, support queues all mapped). Missing: connection health monitoring, sync status indicators, webhook vs polling configuration, error recovery guidance.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Notifications — Hybrid In-App + Email</h4>
+        <p><strong>In-App Bell:</strong> Live, monitors Blocker/Critical/Highest from Jira support boards. Dismissed alerts stored in localStorage (per-device, not synced).<br><br><strong>Email Alerts:</strong> 6 toggle types (project overdue, budget overrun, capacity threshold, new risk, support staleness, AI weekly digest) — all visible but "SMTP not configured."</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> The notification taxonomy is right — these are the alerts that matter. LocalStorage for dismissals is fragile (clears on browser reset). Move to server-side dismissal state. SMTP setup is confirmed as a v13 priority.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>AI & NLP + System</h4>
+        <p><strong>AI & NLP:</strong> Links to NLP Configuration (provider/model/strategy) and NLP Optimizer (low-confidence pattern training). Clean separation of config vs training.<br><br><strong>System:</strong> Audit Log, Error Log, Feedback Hub, Sidebar Order, Database Browser, Timeline Settings — 6 admin tools. Database Browser for raw table access is a power feature.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Sidebar Order customization is unique — no competitor offers this level of nav personalization. Database Browser is bold (admin-only raw SQL). Recommend: add a "System Health" dashboard showing API response times, Jira sync status, queue depths.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Resources — 79 People, Rich Metadata</h4>
+        <p>Full resource registry: Name, Jira User mapping, Role, Location, Active status, Capacity counting toggle, Home POD, FTE%. Filterable by POD (7 PODs), Role (Dev/QA/BSA/Tech Lead), Location (US/India). Paginated (25/page), CSV import/export, saved views.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Solid data entry. Missing: profile cards on click (show allocation history, project assignments, performance snapshot), bulk editing for role/POD reassignment, resource org chart visualization.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Availability — Monthly Hours Grid</h4>
+        <p>79 resources × 12 months grid showing net available hours. Summary cards: 146,572h gross, −6,088h holidays, −264h leave = 140,220h net. Color-coded: blue for holidays, amber for leave, orange for over-allocation. Hover badges show breakdown.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> This is the planning backbone — no competitor surfaces net availability at this granularity. The deduction badges (holiday + leave = net) are elegant. Recommend: freeze first column on horizontal scroll, add sparkline trend per resource.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Leave & Holidays — Multi-Location Calendar</h4>
+        <p><strong>Leave Management:</strong> 11 entries in April 2026 totaling 264hrs. Per-resource, per-month leave hours with type classification.<br><br><strong>Holiday Calendar:</strong> US + India holidays across the year, filterable by location flag. Grouped by month with deduction hours calculated.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Multi-location holiday support (US/India) is production-ready and feeds cleanly into Availability deductions. Missing: PTO balance tracking, leave approval workflow, calendar sync (Google/Outlook).</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Sprint Planner — Capacity vs Demand Analysis</h4>
+        <p>Per-POD sprint cards showing: project bandwidth, plan demand, Jira sprint load, available hours, utilization %. Includes planned project table (project, priority, status, sprint hours, target release). Sprint date range and business days calculated.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> This is genuinely excellent. "353 hrs of spare capacity — consider pulling in backlog stories" is actionable guidance that scrum masters love. Missing: drag-to-assign from backlog, sprint-over-sprint velocity trend, carry-over detection.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Strategic Calendar — Unified Timeline</h4>
+        <p>Full calendar view overlaying sprints, releases, code freezes, and holidays in a single month view. Toggle layers individually. Shows sprint windows, requirement lock dates, and release milestones on the same canvas.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> The unified overlay is powerful — seeing sprint boundaries alongside code freezes alongside holidays prevents scheduling conflicts. Recommend: week view option, team capacity overlay (color-code days by available headcount), export to ICS.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Project Templates — Reusable Blueprints</h4>
+        <p>6 templates with starring, categories (4), and "most used" tracking. Templates define pre-set phases and effort patterns. "Standard Feature Release" and "Quick Fix" are starred defaults.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> Template marketplace potential (v16) starts here. Missing: template versioning, clone-and-customize flow, effort pattern preview in template card, usage analytics per template.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Overrides — Temporary Resource Reallocation</h4>
+        <p>Table of temporary POD reassignments: resource, target POD, date range, allocation %, FTE, notes. Example: "Greg Andresen — 50% Epic (home) + 50% Integrations." CSV import/export supported.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> This is how real capacity planning works — people split across PODs temporarily. Most tools force single-team assignment. Overrides with time-bounded allocation % is a unique strength. Recommend: visual timeline view of overrides, conflict detection when total allocation exceeds 100%.</div>
+      </div>
+
+      <div class="admin-card">
+        <h4>Inbox — Live Alert Hub</h4>
+        <p>24 active alerts with category filters (All, Jira, Portfolio). 23 warnings including P0 project alerts, support queue items. Dismiss-to-clear pattern with condition-based re-triggering.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> The "won't come back until condition changes" pattern is smart — prevents alert fatigue. Missing: severity grouping (Critical/Warning/Info), bulk dismiss, snooze for X hours, deep-link to the source page from each alert.</div>
+      </div>
+
+      <div class="admin-card" style="border:1px solid var(--orange);">
+        <h4 style="color:var(--orange);">Pages That Didn't Render (Need Backend Data)</h4>
+        <p>These pages returned blank without active Jira/backend connection: DORA Metrics, Delivery Predictability, Jira Analytics, Dashboard Builder, Releases, Release Notes, Jira Actuals, Support Queue, Worklog, Budget & CapEx, Gantt & Dependencies, Dependency Map, Scenario Simulator, Smart Notifications, Project Signals, Portfolio Timeline, Resource Performance, Resource Intelligence, Jira Portfolio Sync, Bookings.</p>
+        <div class="admin-verdict"><strong>Verdict:</strong> 20 pages rendered blank — this is both a data dependency issue and a UX gap. Every page should have a graceful empty state showing what it would look like with data + clear CTA to connect the data source. This reinforces the v13 "Graceful Empty States" feature priority.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UI / DESIGN SYSTEM ============ -->
+  <div id="phase-design" class="phase-content">
+    <div class="obs-section">
+      <h2>UI / Design System Recommendations</h2>
+      <p style="color:var(--muted);margin-bottom:8px;font-size:0.9rem;">How to make Portfolio Planner visually rich, modern, and usable — from design system choice to specific component upgrades.</p>
+    </div>
+
+    <!-- Current State Assessment -->
+    <div class="ds-section">
+      <h3>Current Design State</h3>
+      <p>Portfolio Planner currently uses <strong>Mantine v7</strong> as its component library with a custom theme (deepBlue, aqua, legacyBlue color tokens). The foundation is solid — Mantine is a well-maintained React library with accessibility built in. However, the app's visual richness doesn't yet match the sophistication of its data model. Here's what to keep, what to upgrade, and what to add.</p>
+    </div>
+
+    <!-- Design System Recommendation -->
+    <div class="ds-section">
+      <h3>Design System: Keep Mantine — But Layer These On Top</h3>
+      <div class="ds-comparison">
+        <div class="ds-compare-item">
+          <h4><span class="ds-badge ds-badge-current">Current</span> Mantine v7</h4>
+          <p style="font-size:0.82rem;color:var(--muted);">Solid component primitives (120+ components), dark mode, good TypeScript support, accessible by default. Your custom theme tokens (deepBlue/aqua) already give it identity. Mantine's DataTable, Tabs, Modals, and Forms power the core experience.</p>
+          <div class="verdict">Keep Mantine as the foundation — switching to shadcn/ui or Chakra would be 3+ months of rewrite with no user-facing value.</div>
+        </div>
+        <div class="ds-compare-item">
+          <h4><span class="ds-badge ds-badge-rec">Recommended</span> Layered Enrichment Strategy</h4>
+          <p style="font-size:0.82rem;color:var(--muted);">Keep Mantine for primitives. Add specialized libraries for the areas where Mantine falls short: data visualization, drag interactions, animation, and data grids. This gets you 80% of the visual richness of tools like Linear and Monday without a rewrite.</p>
+          <div class="verdict">Cost: ~3 weeks of design system investment across v13–v14. ROI: dramatically richer UI that competes with best-in-class PM tools.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Library Recommendations -->
+    <div class="ds-section">
+      <h3>Recommended Libraries to Add</h3>
+      <div class="ds-grid">
+        <div class="ds-card priority-high">
+          <h4>Recharts → Replace Chart.js</h4>
+          <p>React-native charting that plays perfectly with Mantine's theme tokens. Declarative API, responsive, animated by default. Use for: utilization sparklines, capacity trend charts, DORA metric gauges, financial trend lines. Chart.js in React always feels like a wrapper — Recharts feels native.</p>
+          <div class="ds-lib">npm: recharts · React-native · 3.5M weekly downloads</div>
+        </div>
+        <div class="ds-card priority-high">
+          <h4>@dnd-kit/core — Drag & Drop</h4>
+          <p>The modern React DnD library. Use for: Kanban board (Project Board view), sidebar reordering, dashboard widget rearrangement, Sprint Planner drag-to-assign, Gantt bar dragging. Accessible, touch-friendly, and composable. This single library unlocks 5+ features in the roadmap.</p>
+          <div class="ds-lib">npm: @dnd-kit/core + @dnd-kit/sortable · React 18 compatible</div>
+        </div>
+        <div class="ds-card priority-high">
+          <h4>Framer Motion — Micro-Animations</h4>
+          <p>Add life to the UI: page transitions, card expand/collapse, sidebar toggle, toast notifications, modal entrances, loading skeletons. The difference between "functional" and "feels premium" is 200ms of thoughtful animation. Linear and Notion both use Framer Motion extensively.</p>
+          <div class="ds-lib">npm: framer-motion · 5M weekly downloads · pairs with Mantine</div>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>TanStack Table v8 — Data Grid Upgrade</h4>
+          <p>Replace manual table implementations with TanStack's headless table. Get for free: column resizing, pinning, virtualization (critical for 79-resource grids), multi-sort, column filters, row selection, row grouping. Style with Mantine's Table primitives for consistent look.</p>
+          <div class="ds-lib">npm: @tanstack/react-table · Headless, style-agnostic</div>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>React Flow — Dependency Map & Org Charts</h4>
+          <p>For the Dependency Map, cross-POD dependency visualization, and future resource org charts. Interactive node-and-edge graphs with zoom, pan, minimap. Far richer than rendering static SVG or canvas. The current Dependency Map page needs this.</p>
+          <div class="ds-lib">npm: reactflow · Purpose-built for node graphs</div>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>@visx/visx — Custom Visualizations</h4>
+          <p>For the 10% of charts that Recharts can't handle: heatmaps (utilization matrix), treemaps (budget allocation), sankey diagrams (resource flow between PODs), custom gauges (DORA ratings). Low-level D3 primitives wrapped in React components.</p>
+          <div class="ds-lib">npm: @visx/visx · By Airbnb · D3 + React fusion</div>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>Gantt — bryntum or frappe-gantt</h4>
+          <p>For the Gantt & Dependencies page and Timeline Simulator visual upgrade. Bryntum is premium ($) but production-grade. Frappe-gantt is open-source and covers 80% of needs. Critical for the v14 "Visual Gantt Simulator" feature.</p>
+          <div class="ds-lib">frappe-gantt (free) or @bryntum/gantt (commercial license)</div>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>cmdk — Command Palette</h4>
+          <p>The library behind Linear's and Vercel's Cmd+K. Composable, accessible, keyboard-first. Pairs with Mantine's dialog/overlay. Handles search, fuzzy matching, keyboard navigation, and grouped results. Supports the v13 Command Palette feature.</p>
+          <div class="ds-lib">npm: cmdk · By Paco · Used by Linear, Vercel, Raycast</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Polish Playbook -->
+    <div class="ds-section">
+      <h3>Visual Polish Playbook — 10 High-Impact Changes</h3>
+      <p>These are CSS/component-level changes that dramatically improve perceived quality without architectural work.</p>
+      <div class="ds-grid">
+        <div class="ds-card priority-high">
+          <h4>1. Loading Skeletons Everywhere</h4>
+          <p>Replace blank-while-loading with shimmer skeletons. Mantine has <code>Skeleton</code> built in. Apply to: every table, every card grid, every chart area. This alone fixes the "20 pages render blank" problem for users with slow connections.</p>
+        </div>
+        <div class="ds-card priority-high">
+          <h4>2. Status Badges with Color + Icon</h4>
+          <p>Current project status badges are text-only. Add colored dots + subtle background tint: 🟢 Active, 🟡 At Risk, 🔴 Blocked, ⚪ On Hold. Use Mantine Badge with <code>leftSection</code> for consistent treatment across all tables and cards.</p>
+        </div>
+        <div class="ds-card priority-high">
+          <h4>3. Avatar Stacks for Team Visibility</h4>
+          <p>Replace text lists of owners with stacked avatar circles (initials or photos). Show on: project cards, POD headers, sprint planner cards. Mantine's <code>Avatar.Group</code> with tooltip on hover for names. Makes team composition instantly scannable.</p>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>4. Sparkline Trends on Every KPI</h4>
+          <p>Every number that changes over time should have a tiny trend line next to it. Utilization: ↗ 85% (with 6-month sparkline). Budget burn: ↘ $1.2M. Use Recharts <code>Sparkline</code> or a tiny inline SVG. This transforms dashboards from snapshots to stories.</p>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>5. Page Transitions & Content Fade-In</h4>
+          <p>Add <code>framer-motion</code> <code>AnimatePresence</code> to route changes. Cards fade up on mount. Tab content cross-fades. Sidebar collapse animates. Keep durations short (150–250ms). The goal isn't flashy — it's removing the "jarring content swap" feel.</p>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>6. Contextual Empty States with Illustration</h4>
+          <p>Each empty state gets: a subtle illustration (use Undraw or custom SVG), a 1-line explanation, and a primary CTA button. "No projects yet → Create your first project." "Jira not connected → Set up Jira integration." Template this as a reusable <code>EmptyState</code> component.</p>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>7. Breadcrumb + Page Header Consistency</h4>
+          <p>Standardize every page to: Breadcrumb → Page title (h1) → Description (muted subtitle) → Action buttons (right-aligned). Currently some pages have this, others don't. Create a <code>PageHeader</code> component with consistent spacing, divider, and action slot.</p>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>8. Sidebar Visual Refresh</h4>
+          <p>Add: active page indicator (left accent border, not just highlight), section divider lines between nav groups, collapse memory (persist open/closed sections), notification badges on items with alerts (Inbox badge count, Support Queue count).</p>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>9. Data Density Toggle</h4>
+          <p>Add a compact/comfortable/spacious toggle for data-heavy pages (Resources, Availability, Projects). Compact mode tightens row height and reduces padding — power users love this. Comfortable is default. Persist preference in user settings.</p>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>10. Dark/Light Mode Toggle</h4>
+          <p>Mantine has built-in dark mode support and your CSS variables are already structured for it. Add a theme toggle in the user menu. The deepBlue/aqua palette works in both modes. Test the 8 most-used pages in light mode and adjust contrast ratios.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Design System Architecture -->
+    <div class="ds-section">
+      <h3>Design System Architecture — How to Organize It</h3>
+      <div class="ds-grid">
+        <div class="ds-card">
+          <h4>Token Layer (already started)</h4>
+          <p>Your Mantine theme defines deepBlue, aqua, legacyBlue as custom colors with 10 shade scales each. Extend this with semantic tokens: <code>--success</code>, <code>--warning</code>, <code>--danger</code>, <code>--info</code> mapped to your palette. Add spacing scale tokens (4/8/12/16/24/32/48) for consistent layout.</p>
+          <div class="ds-lib">File: src/theme.ts → extend MantineThemeOverride</div>
+        </div>
+        <div class="ds-card">
+          <h4>Component Library (build incrementally)</h4>
+          <p>Create a <code>src/components/ui/</code> folder with shared components that wrap Mantine primitives with your design decisions baked in: <code>PageHeader</code>, <code>EmptyState</code>, <code>StatusBadge</code>, <code>KpiCard</code>, <code>SparklineMetric</code>, <code>AvatarStack</code>, <code>DataTable</code> (TanStack wrapper). Each component = 1 file, typed props, Storybook story.</p>
+          <div class="ds-lib">Pattern: Wrapper components, not a fork of Mantine</div>
+        </div>
+        <div class="ds-card">
+          <h4>Storybook for Component Docs</h4>
+          <p>Add Storybook to document your shared components. Each component gets: visual preview, prop documentation, variants (sizes, states), dark mode preview, and usage examples. This becomes the living design system for your team — faster than Figma for developers.</p>
+          <div class="ds-lib">npm: @storybook/react-vite · Vite-native, fast HMR</div>
+        </div>
+        <div class="ds-card">
+          <h4>Icon System — Lucide or Tabler</h4>
+          <p>Mantine uses Tabler Icons by default. Stick with it for consistency — 4,500+ icons, MIT licensed, designed for Mantine. Avoid mixing icon libraries. Create an <code>Icon</code> wrapper that enforces consistent sizing (16/20/24px) and color inheritance.</p>
+          <div class="ds-lib">npm: @tabler/icons-react (already in Mantine's ecosystem)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Competitive Visual Benchmarks -->
+    <div class="ds-section">
+      <h3>Competitive Visual Benchmarks — Where to Aim</h3>
+      <div class="ds-grid">
+        <div class="ds-card priority-high">
+          <h4>Linear — The Gold Standard</h4>
+          <p><strong>What to steal:</strong> Cmd+K command palette, keyboard-first navigation, subtle animations on every interaction, monochromatic icon system, ultra-clean card layouts, smooth page transitions. Linear proves that enterprise tools can feel like consumer apps.</p>
+          <div class="ds-lib">Priority: Adopt Cmd+K, animation philosophy, card design language</div>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>Monday.com — Rich Data Visualization</h4>
+          <p><strong>What to steal:</strong> Color-coded status columns, timeline bars inline with data rows, drag-to-assign interactions, dashboard widget customization (drag grid), celebration animations on completion. Monday proves that color = information density.</p>
+          <div class="ds-lib">Priority: Adopt inline timeline bars in Project table, celebration micro-interactions</div>
+        </div>
+        <div class="ds-card priority-mid">
+          <h4>Notion — Flexible Layout</h4>
+          <p><strong>What to steal:</strong> Slash-command content insertion, toggle blocks for progressive disclosure, database views (table/board/calendar/gallery toggles), breadcrumb navigation, minimal chrome. Notion proves that flexibility > feature count.</p>
+          <div class="ds-lib">Priority: Adopt view-switching patterns, progressive disclosure for complex pages</div>
+        </div>
+        <div class="ds-card priority-low">
+          <h4>Figma — Collaboration UX</h4>
+          <p><strong>What to steal:</strong> Multiplayer cursors, real-time presence indicators, inline commenting, version history with named snapshots. Figma proves that collaboration features make tools stickier than feature features.</p>
+          <div class="ds-lib">Priority: v15 — real-time presence, inline commenting on portfolio items</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Implementation Timeline -->
+    <div class="ds-section">
+      <h3>Implementation Timeline — When to Add What</h3>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="text-align:left;padding:10px;color:var(--muted);">Library / Change</th>
+              <th style="text-align:center;padding:10px;color:var(--red);">v13</th>
+              <th style="text-align:center;padding:10px;color:var(--gold);">v14</th>
+              <th style="text-align:center;padding:10px;color:var(--accent);">v15</th>
+              <th style="text-align:center;padding:10px;color:var(--green);">v16</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">cmdk (Command Palette)</td>
+              <td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">framer-motion (animations)</td>
+              <td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">expand</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Loading skeletons</td>
+              <td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">StatusBadge + AvatarStack + PageHeader</td>
+              <td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Recharts (replace Chart.js)</td>
+              <td style="text-align:center;padding:10px;">start</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">@dnd-kit (drag & drop)</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">TanStack Table v8</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">frappe-gantt / Bryntum</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">React Flow (dependency graphs)</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">@visx (custom viz: heatmaps, treemaps)</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">start</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Responsive breakpoints + PWA</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Storybook</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">setup</td><td style="text-align:center;padding:10px;">expand</td><td style="text-align:center;padding:10px;">✅</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Dark/Light mode toggle</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;">Data density toggle</td>
+              <td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">—</td><td style="text-align:center;padding:10px;">✅</td><td style="text-align:center;padding:10px;">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="ds-section" style="border-color:rgba(0,206,201,.25);">
+      <h3 style="color:var(--accent2);">TL;DR — The Design System Strategy</h3>
+      <p><strong>Keep Mantine v7</strong> as the foundation — it's the right choice and switching would cost months with zero user value.</p>
+      <p><strong>Add 8 specialized libraries</strong> incrementally across v13–v15: cmdk, framer-motion, Recharts, @dnd-kit, TanStack Table, React Flow, @visx, and a Gantt lib. Total bundle cost: ~150KB gzipped. Each unlocks multiple roadmap features.</p>
+      <p><strong>Build 6 shared components</strong> (PageHeader, EmptyState, StatusBadge, KpiCard, SparklineMetric, AvatarStack) that enforce consistency. Document in Storybook starting v14.</p>
+      <p><strong>Apply 10 visual polish changes</strong> — skeletons, animations, badges, sparklines, transitions — that transform the app from "functional internal tool" to "premium SaaS product." Most are CSS/component-level, not architectural.</p>
+      <p style="color:var(--gold);font-weight:600;margin-top:12px;">The goal: Make Portfolio Planner feel like Linear built a PPM tool. The data model is already world-class — the UI just needs to match.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    Portfolio Planner Roadmap · Built from PRD v12.5 analysis + full UI review (30+ pages) + competitive landscape of 14 tools · April 2026
+  </div>
+</div>
+
+<script>
+function showPhase(id) {
+  document.querySelectorAll('.phase-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('phase-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

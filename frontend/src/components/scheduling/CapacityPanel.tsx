@@ -277,7 +277,7 @@ function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boole
               {Math.ceil(a.effectiveDays)}d
             </Text>
           </Group>
-          <Text size={10} c="dimmed" mt={2}>
+          <Text size="xs" c="dimmed" mt={2}>
             {Math.ceil(a.sequentialDays)}d sequential + {Math.ceil(a.parallelDays)}d parallel ({a.resourceCount} people)
           </Text>
         </Box>
@@ -300,19 +300,19 @@ function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boole
               <Text size="xs" fw={600}>{a.availableDays}d</Text>
             </Group>
             {a.impossible ? (
-              <Text size={10} c="red" fw={600} mt={2}>
+              <Text size="xs" c="red" fw={600} mt={2}>
                 Sequential work ({Math.ceil(a.sequentialDays)}d) exceeds deadline — adding people won't help
               </Text>
             ) : !a.feasible && a.requiredResources ? (
               <Group gap={4} mt={2}>
                 <IconTrendingUp size={11} color="#e8590c" />
-                <Text size={10} c="orange" fw={600}>
+                <Text size="xs" c="orange" fw={600}>
                   Need {a.requiredResources} {a.phase === 'DEV' ? 'dev' : a.phase === 'QA' ? 'QA' : 'resource'}{a.requiredResources > 1 ? 's' : ''} to meet deadline
                   {a.requiredResources > a.resourceCount && ` (+${a.requiredResources - a.resourceCount})`}
                 </Text>
               </Group>
             ) : (
-              <Text size={10} c="green" mt={2}>
+              <Text size="xs" c="green" mt={2}>
                 {Math.ceil(a.availableDays - a.effectiveDays)}d buffer remaining
               </Text>
             )}

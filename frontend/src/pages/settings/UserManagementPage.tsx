@@ -7,11 +7,13 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
  IconUserPlus, IconPencil, IconTrash, IconShield, IconAlertCircle, IconKey,
+ IconLock, IconPlus, IconColorSwatch,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { FONT_FAMILY } from '../../brandTokens';
+import { useRoles, useCreateRole, useDeleteRole, rolesToSelectOptions, type RoleDefinition } from '../../api/roles';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -57,10 +59,15 @@ const PAGE_KEYS = [
  { key: 'availability',     label: 'Availability',        group: 'People' },
  { key: 'overrides',        label: 'Overrides',           group: 'People' },
  { key: 'resource_bookings',label: 'Resource Bookings',   group: 'People' },
- { key: 'capacity_hub',     label: 'Capacity Hub',        group: 'People' },
- { key: 'leave_hub',        label: 'Leave & Holidays',    group: 'People' },
+ { key: 'capacity_hub',      label: 'Capacity Hub',        group: 'People' },
+ { key: 'leave_hub',         label: 'Leave & Holidays',    group: 'People' },
+ { key: 'capacity_forecast', label: 'Capacity Forecast',   group: 'People' },
+ { key: 'skills_matrix',     label: 'Skills Matrix',       group: 'People' },
+ { key: 'team_pulse',        label: 'Team Pulse',          group: 'People' },
  // ── Calendar
  { key: 'calendar_hub',     label: 'Strategic Calendar',  group: 'Calendar' },
+ { key: 'sprint_calendar',  label: 'Sprint Calendar',     group: 'Calendar' },
+ { key: 'release_calendar', label: 'Release Calendar',    group: 'Calendar' },
  { key: 'sprint_planner',   label: 'Sprint Planner',      group: 'Calendar' },
  { key: 'project_templates',label: 'Project Templates',   group: 'Calendar' },
  // ── Delivery
@@ -72,6 +79,7 @@ const PAGE_KEYS = [
  { key: 'jira_worklog',  label: 'Worklog',           group: 'Delivery' },
  { key: 'budget_capex',  label: 'Budget & CapEx',    group: 'Delivery' },
  // ── Analytics
+ { key: 'exec_summary',               label: 'Executive Summary',      group: 'Analytics' },
  { key: 'portfolio_health_dashboard', label: 'Portfolio Health',       group: 'Analytics' },
  { key: 'project_health',             label: 'Project Health',         group: 'Analytics' },
  { key: 'dependency_map',             label: 'Dependency Map',         group: 'Analytics' },
@@ -84,6 +92,9 @@ const PAGE_KEYS = [
  { key: 'engineering_intelligence',    label: 'Eng. Intelligence',      group: 'Analytics' },
  { key: 'gantt_dependencies',         label: 'Gantt & Dependencies',   group: 'Analytics' },
  { key: 'delivery_predictability',    label: 'Delivery Predictability',group: 'Analytics' },
+ { key: 'sprint_retro',               label: 'Sprint Retro',           group: 'Analytics' },
+ { key: 'risk_heatmap',               label: 'Risk Heatmap',           group: 'Analytics' },
+ { key: 'status_updates',             label: 'Status Updates Feed',    group: 'Analytics' },
  { key: 'smart_notifications',        label: 'Smart Notifications',    group: 'Analytics' },
  { key: 'jira_portfolio_sync',        label: 'Jira Portfolio Sync',    group: 'Analytics' },
  { key: 'resource_intelligence',      label: 'Resource Intelligence',  group: 'Analytics' },
@@ -98,20 +109,22 @@ const PAGE_KEYS = [
  { key: 'project_pod_matrix',         label: 'Project-POD Matrix',     group: 'Analytics' },
  { key: 'workload_chart',             label: 'Workload Chart',         group: 'Analytics' },
  // ── Admin
- { key: 'org_settings',          label: 'Admin Settings',   group: 'Admin' },
- { key: 'azure_devops_settings', label: 'Azure DevOps',     group: 'Admin' },
- { key: 'settings',              label: 'Settings (sub)',   group: 'Admin' },
- { key: 'jira_resource_mapping', label: 'Resource Mapping', group: 'Admin' },
- { key: 'jira_release_mapping',  label: 'Release Mapping',  group: 'Admin' },
- { key: 'sidebar_order',         label: 'Sidebar Order',    group: 'Admin' },
- { key: 'nlp_settings',          label: 'NLP Settings',     group: 'Admin' },
- { key: 'nlp_optimizer',         label: 'NLP Optimizer',    group: 'Admin' },
- { key: 'feedback_hub',          label: 'Feedback Hub',     group: 'Admin' },
- { key: 'error_log',             label: 'Error Log',        group: 'Admin' },
+ { key: 'org_settings',          label: 'Admin Settings',         group: 'Admin' },
+ { key: 'changelog_admin',       label: 'Changelog Admin',         group: 'Admin' },
+ { key: 'custom_fields_admin',   label: 'Custom Fields Admin',     group: 'Admin' },
+ { key: 'smtp_settings',         label: 'SMTP Email Settings',    group: 'Admin' },
+ { key: 'notification_schedule', label: 'Notification Schedule',  group: 'Admin' },
+ { key: 'azure_devops_settings', label: 'Azure DevOps',           group: 'Admin' },
+ { key: 'settings',              label: 'Settings (sub)',         group: 'Admin' },
+ { key: 'jira_resource_mapping', label: 'Resource Mapping',       group: 'Admin' },
+ { key: 'jira_release_mapping',  label: 'Release Mapping',        group: 'Admin' },
+ { key: 'sidebar_order',         label: 'Sidebar Order',          group: 'Admin' },
+ { key: 'nlp_settings',          label: 'NLP Settings',           group: 'Admin' },
+ { key: 'nlp_optimizer',         label: 'NLP Optimizer',          group: 'Admin' },
+ { key: 'feedback_hub',          label: 'Feedback Hub',           group: 'Admin' },
+ { key: 'error_log',             label: 'Error Log',              group: 'Admin' },
  // ── Legacy (backward-compat only — these pages redirect to their replacements)
  { key: 'team_calendar',       label: 'Team Calendar → /calendar',          group: 'Legacy' },
- { key: 'sprint_calendar',     label: 'Sprint Calendar → /calendar',        group: 'Legacy' },
- { key: 'release_calendar',    label: 'Release Calendar → /calendar',       group: 'Legacy' },
  { key: 'holiday_calendar',    label: 'Holiday Calendar → /leave',          group: 'Legacy' },
  { key: 'leave_management',    label: 'Leave Management → /leave',          group: 'Legacy' },
  { key: 'capacity_gap',        label: 'Capacity Gap → Utilization',         group: 'Legacy' },
@@ -133,24 +146,13 @@ const PAGE_KEYS = [
  { key: 'cross_team_dependency',label: 'Team Dependencies (merged)',        group: 'Legacy' },
 ];
 
-const ROLES = ['ADMIN', 'READ_WRITE', 'READ_ONLY'];
-
-const ROLE_OPTIONS = [
- { value: 'ADMIN',      label: 'Admin' },
- { value: 'READ_WRITE', label: 'Read / Write' },
- { value: 'READ_ONLY',  label: 'Read Only' },
-];
-
-const ROLE_LABELS: Record<string, string> = {
- ADMIN:      'Admin',
- READ_WRITE: 'Read / Write',
- READ_ONLY:  'Read Only',
-};
-
-const ROLE_COLOR: Record<string, string> = {
- ADMIN:      'red',
- READ_WRITE: 'blue',
- READ_ONLY:  'gray',
+// Role constants replaced with dynamic API — see useRoles() hook below.
+// Fallback display helpers used when API data isn't loaded yet.
+const FALLBACK_ROLE_COLOR: Record<string, string> = {
+ SUPER_ADMIN: 'red',
+ ADMIN:       'orange',
+ READ_WRITE:  'blue',
+ READ_ONLY:   'gray',
 };
 
 // ── API helpers ────────────────────────────────────────────────────────────────
@@ -170,20 +172,31 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  const [editTarget, setEditTarget] = useState<UserRecord | null>(null);
  const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
 
+ // ── Roles tab state
+ const [roleModal, setRoleModal] = useState(false);
+ const [deleteRoleTarget, setDeleteRoleTarget] = useState<RoleDefinition | null>(null);
+
  // ── Permissions tab state
  const [permRole, setPermRole] = useState<string>('READ_WRITE');
 
- // ── Users data
+ // ── Data
  const { data: users = [], isLoading: loadingUsers, error: usersError } =
  useQuery({ queryKey: ['users'], queryFn: fetchUsers });
 
- // ── Permissions data
+ const { data: roles = [], isLoading: loadingRoles } = useRoles();
+
  const { data: perms, isLoading: loadingPerms, refetch: refetchPerms } =
  useQuery({
  queryKey: ['permissions', permRole],
  queryFn: () => fetchPerms(permRole),
- enabled: permRole !== 'ADMIN',
+ enabled: permRole !== 'ADMIN' && permRole !== 'SUPER_ADMIN',
  });
+
+ // Derived role helpers from API data
+ const roleByName = Object.fromEntries(roles.map(r => [r.name, r]));
+ const roleColor  = (name: string) => roleByName[name]?.color ?? FALLBACK_ROLE_COLOR[name] ?? 'gray';
+ const roleLabel  = (name: string) => roleByName[name]?.displayName ?? name;
+ const roleSelectOptions = rolesToSelectOptions(roles);
 
  // ── Mutations
  const createUser = useMutation({
@@ -215,6 +228,9 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  apiClient.put(`/users/permissions/${role}`, permsData),
  onSuccess: () => refetchPerms(),
  });
+
+ const createRole = useCreateRole();
+ const deleteRole = useDeleteRole();
 
  // ── Handlers
  function openCreate() { setEditTarget(null); setUserModal('create'); }
@@ -256,7 +272,8 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
 
  <Tabs defaultValue="users">
  <Tabs.List>
- <Tabs.Tab value="users" leftSection={<IconShield size={15} />}>Users</Tabs.Tab>
+ <Tabs.Tab value="users"       leftSection={<IconShield size={15} />}>Users</Tabs.Tab>
+ <Tabs.Tab value="roles"       leftSection={<IconColorSwatch size={15} />}>Roles</Tabs.Tab>
  <Tabs.Tab value="permissions" leftSection={<IconKey size={15} />}>Page Permissions</Tabs.Tab>
  </Tabs.List>
 
@@ -302,8 +319,8 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  </Text>
  </Table.Td>
  <Table.Td>
- <Badge color={ROLE_COLOR[u.role] ?? 'gray'} variant="light" size="sm">
- {u.role}
+ <Badge color={roleColor(u.role)} variant="light" size="sm">
+ {roleLabel(u.role)}
  </Badge>
  </Table.Td>
  <Table.Td>
@@ -346,23 +363,81 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  </Stack>
  </Tabs.Panel>
 
+ {/* ── Roles Tab ── */}
+ <Tabs.Panel value="roles" pt="md">
+ <Stack gap="md">
+ <Group justify="space-between">
+ <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+  Manage roles. System roles cannot be deleted. Custom roles inherit page permissions you configure in the Permissions tab.
+ </Text>
+ <Button size="sm" leftSection={<IconPlus size={14} />} onClick={() => setRoleModal(true)}>
+  New Role
+ </Button>
+ </Group>
+
+ {loadingRoles ? <LoadingSpinner variant="table" message="Loading roles..." /> : (
+ <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+ <Table fz="xs" highlightOnHover>
+  <Table.Thead>
+  <Table.Tr>
+   <Table.Th>Role</Table.Th>
+   <Table.Th>Name</Table.Th>
+   <Table.Th>Description</Table.Th>
+   <Table.Th>Type</Table.Th>
+   <Table.Th style={{ width: 70 }}>Actions</Table.Th>
+  </Table.Tr>
+  </Table.Thead>
+  <Table.Tbody>
+  {roles.map(r => (
+   <Table.Tr key={r.id}>
+   <Table.Td>
+    <Badge color={r.color} variant="light" size="sm">{r.name}</Badge>
+   </Table.Td>
+   <Table.Td>
+    <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{r.displayName}</Text>
+   </Table.Td>
+   <Table.Td>
+    <Text size="sm" c="dimmed">{r.description ?? '—'}</Text>
+   </Table.Td>
+   <Table.Td>
+    {r.system
+    ? <Badge size="xs" color="gray" variant="outline" leftSection={<IconLock size={10} />}>System</Badge>
+    : <Badge size="xs" color="teal" variant="outline">Custom</Badge>}
+   </Table.Td>
+   <Table.Td>
+    <Tooltip label={r.system ? 'System roles cannot be deleted' : 'Delete role'}>
+    <ActionIcon
+     variant="subtle" color="red" size="sm"
+     disabled={r.system}
+     onClick={() => !r.system && setDeleteRoleTarget(r)}
+    >
+     <IconTrash size={14} />
+    </ActionIcon>
+    </Tooltip>
+   </Table.Td>
+   </Table.Tr>
+  ))}
+  </Table.Tbody>
+ </Table>
+ </Paper>
+ )}
+ </Stack>
+ </Tabs.Panel>
+
  {/* ── Permissions Tab ── */}
  <Tabs.Panel value="permissions" pt="md">
  <Stack gap="md">
  <Group>
  <Select
  label="Configure permissions for role"
- data={[
- { value: 'READ_WRITE', label: 'Read / Write' },
- { value: 'READ_ONLY', label: 'Read Only' },
- ]}
+ data={roleSelectOptions.filter(o => o.value !== 'SUPER_ADMIN' && o.value !== 'ADMIN')}
  value={permRole}
  onChange={v => setPermRole(v ?? 'READ_WRITE')}
  style={{ width: 240 }}
  />
  </Group>
 
- {permRole === 'ADMIN' ? (
+ {(permRole === 'ADMIN' || permRole === 'SUPER_ADMIN') ? (
  <Alert color="blue" icon={<IconShield size={16} />}>
  ADMIN always has access to all pages. Permissions cannot be restricted for this role.
  </Alert>
@@ -435,6 +510,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  opened={userModal !== null}
  mode={userModal ?? 'create'}
  initial={editTarget}
+ roleOptions={roleSelectOptions}
  onClose={() => setUserModal(null)}
  onSubmit={(payload) => {
  if (userModal === 'create') {
@@ -450,7 +526,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  }
  />
 
- {/* ── Delete Confirmation Modal ── */}
+ {/* ── Delete User Modal ── */}
  <Modal
  opened={deleteTarget !== null}
  onClose={() => setDeleteTarget(null)}
@@ -476,6 +552,43 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  </Button>
  </Group>
  </Modal>
+
+ {/* ── Create Role Modal ── */}
+ <CreateRoleModal
+ opened={roleModal}
+ onClose={() => setRoleModal(false)}
+ onSubmit={(payload) => createRole.mutate(payload, { onSuccess: () => setRoleModal(false) })}
+ loading={createRole.isPending}
+ error={(createRole.error as Error | null)?.message ?? null}
+ />
+
+ {/* ── Delete Role Modal ── */}
+ <Modal
+ opened={deleteRoleTarget !== null}
+ onClose={() => setDeleteRoleTarget(null)}
+ title="Delete Role"
+ size="sm"
+ >
+ <Text size="sm">
+ Delete role <strong>{deleteRoleTarget?.displayName}</strong>? Users assigned this role will keep their
+ role string but it will no longer appear in the role list. This cannot be undone.
+ </Text>
+ {deleteRole.error && (
+ <Alert color="red" mt="sm" icon={<IconAlertCircle size={16} />}>
+ {(deleteRole.error as Error).message}
+ </Alert>
+ )}
+ <Group justify="flex-end" mt="md">
+ <Button variant="default" onClick={() => setDeleteRoleTarget(null)}>Cancel</Button>
+ <Button
+ color="red"
+ loading={deleteRole.isPending}
+ onClick={() => deleteRoleTarget && deleteRole.mutate(deleteRoleTarget.name, { onSuccess: () => setDeleteRoleTarget(null) })}
+ >
+ Delete
+ </Button>
+ </Group>
+ </Modal>
  </Stack>
  );
 }
@@ -486,13 +599,14 @@ interface UserFormModalProps {
  opened: boolean;
  mode: 'create' | 'edit';
  initial: UserRecord | null;
+ roleOptions: { value: string; label: string }[];
  onClose: () => void;
  onSubmit: (payload: CreateUserPayload | UpdateUserPayload) => void;
  loading: boolean;
  error: string | null;
 }
 
-function UserFormModal({ opened, mode, initial, onClose, onSubmit, loading, error }: UserFormModalProps) {
+function UserFormModal({ opened, mode, initial, roleOptions, onClose, onSubmit, loading, error }: UserFormModalProps) {
  const [username, setUsername] = useState('');
  const [password, setPassword] = useState('');
  const [displayName, setDisplayName] = useState('');
@@ -561,7 +675,7 @@ function UserFormModal({ opened, mode, initial, onClose, onSubmit, loading, erro
  />
  <Select
  label="Role"
- data={ROLE_OPTIONS}
+ data={roleOptions}
  value={role}
  onChange={v => setRole(v ?? 'READ_WRITE')}
  />
@@ -585,5 +699,80 @@ function UserFormModal({ opened, mode, initial, onClose, onSubmit, loading, erro
  </Group>
  </Stack>
  </Modal>
+ );
+}
+
+// ── Create Role Modal ──────────────────────────────────────────────────────────
+
+const MANTINE_COLORS = [
+ { value: 'red', label: 'Red' }, { value: 'orange', label: 'Orange' },
+ { value: 'yellow', label: 'Yellow' }, { value: 'green', label: 'Green' },
+ { value: 'teal', label: 'Teal' }, { value: 'blue', label: 'Blue' },
+ { value: 'violet', label: 'Violet' }, { value: 'grape', label: 'Grape' },
+ { value: 'pink', label: 'Pink' }, { value: 'gray', label: 'Gray' },
+];
+
+interface CreateRoleModalProps {
+ opened: boolean;
+ onClose: () => void;
+ onSubmit: (payload: { name: string; displayName: string; description?: string; color: string }) => void;
+ loading: boolean;
+ error: string | null;
+}
+
+function CreateRoleModal({ opened, onClose, onSubmit, loading, error }: CreateRoleModalProps) {
+ const [name, setName]            = useState('');
+ const [displayName, setDisplayName] = useState('');
+ const [description, setDescription] = useState('');
+ const [color, setColor]          = useState('blue');
+
+ useEffect(() => {
+  if (opened) { setName(''); setDisplayName(''); setDescription(''); setColor('blue'); }
+ }, [opened]);
+
+ return (
+  <Modal opened={opened} onClose={onClose} title="New Custom Role" size="sm">
+   <Stack gap="sm">
+    <TextInput
+     label="Role Key"
+     description="Uppercase identifier, e.g. FINANCE_VIEWER. Used internally."
+     placeholder="MY_CUSTOM_ROLE"
+     value={name}
+     onChange={e => setName(e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
+     required
+    />
+    <TextInput
+     label="Display Name"
+     description="Shown in the UI, e.g. Finance Viewer"
+     placeholder="Finance Viewer"
+     value={displayName}
+     onChange={e => setDisplayName(e.currentTarget.value)}
+     required
+    />
+    <TextInput
+     label="Description"
+     placeholder="Optional description of this role"
+     value={description}
+     onChange={e => setDescription(e.currentTarget.value)}
+    />
+    <Select
+     label="Badge Color"
+     data={MANTINE_COLORS}
+     value={color}
+     onChange={v => setColor(v ?? 'blue')}
+    />
+    {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+    <Group justify="flex-end" mt="xs">
+     <Button variant="default" onClick={onClose}>Cancel</Button>
+     <Button
+      loading={loading}
+      disabled={!name || !displayName}
+      onClick={() => onSubmit({ name, displayName, description: description || undefined, color })}
+     >
+      Create Role
+     </Button>
+    </Group>
+   </Stack>
+  </Modal>
  );
 }

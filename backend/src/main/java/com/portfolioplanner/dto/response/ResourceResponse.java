@@ -16,7 +16,8 @@ public record ResourceResponse(
         BigDecimal actualRate,
         PodAssignment podAssignment,
         String jiraDisplayName,
-        String jiraAccountId
+        String jiraAccountId,
+        String avatarUrl
 ) {
     public record PodAssignment(
             Long podId,

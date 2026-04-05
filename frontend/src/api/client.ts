@@ -29,18 +29,13 @@ const apiClient = axios.create({
     ? `${import.meta.env.VITE_API_URL}/api`
     : '/api',
   timeout: 120000,  // 2 min — Jira live API calls can take 60+ seconds
+  // Send the HttpOnly access_token cookie on every request (including cross-origin).
+  // The Authorization: Bearer header is no longer used by the browser — the cookie
+  // is attached automatically by the browser once set via Set-Cookie on login.
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Attach JWT from localStorage to every outgoing request
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('pp_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 apiClient.interceptors.response.use(

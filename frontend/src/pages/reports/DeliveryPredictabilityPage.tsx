@@ -32,12 +32,13 @@ import {
   ComposedChart,
   Line,
 } from 'recharts';
-import { IconCircleCheck, IconCircleX, IconAlertCircle, IconCircle } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleX, IconAlertCircle, IconCircle, IconChartBar } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { EmptyState } from '../../components/ui';
 import { useProjects } from '../../api/projects';
 import { useProductivityMetrics, useDoraMetrics } from '../../api/reports';
 import { ProjectResponse } from '../../types/project';
@@ -209,6 +210,15 @@ export const DeliveryPredictabilityPage: React.FC = () => {
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <PageError error={error} />;
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconChartBar size={40} stroke={1.5} />}
+        title="No projects to analyse"
+        description="Add projects to your portfolio to see delivery predictability, commitment tracking, and trend analytics here."
+      />
+    );
+  }
 
   return (
     <Stack gap="lg" style={{ padding: '24px', fontFamily: FONT_FAMILY }}>

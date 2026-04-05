@@ -8,6 +8,8 @@ import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/ui';
+import { IconLayoutGrid } from '@tabler/icons-react';
 
 const PRIORITY_COLORS: Record<string, string> = {
   P0: '#dc2626',
@@ -48,11 +50,20 @@ export default function ProjectGanttPage() {
       )
       .sort((a, b) => {
         const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-        return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || a.startMonth - b.startMonth;
+        return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || (a.startMonth ?? 0) - (b.startMonth ?? 0);
       });
   }, [projects, selectedPriorities, selectedStatuses]);
 
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
+  if (!projects || projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconLayoutGrid size={40} stroke={1.5} />}
+        title="No projects to display"
+        description="Add projects with start months and durations to see them laid out on the Gantt timeline."
+      />
+    );
+  }
 
   return (
     <Stack className="page-enter stagger-children">
@@ -148,7 +159,7 @@ export default function ProjectGanttPage() {
           </Table.Thead>
           <Table.Tbody>
             {visibleProjects.map(project => {
-              const startIdx = project.startMonth;
+              const startIdx = project.startMonth ?? 0;
               const endIdx = startIdx + project.durationMonths - 1;
               const color = PRIORITY_COLORS[project.priority] ?? '#64748b';
               const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;

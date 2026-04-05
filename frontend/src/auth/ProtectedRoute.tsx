@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { Center, Stack, ThemeIcon, Title, Text, Button } from '@mantine/core';
+import { Center, Loader, Stack, ThemeIcon, Title, Text, Button } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
@@ -36,8 +36,18 @@ function AccessDenied() {
 /** Wraps a set of routes — redirects unauthenticated users to /login.
  *  If a pageKey is provided and the user lacks access, shows an Access Denied screen. */
 export default function ProtectedRoute({ pageKey }: Props = {}) {
-  const { isAuthenticated, canAccess } = useAuth();
+  const { isAuthenticated, canAccess, initialising } = useAuth();
   const location = useLocation();
+
+  // While validating the HttpOnly cookie on page refresh, avoid a spurious
+  // redirect to /login — show a brief full-page spinner instead.
+  if (initialising) {
+    return (
+      <Center style={{ height: '100vh' }}>
+        <Loader size="lg" color="teal" />
+      </Center>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

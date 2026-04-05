@@ -175,7 +175,7 @@ export default function CalendarHubPage() {
       {/* Calendar Grid */}
       <Paper p="md" radius="md" withBorder style={{ borderColor: 'rgba(12, 35, 64, 0.1)', background: 'white' }}>
         {/* Day Headers */}
-        <SimpleGrid cols={7} gap="xs" mb="sm">
+        <SimpleGrid cols={7} spacing="xs" mb="sm">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
             <Center key={day}>
               <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{day}</Text>
@@ -184,7 +184,7 @@ export default function CalendarHubPage() {
         </SimpleGrid>
 
         {/* Calendar Days */}
-        <SimpleGrid cols={7} gap="xs">
+        <SimpleGrid cols={7} spacing="xs">
           {calendarDays.map((date, idx) => {
             const events = date ? getEventsForDate(date) : [];
             const isCurrentDate = date ? isToday(date) : false;

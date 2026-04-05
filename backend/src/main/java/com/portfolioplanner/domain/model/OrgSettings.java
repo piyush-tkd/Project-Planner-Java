@@ -4,8 +4,11 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "org_settings")
@@ -44,6 +47,11 @@ public class OrgSettings {
 
     @Column(name = "fiscal_year_start", length = 20)
     private String fiscalYearStart;
+
+    /** Feature flags — keys: ai, okr, risk, ideas, financials */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "features", columnDefinition = "jsonb")
+    private Map<String, Boolean> features;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

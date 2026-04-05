@@ -113,14 +113,14 @@ export default function CrossPodDependencyPage() {
  };
  }
 
- const startMonth = podAssignment.podStartMonth ?? podAssignment.projectStartMonth;
+ const startMonth = podAssignment.podStartMonth ?? podAssignment.projectStartMonth ?? 0;
  const duration =
  podAssignment.durationOverride ?? podAssignment.projectDurationMonths;
 
  projectMap[podAssignment.projectId].pods.push({
  podId: podAssignment.podId,
  podName: podAssignment.podName,
- tshirtSize: podAssignment.tshirtSize,
+ tshirtSize: podAssignment.tshirtSize ?? '',
  startMonth,
  endMonth: startMonth + duration,
  });
@@ -190,7 +190,6 @@ export default function CrossPodDependencyPage() {
 
  <Group justify="space-between" wrap="wrap" className="stagger-children">
  <SegmentedControl
- label="Sort by"
  value={sortBy}
  onChange={(value) => setSortBy(value as SortBy)}
  data={[

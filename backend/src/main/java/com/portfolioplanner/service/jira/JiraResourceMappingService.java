@@ -21,6 +21,7 @@ public class JiraResourceMappingService {
     private final JiraResourceMappingRepository mappingRepository;
     private final ResourceRepository resourceRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final JiraClient jiraClient;
 
     // ── Data structures for API responses ────────────────────────────────────
 
@@ -500,7 +501,54 @@ public class JiraResourceMappingService {
             mapping.setConfidence(1.0);
         }
         mapping.setConfirmed(true);
-        return mappingRepository.save(mapping);
+        JiraResourceMapping saved = mappingRepository.save(mapping);
+
+        // Best-effort: fetch and store the Jira avatar URL on the resource
+        if (saved.getJiraAccountId() != null && saved.getResource() != null) {
+            try {
+                String avatarUrl = jiraClient.getUserAvatarUrl(saved.getJiraAccountId());
+                if (avatarUrl != null) {
+                    saved.getResource().setAvatarUrl(avatarUrl);
+                    resourceRepository.save(saved.getResource());
+                    log.info("Synced Jira avatar for resource {} ({})",
+                        saved.getResource().getName(), saved.getJiraAccountId());
+                }
+            } catch (Exception e) {
+                log.warn("Avatar sync skipped for {}: {}", saved.getJiraAccountId(), e.getMessage());
+            }
+        }
+
+        return saved;
+    }
+
+    /**
+     * Backfill avatar URLs for all confirmed mappings that have a resource and jiraAccountId
+     * but no avatar_url yet. Safe to call at any time.
+     */
+    @Transactional
+    public int syncAllAvatars() {
+        List<JiraResourceMapping> confirmed = mappingRepository.findAllByOrderByJiraDisplayNameAsc().stream()
+            .filter(m -> m.getConfirmed() != null && m.getConfirmed())
+            .filter(m -> m.getResource() != null)
+            .filter(m -> m.getJiraAccountId() != null)
+            .filter(m -> m.getResource().getAvatarUrl() == null)
+            .toList();
+
+        int count = 0;
+        for (JiraResourceMapping m : confirmed) {
+            try {
+                String avatarUrl = jiraClient.getUserAvatarUrl(m.getJiraAccountId());
+                if (avatarUrl != null) {
+                    m.getResource().setAvatarUrl(avatarUrl);
+                    resourceRepository.save(m.getResource());
+                    count++;
+                }
+            } catch (Exception e) {
+                log.warn("Avatar sync failed for {}: {}", m.getJiraAccountId(), e.getMessage());
+            }
+        }
+        log.info("syncAllAvatars: updated {} resources", count);
+        return count;
     }
 
     @Transactional

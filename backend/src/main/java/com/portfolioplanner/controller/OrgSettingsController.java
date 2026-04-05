@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * REST endpoints for org-level branding and workspace settings.
  *
@@ -31,7 +34,8 @@ public class OrgSettingsController {
         String secondaryColor,
         String timezone,
         String dateFormat,
-        String fiscalYearStart
+        String fiscalYearStart,
+        Map<String, Boolean> features
     ) {}
 
     // ── GET /api/org/settings ────────────────────────────────────────────────
@@ -54,6 +58,11 @@ public class OrgSettingsController {
         if (req.timezone()       != null) s.setTimezone(req.timezone());
         if (req.dateFormat()     != null) s.setDateFormat(req.dateFormat());
         if (req.fiscalYearStart()!= null) s.setFiscalYearStart(req.fiscalYearStart());
+        if (req.features()        != null) {
+            Map<String, Boolean> merged = new HashMap<>(defaultFeatures());
+            merged.putAll(req.features());
+            s.setFeatures(merged);
+        }
 
         repo.save(s);
         return ResponseEntity.ok(toDto(s));
@@ -71,11 +80,23 @@ public class OrgSettingsController {
             fresh.setTimezone("America/Chicago");
             fresh.setDateFormat("MMM DD, YYYY");
             fresh.setFiscalYearStart("January");
+            fresh.setFeatures(defaultFeatures());
             return repo.save(fresh);
         });
     }
 
+    private Map<String, Boolean> defaultFeatures() {
+        Map<String, Boolean> m = new HashMap<>();
+        m.put("ai",         true);
+        m.put("okr",        true);
+        m.put("risk",       true);
+        m.put("ideas",      true);
+        m.put("financials", true);
+        return m;
+    }
+
     private OrgSettingsDto toDto(OrgSettings s) {
+        Map<String, Boolean> features = s.getFeatures() != null ? s.getFeatures() : defaultFeatures();
         return new OrgSettingsDto(
             s.getId(),
             s.getOrgName(),
@@ -85,7 +106,8 @@ public class OrgSettingsController {
             s.getSecondaryColor(),
             s.getTimezone(),
             s.getDateFormat(),
-            s.getFiscalYearStart()
+            s.getFiscalYearStart(),
+            features
         );
     }
 }

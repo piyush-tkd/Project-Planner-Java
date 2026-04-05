@@ -41,6 +41,11 @@ public class JwtUtil {
         return parseClaims(token).getSubject();
     }
 
+    /** Expiration window in milliseconds (used to set cookie Max-Age). */
+    public long getExpirationMs() {
+        return expirationMs;
+    }
+
     /** Return true if the token is valid for the given user and not expired. */
     public boolean isValid(String token, UserDetails userDetails) {
         try {

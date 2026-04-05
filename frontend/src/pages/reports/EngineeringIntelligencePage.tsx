@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Tabs } from '@mantine/core';
-import { IconReportMoney, IconTrendingUp, IconGitBranch } from '@tabler/icons-react';
+import { IconReportMoney, IconTrendingUp, IconGitBranch, IconBrain } from '@tabler/icons-react';
 import FinancialIntelligencePage from './FinancialIntelligencePage';
 import EngineeringProductivityPage from './EngineeringProductivityPage';
 import GitIntelligencePage from './GitIntelligencePage';
+import AiImpactPage from './AiImpactPage';
 
 /**
  * EngineeringIntelligencePage
@@ -32,6 +33,9 @@ export default function EngineeringIntelligencePage() {
         <Tabs.Tab value="git" leftSection={<IconGitBranch size={15} />}>
           Git Intelligence
         </Tabs.Tab>
+        <Tabs.Tab value="ai" leftSection={<IconBrain size={15} />}>
+          AI Impact
+        </Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="financial">
@@ -44,6 +48,10 @@ export default function EngineeringIntelligencePage() {
 
       <Tabs.Panel value="git">
         <GitIntelligencePage />
+      </Tabs.Panel>
+
+      <Tabs.Panel value="ai">
+        <AiImpactPage />
       </Tabs.Panel>
     </Tabs>
   );

@@ -14,6 +14,15 @@ import HiringForecastPage from './pages/reports/HiringForecastPage';
 import DeadlineGapPage from './pages/reports/DeadlineGapPage';
 import BudgetPage from './pages/reports/BudgetPage';
 import CapacityDemandPage from './pages/reports/CapacityDemandPage';
+import CapacityForecastPage from './pages/reports/CapacityForecastPage';
+import SprintRetroPage from './pages/reports/SprintRetroPage';
+import ResourceSkillsMatrixPage from './pages/reports/ResourceSkillsMatrixPage';
+import RiskHeatmapPage from './pages/reports/RiskHeatmapPage';
+import ExecSummaryPage from './pages/reports/ExecSummaryPage';
+import StatusUpdatesFeedPage from './pages/reports/StatusUpdatesFeedPage';
+import TeamPulsePage from './pages/reports/TeamPulsePage';
+import ChangelogAdminPage from './pages/settings/ChangelogAdminPage';
+import CustomFieldsAdminPage from './pages/settings/CustomFieldsAdminPage';
 import PodResourceSummaryPage from './pages/reports/PodResourceSummaryPage';
 import PodSplitsPage from './pages/reports/PodSplitsPage';
 import PodDetailPage from './pages/PodDetailPage';
@@ -141,10 +150,7 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="calendar_hub" />}>
             <Route path="/calendar" element={<CalendarHubPage />} />
           </Route>
-          {/* Legacy calendar routes redirect to hub */}
-          <Route path="/team-calendar"    element={<Navigate to="/calendar" replace />} />
-          <Route path="/sprint-calendar"  element={<Navigate to="/calendar" replace />} />
-          <Route path="/release-calendar" element={<Navigate to="/calendar" replace />} />
+          {/* Team calendar legacy redirect */}
           <Route path="/settings/holiday-calendar" element={<Navigate to="/leave" replace />} />
 
           <Route element={<ProtectedRoute pageKey="capacity_hub" />}>
@@ -185,6 +191,16 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="capacity_demand" />}>
             <Route path="/reports/capacity-demand" element={<CapacityDemandPage />} />
           </Route>
+
+          <Route path="/reports/capacity-forecast" element={<CapacityForecastPage />} />
+          <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
+          <Route path="/reports/skills-matrix" element={<ResourceSkillsMatrixPage />} />
+          <Route path="/reports/risk-heatmap" element={<RiskHeatmapPage />} />
+          <Route path="/reports/executive-summary" element={<ExecSummaryPage />} />
+          <Route path="/reports/status-updates" element={<StatusUpdatesFeedPage />} />
+          <Route path="/reports/team-pulse" element={<TeamPulsePage />} />
+          <Route path="/settings/changelog" element={<ChangelogAdminPage />} />
+          <Route path="/settings/custom-fields" element={<CustomFieldsAdminPage />} />
 
           <Route element={<ProtectedRoute pageKey="pod_resources" />}>
             <Route path="/reports/pod-resources" element={<PodResourceSummaryPage />} />

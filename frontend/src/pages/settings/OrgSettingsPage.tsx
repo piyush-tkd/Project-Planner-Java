@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Button, TextInput, Paper, Tabs,
   ColorInput, SimpleGrid, Box, Switch, Badge, Select, Divider,
-  FileButton, Loader, Center, ThemeIcon, Tooltip,
+  FileButton, Loader, Center, ThemeIcon, Tooltip, NumberInput, PasswordInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -10,7 +10,8 @@ import {
   IconBell, IconWorld, IconUserCog, IconDatabase, IconHistory,
   IconAlertTriangle, IconBrain, IconMessageReport, IconArrowsShuffle,
   IconExternalLink, IconKey, IconTicket, IconPackage, IconHeadset,
-  IconSettings, IconBrandAzure, IconGitBranch,
+  IconSettings, IconBrandAzure, IconGitBranch, IconMail, IconPlugConnected,
+  IconClock,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import apiClient from '../../api/client';
@@ -132,6 +133,108 @@ export default function OrgSettingsPage() {
   const [saving, setSaving]     = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(searchParams.get('tab') ?? 'branding');
 
+  // ── SMTP config state ────────────────────────────────────────────────────
+  interface SmtpDraft {
+    host: string; port: number; username: string; password: string;
+    fromAddress: string; useTls: boolean; enabled: boolean; passwordSet: boolean;
+  }
+  const [smtp, setSmtp]           = useState<SmtpDraft>({
+    host: 'smtp.gmail.com', port: 587, username: '', password: '',
+    fromAddress: 'noreply@portfolioplanner', useTls: true, enabled: false, passwordSet: false,
+  });
+  const [smtpLoaded, setSmtpLoaded]     = useState(false);
+  const [smtpSaving, setSmtpSaving]     = useState(false);
+  const [smtpTesting, setSmtpTesting]   = useState(false);
+
+  // ── Notification schedule state ──────────────────────────────────────────
+  interface ScheduleDraft {
+    recipients: string;
+    digestEnabled: boolean; digestCron: string;
+    stalenessEnabled: boolean; stalenessCron: string;
+  }
+  const [schedule, setSchedule]       = useState<ScheduleDraft>({
+    recipients: '', digestEnabled: false, digestCron: '0 0 8 * * MON',
+    stalenessEnabled: false, stalenessCron: '0 0 9 * * MON',
+  });
+  const [scheduleLoaded, setScheduleLoaded] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'email' && !smtpLoaded) {
+      apiClient.get('/settings/smtp').then(({ data }) => {
+        setSmtp({
+          host:        data.host        ?? 'smtp.gmail.com',
+          port:        data.port        ?? 587,
+          username:    data.username    ?? '',
+          password:    '',   // never pre-filled
+          fromAddress: data.fromAddress ?? 'noreply@portfolioplanner',
+          useTls:      data.useTls      ?? true,
+          enabled:     data.enabled     ?? false,
+          passwordSet: data.passwordSet ?? false,
+        });
+        setSmtpLoaded(true);
+      }).catch(() => {});
+    }
+  }, [activeTab, smtpLoaded]);
+
+  useEffect(() => {
+    if (activeTab === 'email' && !scheduleLoaded) {
+      apiClient.get('/settings/notification-schedule').then(({ data }) => {
+        setSchedule({
+          recipients:       data.recipients       ?? '',
+          digestEnabled:    data.digestEnabled    ?? false,
+          digestCron:       data.digestCron       ?? '0 0 8 * * MON',
+          stalenessEnabled: data.stalenessEnabled ?? false,
+          stalenessCron:    data.stalenessCron    ?? '0 0 9 * * MON',
+        });
+        setScheduleLoaded(true);
+      }).catch(() => {});
+    }
+  }, [activeTab, scheduleLoaded]);
+
+  const handleScheduleSave = async () => {
+    setScheduleSaving(true);
+    try {
+      await apiClient.put('/settings/notification-schedule', schedule);
+      notifications.show({ title: 'Saved', message: 'Notification schedule saved successfully', color: 'green' });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to save notification schedule', color: 'red' });
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const handleSmtpSave = async () => {
+    setSmtpSaving(true);
+    try {
+      const payload = { ...smtp };
+      if (!payload.password) delete (payload as Partial<SmtpDraft>).password;
+      const { data } = await apiClient.put('/settings/smtp', payload);
+      setSmtp(prev => ({ ...prev, passwordSet: data.passwordSet ?? prev.passwordSet, password: '' }));
+      notifications.show({ title: 'Saved', message: 'SMTP settings saved successfully', color: 'green' });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to save SMTP settings', color: 'red' });
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleSmtpTest = async () => {
+    setSmtpTesting(true);
+    try {
+      const { data } = await apiClient.post('/settings/smtp/test');
+      notifications.show({
+        title: data.success ? 'Connection OK' : 'Connection Failed',
+        message: data.message,
+        color: data.success ? 'green' : 'red',
+      });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Test request failed', color: 'red' });
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
   useEffect(() => {
     setDraft(orgSettings);
     setIsDirty(false);
@@ -139,6 +242,14 @@ export default function OrgSettingsPage() {
 
   const handleChange = (key: keyof OrgConfig, val: string | null) => {
     setDraft(prev => ({ ...prev, [key]: val }));
+    setIsDirty(true);
+  };
+
+  const handleFeatureToggle = (flagKey: string, enabled: boolean) => {
+    setDraft(prev => ({
+      ...prev,
+      features: { ...prev.features, [flagKey]: enabled },
+    }));
     setIsDirty(true);
   };
 
@@ -154,6 +265,7 @@ export default function OrgSettingsPage() {
         timezone:        draft.timezone,
         dateFormat:      draft.dateFormat,
         fiscalYearStart: draft.fiscalYearStart,
+        features:        draft.features,
       });
       await refresh();
       setIsDirty(false);
@@ -204,6 +316,7 @@ export default function OrgSettingsPage() {
           <Tabs.Tab value="data"          leftSection={<IconDatabase size={14} />}>Reference Data</Tabs.Tab>
           <Tabs.Tab value="jira"          leftSection={<IconTicket size={14} />}>Integrations</Tabs.Tab>
           <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
+          <Tabs.Tab value="email"         leftSection={<IconMail size={14} />}>Email / SMTP</Tabs.Tab>
           <Tabs.Tab value="ai"            leftSection={<IconBrain size={14} />}>AI &amp; NLP</Tabs.Tab>
           <Tabs.Tab value="system"        leftSection={<IconSettings size={14} />}>System</Tabs.Tab>
         </Tabs.List>
@@ -450,7 +563,12 @@ export default function OrgSettingsPage() {
                       <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
                     </div>
-                    <Switch defaultChecked={flag.defaultOn} color="teal" size="sm" />
+                    <Switch
+                      checked={draft.features?.[flag.key] ?? flag.defaultOn}
+                      onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
+                      color="teal"
+                      size="sm"
+                    />
                   </Group>
                 ))}
               </Stack>
@@ -547,20 +665,23 @@ export default function OrgSettingsPage() {
               </Stack>
             </Paper>
 
-            {/* Email Alerts — honest about current state */}
+            {/* Email Alerts — links to SMTP tab */}
             <Paper withBorder p="lg" radius="md">
               <Group gap="sm" mb="xs">
-                <ThemeIcon variant="light" color="gray" size={32} radius="md">
-                  <IconWorld size={16} />
+                <ThemeIcon variant="light" color={smtp.enabled ? 'teal' : 'gray'} size={32} radius="md">
+                  <IconMail size={16} />
                 </ThemeIcon>
                 <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
                   Email Alert Delivery
                 </Text>
-                <Badge size="sm" color="gray" variant="light">Not yet configured</Badge>
+                <Badge size="sm" color={smtp.enabled ? 'teal' : 'gray'} variant="light">
+                  {smtp.enabled ? 'Configured' : 'Not configured'}
+                </Badge>
               </Group>
               <Text size="sm" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-                Email delivery for alerts (overdue projects, capacity thresholds, risk notifications) requires
-                an SMTP server connection. This is not yet configured in the current deployment.
+                Email delivery for alerts (overdue projects, capacity thresholds, risk notifications)
+                requires an SMTP server connection.
+                {!smtp.enabled && ' Configure it in the Email / SMTP tab.'}
               </Text>
               <Divider mb="md" />
               <Stack gap="xs">
@@ -572,22 +693,223 @@ export default function OrgSettingsPage() {
                   { label: 'Support queue staleness',   desc: 'Alert when tickets are stale for 48h' },
                   { label: 'AI weekly digest',          desc: 'Weekly AI-generated portfolio summary email' },
                 ].map(item => (
-                  <Group key={item.label} justify="space-between" wrap="nowrap" style={{ opacity: 0.5 }}>
+                  <Group key={item.label} justify="space-between" wrap="nowrap"
+                         style={{ opacity: smtp.enabled ? 1 : 0.5 }}>
                     <div>
                       <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{item.label}</Text>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{item.desc}</Text>
                     </div>
-                    <Tooltip label="Requires SMTP configuration" position="left" withArrow>
+                    <Tooltip label={smtp.enabled ? 'SMTP configured' : 'Requires SMTP configuration'}
+                             position="left" withArrow>
                       <Switch disabled color="teal" size="sm" />
                     </Tooltip>
                   </Group>
                 ))}
               </Stack>
-              <Text size="xs" c="dimmed" mt="md" style={{ fontFamily: FONT_FAMILY, fontStyle: 'italic' }}>
-                Contact your system administrator to configure SMTP settings and enable email delivery.
+              {!smtp.enabled && (
+                <Button size="xs" variant="light" color="teal" mt="md"
+                        leftSection={<IconMail size={12} />}
+                        onClick={() => setActiveTab('email')}>
+                  Configure SMTP
+                </Button>
+              )}
+            </Paper>
+
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ── EMAIL / SMTP ─── */}
+        <Tabs.Panel value="email">
+          <Stack gap="md" style={{ maxWidth: 640 }}>
+            <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              Configure the outbound SMTP server used for email alerts and the weekly digest.
+              Changes take effect immediately — no server restart required.
+            </Text>
+
+            <Paper withBorder p="lg" radius="md">
+              <Group gap="sm" mb="lg">
+                <ThemeIcon variant="light" color="teal" size={32} radius="md">
+                  <IconMail size={16} />
+                </ThemeIcon>
+                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  SMTP Server
+                </Text>
+                <Switch
+                  label="Enable email delivery"
+                  size="sm"
+                  color="teal"
+                  checked={smtp.enabled}
+                  onChange={e => setSmtp(p => ({ ...p, enabled: e.currentTarget.checked }))}
+                />
+              </Group>
+
+              <Stack gap="sm">
+                <SimpleGrid cols={2} spacing="sm">
+                  <TextInput
+                    label="SMTP Host"
+                    placeholder="smtp.gmail.com"
+                    value={smtp.host}
+                    onChange={e => setSmtp(p => ({ ...p, host: e.target.value }))}
+                  />
+                  <NumberInput
+                    label="Port"
+                    placeholder="587"
+                    value={smtp.port}
+                    min={1}
+                    max={65535}
+                    onChange={v => setSmtp(p => ({ ...p, port: Number(v) || 587 }))}
+                  />
+                </SimpleGrid>
+
+                <TextInput
+                  label="Username"
+                  placeholder="your@gmail.com"
+                  value={smtp.username}
+                  onChange={e => setSmtp(p => ({ ...p, username: e.target.value }))}
+                />
+
+                <PasswordInput
+                  label={smtp.passwordSet ? 'Password (leave blank to keep current)' : 'Password'}
+                  placeholder={smtp.passwordSet ? '••••••••  (stored)' : 'Enter password'}
+                  value={smtp.password}
+                  onChange={e => setSmtp(p => ({ ...p, password: e.target.value }))}
+                />
+
+                <TextInput
+                  label="From Address"
+                  placeholder="noreply@yourcompany.com"
+                  value={smtp.fromAddress}
+                  onChange={e => setSmtp(p => ({ ...p, fromAddress: e.target.value }))}
+                />
+
+                <Switch
+                  label="Use STARTTLS (recommended)"
+                  size="sm"
+                  color="teal"
+                  checked={smtp.useTls}
+                  onChange={e => setSmtp(p => ({ ...p, useTls: e.currentTarget.checked }))}
+                />
+              </Stack>
+
+              <Group mt="lg" gap="sm">
+                <Button
+                  color="teal"
+                  leftSection={<IconCheck size={14} />}
+                  loading={smtpSaving}
+                  onClick={handleSmtpSave}
+                >
+                  Save Settings
+                </Button>
+                <Button
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconPlugConnected size={14} />}
+                  loading={smtpTesting}
+                  onClick={handleSmtpTest}
+                >
+                  Test Connection
+                </Button>
+              </Group>
+            </Paper>
+
+            <Paper withBorder p="md" radius="md" style={{ background: '#f8fafb' }}>
+              <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+                Gmail / Google Workspace tip
+              </Text>
+              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                Use <strong>smtp.gmail.com</strong>, port <strong>587</strong>, STARTTLS enabled.
+                Your password must be an <strong>App Password</strong> (not your account password).
+                Generate one at <em>Google Account → Security → App Passwords</em>.
               </Text>
             </Paper>
 
+            {/* ── Notification Schedule ── */}
+            <Paper withBorder p="lg" radius="md">
+              <Group gap="sm" mb="lg">
+                <ThemeIcon variant="light" color="orange" size={32} radius="md">
+                  <IconClock size={16} />
+                </ThemeIcon>
+                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  Notification Schedule
+                </Text>
+              </Group>
+
+              <Stack gap="sm">
+                <TextInput
+                  label="Recipients"
+                  placeholder="alice@company.com, bob@company.com"
+                  description="Comma-separated email addresses. Used by both digest and staleness alerts."
+                  value={schedule.recipients}
+                  onChange={e => setSchedule(p => ({ ...p, recipients: e.target.value }))}
+                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                />
+
+                <Divider label="Weekly Portfolio Digest" labelPosition="left" mt="xs" />
+                <Group gap="md" align="flex-start">
+                  <Switch
+                    label="Enable weekly digest"
+                    size="sm"
+                    color="teal"
+                    checked={schedule.digestEnabled}
+                    onChange={e => setSchedule(p => ({ ...p, digestEnabled: e.currentTarget.checked }))}
+                    mt={6}
+                  />
+                  <TextInput
+                    label="Cron expression"
+                    placeholder="0 0 8 * * MON"
+                    value={schedule.digestCron}
+                    onChange={e => setSchedule(p => ({ ...p, digestCron: e.target.value }))}
+                    description="Spring cron: sec min hr day month weekday"
+                    style={{ flex: 1 }}
+                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                  />
+                </Group>
+
+                <Divider label="Support Staleness Alert" labelPosition="left" mt="xs" />
+                <Group gap="md" align="flex-start">
+                  <Switch
+                    label="Enable staleness alert"
+                    size="sm"
+                    color="teal"
+                    checked={schedule.stalenessEnabled}
+                    onChange={e => setSchedule(p => ({ ...p, stalenessEnabled: e.currentTarget.checked }))}
+                    mt={6}
+                  />
+                  <TextInput
+                    label="Cron expression"
+                    placeholder="0 0 9 * * MON"
+                    value={schedule.stalenessCron}
+                    onChange={e => setSchedule(p => ({ ...p, stalenessCron: e.target.value }))}
+                    description="Spring cron: sec min hr day month weekday"
+                    style={{ flex: 1 }}
+                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                  />
+                </Group>
+              </Stack>
+
+              <Group mt="lg" gap="sm">
+                <Button
+                  color="teal"
+                  leftSection={<IconCheck size={14} />}
+                  loading={scheduleSaving}
+                  onClick={handleScheduleSave}
+                >
+                  Save Schedule
+                </Button>
+              </Group>
+            </Paper>
+
+            <Paper withBorder p="md" radius="md" style={{ background: '#f8fafb' }}>
+              <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+                Cron expression reference
+              </Text>
+              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                Format: <strong>sec min hr day month weekday</strong> — e.g.{' '}
+                <code>0 0 8 * * MON</code> = every Monday at 08:00,{' '}
+                <code>0 0 9 * * MON,FRI</code> = Monday &amp; Friday at 09:00.
+                Changes take effect at the next scheduled tick with no restart required.
+              </Text>
+            </Paper>
           </Stack>
         </Tabs.Panel>
 

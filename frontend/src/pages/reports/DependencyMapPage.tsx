@@ -3,12 +3,27 @@ import { Tabs, Box, Title, Text, Group } from '@mantine/core';
 import { IconLink, IconGitBranch } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { useProjects } from '../../api/projects';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/ui';
 import CrossPodDependencyPage from './CrossPodDependencyPage';
 import CrossTeamDependencyPage from './CrossTeamDependencyPage';
 
 export default function DependencyMapPage() {
   const dark = useDarkMode();
   const [activeTab, setActiveTab] = useState<string | null>('cross-pod');
+  const { data: projects, isLoading } = useProjects();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!projects || projects.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconGitBranch size={40} stroke={1.5} />}
+        title="No dependencies to map"
+        description="Add projects spanning multiple PODs or teams to visualise cross-team dependencies and critical path bottlenecks here."
+      />
+    );
+  }
 
   return (
     <Box p="lg">

@@ -39,7 +39,8 @@ public interface EntityMapper {
                 resource.getActualRate(),
                 podAssignment,
                 resource.getJiraDisplayName(),
-                resource.getJiraAccountId()
+                resource.getJiraAccountId(),
+                resource.getAvatarUrl()
         );
     }
 

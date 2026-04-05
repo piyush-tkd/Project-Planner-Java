@@ -116,4 +116,15 @@ public interface JiraSyncedIssueRepository extends JpaRepository<JiraSyncedIssue
            "AND i.epicKey = :epicKey")
     List<JiraSyncedIssue> findByProjectKeyAndEpicKey(@Param("projectKey") String projectKey,
                                                       @Param("epicKey") String epicKey);
+
+    /**
+     * Stale open issues: not Done, not updated since {@code cutoff}, for the given project keys.
+     * Used by {@code SupportStalenessService} to identify tickets needing attention.
+     */
+    @Query("SELECT i FROM JiraSyncedIssue i WHERE i.projectKey IN :keys " +
+           "AND i.statusCategory <> 'done' " +
+           "AND i.updatedAt < :cutoff " +
+           "ORDER BY i.updatedAt ASC")
+    List<JiraSyncedIssue> findStaleByProjectKeys(@Param("keys") List<String> projectKeys,
+                                                  @Param("cutoff") LocalDateTime cutoff);
 }

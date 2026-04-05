@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
- Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider, Tabs, SimpleGrid, Progress, RingProgress, Center, Paper,
+ Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider, Tabs, SimpleGrid, Progress, RingProgress, Center, Paper, Loader,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport } from '@tabler/icons-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
+import CustomFieldsRenderer, { type FieldDefinition } from '../components/common/CustomFieldsRenderer';
 import { useProject, useProjects, useUpdateProject, useDeleteProject, useProjectPodPlannings, useUpdatePodPlannings, useCopyProject } from '../api/projects';
 import { usePhaseSchedules, useUpdatePhaseSchedules, useSchedulingRules, useUpdateSchedulingRules } from '../api/scheduling';
 import { usePods } from '../api/pods';
@@ -455,6 +458,7 @@ export default function ProjectDetailPage() {
      <Tabs.Tab value="financials" leftSection={<IconCurrencyDollar size={14} />}>Financials</Tabs.Tab>
      <Tabs.Tab value="raci" leftSection={<IconUsers size={14} />}>RACI</Tabs.Tab>
      <Tabs.Tab value="health" leftSection={<IconHeartRateMonitor size={14} />}>Health Score</Tabs.Tab>
+     <Tabs.Tab value="status-updates" leftSection={<IconMessageReport size={14} />}>Status Updates</Tabs.Tab>
    </Tabs.List>
 
    {/* ── OVERVIEW TAB ─── */}
@@ -653,6 +657,8 @@ export default function ProjectDetailPage() {
  )}
 
  <Divider my="sm" />
+ <CustomFieldsSection projectId={Number(id)} />
+ <Divider my="sm" />
  <Group>
  <Button color="red" variant="outline" onClick={handleDeleteProject}>Delete Project</Button>
  </Group>
@@ -822,6 +828,11 @@ export default function ProjectDetailPage() {
      </Paper>
    </Tabs.Panel>
 
+   {/* ── STATUS UPDATES TAB ── */}
+   <Tabs.Panel value="status-updates" pt="md">
+     <StatusUpdatesTab projectId={Number(id)} />
+   </Tabs.Panel>
+
  </Tabs>
 
  {/* Edit Project Modal */}
@@ -879,4 +890,179 @@ export default function ProjectDetailPage() {
  </Modal>
  </Stack>
  );
+}
+
+// ── CustomFieldsSection sub-component ────────────────────────────────────────
+function CustomFieldsSection({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState<Record<string, string>>({});
+
+  const { data: definitions = [] } = useQuery<FieldDefinition[]>({
+    queryKey: ['custom-field-defs'],
+    queryFn: async () => { const r = await apiClient.get('/custom-fields/definitions'); return r.data; },
+  });
+
+  const { data: values = {} } = useQuery<Record<string, string>>({
+    queryKey: ['custom-field-values', projectId],
+    queryFn: async () => { const r = await apiClient.get(`/custom-fields/values/${projectId}`); return r.data; },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/custom-fields/values/${projectId}`, draft);
+    },
+    onSuccess: () => {
+      notifications.show({ message: 'Custom fields saved', color: 'teal' });
+      qc.invalidateQueries({ queryKey: ['custom-field-values', projectId] });
+      setEditing(false);
+    },
+    onError: () => notifications.show({ message: 'Failed to save custom fields', color: 'red' }),
+  });
+
+  if (definitions.length === 0) return null;
+
+  return (
+    <Card withBorder radius="sm" p="sm">
+      <Group justify="space-between" mb="sm">
+        <Text size="sm" fw={600}>Custom Fields</Text>
+        {!editing ? (
+          <Button size="xs" variant="light" onClick={() => { setDraft({ ...values }); setEditing(true); }}>
+            Edit
+          </Button>
+        ) : (
+          <Group gap="xs">
+            <Button size="xs" variant="subtle" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="xs" onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>Save</Button>
+          </Group>
+        )}
+      </Group>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <CustomFieldsRenderer
+          definitions={definitions}
+          values={editing ? draft : values}
+          onChange={(name, val) => setDraft(d => ({ ...d, [name]: val }))}
+          readOnly={!editing}
+        />
+      </SimpleGrid>
+    </Card>
+  );
+}
+
+// ── StatusUpdatesTab sub-component ───────────────────────────────────────────
+interface StatusUpdate {
+  id: number; projectId: number; ragStatus: 'RED' | 'AMBER' | 'GREEN';
+  summary: string; whatDone?: string; whatsNext?: string;
+  blockers?: string; author?: string; createdAt: string;
+}
+const RAG_COLOR: Record<string, string> = { RED: 'red', AMBER: 'orange', GREEN: 'teal' };
+
+function StatusUpdatesTab({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({
+    ragStatus: 'GREEN', summary: '', whatDone: '', whatsNext: '', blockers: '', author: '',
+  });
+
+  const { data: updates = [], isLoading } = useQuery<StatusUpdate[]>({
+    queryKey: ['project-status-updates', projectId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/projects/${projectId}/status-updates`);
+      return res.data;
+    },
+  });
+
+  const postMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.post(`/projects/${projectId}/status-updates`, form);
+    },
+    onSuccess: () => {
+      notifications.show({ message: 'Status update posted', color: 'teal' });
+      qc.invalidateQueries({ queryKey: ['project-status-updates', projectId] });
+      setModal(false);
+      setForm({ ragStatus: 'GREEN', summary: '', whatDone: '', whatsNext: '', blockers: '', author: '' });
+    },
+    onError: () => notifications.show({ message: 'Failed to post update', color: 'red' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (updateId: number) => {
+      await apiClient.delete(`/projects/${projectId}/status-updates/${updateId}`);
+    },
+    onSuccess: () => {
+      notifications.show({ message: 'Deleted', color: 'gray' });
+      qc.invalidateQueries({ queryKey: ['project-status-updates', projectId] });
+    },
+  });
+
+  return (
+    <Stack gap="sm">
+      <Group justify="space-between">
+        <Text size="sm" c="dimmed">Weekly RAG status updates for this project</Text>
+        <Button size="xs" leftSection={<IconPlus size={13} />} onClick={() => setModal(true)}>
+          Post Update
+        </Button>
+      </Group>
+
+      {isLoading ? <Center h={100}><Loader /></Center>
+        : updates.length === 0
+          ? <Center h={100}><Text c="dimmed" size="sm">No updates yet. Post the first one!</Text></Center>
+          : updates.map(u => (
+            <Card key={u.id} withBorder radius="sm" p="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Group gap="xs" align="flex-start">
+                  <Badge color={RAG_COLOR[u.ragStatus]} variant="filled" size="sm">
+                    {u.ragStatus}
+                  </Badge>
+                  <div>
+                    <Group gap="xs" mb={2}>
+                      {u.author && <Text size="xs" c="dimmed">by {u.author}</Text>}
+                      <Text size="xs" c="dimmed">{new Date(u.createdAt).toLocaleDateString()}</Text>
+                    </Group>
+                    <Text size="sm">{u.summary}</Text>
+                    {u.whatDone  && <Text size="xs" mt={2}><b>Done:</b> {u.whatDone}</Text>}
+                    {u.whatsNext && <Text size="xs" mt={2}><b>Next:</b> {u.whatsNext}</Text>}
+                    {u.blockers  && <Text size="xs" mt={2} c="red"><b>Blockers:</b> {u.blockers}</Text>}
+                  </div>
+                </Group>
+                <ActionIcon variant="subtle" color="red" size="xs"
+                  onClick={() => deleteMutation.mutate(u.id)}>
+                  <IconTrash size={12} />
+                </ActionIcon>
+              </Group>
+            </Card>
+          ))
+      }
+
+      <Modal opened={modal} onClose={() => setModal(false)} title="Post Status Update" size="md">
+        <Stack gap="sm">
+          <Select
+            label="RAG Status"
+            data={[
+              { value: 'GREEN', label: '🟢 Green — on track' },
+              { value: 'AMBER', label: '🟡 Amber — some concerns' },
+              { value: 'RED',   label: '🔴 Red — needs attention' },
+            ]}
+            value={form.ragStatus}
+            onChange={v => setForm(f => ({ ...f, ragStatus: v ?? 'GREEN' }))}
+          />
+          <Textarea label="Summary *" placeholder="Overall status…" required autosize minRows={2}
+            value={form.summary} onChange={e => setForm(f => ({ ...f, summary: e.currentTarget.value }))} />
+          <Textarea label="What was done" placeholder="Key accomplishments…" autosize minRows={2}
+            value={form.whatDone} onChange={e => setForm(f => ({ ...f, whatDone: e.currentTarget.value }))} />
+          <Textarea label="What's next" placeholder="Planned work…" autosize minRows={2}
+            value={form.whatsNext} onChange={e => setForm(f => ({ ...f, whatsNext: e.currentTarget.value }))} />
+          <Textarea label="Blockers" placeholder="Any blockers…" autosize minRows={1}
+            value={form.blockers} onChange={e => setForm(f => ({ ...f, blockers: e.currentTarget.value }))} />
+          <TextInput label="Author" placeholder="Your name" value={form.author}
+            onChange={e => setForm(f => ({ ...f, author: e.currentTarget.value }))} />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="subtle" onClick={() => setModal(false)}>Cancel</Button>
+            <Button onClick={() => postMutation.mutate()} loading={postMutation.isPending}
+              disabled={!form.summary}>Post</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
+  );
 }

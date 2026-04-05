@@ -1,6 +1,10 @@
 package com.portfolioplanner.controller;
 
+import com.portfolioplanner.domain.model.ObjectiveProjectLink;
+import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.StrategicObjective;
+import com.portfolioplanner.domain.repository.ObjectiveProjectLinkRepository;
+import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.domain.repository.StrategicObjectiveRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +29,8 @@ import java.util.stream.Collectors;
 public class ObjectivesController {
 
     private final StrategicObjectiveRepository repo;
+    private final ObjectiveProjectLinkRepository linkRepo;
+    private final ProjectRepository projectRepo;
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
 
@@ -50,6 +57,15 @@ public class ObjectivesController {
     ) {}
 
     public record StatusUpdateRequest(@NotBlank String status, Integer progress) {}
+
+    public record LinkedProjectResponse(
+        Long   projectId,
+        String name,
+        String status,
+        int    computedProgress  // 0-100 derived from project status / timeline
+    ) {}
+
+    public record LinkRequest(Long projectId) {}
 
     public record SummaryResponse(
         long total,
@@ -158,5 +174,86 @@ public class ObjectivesController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
         repo.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Project link endpoints ────────────────────────────────────────────────
+
+    @GetMapping("/{id}/links")
+    public List<LinkedProjectResponse> getLinks(@PathVariable Long id) {
+        if (!repo.existsById(id))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
+        return linkRepo.findByObjectiveId(id).stream()
+            .map(link -> projectRepo.findById(link.getProjectId())
+                .map(p -> new LinkedProjectResponse(p.getId(), p.getName(), p.getStatus(), deriveProgress(p)))
+                .orElse(null))
+            .filter(r -> r != null)
+            .toList();
+    }
+
+    @PostMapping("/{id}/links")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
+    public ResponseEntity<LinkedProjectResponse> addLink(@PathVariable Long id,
+                                                          @RequestBody LinkRequest req) {
+        if (!repo.existsById(id))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
+        Project project = projectRepo.findById(req.projectId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        if (!linkRepo.existsByObjectiveIdAndProjectId(id, req.projectId())) {
+            ObjectiveProjectLink link = new ObjectiveProjectLink();
+            link.setObjectiveId(id);
+            link.setProjectId(req.projectId());
+            linkRepo.save(link);
+            // Auto-update objective progress from linked projects
+            recomputeProgress(id);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new LinkedProjectResponse(project.getId(), project.getName(),
+                                             project.getStatus(), deriveProgress(project)));
+    }
+
+    @DeleteMapping("/{id}/links/{projectId}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
+    public ResponseEntity<Void> removeLink(@PathVariable Long id, @PathVariable Long projectId) {
+        linkRepo.deleteByObjectiveIdAndProjectId(id, projectId);
+        recomputeProgress(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Derive 0–100 progress from project status and timeline. */
+    private int deriveProgress(Project p) {
+        String s = p.getStatus() == null ? "" : p.getStatus().toUpperCase();
+        if (s.equals("COMPLETED"))   return 100;
+        if (s.equals("CANCELLED"))   return 0;
+        if (s.equals("NOT_STARTED")) return 0;
+        // Time-based estimate for ACTIVE / ON_HOLD / IN_DISCOVERY
+        LocalDate start  = p.getStartDate();
+        LocalDate target = p.getTargetDate();
+        if (start != null && target != null && !target.isBefore(start)) {
+            long total   = ChronoUnit.DAYS.between(start, target);
+            long elapsed = ChronoUnit.DAYS.between(start, LocalDate.now());
+            if (total > 0) {
+                int pct = (int) Math.min(95, Math.max(0, (elapsed * 100) / total));
+                return pct;
+            }
+        }
+        return 10; // minimal progress when no dates
+    }
+
+    /** Recompute objective's progress as average of linked project progress values. */
+    private void recomputeProgress(Long objectiveId) {
+        List<ObjectiveProjectLink> links = linkRepo.findByObjectiveId(objectiveId);
+        if (links.isEmpty()) return;
+        double avg = links.stream()
+            .map(link -> projectRepo.findById(link.getProjectId()).orElse(null))
+            .filter(p -> p != null)
+            .mapToInt(this::deriveProgress)
+            .average()
+            .orElse(0);
+        repo.findById(objectiveId).ifPresent(obj -> {
+            obj.setProgress((int) Math.round(avg));
+            repo.save(obj);
+        });
     }
 }

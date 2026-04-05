@@ -286,7 +286,7 @@ export default function RiskRegisterPage() {
       </Group>
 
       {/* Summary Stats */}
-      <SimpleGrid cols={{ base: 3, xs: 3, sm: 3 }} gap="md">
+      <SimpleGrid cols={{ base: 3, xs: 3, sm: 3 }} spacing="md">
         <Paper
           p="md"
           radius="md"

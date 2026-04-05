@@ -267,7 +267,6 @@ export default function ResourcePodMatrixPage() {
  style={{ flex: 1, maxWidth: '300px' }}
  />
  <SegmentedControl
- label="Sort by"
  value={sortBy}
  onChange={(value) => setSortBy(value as SortBy)}
  data={[

@@ -21,6 +21,7 @@ import SummaryCard from '../../components/charts/SummaryCard';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { EmptyState } from '../../components/ui';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -232,6 +233,15 @@ export default function ResourcePerformancePage() {
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <PageError context="loading resource performance" error={error} onRetry={() => refetch()} />;
+  if (!data || data.resources.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconUsers size={40} stroke={1.5} />}
+        title="No resource data yet"
+        description="Map Jira users to resources in Settings → Jira Resource Mapping, then sync to start tracking hours, costs, and velocity."
+      />
+    );
+  }
 
   return (
     <Stack gap="md">

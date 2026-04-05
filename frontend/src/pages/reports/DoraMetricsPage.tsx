@@ -20,6 +20,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
 import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
+import { EmptyState } from '../../components/ui';
 import {
  DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, DEEP_BLUE_TINTS, AQUA_TINTS,
  BORDER_DEFAULT, TEXT_SECONDARY,
@@ -253,9 +254,11 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  if (error) return <PageError context="loading monthly DORA data" error={error} />;
  if (!data || data.months.length === 0) {
  return (
- <Paper withBorder radius="md" p="xl" style={{ textAlign: 'center' }}>
- <Text c="dimmed">No monthly data available for the selected period.</Text>
- </Paper>
+ <EmptyState
+ icon={<IconDatabase size={40} stroke={1.5} />}
+ title="No monthly DORA data"
+ description="No deployment or sprint data is available for the selected lookback period. Try extending the range or connect a Jira project."
+ />
  );
  }
 

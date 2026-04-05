@@ -7,6 +7,7 @@ import {
  SegmentedControl,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/ui';
 import { useDisclosure } from '@mantine/hooks';
 import {
  IconClock, IconChevronDown, IconChevronRight, IconRefresh,
@@ -303,11 +304,13 @@ export default function JiraWorklogPage() {
 
  {/* ── Per-user rows ─────────────────────────────────────── */}
  {users.length === 0 ? (
- <Alert icon={<IconAlertTriangle />} color="gray">
- {search
- ? `No team members matching "${search}" found for ${monthLabel}.`
- : `No worklog entries found for ${monthLabel}. Make sure time is logged in Jira for the configured POD projects.`}
- </Alert>
+ <EmptyState
+ icon={<IconClock size={40} />}
+ title={search ? `No results for "${search}"` : 'No worklog entries'}
+ description={search
+ ? `No team members matching "${search}" have logged time in ${monthLabel}.`
+ : `No time has been logged in Jira for ${monthLabel}. Make sure time tracking is enabled for your configured POD projects.`}
+ />
  ) : (
  <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
  <Table fz="xs" highlightOnHover>

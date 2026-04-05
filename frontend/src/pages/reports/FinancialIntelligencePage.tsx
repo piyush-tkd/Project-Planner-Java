@@ -551,13 +551,14 @@ export default function FinancialIntelligencePage() {
                     </Box>
                   </SimpleGrid>
                   <Divider my="md" />
-                  <Progress
-                    size={12} radius="xl"
-                    sections={[
-                      { value: (planned   / totalIssueTypeCost) * 100, color: AQUA,     tooltip: `Planned: ${fmt(planned)}` },
-                      { value: (unplanned / totalIssueTypeCost) * 100, color: '#ef4444', tooltip: `Unplanned: ${fmt(unplanned)}` },
-                    ]}
-                  />
+                  <Progress.Root size={12} radius="xl">
+                    <Progress.Section value={(planned / totalIssueTypeCost) * 100} color={AQUA}>
+                      <Progress.Label>{`Planned: ${fmt(planned)}`}</Progress.Label>
+                    </Progress.Section>
+                    <Progress.Section value={(unplanned / totalIssueTypeCost) * 100} color="#ef4444">
+                      <Progress.Label>{`Unplanned: ${fmt(unplanned)}`}</Progress.Label>
+                    </Progress.Section>
+                  </Progress.Root>
                   <Group justify="space-between" mt={4}>
                     <Text size="10px" c="dimmed">Planned work</Text>
                     <Text size="10px" c="dimmed">Unplanned work</Text>

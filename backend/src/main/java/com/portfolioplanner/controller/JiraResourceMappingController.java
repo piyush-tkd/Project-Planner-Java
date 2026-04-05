@@ -78,4 +78,11 @@ public class JiraResourceMappingController {
         int accepted = mappingService.bulkAccept(minConfidence);
         return ResponseEntity.ok(Map.of("accepted", accepted));
     }
+
+    /** Backfill Jira avatar URLs for all confirmed mappings that don't have one yet */
+    @PostMapping("/sync-avatars")
+    public ResponseEntity<Map<String, Object>> syncAvatars() {
+        int synced = mappingService.syncAllAvatars();
+        return ResponseEntity.ok(Map.of("synced", synced));
+    }
 }

@@ -6,6 +6,7 @@ import {
  SegmentedControl, Progress, Paper, Divider, ThemeIcon,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/ui';
 import {
  IconTicket, IconLink, IconLinkOff, IconRefresh, IconCheck,
  IconAlertTriangle, IconPlus, IconTrash, IconChartBar, IconSettings,
@@ -117,11 +118,13 @@ export default function JiraActualsPage() {
  {/* ── Actuals Tab ─────────────────────────────────────────── */}
  <Tabs.Panel value="actuals">
  {mappings.length === 0 ? (
- <Alert icon={<IconInfoCircle />} color="blue">
- No project mappings configured yet. Go to the{' '}
- <strong>Project Mapper</strong> tab to link your Jira epics/labels
- to Portfolio Planner projects.
- </Alert>
+ <EmptyState
+ icon={<IconLink size={40} />}
+ title="No project mappings yet"
+ description="Link your Jira epics or labels to Portfolio Planner projects in the Project Mapper tab to start tracking actuals."
+ actionLabel="Go to Project Mapper"
+ onAction={() => document.querySelector<HTMLButtonElement>('[data-value="mapper"]')?.click()}
+ />
  ) : actualsLoading ? (
  <Stack align="center" py="xl">
  <Loader />

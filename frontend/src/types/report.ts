@@ -72,10 +72,11 @@ export interface CapacityDemandSummaryData {
   utilizationPct: number;
 }
 
+/** Matches backend SimulationResultResponse: { baseline, simulated, deltas } each wrapping { gaps: PodMonthGap[] } */
 export interface SimulationResult {
-  baselineGaps: PodMonthGap[];
-  simulatedGaps: PodMonthGap[];
-  improvements: PodMonthGap[];
+  baseline:  { gaps: PodMonthGap[] };
+  simulated: { gaps: PodMonthGap[] };
+  deltas:    { gaps: PodMonthGap[] };
 }
 
 export interface PodResourceSummary {

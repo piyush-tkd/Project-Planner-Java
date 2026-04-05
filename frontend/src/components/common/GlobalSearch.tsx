@@ -13,7 +13,16 @@ import {
 import {
   IconSearch, IconBriefcase, IconUsers, IconHexagons,
   IconChartBar, IconDashboard, IconSettings, IconArrowRight,
-  IconBrain,
+  IconBrain, IconInbox, IconTargetArrow, IconAlertTriangle,
+  IconBulb, IconCalendarStats, IconArrowsShuffle, IconCalendarPlus,
+  IconFlame, IconCalendarOff, IconCalendar, IconTemplate,
+  IconUsersGroup, IconTag, IconPackage, IconTicket, IconClock,
+  IconCurrencyDollar, IconShieldCheck, IconHeartRateMonitor,
+  IconTimeline, IconChartInfographic, IconGitBranch,
+  IconReportMoney, IconRocket, IconChartDots3, IconLayoutDashboard,
+  IconPlayerPlay, IconAdjustments, IconBellRinging, IconPlugConnected,
+  IconBuildingFactory, IconTrendingUp, IconUserSearch,
+  IconChartPie,
 } from '@tabler/icons-react';
 import { useProjects } from '../../api/projects';
 import { useResources } from '../../api/resources';
@@ -29,31 +38,82 @@ interface SearchResult {
   badges?: string[];
 }
 
-// Static nav pages searchable
+// ── Static nav pages — kept in sync with navGroups in AppShell.tsx ──────────
 const PAGE_RESULTS: SearchResult[] = [
-  { id: 'p-dash',    label: 'Dashboard',           category: 'Pages', icon: <IconDashboard size={15} />,  path: '/' },
-  { id: 'p-nlp',     label: 'Ask AI',              category: 'Pages', icon: <IconBrain size={15} />,      path: '/nlp' },
-  { id: 'p-res',     label: 'Resources',            category: 'Pages', icon: <IconUsers size={15} />,      path: '/resources' },
-  { id: 'p-proj',    label: 'Projects',             category: 'Pages', icon: <IconBriefcase size={15} />,  path: '/projects' },
-  { id: 'p-pods',    label: 'PODs',                 category: 'Pages', icon: <IconHexagons size={15} />,   path: '/pods' },
-  { id: 'p-avail',   label: 'Availability',         category: 'Pages', icon: <IconUsers size={15} />,      path: '/availability' },
-  { id: 'p-cap',     label: 'Capacity Gap',         category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/capacity-gap' },
-  { id: 'p-util',    label: 'Utilization',  category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/utilization' },
-  { id: 'p-hire',    label: 'Hiring Forecast',      category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/hiring-forecast' },
-  { id: 'p-concur',  label: 'Concurrency Risk',     category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/concurrency' },
-  { id: 'p-alloc',   label: 'Resource Allocation',  category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/resource-allocation' },
-  { id: 'p-budget',  label: 'Budget & Cost',        category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/budget' },
-  { id: 'p-gantt',   label: 'Project Gantt',        category: 'Reports', icon: <IconChartBar size={15} />, path: '/reports/gantt' },
-  { id: 'p-sim',     label: 'Scenario Simulator',   category: 'Simulators', icon: <IconSettings size={15} />, path: '/simulator/scenario' },
-  { id: 'p-timsim',  label: 'Timeline Simulator',   category: 'Simulators', icon: <IconSettings size={15} />, path: '/simulator/timeline' },
-  { id: 'p-support', label: 'Support Queue',        category: 'Integrations', icon: <IconSettings size={15} />, path: '/jira-support' },
-  { id: 'p-capex',   label: 'CapEx / OpEx',         category: 'Integrations', icon: <IconSettings size={15} />, path: '/jira-capex' },
-  { id: 'p-tl',      label: 'Timeline Settings',    category: 'Settings', icon: <IconSettings size={15} />, path: '/settings/timeline' },
-  { id: 'p-ref',     label: 'Reference Data',       category: 'Settings', icon: <IconSettings size={15} />, path: '/settings/ref-data' },
-  { id: 'p-jira',    label: 'Jira Settings',        category: 'Settings', icon: <IconSettings size={15} />, path: '/settings/jira' },
+  // Home
+  { id: 'p-dash',   label: 'Dashboard',          category: 'Home',        icon: <IconDashboard size={15} />,        path: '/' },
+  { id: 'p-inbox',  label: 'Inbox',              category: 'Home',        icon: <IconInbox size={15} />,            path: '/inbox' },
+  { id: 'p-nlp',    label: 'Ask AI',             category: 'Home',        icon: <IconBrain size={15} />,            path: '/nlp' },
+
+  // Portfolio
+  { id: 'p-proj',   label: 'Projects',           category: 'Portfolio',   icon: <IconBriefcase size={15} />,        path: '/projects' },
+  { id: 'p-pods',   label: 'PODs',               category: 'Portfolio',   icon: <IconHexagons size={15} />,         path: '/pods' },
+  { id: 'p-obj',    label: 'Objectives',         category: 'Portfolio',   icon: <IconTargetArrow size={15} />,      path: '/objectives' },
+  { id: 'p-risk',   label: 'Risk & Issues',      category: 'Portfolio',   icon: <IconAlertTriangle size={15} />,    path: '/risk-register' },
+  { id: 'p-ideas',  label: 'Ideas Board',        category: 'Portfolio',   icon: <IconBulb size={15} />,             path: '/ideas' },
+
+  // People
+  { id: 'p-res',    label: 'Resources',          category: 'People',      icon: <IconUsers size={15} />,            path: '/resources' },
+  { id: 'p-avail',  label: 'Availability',       category: 'People',      icon: <IconCalendarStats size={15} />,    path: '/availability' },
+  { id: 'p-over',   label: 'Overrides',          category: 'People',      icon: <IconArrowsShuffle size={15} />,    path: '/overrides' },
+  { id: 'p-book',   label: 'Bookings',           category: 'People',      icon: <IconCalendarPlus size={15} />,     path: '/resource-bookings' },
+  { id: 'p-caphub', label: 'Capacity',           category: 'People',      icon: <IconFlame size={15} />,            path: '/capacity' },
+  { id: 'p-leave',  label: 'Leave & Holidays',   category: 'People',      icon: <IconCalendarOff size={15} />,      path: '/leave' },
+  { id: 'p-rpf',    label: 'Resource Performance', category: 'People',    icon: <IconTrendingUp size={15} />,       path: '/reports/resource-performance' },
+  { id: 'p-rint',   label: 'Resource Intelligence', category: 'People',   icon: <IconUserSearch size={15} />,       path: '/reports/resource-intelligence' },
+
+  // Calendar
+  { id: 'p-cal',    label: 'Strategic Calendar', category: 'Calendar',    icon: <IconCalendar size={15} />,         path: '/calendar' },
+  { id: 'p-sprint', label: 'Sprint Planner',     category: 'Calendar',    icon: <IconBrain size={15} />,            path: '/sprint-planner' },
+  { id: 'p-templ',  label: 'Project Templates',  category: 'Calendar',    icon: <IconTemplate size={15} />,         path: '/project-templates' },
+
+  // Delivery
+  { id: 'p-jpods',  label: 'POD Dashboard',      category: 'Delivery',    icon: <IconUsersGroup size={15} />,       path: '/jira-pods' },
+  { id: 'p-rel',    label: 'Releases',           category: 'Delivery',    icon: <IconTag size={15} />,              path: '/jira-releases' },
+  { id: 'p-reln',   label: 'Release Notes',      category: 'Delivery',    icon: <IconPackage size={15} />,          path: '/release-notes' },
+  { id: 'p-act',    label: 'Jira Actuals',       category: 'Delivery',    icon: <IconTicket size={15} />,           path: '/jira-actuals' },
+  { id: 'p-sup',    label: 'Support Queue',      category: 'Delivery',    icon: <IconSettings size={15} />,         path: '/jira-support' },
+  { id: 'p-wlog',   label: 'Worklog',            category: 'Delivery',    icon: <IconClock size={15} />,            path: '/jira-worklog' },
+  { id: 'p-bcapex', label: 'Budget & CapEx',     category: 'Delivery',    icon: <IconCurrencyDollar size={15} />,   path: '/reports/budget-capex' },
+
+  // Portfolio Analysis
+  { id: 'p-phealth', label: 'Portfolio Health',       category: 'Portfolio Analysis', icon: <IconShieldCheck size={15} />,      path: '/reports/portfolio-health-dashboard' },
+  { id: 'p-prjh',   label: 'Project Health',         category: 'Portfolio Analysis', icon: <IconHeartRateMonitor size={15} />, path: '/reports/project-health' },
+  { id: 'p-ptl',    label: 'Portfolio Timeline',     category: 'Portfolio Analysis', icon: <IconTimeline size={15} />,          path: '/reports/portfolio-timeline' },
+  { id: 'p-psig',   label: 'Project Signals',        category: 'Portfolio Analysis', icon: <IconChartInfographic size={15} />,  path: '/reports/project-signals' },
+  { id: 'p-dep',    label: 'Dependency Map',         category: 'Portfolio Analysis', icon: <IconGitBranch size={15} />,         path: '/reports/dependency-map' },
+  { id: 'p-gdep',   label: 'Gantt & Dependencies',   category: 'Portfolio Analysis', icon: <IconChartBar size={15} />,          path: '/reports/gantt-dependencies' },
+
+  // Engineering
+  { id: 'p-eintel', label: 'Eng. Intelligence',      category: 'Engineering',  icon: <IconReportMoney size={15} />,      path: '/reports/engineering-intelligence' },
+  { id: 'p-dora',   label: 'DORA Metrics',           category: 'Engineering',  icon: <IconRocket size={15} />,           path: '/reports/dora' },
+  { id: 'p-dpred',  label: 'Delivery Predictability', category: 'Engineering', icon: <IconChartDots3 size={15} />,       path: '/reports/delivery-predictability' },
+  { id: 'p-janalytics', label: 'Jira Analytics',     category: 'Engineering',  icon: <IconChartInfographic size={15} />, path: '/reports/jira-analytics' },
+  { id: 'p-jdbuild', label: 'Dashboard Builder',     category: 'Engineering',  icon: <IconLayoutDashboard size={15} />,  path: '/reports/jira-dashboard-builder' },
+
+  // Simulations
+  { id: 'p-timsim', label: 'Timeline Simulator',     category: 'Simulations',  icon: <IconPlayerPlay size={15} />,       path: '/simulator/timeline' },
+  { id: 'p-scensim', label: 'Scenario Simulator',    category: 'Simulations',  icon: <IconAdjustments size={15} />,      path: '/simulator/scenario' },
+  { id: 'p-notifs', label: 'Smart Notifications',    category: 'Simulations',  icon: <IconBellRinging size={15} />,      path: '/reports/smart-notifications' },
+  { id: 'p-jsync',  label: 'Jira Portfolio Sync',    category: 'Simulations',  icon: <IconPlugConnected size={15} />,    path: '/reports/jira-portfolio-sync' },
+
+  // Settings
+  { id: 'p-org',    label: 'Admin Settings',         category: 'Settings',     icon: <IconBuildingFactory size={15} />,  path: '/settings/org' },
+  { id: 'p-tl',     label: 'Timeline Settings',      category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/timeline' },
+  { id: 'p-ref',    label: 'Reference Data',         category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/ref-data' },
+  { id: 'p-jira',   label: 'Jira Settings',          category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/jira' },
+  { id: 'p-nlpset', label: 'NLP Settings',           category: 'Settings',     icon: <IconBrain size={15} />,            path: '/settings/nlp' },
+  { id: 'p-users',  label: 'User Management',        category: 'Settings',     icon: <IconUsers size={15} />,            path: '/settings/users' },
+  { id: 'p-audit',  label: 'Audit Log',              category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/audit-log' },
+  { id: 'p-resmap', label: 'Jira Resource Mapping',  category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/jira-resource-mapping' },
+  { id: 'p-relmap', label: 'Jira Release Mapping',   category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/jira-release-mapping' },
 ];
 
-const CATEGORY_ORDER = ['Pages', 'Reports', 'Simulators', 'Integrations', 'Settings', 'Projects', 'Resources', 'PODs'];
+const CATEGORY_ORDER = [
+  'Home', 'Portfolio', 'People', 'Calendar', 'Delivery',
+  'Portfolio Analysis', 'Engineering', 'Simulations', 'Settings',
+  'Projects', 'Resources', 'PODs',
+];
 
 function highlight(text: string, query: string): React.ReactNode {
   if (!query) return text;

@@ -87,12 +87,18 @@ import {
   IconTemplate,
   IconInbox,
   IconTruck,
+  IconPlus,
+  IconRadar,
+  IconStars,
+  IconListCheck,
+  IconFlame as IconFlameAlias,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ExcelUploadModal from '../common/ExcelUploadModal';
 import NotificationBell from '../common/NotificationBell';
 import TourGuide from '../common/TourGuide';
 import FeedbackWidget from '../common/FeedbackWidget';
+import WhatsNewDrawer, { useUnreadChangelogCount } from '../common/WhatsNewDrawer';
 import { useAuth } from '../../auth/AuthContext';
 import apiClient from '../../api/client';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
@@ -103,7 +109,7 @@ import {
   TEXT_SECONDARY,
 } from '../../brandTokens';
 
-interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string }
+interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string; featureFlag?: string }
 interface NavGroup { label: string; items: NavItem[] }
 
 const navGroups: NavGroup[] = [
@@ -113,18 +119,18 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/',      icon: <IconDashboard size={17} />, pageKey: 'dashboard' },
       { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={17} />,     pageKey: 'inbox' },
-      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={17} />,     pageKey: 'nlp_landing' },
+      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={17} />,     pageKey: 'nlp_landing',  featureFlag: 'ai' },
     ],
   },
-  // ── PORTFOLIO ──────────────────────────────────────────────────────────────
+  // ── PROJECTS ───────────────────────────────────────────────────────────────
   {
-    label: 'Portfolio',
+    label: 'Projects',
     items: [
       { label: 'Projects',      path: '/projects',      icon: <IconBriefcase size={17} />,     pageKey: 'projects' },
       { label: 'PODs',          path: '/pods',          icon: <IconHexagons size={17} />,      pageKey: 'pods' },
-      { label: 'Objectives',    path: '/objectives',    icon: <IconTargetArrow size={17} />,   pageKey: 'objectives' },
-      { label: 'Risk & Issues', path: '/risk-register', icon: <IconAlertTriangle size={17} />, pageKey: 'risk_register' },
-      { label: 'Ideas Board',   path: '/ideas',         icon: <IconBulb size={17} />,          pageKey: 'ideas_board' },
+      { label: 'Objectives',    path: '/objectives',    icon: <IconTargetArrow size={17} />,   pageKey: 'objectives',    featureFlag: 'okr' },
+      { label: 'Risk & Issues', path: '/risk-register', icon: <IconAlertTriangle size={17} />, pageKey: 'risk_register', featureFlag: 'risk' },
+      { label: 'Ideas Board',   path: '/ideas',         icon: <IconBulb size={17} />,          pageKey: 'ideas_board',   featureFlag: 'ideas' },
     ],
   },
   // ── PEOPLE ─────────────────────────────────────────────────────────────────
@@ -137,6 +143,9 @@ const navGroups: NavGroup[] = [
       { label: 'Bookings',              path: '/resource-bookings',              icon: <IconCalendarPlus size={17} />,    pageKey: 'resource_bookings' },
       { label: 'Capacity',              path: '/capacity',                       icon: <IconFlame size={17} />,           pageKey: 'capacity_hub' },
       { label: 'Leave & Holidays',      path: '/leave',                          icon: <IconCalendarOff size={17} />,     pageKey: 'leave_hub' },
+      { label: 'Capacity Forecast',     path: '/reports/capacity-forecast',      icon: <IconRadar size={17} />,           pageKey: 'capacity_forecast' },
+      { label: 'Skills Matrix',         path: '/reports/skills-matrix',          icon: <IconStars size={17} />,           pageKey: 'skills_matrix' },
+      { label: 'Team Pulse',            path: '/reports/team-pulse',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'team_pulse' },
       { label: 'Resource Performance',  path: '/reports/resource-performance',   icon: <IconTrendingUp size={17} />,      pageKey: 'resource_performance' },
       { label: 'Resource Intelligence', path: '/reports/resource-intelligence',  icon: <IconUserSearch size={17} />,      pageKey: 'resource_intelligence' },
     ],
@@ -145,9 +154,11 @@ const navGroups: NavGroup[] = [
   {
     label: 'Calendar',
     items: [
-      { label: 'Strategic Calendar', path: '/calendar',           icon: <IconCalendar size={17} />,  pageKey: 'calendar_hub' },
-      { label: 'Sprint Planner',     path: '/sprint-planner',     icon: <IconBrain size={17} />,     pageKey: 'sprint_planner' },
-      { label: 'Project Templates',  path: '/project-templates',  icon: <IconTemplate size={17} />,  pageKey: 'project_templates' },
+      { label: 'Strategic Calendar', path: '/calendar',           icon: <IconCalendar size={17} />,       pageKey: 'calendar_hub' },
+      { label: 'Sprint Calendar',    path: '/sprint-calendar',    icon: <IconCalendarEvent size={17} />,  pageKey: 'sprint_calendar' },
+      { label: 'Release Calendar',   path: '/release-calendar',   icon: <IconCalendarPlus size={17} />,   pageKey: 'release_calendar' },
+      { label: 'Sprint Planner',     path: '/sprint-planner',     icon: <IconBrain size={17} />,          pageKey: 'sprint_planner' },
+      { label: 'Project Templates',  path: '/project-templates',  icon: <IconTemplate size={17} />,       pageKey: 'project_templates' },
     ],
   },
   // ── DELIVERY ───────────────────────────────────────────────────────────────
@@ -160,19 +171,22 @@ const navGroups: NavGroup[] = [
       { label: 'Jira Actuals',   path: '/jira-actuals',   icon: <IconTicket size={17} />,       pageKey: 'jira_actuals' },
       { label: 'Support Queue',  path: '/jira-support',   icon: <IconHeadset size={17} />,      pageKey: 'jira_support', alertKey: 'supportStale' },
       { label: 'Worklog',        path: '/jira-worklog',   icon: <IconClock size={17} />,        pageKey: 'jira_worklog' },
-      { label: 'Budget & CapEx', path: '/reports/budget-capex', icon: <IconCurrencyDollar size={17} />, pageKey: 'budget_capex' },
+      { label: 'Budget & CapEx', path: '/reports/budget-capex', icon: <IconCurrencyDollar size={17} />, pageKey: 'budget_capex', featureFlag: 'financials' },
     ],
   },
   // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   {
     label: 'Portfolio',
     items: [
+      { label: 'Executive Summary',   path: '/reports/executive-summary',          icon: <IconLayoutDashboard size={17} />,   pageKey: 'exec_summary' },
       { label: 'Portfolio Health',    path: '/reports/portfolio-health-dashboard', icon: <IconShieldCheck size={17} />,      pageKey: 'portfolio_health_dashboard' },
       { label: 'Project Health',      path: '/reports/project-health',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'project_health' },
       { label: 'Portfolio Timeline',  path: '/reports/portfolio-timeline',         icon: <IconTimeline size={17} />,          pageKey: 'portfolio_timeline' },
       { label: 'Project Signals',     path: '/reports/project-signals',            icon: <IconChartInfographic size={17} />,  pageKey: 'project_signals' },
       { label: 'Dependency Map',      path: '/reports/dependency-map',             icon: <IconLink size={17} />,              pageKey: 'dependency_map' },
       { label: 'Gantt & Dependencies',path: '/reports/gantt-dependencies',         icon: <IconGitBranch size={17} />,         pageKey: 'gantt_dependencies' },
+      { label: 'Risk Heatmap',        path: '/reports/risk-heatmap',               icon: <IconChartDots3 size={17} />,        pageKey: 'risk_heatmap' },
+      { label: 'Status Updates',      path: '/reports/status-updates',             icon: <IconMessageReport size={17} />,     pageKey: 'status_updates' },
     ],
   },
   // ── ENGINEERING ───────────────────────────────────────────────────────────
@@ -182,6 +196,7 @@ const navGroups: NavGroup[] = [
       { label: 'Eng. Intelligence',   path: '/reports/engineering-intelligence',   icon: <IconReportMoney size={17} />,       pageKey: 'engineering_intelligence' },
       { label: 'DORA Metrics',        path: '/reports/dora',                       icon: <IconRocket size={17} />,            pageKey: 'dora_metrics' },
       { label: 'Delivery Predict.',   path: '/reports/delivery-predictability',    icon: <IconChartDots3 size={17} />,        pageKey: 'delivery_predictability' },
+      { label: 'Sprint Retro',        path: '/reports/sprint-retro',               icon: <IconListCheck size={17} />,         pageKey: 'sprint_retro' },
       { label: 'Jira Analytics',      path: '/reports/jira-analytics',             icon: <IconChartInfographic size={17} />,  pageKey: 'jira_analytics' },
       { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder',     icon: <IconLayoutDashboard size={17} />,   pageKey: 'jira_dashboard_builder' },
     ],
@@ -201,6 +216,8 @@ const navGroups: NavGroup[] = [
     label: 'Admin',
     items: [
       { label: 'Admin Settings',   path: '/settings/org',                     icon: <IconBuildingFactory size={17} />, pageKey: 'org_settings' },
+      { label: 'Changelog',        path: '/settings/changelog',               icon: <IconBellRinging size={17} />,    pageKey: 'changelog_admin' },
+      { label: 'Custom Fields',    path: '/settings/custom-fields',           icon: <IconAdjustments size={17} />,    pageKey: 'custom_fields_admin' },
     ],
   },
 ];
@@ -216,6 +233,8 @@ export default function AppShellLayout() {
   const [opened, setOpened]                 = useState(true);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [downloading, setDownloading]       = useState(false);
+  const [whatsNewOpen,  setWhatsNewOpen]    = useState(false);
+  const unreadChangelog = useUnreadChangelogCount();
   const location  = useLocation();
   const navigate  = useNavigate();
   const { setColorScheme }  = useMantineColorScheme();
@@ -303,18 +322,20 @@ export default function AppShellLayout() {
       return { ...group, items: sorted };
     });
 
-    // 3. Filter by permissions
+    // 3. Filter by permissions AND feature flags
     return reordered
       .map(group => ({
         ...group,
         items: group.items.filter(item => {
           if (item.pageKey === '__admin_only__') return isAdmin;
+          // Feature flag check — if flag is explicitly false, hide regardless of role
+          if (item.featureFlag && orgSettings.features[item.featureFlag] === false) return false;
           if (!item.pageKey) return true;
           return canAccess(item.pageKey);
         }),
       }))
       .filter(group => group.items.length > 0);
-  }, [sidebarOrder, isAdmin, canAccess]);
+  }, [sidebarOrder, isAdmin, canAccess, orgSettings.features]);
 
   // ── Collapsible nav groups ────────────────────────────────────────────────
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -340,11 +361,10 @@ export default function AppShellLayout() {
 
   function isGroupCollapsed(group: typeof visibleGroups[0]): boolean {
     if (group.label === 'Home') return false;
+    // If the user has explicitly toggled this group, respect that preference
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
-    return !group.items.some(item =>
-      item.path === '/' ? location.pathname === '/' :
-      location.pathname === item.path || location.pathname.startsWith(item.path + '/')
-    );
+    // Default: all groups open on first load — don't hide sections the user hasn't seen yet
+    return false;
   }
 
   return (
@@ -452,6 +472,27 @@ export default function AppShellLayout() {
             </Tooltip>
 
             <NotificationBell />
+
+            {/* What's New button */}
+            <Tooltip label="What's New" position="bottom">
+              <div style={{ position: 'relative' }}>
+                <ActionIcon
+                  variant="subtle"
+                  size="lg"
+                  onClick={() => setWhatsNewOpen(true)}
+                  style={{ color: 'rgba(255,255,255,0.75)' }}
+                >
+                  <IconBellRinging size={19} />
+                </ActionIcon>
+                {unreadChangelog > 0 && (
+                  <div style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#fa5252', pointerEvents: 'none',
+                  }} />
+                )}
+              </div>
+            </Tooltip>
 
             <Tooltip label="Upload Excel" position="bottom">
               <ActionIcon
@@ -627,6 +668,22 @@ export default function AppShellLayout() {
                               {alertCount}
                             </Badge>
                           )}
+                          {item.path === '/projects' && (
+                            <Tooltip label="Add project" withArrow position="right">
+                              <ActionIcon
+                                size={16}
+                                variant="subtle"
+                                color="teal"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate('/projects?new=true');
+                                }}
+                                style={{ opacity: 0.7 }}
+                              >
+                                <IconPlus size={12} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
                         </Group>
                       }
                       leftSection={item.icon}
@@ -687,7 +744,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v12.5
+              Portfolio Planner v14.4
             </Text>
           </div>
         </MantineAppShell.Section>
@@ -705,6 +762,7 @@ export default function AppShellLayout() {
       <KeyboardShortcutsPanel opened={shortcutsOpened} onClose={() => setShortcutsOpened(false)} />
       <TourGuide />
       <FeedbackWidget />
+      <WhatsNewDrawer opened={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
     </MantineAppShell>
   );
 }

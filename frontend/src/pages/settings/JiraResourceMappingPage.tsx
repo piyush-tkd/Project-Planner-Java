@@ -2,18 +2,18 @@ import { useState, useMemo } from 'react';
 import {
   Title, Text, Group, Button, Badge, Table, TextInput, Select,
   Alert, ActionIcon, Tooltip, Stack, Paper, SimpleGrid, ScrollArea,
-  ThemeIcon, Box, Collapse,
+  ThemeIcon, Box, Collapse, Avatar,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconUsers, IconSearch, IconWand, IconCheck, IconX, IconArrowRight,
   IconRefresh, IconDeviceFloppy, IconUserOff, IconEdit, IconTrash,
-  IconAlertTriangle, IconChevronDown, IconChevronUp, IconLink, IconLinkOff,
+  IconAlertTriangle, IconChevronDown, IconChevronUp, IconLink, IconLinkOff, IconPhoto,
 } from '@tabler/icons-react';
 import {
   useResourceMappings, useResourceMappingStats, useAutoMatch,
   useSaveResourceMapping, useDeleteResourceMapping, useBulkAcceptMappings,
-  useUnmappedResources, useClearResourceMapping,
+  useUnmappedResources, useClearResourceMapping, useSyncAvatars,
   ResourceMappingResponse,
 } from '../../api/jiraResourceMapping';
 import { useResources } from '../../api/resources';
@@ -42,6 +42,7 @@ interface ResourceRow {
   resourceName: string;
   resourceRole: string;
   resourceEmail: string | null;
+  resourceAvatarUrl: string | null;
   resourceLocation: string;
   // Mapping info (null if unmapped)
   mappingId: number | null;
@@ -64,6 +65,7 @@ export default function JiraResourceMappingPage() {
   const deleteMut = useDeleteResourceMapping();
   const clearMut = useClearResourceMapping();
   const bulkAcceptMut = useBulkAcceptMappings();
+  const syncAvatarsMut = useSyncAvatars();
 
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<FilterTab>('all');
@@ -88,7 +90,8 @@ export default function JiraResourceMappingPage() {
         resourceId: r.id,
         resourceName: r.name,
         resourceRole: r.role,
-        resourceEmail: r.email,
+        resourceEmail: r.email ?? null,
+        resourceAvatarUrl: r.avatarUrl ?? null,
         resourceLocation: r.location,
         mappingId: m?.id ?? null,
         jiraDisplayName: m?.jiraDisplayName ?? r.jiraDisplayName ?? null,
@@ -232,6 +235,26 @@ export default function JiraResourceMappingPage() {
           >
             Smart Match All
           </Button>
+          <Button
+            size="xs"
+            variant="outline"
+            leftSection={<IconPhoto size={14} />}
+            loading={syncAvatarsMut.isPending}
+            onClick={() => syncAvatarsMut.mutate(undefined, {
+              onSuccess: (data) => notifications.show({
+                title: 'Avatars synced',
+                message: `Updated ${data.synced} profile photo${data.synced !== 1 ? 's' : ''} from Jira`,
+                color: 'teal',
+              }),
+              onError: () => notifications.show({
+                title: 'Sync failed',
+                message: 'Could not fetch avatars from Jira. Check your Jira configuration.',
+                color: 'red',
+              }),
+            })}
+          >
+            Sync Photos
+          </Button>
         </Group>
       </Group>
 
@@ -354,9 +377,15 @@ export default function JiraResourceMappingPage() {
                   {/* Resource Name */}
                   <Table.Td>
                     <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon size={26} radius="xl" color="blue" variant="light">
+                      <Avatar
+                        src={row.resourceAvatarUrl}
+                        size={26}
+                        radius="xl"
+                        color="blue"
+                        variant="light"
+                      >
                         <Text size="xs" fw={700}>{initials(row.resourceName)}</Text>
-                      </ThemeIcon>
+                      </Avatar>
                       <div>
                         <Text size="xs" fw={600}>{row.resourceName}</Text>
                         <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>
