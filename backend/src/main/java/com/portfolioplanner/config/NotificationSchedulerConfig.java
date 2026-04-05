@@ -4,6 +4,7 @@ import com.portfolioplanner.service.InsightService;
 import com.portfolioplanner.service.NotificationScheduleService;
 import com.portfolioplanner.service.SupportStalenessService;
 import com.portfolioplanner.service.WeeklyDigestService;
+import com.portfolioplanner.service.jira.JiraEpicSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,7 @@ public class NotificationSchedulerConfig implements SchedulingConfigurer {
     private final WeeklyDigestService          weeklyDigestService;
     private final SupportStalenessService      supportStalenessService;
     private final InsightService               insightService;
+    private final JiraEpicSyncService          jiraEpicSyncService;
 
     @Override
     public void configureTasks(ScheduledTaskRegistrar registrar) {
@@ -88,6 +90,33 @@ public class NotificationSchedulerConfig implements SchedulingConfigurer {
                 } catch (IllegalArgumentException e) {
                     log.warn("NotificationSchedulerConfig: invalid staleness cron '{}', defaulting to weekly Monday 09:00", cron);
                     return new CronTrigger("0 0 9 * * MON").nextExecution(triggerContext);
+                }
+            }
+        );
+
+        // ── Jira epic auto-sync ───────────────────────────────────────────────
+        registrar.addTriggerTask(
+            () -> {
+                if (notificationScheduleService.load().isJiraSyncEnabled()) {
+                    log.info("NotificationSchedulerConfig: running scheduled Jira epic sync");
+                    try {
+                        JiraEpicSyncService.SyncResult result = jiraEpicSyncService.syncAllBoards();
+                        log.info("NotificationSchedulerConfig: Jira sync done — created={}, updated={}, failed={}",
+                                result.created(), result.updated(), result.failed());
+                    } catch (Exception e) {
+                        log.error("NotificationSchedulerConfig: Jira epic sync failed — {}", e.getMessage(), e);
+                    }
+                } else {
+                    log.debug("NotificationSchedulerConfig: Jira epic sync disabled, skipping");
+                }
+            },
+            triggerContext -> {
+                String cron = notificationScheduleService.load().getJiraSyncCron();
+                try {
+                    return new CronTrigger(cron).nextExecution(triggerContext);
+                } catch (IllegalArgumentException e) {
+                    log.warn("NotificationSchedulerConfig: invalid jira sync cron '{}', defaulting to every 2 hours", cron);
+                    return new CronTrigger("0 0 */2 * * *").nextExecution(triggerContext);
                 }
             }
         );

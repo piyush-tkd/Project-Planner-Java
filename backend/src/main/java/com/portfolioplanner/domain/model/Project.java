@@ -1,6 +1,7 @@
 package com.portfolioplanner.domain.model;
 
 import com.portfolioplanner.domain.model.enums.Priority;
+import com.portfolioplanner.domain.model.enums.SourceType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "project")
@@ -65,6 +67,37 @@ public class Project {
     /** Optional client name associated with this project (e.g. an external customer). */
     @Column(name = "client", length = 150)
     private String client;
+
+    // ── Jira source-of-truth fields ──────────────────────────────────────────
+
+    /**
+     * Origin of this project record.
+     * MANUAL = created in PP; JIRA_SYNCED = auto-discovered from Jira epic;
+     * PUSHED_TO_JIRA = started as MANUAL then pushed to Jira via "Create in Jira".
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 30)
+    private SourceType sourceType = SourceType.MANUAL;
+
+    /** Jira epic key linked to this project (e.g. PMO-123). Unique when set. */
+    @Column(name = "jira_epic_key", length = 50, unique = true)
+    private String jiraEpicKey;
+
+    /** Jira Agile board ID from which this epic was synced. */
+    @Column(name = "jira_board_id")
+    private Long jiraBoardId;
+
+    /** Timestamp of the last successful Jira sync for this project. */
+    @Column(name = "jira_last_synced_at")
+    private OffsetDateTime jiraLastSyncedAt;
+
+    /** TRUE if the most recent sync attempt for this project failed. */
+    @Column(name = "jira_sync_error", nullable = false)
+    private boolean jiraSyncError = false;
+
+    /** Soft-delete flag. Archived projects are hidden from normal views. */
+    @Column(name = "archived", nullable = false)
+    private boolean archived = false;
 
     // ── Project-level milestone dates ────────────────────────────────────────
     @Column(name = "e2e_start_date")

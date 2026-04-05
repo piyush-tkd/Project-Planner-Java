@@ -46,6 +46,8 @@ public class NotificationScheduleService {
         dto.setDigestCron(cfg.getDigestCron());
         dto.setStalenessEnabled(cfg.isStalenessEnabled());
         dto.setStalenessCron(cfg.getStalenessCron());
+        dto.setJiraSyncEnabled(cfg.isJiraSyncEnabled());
+        dto.setJiraSyncCron(cfg.getJiraSyncCron());
         return dto;
     }
 
@@ -66,10 +68,14 @@ public class NotificationScheduleService {
         if (dto.getStalenessCron() != null && !dto.getStalenessCron().isBlank()) {
             cfg.setStalenessCron(dto.getStalenessCron().trim());
         }
+        cfg.setJiraSyncEnabled(dto.isJiraSyncEnabled());
+        if (dto.getJiraSyncCron() != null && !dto.getJiraSyncCron().isBlank()) {
+            cfg.setJiraSyncCron(dto.getJiraSyncCron().trim());
+        }
 
         repo.save(cfg);
-        log.info("NotificationScheduleService: config saved — digest={}, staleness={}",
-                cfg.isDigestEnabled(), cfg.isStalenessEnabled());
+        log.info("NotificationScheduleService: config saved — digest={}, staleness={}, jiraSync={}",
+                cfg.isDigestEnabled(), cfg.isStalenessEnabled(), cfg.isJiraSyncEnabled());
         return loadDto();
     }
 

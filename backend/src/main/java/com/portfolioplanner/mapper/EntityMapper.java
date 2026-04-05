@@ -50,10 +50,22 @@ public interface EntityMapper {
     List<PodResponse> toPodResponseList(List<Pod> pods);
 
     // Project mappings
-    @Mapping(target = "blockedBy", ignore = true)
+    @Mapping(target = "blockedBy",        ignore = true)
+    @Mapping(target = "sourceType",       ignore = true)
+    @Mapping(target = "jiraEpicKey",      ignore = true)
+    @Mapping(target = "jiraBoardId",      ignore = true)
+    @Mapping(target = "jiraLastSyncedAt", ignore = true)
+    @Mapping(target = "jiraSyncError",    ignore = true)
+    @Mapping(target = "archived",         ignore = true)
     Project toEntity(ProjectRequest request);
 
-    @Mapping(target = "blockedBy", ignore = true)
+    @Mapping(target = "blockedBy",        ignore = true)
+    @Mapping(target = "sourceType",       ignore = true)
+    @Mapping(target = "jiraEpicKey",      ignore = true)
+    @Mapping(target = "jiraBoardId",      ignore = true)
+    @Mapping(target = "jiraLastSyncedAt", ignore = true)
+    @Mapping(target = "jiraSyncError",    ignore = true)
+    @Mapping(target = "archived",         ignore = true)
     void updateEntity(ProjectRequest request, @MappingTarget Project entity);
 
     default ProjectResponse toProjectResponse(Project project) {
@@ -74,7 +86,13 @@ public interface EntityMapper {
                 project.getStartDate(),
                 project.getCapacityNote(),
                 project.getClient(),
-                project.getCreatedAt()
+                project.getCreatedAt(),
+                project.getSourceType(),
+                project.getJiraEpicKey(),
+                project.getJiraBoardId(),
+                project.getJiraLastSyncedAt(),
+                project.isJiraSyncError(),
+                project.isArchived()
         );
     }
 

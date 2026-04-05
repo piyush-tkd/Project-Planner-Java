@@ -50,6 +50,16 @@ public class NotificationSchedule {
     @Column(name = "staleness_cron", nullable = false, length = 100)
     private String stalenessCron = "0 0 9 * * MON";
 
+    // ── Jira epic auto-sync ──────────────────────────────────────────────────
+
+    /** Whether the Jira epic auto-sync cron should fire. */
+    @Column(name = "jira_sync_enabled", nullable = false)
+    private boolean jiraSyncEnabled = false;
+
+    /** Spring cron expression for Jira epic sync. Default = every 2 hours. */
+    @Column(name = "jira_sync_cron", nullable = false, length = 100)
+    private String jiraSyncCron = "0 0 */2 * * *";
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

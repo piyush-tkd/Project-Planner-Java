@@ -1,9 +1,11 @@
 package com.portfolioplanner.dto.response;
 
 import com.portfolioplanner.domain.model.enums.Priority;
+import com.portfolioplanner.domain.model.enums.SourceType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record ProjectResponse(
         Long id,
@@ -21,6 +23,13 @@ public record ProjectResponse(
         LocalDate startDate,
         String capacityNote,
         String client,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        // ── Jira source-of-truth fields ──────────────────────────────────────
+        SourceType sourceType,
+        String jiraEpicKey,
+        Long jiraBoardId,
+        OffsetDateTime jiraLastSyncedAt,
+        boolean jiraSyncError,
+        boolean archived
 ) {
 }

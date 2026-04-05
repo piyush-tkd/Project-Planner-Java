@@ -23,4 +23,9 @@ public class NotificationScheduleDto {
     private boolean stalenessEnabled = false;
     /** Spring cron expression, e.g. {@code 0 0 9 * * MON}. */
     private String  stalenessCron    = "0 0 9 * * MON";
+
+    // ── Jira epic auto-sync ──────────────────────────────────────────────────
+    private boolean jiraSyncEnabled  = false;
+    /** Spring cron expression, e.g. every 2 hours: "0 0 *&#47;2 * * *". */
+    private String  jiraSyncCron     = "0 0 */2 * * *";
 }
