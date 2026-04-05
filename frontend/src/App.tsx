@@ -86,6 +86,7 @@ import ProjectTemplatesPage from './pages/ProjectTemplatesPage';
 import WorkloadChartPage from './pages/WorkloadChartPage';
 import GanttDependenciesPage from './pages/GanttDependenciesPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
+import SmartMappingPage from './pages/SmartMappingPage';
 import InboxPage from './pages/InboxPage';
 import AzureDevOpsSettingsPage from './pages/settings/AzureDevOpsSettingsPage';
 import ObjectivesPage from './pages/ObjectivesPage';
@@ -439,6 +440,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="gantt_dependencies" />}>
             <Route path="/reports/gantt-dependencies" element={<GanttDependenciesPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="smart_mapping_admin" />}>
+            <Route path="/settings/smart-mapping" element={<SmartMappingPage />} />
           </Route>
 
           {/* Admin-only pages — no pageKey needed (nav already hides them) */}

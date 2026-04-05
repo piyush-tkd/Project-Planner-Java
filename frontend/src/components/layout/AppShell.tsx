@@ -216,6 +216,7 @@ const navGroups: NavGroup[] = [
     label: 'Admin',
     items: [
       { label: 'Admin Settings',   path: '/settings/org',                     icon: <IconBuildingFactory size={17} />, pageKey: 'org_settings' },
+      { label: 'Smart Mapping',    path: '/settings/smart-mapping',           icon: <IconGitBranch size={17} />,       pageKey: 'smart_mapping_admin' },
       { label: 'Changelog',        path: '/settings/changelog',               icon: <IconBellRinging size={17} />,    pageKey: 'changelog_admin' },
       { label: 'Custom Fields',    path: '/settings/custom-fields',           icon: <IconAdjustments size={17} />,    pageKey: 'custom_fields_admin' },
     ],
@@ -744,7 +745,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v14.4
+              Portfolio Planner v15.1
             </Text>
           </div>
         </MantineAppShell.Section>

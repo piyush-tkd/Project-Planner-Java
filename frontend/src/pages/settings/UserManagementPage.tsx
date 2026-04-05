@@ -110,6 +110,7 @@ const PAGE_KEYS = [
  { key: 'workload_chart',             label: 'Workload Chart',         group: 'Analytics' },
  // ── Admin
  { key: 'org_settings',          label: 'Admin Settings',         group: 'Admin' },
+ { key: 'smart_mapping_admin',   label: 'Smart Mapping',           group: 'Admin' },
  { key: 'changelog_admin',       label: 'Changelog Admin',         group: 'Admin' },
  { key: 'custom_fields_admin',   label: 'Custom Fields Admin',     group: 'Admin' },
  { key: 'smtp_settings',         label: 'SMTP Email Settings',    group: 'Admin' },

@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
@@ -22,6 +22,8 @@ import { TimelineSlider, phasesFromSchedules, phasesToRequests, SchedulingRulesP
 import type { PhaseBar } from '../components/scheduling';
 import StatusBadge from '../components/common/StatusBadge';
 import PriorityBadge from '../components/common/PriorityBadge';
+import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
+import PushToJiraModal from '../components/projects/PushToJiraModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
@@ -291,6 +293,7 @@ export default function ProjectDetailPage() {
  }, [existingNames]);
 
  const [editModal, setEditModal] = useState(false);
+ const [pushJiraOpen, setPushJiraOpen] = useState(false);
  const [editForm, setEditForm] = useState<ProjectRequest>({
  name: '', priority: Priority.P2, owner: '', startMonth: 1, durationMonths: 3,
  defaultPattern: 'Flat', status: ProjectStatus.ACTIVE, notes: null,
@@ -442,6 +445,24 @@ export default function ProjectDetailPage() {
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>{project.name}</Title>
  <PriorityBadge priority={project.priority} />
  <StatusBadge status={project.status} />
+ <ProjectSourceBadge sourceType={project.sourceType ?? 'MANUAL'} jiraEpicKey={project.jiraEpicKey} size="sm" />
+ {project.jiraEpicKey && (
+   <Tooltip label={`Open ${project.jiraEpicKey} in Jira`} withArrow>
+     <Badge
+       component="a"
+       href={`https://baylorgenetics.atlassian.net/browse/${project.jiraEpicKey}`}
+       target="_blank"
+       rel="noreferrer"
+       color="blue"
+       variant="outline"
+       size="sm"
+       rightSection={<IconExternalLink size={10} />}
+       style={{ cursor: 'pointer', textDecoration: 'none' }}
+     >
+       {project.jiraEpicKey}
+     </Badge>
+   </Tooltip>
+ )}
  {totalAllPodHours > 0 && (
  <Tooltip label={`${totalAllPodHours.toFixed(0)}h total across all pods (incl. contingency)`}>
  <Badge variant="outline" color="gray">{deriveTshirtSize(totalAllPodHours)}</Badge>
@@ -449,6 +470,17 @@ export default function ProjectDetailPage() {
  )}
  <Button variant="light" size="xs" leftSection={<IconEdit size={14} />} onClick={openEditProject}>Edit</Button>
  <Button variant="light" size="xs" leftSection={<IconCopy size={14} />} onClick={handleCopyProject} loading={copyProject.isPending}>Duplicate</Button>
+ {(project.sourceType === 'MANUAL' || !project.sourceType) && !project.jiraEpicKey && (
+   <Button
+     variant="light"
+     size="xs"
+     color="blue"
+     leftSection={<IconTicket size={14} />}
+     onClick={() => setPushJiraOpen(true)}
+   >
+     Create in Jira
+   </Button>
+ )}
  </Group>
 
  {/* ── Tabbed content ──────────────────────────────────────────── */}
@@ -485,6 +517,21 @@ export default function ProjectDetailPage() {
  )}
  {project.notes && (
  <Text mt="sm" size="sm" c="dimmed">{project.notes}</Text>
+ )}
+ {project.jiraLastSyncedAt && (
+   <Text mt="xs" size="xs" c="dimmed">
+     <Text span fw={500}>Last Jira sync:</Text>{' '}
+     {new Date(project.jiraLastSyncedAt).toLocaleString()}
+     {project.jiraSyncError && (
+       <Badge ml="xs" size="xs" color="red" variant="light">Sync Error</Badge>
+     )}
+   </Text>
+ )}
+ {project.sourceType === 'JIRA_SYNCED' && (
+   <Group mt="xs" gap={4}>
+     <IconLock size={12} color="gray" />
+     <Text size="xs" c="dimmed">Name and status are managed by Jira</Text>
+   </Group>
  )}
  </Card>
 
@@ -888,6 +935,13 @@ export default function ProjectDetailPage() {
  <Button onClick={handleEditPlan} loading={updatePlannings.isPending}>Save</Button>
  </Stack>
  </Modal>
+
+ {/* Push to Jira Modal */}
+ <PushToJiraModal
+   project={project}
+   opened={pushJiraOpen}
+   onClose={() => setPushJiraOpen(false)}
+ />
  </Stack>
  );
 }

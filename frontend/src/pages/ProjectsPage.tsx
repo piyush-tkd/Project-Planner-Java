@@ -7,9 +7,12 @@ ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popov
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus } from '../api/projects';
 import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
+import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
+import ProjectFlagChips from '../components/projects/ProjectFlagChips';
+import type { SourceType } from '../types/project';
 import { useEffortPatterns } from '../api/refData';
 import { useJiraAllProjectsSimple } from '../api/jira';
 import CsvToolbar from '../components/common/CsvToolbar';
@@ -227,6 +230,7 @@ export default function ProjectsPage() {
   const [search, setSearch]               = useState('');
   const [ownerFilter, setOwnerFilter]     = useState<string | null>(urlOwner ?? null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(urlPriority ?? null);
+  const [sourceFilter, setSourceFilter]   = useState<SourceType | 'ALL' | 'ARCHIVED'>('ALL');
 
   // Clean up filter params from URL after applying them (keep URL tidy)
   useEffect(() => {
@@ -288,6 +292,15 @@ export default function ProjectsPage() {
 
   const filtered = useMemo(() => {
     let list = projects ?? [];
+    // Source filter: ARCHIVED shows only archived; others hide archived by default
+    if (sourceFilter === 'ARCHIVED') {
+      list = list.filter(p => p.archived);
+    } else {
+      list = list.filter(p => !p.archived);
+      if (sourceFilter !== 'ALL') {
+        list = list.filter(p => p.sourceType === sourceFilter);
+      }
+    }
     if (cardFilter === 'P0P1') {
       list = list.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1);
     } else if (statusFilter !== 'ALL') {
@@ -300,7 +313,7 @@ export default function ProjectsPage() {
     if (ownerFilter) list = list.filter(p => p.owner === ownerFilter);
     if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
     return list;
-  }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter]);
+  }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter, sourceFilter]);
 
   // Board view ignores the status segment filter — columns already group by status.
   // Only apply search + owner + priority filters so all status columns show correctly.
@@ -505,6 +518,29 @@ export default function ProjectsPage() {
         />
       )}
 
+      {/* ── Source filter pills ── */}
+      <Group gap="xs">
+        {([
+          { key: 'ALL',            label: 'All Sources',     color: 'gray',   icon: null },
+          { key: 'MANUAL',         label: 'Manual',          color: 'blue',   icon: <IconPencil size={11} /> },
+          { key: 'JIRA_SYNCED',    label: 'Jira Synced',     color: 'teal',   icon: <IconTicket size={11} /> },
+          { key: 'PUSHED_TO_JIRA', label: 'Pushed to Jira',  color: 'violet', icon: <IconCloudUpload size={11} /> },
+          { key: 'ARCHIVED',       label: 'Archived',        color: 'gray',   icon: null },
+        ] as const).map(pill => (
+          <Badge
+            key={pill.key}
+            size="sm"
+            color={pill.color}
+            variant={sourceFilter === pill.key ? 'filled' : 'light'}
+            leftSection={pill.icon}
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSourceFilter(pill.key as SourceType | 'ALL' | 'ARCHIVED')}
+          >
+            {pill.label}
+          </Badge>
+        ))}
+      </Group>
+
       <Group gap="sm" align="flex-end" wrap="wrap">
         <TextInput
           placeholder="Search by name…"
@@ -587,6 +623,7 @@ export default function ProjectsPage() {
                   {visibleCols.has('Pattern') && <Table.Th>Pattern</Table.Th>}
                   {visibleCols.has('Status') && <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>}
                   {visibleCols.has('Created') && <SortableHeader sortKey="createdAt" currentKey={sortKey} dir={sortDir} onSort={onSort}>Created</SortableHeader>}
+                  <Table.Th style={{ width: 110 }}>Source</Table.Th>
                   <Table.Th style={{ width: 50 }}>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -649,7 +686,12 @@ export default function ProjectsPage() {
                               onClick={e => e.stopPropagation()}
                               styles={{ input: { fontWeight: 600 } }}
                             />
-                          ) : p.name}
+                          ) : (
+                            <Group gap={6} wrap="nowrap">
+                              <span>{p.name}</span>
+                              <ProjectFlagChips project={p} compact />
+                            </Group>
+                          )}
                         </Table.Td>
                         {/* Inline-editable priority */}
                         {visibleCols.has('Priority') && (
@@ -693,6 +735,9 @@ export default function ProjectsPage() {
                           </Table.Td>
                         )}
                         {visibleCols.has('Created') && <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>}
+                        <Table.Td onClick={e => e.stopPropagation()}>
+                          <ProjectSourceBadge sourceType={p.sourceType ?? 'MANUAL'} jiraEpicKey={p.jiraEpicKey} />
+                        </Table.Td>
                         <Table.Td>
                           <Group gap={4} wrap="nowrap">
                             <Tooltip label="POD Planning" withArrow>

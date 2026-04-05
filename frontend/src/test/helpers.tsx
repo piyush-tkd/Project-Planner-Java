@@ -101,6 +101,12 @@ export function makeProject(overrides: Partial<ProjectResponse> = {}): ProjectRe
     capacityNote: null,
     client: null,
     createdAt: null,
+    sourceType: 'MANUAL',
+    jiraEpicKey: null,
+    jiraBoardId: null,
+    jiraLastSyncedAt: null,
+    jiraSyncError: false,
+    archived: false,
     ...overrides,
   };
 }

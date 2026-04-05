@@ -1,3 +1,5 @@
+export type SourceType = 'MANUAL' | 'JIRA_SYNCED' | 'PUSHED_TO_JIRA';
+
 export interface ProjectResponse {
   id: number;
   name: string;
@@ -15,6 +17,13 @@ export interface ProjectResponse {
   capacityNote: string | null;
   client: string | null;
   createdAt: string | null;
+  // ── Jira source-of-truth fields ────────────────────────────────────────
+  sourceType: SourceType;
+  jiraEpicKey: string | null;
+  jiraBoardId: number | null;
+  jiraLastSyncedAt: string | null;
+  jiraSyncError: boolean;
+  archived: boolean;
 }
 
 export interface ProjectRequest {
