@@ -276,7 +276,7 @@ public class SmartMappingService {
         String jiraStatus = (String) ((Map<String, Object>) statusObj).get("name");
         if (jiraStatus == null) return 0.0;
 
-        String ppStatus = pp.getStatus() != null ? pp.getStatus().name() : "";
+        String ppStatus = pp.getStatus() != null ? pp.getStatus().toString() : "";
         String jNorm    = normalise(jiraStatus);
         String pNorm    = normalise(ppStatus);
 
