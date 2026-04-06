@@ -24,6 +24,9 @@ import CsvToolbar from '../components/common/CsvToolbar';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import TablePagination from '../components/common/TablePagination';
 import SavedViews from '../components/common/SavedViews';
+import FilterPills from '../components/common/FilterPills';
+import AdvancedFilterPanel, { applyAdvancedFilters } from '../components/common/AdvancedFilterPanel';
+import type { AdvancedFilters, FilterField } from '../components/common/AdvancedFilterPanel';
 import BulkActions from '../components/common/BulkActions';
 import { resourceColumns } from '../utils/csvColumns';
 import { downloadCsv } from '../utils/csv';
@@ -78,6 +81,11 @@ export default function ResourcesPage() {
   type Density = 'compact' | 'normal' | 'comfortable';
   const [density, setDensity] = useLocalStorage<Density>('pp_resources_density', 'normal');
   const densitySpacing: Record<Density, string> = { compact: 'xs', normal: 'sm', comfortable: 'md' };
+
+  // ── Sprint 9: Advanced filters + Saved Views ──────────────────────────
+  const EMPTY_ADV: AdvancedFilters = { logic: 'AND', conditions: [] };
+  const [advFilters, setAdvFilters] = useState<AdvancedFilters>(EMPTY_ADV);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
   const { data: resources, isLoading, error } = useResources();
   const { data: pods } = usePods();
@@ -213,8 +221,18 @@ export default function ResourcesPage() {
       list = list.filter(r => r.location === locationFilter);
     }
 
+    // Advanced AND/OR filter conditions
+    // Normalise resource into a flat record for the generic engine
+    const flat = list.map(r => ({
+      ...r,
+      podName: r.podAssignment?.podName ?? '',
+      activeStr: String(r.active),
+    }));
+    const filtered = applyAdvancedFilters(flat as Record<string, unknown>[], advFilters);
+    list = list.filter((_, i) => filtered.includes(flat[i] as Record<string, unknown>));
+
     return list;
-  }, [resources, activeCard, search, podFilter, roleFilter, locationFilter, overAllocMap]));
+  }, [resources, activeCard, search, podFilter, roleFilter, locationFilter, overAllocMap, advFilters]));
 
   const { paginatedData: pagedResources, ...pagination } = usePagination(sortedResources, 25);
 
@@ -598,16 +616,23 @@ export default function ResourcesPage() {
           style={{ flex: '1 1 150px', maxWidth: 180 }}
           size="sm"
         />
-        {hasActiveFilters && (
-          <Button variant="subtle" color="gray" size="sm" onClick={clearAllFilters}>
-            Clear filters
+        {/* Advanced filter builder */}
+        <AdvancedFilterPanel
+          fields={[
+            { key: 'name', label: 'Name', type: 'text' },
+            { key: 'role', label: 'Role', type: 'multiselect', options: roleOptions },
+            { key: 'location', label: 'Location', type: 'multiselect', options: locationOptions },
+            { key: 'activeStr', label: 'Active', type: 'boolean' },
+            { key: 'podName', label: 'Home POD', type: 'text' },
+          ] as import('../components/common/AdvancedFilterPanel').FilterField[]}
+          value={advFilters}
+          onChange={setAdvFilters}
+        />
+        {(hasActiveFilters || advFilters.conditions.length > 0) && (
+          <Button variant="subtle" color="gray" size="sm" onClick={() => { clearAllFilters(); setAdvFilters(EMPTY_ADV); setActiveViewId(null); }}>
+            Clear all
           </Button>
         )}
-        <SavedViews
-          pageKey="resources"
-          currentFilters={currentFilters}
-          onApply={handleApplySavedView}
-        />
         <Text size="sm" c="dimmed" ml="auto">
           {sortedResources.length} of {(resources ?? []).length} resources
         </Text>
@@ -650,6 +675,52 @@ export default function ResourcesPage() {
           </Popover.Dropdown>
         </Popover>
       </Group>
+
+      {/* ── Saved view tabs (Sprint 9) ───────────────────────────────── */}
+      <SavedViews
+        pageKey="resources"
+        variant="tabs"
+        activeViewId={activeViewId}
+        onActiveViewChange={setActiveViewId}
+        currentFilters={{
+          search: search || null,
+          podFilter,
+          roleFilter,
+          locationFilter,
+          activeCard,
+          advFilters: advFilters.conditions.length > 0 ? JSON.stringify(advFilters) : null,
+        }}
+        onApply={v => {
+          handleApplySavedView(v);
+          if (v.activeCard !== undefined) setActiveCard(v.activeCard);
+          if (v.advFilters) { try { setAdvFilters(JSON.parse(v.advFilters)); } catch { setAdvFilters(EMPTY_ADV); } }
+          else setAdvFilters(EMPTY_ADV);
+        }}
+      />
+
+      {/* ── Active filter pills (Sprint 9) ──────────────────────────── */}
+      <FilterPills
+        onClearAll={() => { clearAllFilters(); setAdvFilters(EMPTY_ADV); setActiveViewId(null); }}
+        pills={[
+          ...(search ? [{ key: 'search', label: `Name: "${search}"`, color: 'blue', onRemove: () => setSearch('') }] : []),
+          ...(roleFilter ? [{ key: 'role', label: `Role: ${roleFilter}`, color: 'violet', onRemove: () => setRoleFilter(null) }] : []),
+          ...(locationFilter ? [{ key: 'loc', label: `Location: ${locationFilter}`, color: 'teal', onRemove: () => setLocationFilter(null) }] : []),
+          ...(podFilter ? [{ key: 'pod', label: `POD: ${podFilter === '__none__' ? 'None' : (pods ?? []).find(p => String(p.id) === podFilter)?.name ?? podFilter}`, color: 'cyan', onRemove: () => setPodFilter(null) }] : []),
+          ...(activeCard ? [{ key: 'card', label: `Quick: ${activeCard}`, color: 'orange', onRemove: () => setActiveCard(null) }] : []),
+          ...advFilters.conditions
+            .filter(c => Array.isArray(c.value) ? c.value.length > 0 : c.value !== '')
+            .map(c => {
+              const fieldLabels: Record<string, string> = { name: 'Name', role: 'Role', location: 'Location', activeStr: 'Active', podName: 'POD' };
+              const valLabel = Array.isArray(c.value) ? c.value.join(', ') : c.value;
+              return {
+                key: c.id,
+                label: `${fieldLabels[c.fieldKey] ?? c.fieldKey}: ${valLabel}`,
+                color: 'grape',
+                onRemove: () => setAdvFilters(prev => ({ ...prev, conditions: prev.conditions.filter(x => x.id !== c.id) })),
+              };
+            }),
+        ]}
+      />
 
       {/* ── Table ───────────────────────────────────────────── */}
       <ScrollArea>

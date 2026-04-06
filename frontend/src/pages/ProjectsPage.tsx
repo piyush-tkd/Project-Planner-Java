@@ -21,6 +21,10 @@ import KanbanBoardView from '../components/projects/KanbanBoardView';
 import { Priority, ProjectStatus } from '../types';
 import type { ProjectRequest } from '../types';
 import StatusBadge from '../components/common/StatusBadge';
+import SavedViews from '../components/common/SavedViews';
+import FilterPills from '../components/common/FilterPills';
+import AdvancedFilterPanel, { applyAdvancedFilters } from '../components/common/AdvancedFilterPanel';
+import type { AdvancedFilters, FilterField } from '../components/common/AdvancedFilterPanel';
 import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
@@ -151,6 +155,11 @@ export default function ProjectsPage() {
   type Density = 'compact' | 'normal' | 'comfortable';
   const [density, setDensity] = useLocalStorage<Density>('pp_projects_density', 'normal');
   const densitySpacing: Record<Density, string> = { compact: 'xs', normal: 'sm', comfortable: 'md' };
+
+  // ── Sprint 9: Advanced filters + Saved Views ──────────────────────────
+  const EMPTY_ADV: AdvancedFilters = { logic: 'AND', conditions: [] };
+  const [advFilters, setAdvFilters] = useState<AdvancedFilters>(EMPTY_ADV);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
   // ── Accordion: expanded project rows ─────────────────────────────────
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -366,8 +375,10 @@ export default function ProjectsPage() {
     }
     if (ownerFilter) list = list.filter(p => p.owner === ownerFilter);
     if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
+    // Apply advanced AND/OR filters last
+    list = applyAdvancedFilters(list as unknown as Record<string, unknown>[], advFilters) as unknown as typeof list;
     return list;
-  }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter, sourceFilter]);
+  }, [projects, cardFilter, statusFilter, search, ownerFilter, priorityFilter, sourceFilter, advFilters]);
 
   // Board view ignores the status segment filter — columns already group by status.
   // Only apply search + owner + priority filters so all status columns show correctly.
@@ -382,13 +393,14 @@ export default function ProjectsPage() {
     }
     if (ownerFilter) list = list.filter(p => p.owner === ownerFilter);
     if (priorityFilter) list = list.filter(p => p.priority === priorityFilter);
+    list = applyAdvancedFilters(list as unknown as Record<string, unknown>[], advFilters) as unknown as typeof list;
     return list;
-  }, [projects, cardFilter, search, ownerFilter, priorityFilter]);
+  }, [projects, cardFilter, search, ownerFilter, priorityFilter, advFilters]);
 
   const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered, 'createdAt', 'desc');
   const { paginatedData: pagedProjects, ...pagination } = usePagination(sortedProjects, 25);
 
-  // Dynamic status options — includes any custom statuses found in loaded projects
+  // Dynamic status options — includes any custom statuses found in loaded projects (must be before projectFilterFields)
   const statusOptions = useMemo(() => {
     const base = new Set<string>(BASE_STATUS_OPTIONS.map(o => o.value as string));
     const extras = (projects ?? [])
@@ -400,6 +412,20 @@ export default function ProjectsPage() {
       ...extras.map(s => ({ value: s, label: s.replace(/_/g, ' ') })),
     ];
   }, [projects]);
+
+  // ── Advanced filter field definitions for Projects ───────────────────
+  const projectFilterFields = useMemo((): FilterField[] => [
+    { key: 'name', label: 'Name', type: 'text' },
+    { key: 'owner', label: 'Owner', type: 'text' },
+    { key: 'priority', label: 'Priority', type: 'multiselect', options: priorityOptions },
+    { key: 'status', label: 'Status', type: 'multiselect', options: statusOptions },
+    { key: 'client', label: 'Client', type: 'text' },
+    { key: 'sourceType', label: 'Source', type: 'select', options: [
+      { value: 'MANUAL', label: 'Manual' },
+      { value: 'JIRA_SYNCED', label: 'Jira Synced' },
+      { value: 'PUSHED_TO_JIRA', label: 'Pushed to Jira' },
+    ]},
+  ], [statusOptions]);
 
   const stats = useMemo(() => {
     const all = projects ?? [];
@@ -636,10 +662,16 @@ export default function ProjectsPage() {
           style={{ flex: '1 1 140px', maxWidth: 180 }}
           size="sm"
         />
-        {(search || ownerFilter || priorityFilter) && (
+        {/* Advanced filter builder */}
+        <AdvancedFilterPanel
+          fields={projectFilterFields}
+          value={advFilters}
+          onChange={setAdvFilters}
+        />
+        {(search || ownerFilter || priorityFilter || advFilters.conditions.length > 0) && (
           <Button variant="subtle" color="gray" size="sm"
-            onClick={() => { setSearch(''); setOwnerFilter(null); setPriorityFilter(null); }}>
-            Clear filters
+            onClick={() => { setSearch(''); setOwnerFilter(null); setPriorityFilter(null); setAdvFilters(EMPTY_ADV); setActiveViewId(null); }}>
+            Clear all
           </Button>
         )}
         <Text size="sm" c="dimmed" ml="auto">
@@ -684,6 +716,56 @@ export default function ProjectsPage() {
           </Popover.Dropdown>
         </Popover>
       </Group>
+
+      {/* ── Saved view tabs (Sprint 9) ───────────────────────────────── */}
+      <SavedViews
+        pageKey="projects"
+        variant="tabs"
+        activeViewId={activeViewId}
+        onActiveViewChange={setActiveViewId}
+        currentFilters={{
+          search: search || null,
+          ownerFilter: ownerFilter,
+          priorityFilter: priorityFilter,
+          statusFilter: statusFilter !== 'ALL' ? statusFilter : null,
+          sourceFilter: sourceFilter !== 'ALL' ? sourceFilter : null,
+          advFilters: advFilters.conditions.length > 0 ? JSON.stringify(advFilters) : null,
+        }}
+        onApply={v => {
+          setSearch(v.search ?? '');
+          setOwnerFilter(v.ownerFilter ?? null);
+          setPriorityFilter(v.priorityFilter ?? null);
+          setStatusFilter(v.statusFilter ?? 'ALL');
+          setSourceFilter((v.sourceFilter ?? 'ALL') as SourceType | 'ALL' | 'ARCHIVED');
+          if (v.advFilters) { try { setAdvFilters(JSON.parse(v.advFilters)); } catch { setAdvFilters(EMPTY_ADV); } }
+          else setAdvFilters(EMPTY_ADV);
+          setCardFilter(null);
+        }}
+      />
+
+      {/* ── Active filter pills (Sprint 9) ──────────────────────────── */}
+      <FilterPills
+        onClearAll={() => { setSearch(''); setOwnerFilter(null); setPriorityFilter(null); setStatusFilter('ALL'); setSourceFilter('ALL'); setAdvFilters(EMPTY_ADV); setActiveViewId(null); setCardFilter(null); }}
+        pills={[
+          ...(search ? [{ key: 'search', label: `Name: "${search}"`, color: 'blue', onRemove: () => setSearch('') }] : []),
+          ...(ownerFilter ? [{ key: 'owner', label: `Owner: ${ownerFilter}`, color: 'teal', onRemove: () => setOwnerFilter(null) }] : []),
+          ...(priorityFilter ? [{ key: 'priority', label: `Priority: ${priorityFilter}`, color: 'orange', onRemove: () => setPriorityFilter(null) }] : []),
+          ...(statusFilter !== 'ALL' ? [{ key: 'status', label: `Status: ${statusFilter.replace(/_/g, ' ')}`, color: 'violet', onRemove: () => setStatusFilter('ALL') }] : []),
+          ...(cardFilter === 'P0P1' ? [{ key: 'p0p1', label: 'Priority: P0 / P1', color: 'red', onRemove: () => setCardFilter(null) }] : []),
+          ...advFilters.conditions
+            .filter(c => Array.isArray(c.value) ? c.value.length > 0 : c.value !== '')
+            .map(c => {
+              const field = projectFilterFields.find(f => f.key === c.fieldKey);
+              const valLabel = Array.isArray(c.value) ? c.value.join(', ') : c.value;
+              return {
+                key: c.id,
+                label: `${field?.label ?? c.fieldKey}: ${valLabel}`,
+                color: 'grape',
+                onRemove: () => setAdvFilters(prev => ({ ...prev, conditions: prev.conditions.filter(x => x.id !== c.id) })),
+              };
+            }),
+        ]}
+      />
 
       {/* ── Bulk-selection action bar ── */}
       {selectedRows.size > 0 && viewMode === 'table' && (
