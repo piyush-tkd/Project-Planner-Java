@@ -746,7 +746,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v15.4
+              Portfolio Planner v15.5
             </Text>
           </div>
         </MantineAppShell.Section>

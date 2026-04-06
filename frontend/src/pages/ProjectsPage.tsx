@@ -25,6 +25,7 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
 import SortableHeader from '../components/common/SortableHeader';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
 import TablePagination from '../components/common/TablePagination';
@@ -134,16 +135,22 @@ export default function ProjectsPage() {
   const [form, setForm] = useState<ProjectRequest>(emptyForm);
   const [nameError, setNameError] = useState<string>('');
 
-  // ── Column visibility ─────────────────────────────────────────────────
+  // ── Column visibility (persisted to localStorage) ────────────────────
   const ALL_COLS = ['#', 'Priority', 'Owner', 'Start', 'End', 'Duration', 'Pattern', 'Status', 'Created'] as const;
   type ColKey = typeof ALL_COLS[number];
-  const DEFAULT_VISIBLE: Set<ColKey> = new Set(['#', 'Priority', 'Owner', 'Start', 'End', 'Status']);
-  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(DEFAULT_VISIBLE);
-  const toggleCol = (col: ColKey) => setVisibleCols(prev => {
-    const next = new Set(prev);
+  const DEFAULT_VISIBLE_ARRAY: ColKey[] = ['#', 'Priority', 'Owner', 'Start', 'End', 'Status'];
+  const [visibleColsArray, setVisibleColsArray] = useLocalStorage<ColKey[]>('pp_projects_visible_cols', DEFAULT_VISIBLE_ARRAY);
+  const visibleCols = new Set<ColKey>(visibleColsArray);
+  const toggleCol = (col: ColKey) => {
+    const next = new Set<ColKey>(visibleColsArray);
     if (next.has(col)) next.delete(col); else next.add(col);
-    return next;
-  });
+    setVisibleColsArray(Array.from(next) as ColKey[]);
+  };
+
+  // ── Row density (persisted to localStorage) ──────────────────────────
+  type Density = 'compact' | 'normal' | 'comfortable';
+  const [density, setDensity] = useLocalStorage<Density>('pp_projects_density', 'normal');
+  const densitySpacing: Record<Density, string> = { compact: 'xs', normal: 'sm', comfortable: 'md' };
 
   // ── Accordion: expanded project rows ─────────────────────────────────
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -638,6 +645,18 @@ export default function ProjectsPage() {
         <Text size="sm" c="dimmed" ml="auto">
           {filtered.length} of {(projects ?? []).length} projects
         </Text>
+        {/* Row density selector */}
+        <SegmentedControl
+          size="xs"
+          value={density}
+          onChange={v => setDensity(v as Density)}
+          data={[
+            { label: 'Compact', value: 'compact' },
+            { label: 'Normal', value: 'normal' },
+            { label: 'Cozy', value: 'comfortable' },
+          ]}
+          styles={{ root: { background: 'transparent' }, label: { fontSize: 11 } }}
+        />
         {/* Column visibility toggle */}
         <Popover width={200} position="bottom-end" withArrow shadow="md">
           <Popover.Target>
@@ -703,7 +722,7 @@ export default function ProjectsPage() {
       {viewMode === 'table' && (
         <>
           <ScrollArea>
-            <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
+            <Table fz={density === 'comfortable' ? 'sm' : 'xs'} verticalSpacing={densitySpacing[density]} highlightOnHover withTableBorder withColumnBorders>
               <Table.Thead>
                 <Table.Tr>
                   {/* Select-all checkbox */}
