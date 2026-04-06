@@ -7,8 +7,8 @@ ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popov
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload } from '@tabler/icons-react';
-import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus } from '../api/projects';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash } from '@tabler/icons-react';
+import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus, useDeleteProject } from '../api/projects';
 import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
 import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
 import ProjectFlagChips from '../components/projects/ProjectFlagChips';
@@ -63,6 +63,52 @@ export default function ProjectsPage() {
   const updateMutation = useUpdateProject();
   const patchStatusMutation = usePatchProjectStatus();
   const copyMutation = useCopyProject();
+  const deleteMutation = useDeleteProject();
+
+  // ── Row selection + delete confirmation ───────────────────────────────
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<number[] | null>(null); // null = closed
+
+  const toggleRowSelect = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRows.size === pagedProjects.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(pagedProjects.map(p => p.id)));
+    }
+  };
+
+  const confirmDelete = (ids: number[]) => setDeleteTarget(ids);
+
+  const handleDelete = async () => {
+    if (!deleteTarget || deleteTarget.length === 0) return;
+    let successCount = 0;
+    for (const id of deleteTarget) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        successCount++;
+      } catch {
+        notifications.show({ title: 'Error', message: `Failed to delete project #${id}`, color: 'red' });
+      }
+    }
+    if (successCount > 0) {
+      notifications.show({
+        title: 'Deleted',
+        message: `${successCount} project${successCount !== 1 ? 's' : ''} deleted`,
+        color: 'red',
+      });
+    }
+    setSelectedRows(new Set());
+    setDeleteTarget(null);
+  };
 
   // ── Inline table editing ──────────────────────────────────────────────
   type EditableField = 'name' | 'owner' | 'priority' | 'status';
@@ -606,12 +652,57 @@ export default function ProjectsPage() {
         </Popover>
       </Group>
 
+      {/* ── Bulk-selection action bar ── */}
+      {selectedRows.size > 0 && viewMode === 'table' && (
+        <Group
+          gap="sm"
+          p="xs"
+          style={{
+            background: isDark ? 'var(--mantine-color-dark-6)' : '#fff8f8',
+            border: '1px solid var(--mantine-color-red-3)',
+            borderRadius: 8,
+          }}
+        >
+          <Text size="sm" fw={600} c="red">
+            {selectedRows.size} project{selectedRows.size !== 1 ? 's' : ''} selected
+          </Text>
+          <Button
+            size="xs"
+            color="red"
+            variant="light"
+            leftSection={<IconTrash size={13} />}
+            onClick={() => confirmDelete(Array.from(selectedRows))}
+          >
+            Delete selected
+          </Button>
+          <Button
+            size="xs"
+            variant="subtle"
+            color="gray"
+            onClick={() => setSelectedRows(new Set())}
+          >
+            Clear selection
+          </Button>
+        </Group>
+      )}
+
       {viewMode === 'table' && (
         <>
           <ScrollArea>
             <Table fz="xs" highlightOnHover withTableBorder withColumnBorders>
               <Table.Thead>
                 <Table.Tr>
+                  {/* Select-all checkbox */}
+                  <Table.Th style={{ width: 36 }}>
+                    <Checkbox
+                      size="xs"
+                      checked={pagedProjects.length > 0 && selectedRows.size === pagedProjects.length}
+                      indeterminate={selectedRows.size > 0 && selectedRows.size < pagedProjects.length}
+                      onChange={toggleSelectAll}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </Table.Th>
+                  {/* Expand chevron */}
                   <Table.Th style={{ width: 32 }} />
                   {visibleCols.has('#') && <Table.Th style={{ width: 40 }}>#</Table.Th>}
                   <SortableHeader sortKey="name" currentKey={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
@@ -630,7 +721,7 @@ export default function ProjectsPage() {
               <Table.Tbody>
                 {pagedProjects.length === 0 && (
                   <Table.Tr>
-                    <Table.Td colSpan={12} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <Table.Td colSpan={13} style={{ textAlign: 'center', padding: '2rem' }}>
                       <Text c="dimmed" size="sm">No projects match the current filters.</Text>
                     </Table.Td>
                   </Table.Tr>
@@ -655,6 +746,15 @@ export default function ProjectsPage() {
                         }}
                         onClick={() => navigate(`/projects/${p.id}`)}
                       >
+                        {/* Row checkbox */}
+                        <Table.Td style={{ padding: '8px 6px' }} onClick={e => toggleRowSelect(p.id, e)}>
+                          <Checkbox
+                            size="xs"
+                            checked={selectedRows.has(p.id)}
+                            onChange={() => {}}
+                            onClick={e => e.stopPropagation()}
+                          />
+                        </Table.Td>
                         {/* Expand chevron */}
                         <Table.Td style={{ padding: '8px 6px' }}>
                           {hasPods ? (
@@ -770,6 +870,19 @@ export default function ProjectsPage() {
                                 <IconCopy size={16} />
                               </ActionIcon>
                             </Tooltip>
+                            <Tooltip label="Delete project" withArrow>
+                              <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                color="red"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  confirmDelete([p.id]);
+                                }}
+                              >
+                                <IconTrash size={15} />
+                              </ActionIcon>
+                            </Tooltip>
                           </Group>
                         </Table.Td>
                       </Table.Tr>
@@ -784,6 +897,8 @@ export default function ProjectsPage() {
                           }}
                           onClick={(e) => e.stopPropagation()}
                         >
+                          {/* Checkbox placeholder — keeps column alignment */}
+                          <Table.Td />
                           {/* Indent indicator */}
                           <Table.Td style={{ padding: 0 }}>
                             <Box style={{ width: '100%', height: '100%', borderLeft: `3px solid ${AQUA}`, minHeight: 36 }} />
@@ -1119,6 +1234,60 @@ export default function ProjectsPage() {
               </Group>
             </>
           )}
+        </Stack>
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <Group gap="xs">
+            <IconTrash size={18} color="var(--mantine-color-red-6)" />
+            <Text fw={600} c="red">
+              {deleteTarget && deleteTarget.length > 1
+                ? `Delete ${deleteTarget.length} Projects`
+                : 'Delete Project'}
+            </Text>
+          </Group>
+        }
+        size="sm"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            {deleteTarget && deleteTarget.length > 1 ? (
+              <>
+                You are about to permanently delete{' '}
+                <Text span fw={700}>{deleteTarget.length} projects</Text>.
+                This will also remove all associated POD assignments and planning data.
+              </>
+            ) : (
+              <>
+                You are about to permanently delete{' '}
+                <Text span fw={700}>
+                  {deleteTarget && projects?.find(p => p.id === deleteTarget[0])?.name}
+                </Text>
+                . This will also remove all associated POD assignments and planning data.
+              </>
+            )}
+          </Text>
+          <Alert color="red" variant="light" icon={<IconAlertTriangle size={14} />}>
+            <Text size="xs">This action cannot be undone.</Text>
+          </Alert>
+          <Group justify="flex-end">
+            <Button variant="light" color="gray" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={handleDelete}
+              loading={deleteMutation.isPending}
+            >
+              Delete{deleteTarget && deleteTarget.length > 1 ? ` ${deleteTarget.length} Projects` : ''}
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </Stack>
