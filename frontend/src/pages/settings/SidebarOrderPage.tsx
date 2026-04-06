@@ -59,7 +59,7 @@ const DEFAULT_GROUPS: { label: string; items: string[] }[] = [
     ],
   },
   {
-    label: 'Admin',
+    label: 'Workspace',
     items: ['Admin Settings', 'Users', 'Audit Log'],
   },
 ];

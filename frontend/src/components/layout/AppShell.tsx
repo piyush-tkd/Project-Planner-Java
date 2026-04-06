@@ -212,9 +212,9 @@ const navGroups: NavGroup[] = [
       { label: 'Jira Portfolio Sync', path: '/reports/jira-portfolio-sync',     icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync', featureFlag: 'jira' },
     ],
   },
-  // ── ADMIN ──────────────────────────────────────────────────────────────────
+  // ── WORKSPACE ─────────────────────────────────────────────────────────────
   {
-    label: 'Admin',
+    label: 'Workspace',
     items: [
       { label: 'Admin Settings',   path: '/settings/org',                     icon: <IconBuildingFactory size={17} />, pageKey: 'org_settings' },
       { label: 'Smart Mapping',    path: '/settings/smart-mapping',           icon: <IconGitBranch size={17} />,       pageKey: 'smart_mapping_admin' },

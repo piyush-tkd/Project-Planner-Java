@@ -2,90 +2,146 @@
  * KeyboardShortcutsPanel — Modal showing all keyboard shortcuts
  *
  * Opens when user presses "?" key (but not when typing in an input/textarea/select).
- * Also handles G-then-X navigation shortcuts with 500ms timeout.
+ * Handles G-then-X navigation shortcuts with 500ms timeout.
+ * Sprint 7: expanded to 30+ shortcuts, grouped by category.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Modal, Group, Stack, Text, Kbd, SimpleGrid, Box } from '@mantine/core';
-import { IconHome } from '@tabler/icons-react';
+import { Modal, Group, Stack, Text, Kbd, Box, SimpleGrid, Divider, Badge } from '@mantine/core';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface Shortcut {
-  keys: string;
+  keys: string[];
   description: string;
 }
 
-const SHORTCUTS: Shortcut[] = [
-  { keys: '⌘K', description: 'Search' },
-  { keys: '?', description: 'Keyboard shortcuts' },
-  { keys: 'G then D', description: 'Go to Dashboard' },
-  { keys: 'G then P', description: 'Go to Projects' },
-  { keys: 'G then R', description: 'Go to Resources' },
-  { keys: 'G then O', description: 'Go to PODs' },
-  { keys: 'G then A', description: 'Go to Ask AI' },
+interface ShortcutGroup {
+  label: string;
+  shortcuts: Shortcut[];
+}
+
+const SHORTCUT_GROUPS: ShortcutGroup[] = [
+  {
+    label: 'General',
+    shortcuts: [
+      { keys: ['⌘K'],          description: 'Open command palette / search' },
+      { keys: ['?'],            description: 'Show keyboard shortcuts' },
+      { keys: ['Esc'],          description: 'Close modal / cancel' },
+    ],
+  },
+  {
+    label: 'Navigation — G then…',
+    shortcuts: [
+      { keys: ['G', 'D'],  description: 'Dashboard' },
+      { keys: ['G', 'P'],  description: 'Projects' },
+      { keys: ['G', 'R'],  description: 'Resources' },
+      { keys: ['G', 'O'],  description: 'PODs' },
+      { keys: ['G', 'A'],  description: 'Ask AI' },
+      { keys: ['G', 'I'],  description: 'Inbox' },
+      { keys: ['G', 'C'],  description: 'Calendar' },
+      { keys: ['G', 'L'],  description: 'Leave & Holidays' },
+      { keys: ['G', 'E'],  description: 'Engineering Intelligence' },
+      { keys: ['G', 'S'],  description: 'Admin Settings' },
+      { keys: ['G', 'N'],  description: 'Smart Notifications' },
+      { keys: ['G', 'T'],  description: 'Portfolio Timeline' },
+    ],
+  },
+  {
+    label: 'Portfolio & Projects',
+    shortcuts: [
+      { keys: ['G', 'K'],  description: 'Risk & Issues' },
+      { keys: ['G', 'B'],  description: 'Ideas Board' },
+      { keys: ['G', 'J'],  description: 'Objectives (OKRs)' },
+      { keys: ['G', 'H'],  description: 'Portfolio Health' },
+      { keys: ['G', 'G'],  description: 'Gantt & Dependencies' },
+    ],
+  },
+  {
+    label: 'Delivery & Integrations',
+    shortcuts: [
+      { keys: ['G', 'Z'],  description: 'POD Dashboard' },
+      { keys: ['G', 'X'],  description: 'Releases' },
+      { keys: ['G', 'W'],  description: 'Worklog' },
+      { keys: ['G', 'U'],  description: 'Support Queue' },
+    ],
+  },
+  {
+    label: 'Reports & Analysis',
+    shortcuts: [
+      { keys: ['G', 'Q'],  description: 'DORA Metrics' },
+      { keys: ['G', 'F'],  description: 'Capacity Hub' },
+      { keys: ['G', 'V'],  description: 'Project Health' },
+      { keys: ['G', 'Y'],  description: 'Delivery Predictability' },
+      { keys: ['G', 'M'],  description: 'Dependency Map' },
+    ],
+  },
 ];
+
+// Flat route map for all G-then-X shortcuts
+const G_ROUTE_MAP: Record<string, string> = {
+  d: '/',
+  p: '/projects',
+  r: '/resources',
+  o: '/pods',
+  a: '/nlp',
+  i: '/inbox',
+  c: '/calendar',
+  l: '/leave',
+  e: '/reports/engineering-intelligence',
+  s: '/settings/org',
+  n: '/reports/smart-notifications',
+  t: '/reports/portfolio-timeline',
+  k: '/risk-register',
+  b: '/ideas',
+  j: '/objectives',
+  h: '/reports/portfolio-health-dashboard',
+  g: '/reports/gantt-dependencies',
+  z: '/jira-pods',
+  x: '/jira-releases',
+  w: '/jira-worklog',
+  u: '/jira-support',
+  q: '/reports/dora',
+  f: '/capacity',
+  v: '/reports/project-health',
+  y: '/reports/delivery-predictability',
+  m: '/reports/dependency-map',
+};
 
 export function useShortcutsPanel() {
   const [opened, setOpened] = useState(false);
 
   useEffect(() => {
-    const pendingGRef = { value: false, timeoutId: null as NodeJS.Timeout | null };
+    const pendingGRef = { value: false, timeoutId: null as ReturnType<typeof setTimeout> | null };
 
     function handler(e: KeyboardEvent) {
-      // Check if user is typing in an input, textarea, or select
       const target = e.target as HTMLElement;
-      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
       if (isTyping) return;
 
-      // Handle "?" to open shortcuts panel
-      if (e.key === '?' && !isTyping) {
+      // "?" toggles shortcuts panel
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         setOpened(o => !o);
+        return;
       }
 
-      // Handle "G" key to start g-pending state
-      if (e.key.toLowerCase() === 'g' && !isTyping) {
+      // G-then-X two-key navigation
+      if (e.key.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-
-        // Clear any existing timeout
-        if (pendingGRef.timeoutId) {
-          clearTimeout(pendingGRef.timeoutId);
-        }
-
+        if (pendingGRef.timeoutId) clearTimeout(pendingGRef.timeoutId);
         pendingGRef.value = true;
-
-        // Reset g-pending after 500ms
-        pendingGRef.timeoutId = setTimeout(() => {
-          pendingGRef.value = false;
-        }, 500);
+        pendingGRef.timeoutId = setTimeout(() => { pendingGRef.value = false; }, 500);
+        return;
       }
 
-      // Handle second key in G-then-X sequence
-      if (pendingGRef.value && !isTyping) {
-        const secondKey = e.key.toLowerCase();
-
-        // Clear timeout since we're handling the second key
-        if (pendingGRef.timeoutId) {
-          clearTimeout(pendingGRef.timeoutId);
-        }
+      if (pendingGRef.value) {
+        const second = e.key.toLowerCase();
+        if (pendingGRef.timeoutId) clearTimeout(pendingGRef.timeoutId);
         pendingGRef.value = false;
-
-        // Map second key to navigation
-        const routeMap: Record<string, string> = {
-          d: '/',
-          p: '/projects',
-          r: '/resources',
-          o: '/pods',
-          a: '/nlp',
-        };
-
-        if (secondKey in routeMap) {
+        if (second in G_ROUTE_MAP) {
           e.preventDefault();
-          // Navigation will happen in the Modal component
-          // For now, we'll dispatch a custom event
-          window.dispatchEvent(
-            new CustomEvent('navigate-shortcut', { detail: { path: routeMap[secondKey] } })
-          );
+          window.dispatchEvent(new CustomEvent('navigate-shortcut', { detail: { path: G_ROUTE_MAP[second] } }));
         }
       }
     }
@@ -93,13 +149,45 @@ export function useShortcutsPanel() {
     window.addEventListener('keydown', handler);
     return () => {
       window.removeEventListener('keydown', handler);
-      if (pendingGRef.timeoutId) {
-        clearTimeout(pendingGRef.timeoutId);
-      }
+      if (pendingGRef.timeoutId) clearTimeout(pendingGRef.timeoutId);
     };
   }, []);
 
   return { opened, setOpened };
+}
+
+function KeyRow({ shortcut, dark }: { shortcut: Shortcut; dark: boolean }) {
+  return (
+    <Group justify="space-between" wrap="nowrap" py={4}>
+      <Group gap={4} wrap="nowrap">
+        {shortcut.keys.map((k, i) => (
+          <Group key={i} gap={4} wrap="nowrap">
+            {i > 0 && <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>then</Text>}
+            <Kbd
+              size="sm"
+              style={{
+                background: dark ? 'rgba(45,204,211,0.15)' : AQUA,
+                color: dark ? '#2DCCD3' : '#fff',
+                border: `1px solid ${dark ? 'rgba(45,204,211,0.3)' : AQUA}`,
+                borderRadius: 4,
+                padding: '3px 7px',
+                fontFamily: FONT_FAMILY,
+                fontSize: 12,
+                fontWeight: 600,
+                minWidth: 28,
+                textAlign: 'center',
+              }}
+            >
+              {k}
+            </Kbd>
+          </Group>
+        ))}
+      </Group>
+      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, textAlign: 'right', flex: 1, marginLeft: 12 }}>
+        {shortcut.description}
+      </Text>
+    </Group>
+  );
 }
 
 export default function KeyboardShortcutsPanel({
@@ -110,6 +198,7 @@ export default function KeyboardShortcutsPanel({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const dark = useDarkMode();
 
   useEffect(() => {
     function handleNavigate(e: Event) {
@@ -117,78 +206,71 @@ export default function KeyboardShortcutsPanel({
       navigate(customEvent.detail.path);
       onClose();
     }
-
     window.addEventListener('navigate-shortcut', handleNavigate);
     return () => window.removeEventListener('navigate-shortcut', handleNavigate);
   }, [navigate, onClose]);
+
+  // Separate navigation groups (the big ones) from general groups
+  const generalGroups = SHORTCUT_GROUPS.filter(g => !g.label.startsWith('Navigation') && !['Portfolio & Projects', 'Delivery & Integrations', 'Reports & Analysis'].includes(g.label));
+  const navGroups = SHORTCUT_GROUPS.filter(g => g.label.startsWith('Navigation') || ['Portfolio & Projects', 'Delivery & Integrations', 'Reports & Analysis'].includes(g.label));
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Keyboard Shortcuts"
+      title={
+        <Group gap="xs">
+          <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+            Keyboard Shortcuts
+          </Text>
+          <Badge size="sm" variant="light" color="teal">{
+            SHORTCUT_GROUPS.reduce((sum, g) => sum + g.shortcuts.length, 0)
+          } shortcuts</Badge>
+        </Group>
+      }
       centered
-      size="md"
+      size="xl"
       styles={{
-        title: {
-          fontFamily: FONT_FAMILY,
-          fontWeight: 700,
-          fontSize: 18,
-          color: DEEP_BLUE,
-        },
+        content: { fontFamily: FONT_FAMILY },
       }}
     >
-      <Stack gap="md">
-        <SimpleGrid cols={1} spacing="md">
-          {SHORTCUTS.map((shortcut, idx) => (
-            <Group key={idx} justify="space-between" align="center">
-              <Box>
-                {shortcut.keys.includes('then') ? (
-                  // Multi-key shortcut like "G then D"
-                  <Group gap="xs">
-                    {shortcut.keys.split(' then ').map((key, i) => (
-                      <Group key={i} gap={4}>
-                        {i > 0 && <Text size="sm" c="dimmed">then</Text>}
-                        <Kbd
-                          size="sm"
-                          style={{
-                            background: AQUA,
-                            color: '#fff',
-                            border: `1px solid ${AQUA}`,
-                            borderRadius: 4,
-                            padding: '4px 8px',
-                            fontFamily: FONT_FAMILY,
-                          }}
-                        >
-                          {key}
-                        </Kbd>
-                      </Group>
-                    ))}
-                  </Group>
-                ) : (
-                  // Single key shortcut
-                  <Kbd
-                    size="sm"
-                    style={{
-                      background: AQUA,
-                      color: '#fff',
-                      border: `1px solid ${AQUA}`,
-                      borderRadius: 4,
-                      padding: '4px 8px',
-                      fontFamily: FONT_FAMILY,
-                    }}
-                  >
-                    {shortcut.keys}
-                  </Kbd>
-                )}
-              </Box>
-              <Text size="sm" style={{ fontFamily: FONT_FAMILY, flex: 1, textAlign: 'right' }}>
-                {shortcut.description}
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+        {/* Left column: General shortcuts */}
+        <Stack gap="md">
+          {generalGroups.map(group => (
+            <Box key={group.label}>
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                {group.label}
               </Text>
-            </Group>
+              <Stack gap={0}>
+                {group.shortcuts.map((s, i) => <KeyRow key={i} shortcut={s} dark={dark} />)}
+              </Stack>
+            </Box>
           ))}
-        </SimpleGrid>
-      </Stack>
+        </Stack>
+
+        {/* Right column: Navigation shortcuts */}
+        <Stack gap="md">
+          {navGroups.map((group, gi) => (
+            <Box key={group.label}>
+              {gi > 0 && <Divider mb="md" />}
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                {group.label}
+              </Text>
+              <SimpleGrid cols={2} spacing={0}>
+                {group.shortcuts.map((s, i) => <KeyRow key={i} shortcut={s} dark={dark} />)}
+              </SimpleGrid>
+            </Box>
+          ))}
+        </Stack>
+      </SimpleGrid>
+
+      <Divider mt="lg" mb="sm" />
+      <Text size="xs" c="dimmed" ta="center" style={{ fontFamily: FONT_FAMILY }}>
+        Press <Kbd size="xs">?</Kbd> to toggle this panel · <Kbd size="xs">⌘K</Kbd> to search · <Kbd size="xs">Esc</Kbd> to close
+      </Text>
     </Modal>
   );
 }

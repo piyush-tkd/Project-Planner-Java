@@ -21,6 +21,7 @@ import {
   Tooltip,
   Progress,
   ScrollArea,
+  Avatar,
 } from '@mantine/core';
 import {
   IconBrain,
@@ -32,6 +33,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
+import { useResources } from '../../api/resources';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 interface SkillEntry {
@@ -98,6 +100,16 @@ export default function ResourceSkillsMatrixPage() {
     queryKey: ['skills-matrix'],
     queryFn: () => apiClient.get('/resources/skills/matrix').then(r => r.data),
   });
+
+  // Build a map of resourceId → avatarUrl for Jira avatar display
+  const { data: allResources = [] } = useResources();
+  const avatarMap = useMemo(() => {
+    const m = new Map<number, { avatarUrl?: string | null; jiraAccountId?: string | null }>();
+    for (const r of allResources) {
+      m.set(r.id, { avatarUrl: r.avatarUrl, jiraAccountId: r.jiraAccountId });
+    }
+    return m;
+  }, [allResources]);
 
   const { data: summary = [] } = useQuery<SkillSummary[]>({
     queryKey: ['skills-summary'],
@@ -209,9 +221,31 @@ export default function ResourceSkillsMatrixPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {filtered.map(r => (
+                {filtered.map(r => {
+                  const resInfo = avatarMap.get(r.resourceId);
+                  const hasJira = !!resInfo?.jiraAccountId;
+                  return (
                   <Table.Tr key={r.resourceId}>
-                    <Table.Td fw={600}>{r.resourceName}</Table.Td>
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        <Tooltip
+                          label={hasJira ? 'Jira connected' : 'No Jira link'}
+                          withArrow
+                          position="top"
+                          disabled={!hasJira && !resInfo?.avatarUrl}
+                        >
+                          <Avatar
+                            src={resInfo?.avatarUrl ?? null}
+                            size={28}
+                            radius="xl"
+                            color={hasJira ? 'teal' : 'gray'}
+                          >
+                            {r.resourceName.charAt(0).toUpperCase()}
+                          </Avatar>
+                        </Tooltip>
+                        <Text size="sm" fw={600}>{r.resourceName}</Text>
+                      </Group>
+                    </Table.Td>
                     <Table.Td>
                       {r.role && (
                         <Badge size="xs" variant="light" color="gray">
@@ -268,7 +302,8 @@ export default function ResourceSkillsMatrixPage() {
                       </Tooltip>
                     </Table.Td>
                   </Table.Tr>
-                ))}
+                  );
+                })}
               </Table.Tbody>
             </Table>
           </ScrollArea>
