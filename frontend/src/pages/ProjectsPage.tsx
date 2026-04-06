@@ -7,7 +7,7 @@ ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popov
 import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash, IconTimeline } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus, useDeleteProject } from '../api/projects';
 import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
 import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
@@ -18,6 +18,7 @@ import { useJiraAllProjectsSimple } from '../api/jira';
 import CsvToolbar from '../components/common/CsvToolbar';
 import { projectColumns } from '../utils/csvColumns';
 import KanbanBoardView from '../components/projects/KanbanBoardView';
+import GanttView from '../components/projects/GanttView';
 import { Priority, ProjectStatus } from '../types';
 import type { ProjectRequest } from '../types';
 import StatusBadge from '../components/common/StatusBadge';
@@ -129,7 +130,7 @@ export default function ProjectsPage() {
   const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraAllProjectsSimple();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
-  const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'board' | 'gantt'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [jiraImportOpen, setJiraImportOpen] = useState(false);
   const [selectedJiraKeys, setSelectedJiraKeys] = useState<Set<string>>(new Set());
@@ -521,6 +522,7 @@ export default function ProjectsPage() {
             <Tabs.List>
               <Tabs.Tab value="table" leftSection={<IconLayoutList size={14} />}>Table</Tabs.Tab>
               <Tabs.Tab value="board" leftSection={<IconLayoutKanban size={14} />}>Board</Tabs.Tab>
+              <Tabs.Tab value="gantt" leftSection={<IconTimeline size={14} />}>Timeline</Tabs.Tab>
             </Tabs.List>
           </Tabs>
           <CsvToolbar
@@ -1182,6 +1184,14 @@ export default function ProjectsPage() {
           onProjectClick={(id) => navigate(`/projects/${id}`)}
           onStatusChange={handleBoardStatusChange}
           onDeleteProject={(id) => confirmDelete([id])}
+        />
+      )}
+
+      {viewMode === 'gantt' && (
+        <GanttView
+          projects={filtered}
+          monthLabels={monthLabels}
+          onEdit={(p) => navigate(`/projects/${p.id}`)}
         />
       )}
 

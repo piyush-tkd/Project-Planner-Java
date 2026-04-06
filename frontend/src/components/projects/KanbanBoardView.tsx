@@ -84,6 +84,7 @@ function KanbanCard({
   onDragEnd?: (e: React.DragEvent) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const initials = project.owner
     ? project.owner.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
@@ -92,12 +93,19 @@ function KanbanCard({
     <Card
       className="kanban-card"
       draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      onDragStart={e => { setDragging(true); onDragStart?.(e); }}
+      onDragEnd={e => { setDragging(false); onDragEnd?.(e); }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ cursor: 'grab', userSelect: 'none', position: 'relative' }}
+      style={{
+        cursor: dragging ? 'grabbing' : 'grab',
+        userSelect: 'none',
+        position: 'relative',
+        opacity: dragging ? 0.45 : 1,
+        transform: dragging ? 'rotate(2deg) scale(0.97)' : undefined,
+        transition: 'opacity 0.1s, transform 0.1s',
+      }}
       p="sm"
       radius="md"
       withBorder
@@ -386,16 +394,30 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                       {isOver && dragging ? 'Drop here' : 'No projects'}
                     </Box>
                   ) : (
-                    col.items.map(project => (
-                      <KanbanCard
-                        key={project.id}
-                        project={project}
-                        onClick={() => onProjectClick?.(project.id)}
-                        onDelete={onDeleteProject ? () => setDeleteProjectConfirm(project) : undefined}
-                        onDragStart={e => handleDragStart(e, project.id)}
-                        onDragEnd={handleDragEnd}
-                      />
-                    ))
+                    <>
+                      {col.items.map(project => (
+                        <KanbanCard
+                          key={project.id}
+                          project={project}
+                          onClick={() => onProjectClick?.(project.id)}
+                          onDelete={onDeleteProject ? () => setDeleteProjectConfirm(project) : undefined}
+                          onDragStart={e => handleDragStart(e, project.id)}
+                          onDragEnd={handleDragEnd}
+                        />
+                      ))}
+                      {/* Drop indicator at bottom when dragging over non-empty column */}
+                      {isOver && dragging && (
+                        <Box
+                          style={{
+                            height: 4,
+                            borderRadius: 4,
+                            background: col.borderColor,
+                            opacity: 0.7,
+                            transition: 'all 0.15s',
+                          }}
+                        />
+                      )}
+                    </>
                   )}
                 </Stack>
               </Box>
