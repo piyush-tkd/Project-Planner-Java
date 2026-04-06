@@ -29,7 +29,9 @@ import {
   IconTrash,
   IconPlus,
   IconSearch,
+  IconDownload,
 } from '@tabler/icons-react';
+import { downloadCsv } from '../../utils/csv';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
@@ -166,14 +168,48 @@ export default function ResourceSkillsMatrixPage() {
             Skill tags and proficiency levels across the team. Click + to add skills to a resource.
           </Text>
         </div>
-        <TextInput
-          placeholder="Search people or skills…"
-          leftSection={<IconSearch size={14} />}
-          value={search}
-          onChange={e => setSearch(e.currentTarget.value)}
-          w={220}
-          size="sm"
-        />
+        <Group gap="sm">
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={14} />}
+            size="sm"
+            onClick={() => {
+              // Flatten matrix: one row per resource × skill
+              const rows = matrix.flatMap(r =>
+                r.skills.length > 0
+                  ? r.skills.map(s => ({
+                      resource:    r.resourceName,
+                      role:        r.role ?? '',
+                      pod:         r.podName ?? '',
+                      skill:       s.skillName,
+                      proficiency: s.proficiency,
+                      profLabel:   s.proficiencyLabel,
+                      years:       s.yearsExperience ?? '',
+                    }))
+                  : [{ resource: r.resourceName, role: r.role ?? '', pod: r.podName ?? '', skill: '', proficiency: 0, profLabel: '', years: '' }]
+              );
+              downloadCsv('skills-matrix', rows, [
+                { key: 'resource',    header: 'Resource' },
+                { key: 'role',        header: 'Role' },
+                { key: 'pod',         header: 'POD' },
+                { key: 'skill',       header: 'Skill' },
+                { key: 'proficiency', header: 'Proficiency (1-4)' },
+                { key: 'profLabel',   header: 'Level' },
+                { key: 'years',       header: 'Years Experience' },
+              ]);
+            }}
+          >
+            Export CSV
+          </Button>
+          <TextInput
+            placeholder="Search people or skills…"
+            leftSection={<IconSearch size={14} />}
+            value={search}
+            onChange={e => setSearch(e.currentTarget.value)}
+            w={220}
+            size="sm"
+          />
+        </Group>
       </Group>
 
       {/* Skill coverage summary */}
@@ -209,17 +245,16 @@ export default function ResourceSkillsMatrixPage() {
           </Stack>
         </Center>
       ) : (
-        <Card withBorder radius="md" p={0}>
-          <ScrollArea>
-            <Table striped highlightOnHover withTableBorder fz="xs" style={{ minWidth: 700 }}>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th style={{ minWidth: 160 }}>Resource</Table.Th>
-                  <Table.Th style={{ minWidth: 100 }}>Role</Table.Th>
-                  <Table.Th>Skills</Table.Th>
-                  <Table.Th style={{ width: 40 }} />
-                </Table.Tr>
-              </Table.Thead>
+        <ScrollArea>
+          <Table highlightOnHover withTableBorder withColumnBorders fz="sm" style={{ minWidth: 700 }}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ minWidth: 200 }}>Resource</Table.Th>
+                <Table.Th style={{ minWidth: 110 }}>Role</Table.Th>
+                <Table.Th>Skills</Table.Th>
+                <Table.Th style={{ width: 44 }} />
+              </Table.Tr>
+            </Table.Thead>
               <Table.Tbody>
                 {filtered.map(r => {
                   const resInfo = avatarMap.get(r.resourceId);
@@ -248,7 +283,7 @@ export default function ResourceSkillsMatrixPage() {
                     </Table.Td>
                     <Table.Td>
                       {r.role && (
-                        <Badge size="xs" variant="light" color="gray">
+                        <Badge size="xs" variant="outline" color="gray">
                           {r.role.replace('_', ' ')}
                         </Badge>
                       )}
@@ -307,7 +342,6 @@ export default function ResourceSkillsMatrixPage() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
-        </Card>
       )}
 
       {/* Add skill modal */}

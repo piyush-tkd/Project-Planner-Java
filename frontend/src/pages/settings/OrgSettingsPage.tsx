@@ -2,18 +2,20 @@ import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Button, TextInput, Paper, Tabs,
   ColorInput, SimpleGrid, Box, Switch, Badge, Select, Divider,
-  FileButton, Loader, Center, ThemeIcon, Tooltip, NumberInput, PasswordInput,
+  FileButton, Loader, Center, ThemeIcon, Tooltip, NumberInput,
+  PasswordInput, UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconBuilding, IconPalette, IconUpload, IconCheck, IconRefresh,
-  IconBell, IconWorld, IconUserCog, IconDatabase, IconHistory,
+  IconBuilding, IconUpload, IconCheck, IconRefresh,
+  IconBell, IconUserCog, IconDatabase, IconHistory,
   IconAlertTriangle, IconBrain, IconMessageReport, IconArrowsShuffle,
-  IconExternalLink, IconKey, IconTicket, IconPackage, IconHeadset,
-  IconSettings, IconBrandAzure, IconGitBranch, IconMail, IconPlugConnected,
-  IconClock, IconCloudDownload, IconCircleCheck, IconCircleX,
+  IconKey, IconTicket, IconPackage, IconHeadset,
+  IconSettings, IconBrandAzure, IconMail, IconPlugConnected,
+  IconClock, IconCloudDownload, IconCircleCheck, IconCircleX, IconChevronRight,
+  IconShield, IconLink, IconCopy,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import apiClient from '../../api/client';
 import { useOrgSettings, OrgConfig } from '../../context/OrgSettingsContext';
 import { useNavigate as useNav, useSearchParams } from 'react-router-dom';
@@ -31,101 +33,67 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// ── System quick-links panel ─────────────────────────────────────────────────
-function SystemLinksPanel() {
+// ── Shared compact nav-link grid ─────────────────────────────────────────────
+interface NavItem { icon: React.ReactNode; label: string; path: string; desc: string }
+
+/** Single card — extracted so hover useState works per-item without extra deps */
+function NavGridItem({ item, color }: { item: NavItem; color: string }) {
   const navigate = useNav();
-  const links = [
-    { icon: <IconHistory size={18} />,        label: 'Audit Log',         path: '/settings/audit-log',         desc: 'View all system actions and user activity' },
-    { icon: <IconAlertTriangle size={18} />,  label: 'Error Log',         path: '/settings/error-log',         desc: 'Review frontend and backend errors' },
-    { icon: <IconMessageReport size={18} />,  label: 'Feedback Hub',      path: '/settings/feedback-hub',      desc: 'Browse user-submitted feedback' },
-    { icon: <IconArrowsShuffle size={18} />,  label: 'Sidebar Order',     path: '/settings/sidebar-order',     desc: 'Customise navigation group and item order' },
-    { icon: <IconDatabase size={18} />,       label: 'Database Browser',  path: '/settings/tables',            desc: 'Browse raw data tables (admin only)' },
-    { icon: <IconSettings size={18} />,       label: 'Timeline Settings', path: '/settings/timeline',          desc: 'Configure planning horizon and fiscal months' },
-  ];
+  const [hovered, setHovered] = useState(false);
   return (
-    <Stack gap="sm">
-      {links.map(l => (
-        <Paper key={l.path} withBorder p="md" radius="md" style={{ cursor: 'pointer' }}
-          onClick={() => navigate(l.path)}>
-          <Group gap="md">
-            <ThemeIcon variant="light" color="blue" size={36} radius="md">
-              {l.icon}
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{l.label}</Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{l.desc}</Text>
-            </div>
-            <IconExternalLink size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
-          </Group>
-        </Paper>
-      ))}
-    </Stack>
+    <UnstyledButton
+      onClick={() => navigate(item.path)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ display: 'block', minWidth: 0 }}
+    >
+      <Paper
+        withBorder
+        p="sm"
+        radius="md"
+        style={{
+          cursor: 'pointer',
+          transition: 'border-color 120ms, background 120ms',
+          borderColor: hovered ? 'var(--mantine-color-teal-5)' : undefined,
+          background:   hovered ? 'var(--mantine-color-default-hover)' : undefined,
+        }}
+      >
+        <Group gap="sm" wrap="nowrap">
+          <ThemeIcon variant="light" color={color} size={30} radius="md" style={{ flexShrink: 0 }}>
+            {item.icon}
+          </ThemeIcon>
+          <Box style={{ minWidth: 0, flex: 1 }}>
+            <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{item.label}</Text>
+            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }} lineClamp={1}>{item.desc}</Text>
+          </Box>
+          <IconChevronRight size={13} style={{
+            flexShrink: 0, transition: 'opacity 120ms',
+            opacity: hovered ? 0.65 : 0.3,
+          }} />
+        </Group>
+      </Paper>
+    </UnstyledButton>
   );
 }
 
-// ── Azure DevOps panel ──────────────────────────────────────────────────────
-function AzureDevOpsPanel() {
-  const navigate = useNav();
-  const sections = [
-    { icon: <IconKey size={18} />,       label: 'Azure DevOps Settings', path: '/settings/azure-devops', desc: 'Configure organisation URL, project, PAT, and repositories' },
-    { icon: <IconGitBranch size={18} />, label: 'Git Intelligence',       path: '/reports/engineering-intelligence', desc: 'View PR activity, commit frequency, and branch health' },
-  ];
+function NavGrid({ items, color = 'teal', cols = 2 }: {
+  items: NavItem[];
+  color?: string;
+  cols?: number;
+}) {
   return (
-    <Stack gap="sm">
-      {sections.map(s => (
-        <Paper key={s.path} withBorder p="md" radius="md" style={{ cursor: 'pointer' }}
-          onClick={() => navigate(s.path)}>
-          <Group gap="md">
-            <ThemeIcon variant="light" color="blue" size={36} radius="md">
-              {s.icon}
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{s.label}</Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{s.desc}</Text>
-            </div>
-            <IconExternalLink size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
-          </Group>
-        </Paper>
-      ))}
-    </Stack>
-  );
-}
-
-// ── Jira hub panel ──────────────────────────────────────────────────────────
-function JiraHubPanel() {
-  const navigate = useNav();
-  const sections = [
-    { icon: <IconKey size={18} />,     label: 'Jira Credentials',       path: '/settings/jira-credentials',       desc: 'Configure Jira Cloud/Server connection' },
-    { icon: <IconTicket size={18} />,  label: 'Jira Boards',            path: '/settings/jira',                   desc: 'Map Jira boards to PODs' },
-    { icon: <IconHeadset size={18} />, label: 'Support Boards',         path: '/settings/support-boards',         desc: 'Configure Jira support queue boards' },
-    { icon: <IconPackage size={18} />, label: 'Release Mapping',        path: '/settings/jira-release-mapping',   desc: 'Map Jira fix versions to release calendar' },
-    { icon: <IconUserCog size={18} />, label: 'Resource Mapping',       path: '/settings/jira-resource-mapping',  desc: 'Map Jira accounts to resources' },
-  ];
-  return (
-    <Stack gap="sm">
-      {sections.map(s => (
-        <Paper key={s.path} withBorder p="md" radius="md" style={{ cursor: 'pointer' }}
-          onClick={() => navigate(s.path)}>
-          <Group gap="md">
-            <ThemeIcon variant="light" color="teal" size={36} radius="md">
-              {s.icon}
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{s.label}</Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{s.desc}</Text>
-            </div>
-            <IconExternalLink size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
-          </Group>
-        </Paper>
-      ))}
-    </Stack>
+    <SimpleGrid cols={{ base: 1, sm: Math.min(cols, 2), lg: cols }} spacing="xs">
+      {items.map(l => <NavGridItem key={l.path} item={l} color={color} />)}
+    </SimpleGrid>
   );
 }
 
 // ── Jira Epic Sync Panel ─────────────────────────────────────────────────────
-function JiraEpicSyncPanel() {
-  const [boardStatus, setBoardStatus]   = useState<any[]>([]);
-  const [syncing, setSyncing]           = useState(false);
+function JiraEpicSyncPanel({ schedule, setSchedule, scheduleSaving, handleScheduleSave }: {
+  schedule: any; setSchedule: any; scheduleSaving: boolean; handleScheduleSave: () => void;
+}) {
+  const [boardStatus, setBoardStatus]     = useState<any[]>([]);
+  const [syncing, setSyncing]             = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
 
   const loadStatus = () => {
@@ -156,65 +124,98 @@ function JiraEpicSyncPanel() {
   };
 
   return (
-    <Stack gap="sm">
-      <Group justify="space-between" align="center">
-        <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-          Auto-sync discovers Jira epics across all boards and creates/updates Portfolio Planner projects.
-        </Text>
-        <Button
-          size="xs"
-          variant="light"
-          color="teal"
-          leftSection={<IconCloudDownload size={14} />}
-          loading={syncing}
-          onClick={handleForceSync}
-        >
-          Force Sync Now
-        </Button>
+    <Paper withBorder radius="md" p="md">
+      <Group justify="space-between" align="center" mb="sm">
+        <Group gap="xs">
+          <ThemeIcon variant="light" color="teal" size={26} radius="md">
+            <IconCloudDownload size={14} />
+          </ThemeIcon>
+          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Project Sync — Jira Epics → PP</Text>
+          <Badge size="xs" color={schedule.jiraSyncEnabled ? 'teal' : 'gray'} variant="light">
+            {schedule.jiraSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
+          </Badge>
+        </Group>
+        <Group gap="xs">
+          <Switch
+            size="xs"
+            color="teal"
+            label="Auto-sync"
+            checked={schedule.jiraSyncEnabled}
+            onChange={e => setSchedule((p: any) => ({ ...p, jiraSyncEnabled: e.currentTarget.checked }))}
+          />
+          <Button size="xs" variant="light" color="teal" leftSection={<IconCloudDownload size={12} />}
+            loading={syncing} onClick={handleForceSync}>
+            Force Sync
+          </Button>
+        </Group>
       </Group>
 
-      {statusLoading ? (
-        <Center py="sm"><Loader size="sm" /></Center>
-      ) : boardStatus.length === 0 ? (
-        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-          No boards found. Configure Jira credentials first.
-        </Text>
-      ) : (
-        <Stack gap={6}>
-          {boardStatus.map((b: any) => (
-            <Paper key={b.boardId} withBorder px="md" py="xs" radius="sm">
-              <Group justify="space-between">
+      {schedule.jiraSyncEnabled && (
+        <Group gap="sm" mb="sm">
+          <TextInput
+            size="xs"
+            label="Sync cron"
+            placeholder="0 0 */2 * * *"
+            value={schedule.jiraSyncCron}
+            onChange={e => setSchedule((p: any) => ({ ...p, jiraSyncCron: e.target.value }))}
+            description="Spring format. Default: every 2 h"
+            style={{ flex: 1, maxWidth: 280 }}
+          />
+          <Button size="xs" variant="subtle" color="teal" mt={20}
+            loading={scheduleSaving} onClick={handleScheduleSave}>
+            Save
+          </Button>
+        </Group>
+      )}
+
+      {(() => {
+        // Filter out placeholder rows that carry no real identity
+        // (boardId === 0 / falsy means Jira hasn't been configured yet)
+        const validBoards = boardStatus.filter((b: any) => b.boardId && b.boardName);
+        if (statusLoading) return <Center py="sm"><Loader size="sm" /></Center>;
+        if (validBoards.length === 0) return (
+          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+            No boards found. Configure Jira credentials first.
+          </Text>
+        );
+        return (
+          <Stack gap={4}>
+            {validBoards.map((b: any) => (
+              <Group key={b.boardId} justify="space-between" px="sm" py="xs"
+                style={{
+                  borderRadius: 6,
+                  border: '1px solid var(--mantine-color-default-border)',
+                  background: 'var(--mantine-color-body)',
+                }}>
                 <Group gap="xs">
-                  <ThemeIcon
-                    size={22}
-                    radius="xl"
-                    color={b.hasError ? 'red' : 'teal'}
-                    variant="light"
-                  >
-                    {b.hasError
-                      ? <IconCircleX size={13} />
-                      : <IconCircleCheck size={13} />}
+                  <ThemeIcon size={18} radius="xl" color={b.hasError ? 'red' : 'teal'} variant="light">
+                    {b.hasError ? <IconCircleX size={11} /> : <IconCircleCheck size={11} />}
                   </ThemeIcon>
-                  <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
-                    {b.boardName}
-                  </Text>
-                  <Badge size="xs" variant="light" color="gray">
+                  <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>{b.boardName}</Text>
+                  <Badge size="xs" variant="light" color={b.epicCount > 0 ? 'teal' : 'gray'}>
                     {b.epicCount} project{b.epicCount !== 1 ? 's' : ''}
                   </Badge>
                 </Group>
                 <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                  {b.lastSync
-                    ? `Last sync: ${new Date(b.lastSync).toLocaleString()}`
-                    : 'Never synced'}
+                  {b.lastSync ? `Last sync: ${new Date(b.lastSync).toLocaleDateString()}` : 'Never synced'}
                 </Text>
               </Group>
-            </Paper>
-          ))}
-        </Stack>
-      )}
-    </Stack>
+            ))}
+          </Stack>
+        );
+      })()}
+    </Paper>
   );
 }
+
+// ── Legacy tab key mapping ───────────────────────────────────────────────────
+const LEGACY_TAB_MAP: Record<string, string> = {
+  branding: 'general', workspace: 'general',
+  email: 'notifications', ai: 'notifications',
+  data: 'system',
+};
+const resolveTabKey = (raw: string | null) =>
+  raw ? (LEGACY_TAB_MAP[raw] ?? raw) : 'general';
 
 // ── Main Settings Hub ────────────────────────────────────────────────────────
 export default function OrgSettingsPage() {
@@ -222,32 +223,44 @@ export default function OrgSettingsPage() {
   const [searchParams] = useSearchParams();
   const { orgSettings, loading: ctxLoading, refresh } = useOrgSettings();
 
-  const [draft, setDraft]       = useState<OrgConfig>(orgSettings);
-  const [isDirty, setIsDirty]   = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [activeTab, setActiveTab] = useState<string | null>(searchParams.get('tab') ?? 'branding');
+  const [draft, setDraft]     = useState<OrgConfig>(orgSettings);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving]   = useState(false);
 
-  // ── SMTP config state ────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<string | null>(
+    () => resolveTabKey(searchParams.get('tab'))
+  );
+  useEffect(() => {
+    setActiveTab(resolveTabKey(searchParams.get('tab')));
+  }, [searchParams]);
+
+  const handleTabChange = (tab: string | null) => {
+    const key = tab ?? 'general';
+    setActiveTab(key);
+    navigate(`/settings/org?tab=${key}`, { replace: true });
+  };
+
+  // ── SMTP state ────────────────────────────────────────────────────────────
   interface SmtpDraft {
     host: string; port: number; username: string; password: string;
     fromAddress: string; useTls: boolean; enabled: boolean; passwordSet: boolean;
   }
-  const [smtp, setSmtp]           = useState<SmtpDraft>({
+  const [smtp, setSmtp] = useState<SmtpDraft>({
     host: 'smtp.gmail.com', port: 587, username: '', password: '',
     fromAddress: 'noreply@portfolioplanner', useTls: true, enabled: false, passwordSet: false,
   });
-  const [smtpLoaded, setSmtpLoaded]     = useState(false);
-  const [smtpSaving, setSmtpSaving]     = useState(false);
-  const [smtpTesting, setSmtpTesting]   = useState(false);
+  const [smtpLoaded, setSmtpLoaded]   = useState(false);
+  const [smtpSaving, setSmtpSaving]   = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
 
-  // ── Notification schedule state ──────────────────────────────────────────
+  // ── Schedule state ────────────────────────────────────────────────────────
   interface ScheduleDraft {
     recipients: string;
     digestEnabled: boolean; digestCron: string;
     stalenessEnabled: boolean; stalenessCron: string;
     jiraSyncEnabled: boolean; jiraSyncCron: string;
   }
-  const [schedule, setSchedule]       = useState<ScheduleDraft>({
+  const [schedule, setSchedule] = useState<ScheduleDraft>({
     recipients: '', digestEnabled: false, digestCron: '0 0 8 * * MON',
     stalenessEnabled: false, stalenessCron: '0 0 9 * * MON',
     jiraSyncEnabled: false, jiraSyncCron: '0 0 */2 * * *',
@@ -256,16 +269,13 @@ export default function OrgSettingsPage() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'email' && !smtpLoaded) {
+    if (activeTab === 'notifications' && !smtpLoaded) {
       apiClient.get('/settings/smtp').then(({ data }) => {
         setSmtp({
-          host:        data.host        ?? 'smtp.gmail.com',
-          port:        data.port        ?? 587,
-          username:    data.username    ?? '',
-          password:    '',   // never pre-filled
+          host: data.host ?? 'smtp.gmail.com', port: data.port ?? 587,
+          username: data.username ?? '', password: '',
           fromAddress: data.fromAddress ?? 'noreply@portfolioplanner',
-          useTls:      data.useTls      ?? true,
-          enabled:     data.enabled     ?? false,
+          useTls: data.useTls ?? true, enabled: data.enabled ?? false,
           passwordSet: data.passwordSet ?? false,
         });
         setSmtpLoaded(true);
@@ -274,7 +284,7 @@ export default function OrgSettingsPage() {
   }, [activeTab, smtpLoaded]);
 
   useEffect(() => {
-    if (activeTab === 'email' && !scheduleLoaded) {
+    if (activeTab === 'notifications' && !scheduleLoaded) {
       apiClient.get('/settings/notification-schedule').then(({ data }) => {
         setSchedule({
           recipients:       data.recipients       ?? '',
@@ -294,9 +304,9 @@ export default function OrgSettingsPage() {
     setScheduleSaving(true);
     try {
       await apiClient.put('/settings/notification-schedule', schedule);
-      notifications.show({ title: 'Saved', message: 'Notification schedule saved successfully', color: 'green' });
+      notifications.show({ title: 'Saved', message: 'Notification schedule saved', color: 'green' });
     } catch {
-      notifications.show({ title: 'Error', message: 'Failed to save notification schedule', color: 'red' });
+      notifications.show({ title: 'Error', message: 'Failed to save schedule', color: 'red' });
     } finally {
       setScheduleSaving(false);
     }
@@ -309,7 +319,7 @@ export default function OrgSettingsPage() {
       if (!payload.password) delete (payload as Partial<SmtpDraft>).password;
       const { data } = await apiClient.put('/settings/smtp', payload);
       setSmtp(prev => ({ ...prev, passwordSet: data.passwordSet ?? prev.passwordSet, password: '' }));
-      notifications.show({ title: 'Saved', message: 'SMTP settings saved successfully', color: 'green' });
+      notifications.show({ title: 'Saved', message: 'SMTP settings saved', color: 'green' });
     } catch {
       notifications.show({ title: 'Error', message: 'Failed to save SMTP settings', color: 'red' });
     } finally {
@@ -333,10 +343,63 @@ export default function OrgSettingsPage() {
     }
   };
 
+  // ── SSO state ─────────────────────────────────────────────────────────────
+  interface SsoDraft {
+    provider: string; clientId: string; clientSecret: string;
+    redirectUri: string; discoveryUrl: string; enabled: boolean;
+  }
+  const [sso, setSso] = useState<SsoDraft>({
+    provider: 'GOOGLE', clientId: '', clientSecret: '',
+    redirectUri: '', discoveryUrl: '', enabled: false,
+  });
+  const [ssoLoaded, setSsoLoaded]   = useState(false);
+  const [ssoSaving, setSsoSaving]   = useState(false);
+  const [ssoSecretSet, setSsoSecretSet] = useState(false);
+
+  const SSO_MASK = '••••••••';
+
   useEffect(() => {
-    setDraft(orgSettings);
-    setIsDirty(false);
-  }, [orgSettings]);
+    if (activeTab === 'jira' && !ssoLoaded) {
+      apiClient.get('/admin/sso').then(({ data }) => {
+        setSso({
+          provider:     data.provider     ?? 'GOOGLE',
+          clientId:     data.clientId     ?? '',
+          clientSecret: '',
+          redirectUri:  data.redirectUri  ?? '',
+          discoveryUrl: data.discoveryUrl ?? '',
+          enabled:      data.enabled      ?? false,
+        });
+        setSsoSecretSet(data.clientSecret === SSO_MASK);
+        setSsoLoaded(true);
+      }).catch(() => {});
+    }
+  }, [activeTab, ssoLoaded]);
+
+  const handleSsoSave = async () => {
+    setSsoSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        provider:     sso.provider,
+        clientId:     sso.clientId,
+        redirectUri:  sso.redirectUri,
+        discoveryUrl: sso.discoveryUrl,
+        enabled:      sso.enabled,
+      };
+      if (sso.clientSecret && sso.clientSecret !== SSO_MASK) {
+        payload.clientSecret = sso.clientSecret;
+      }
+      await apiClient.put('/admin/sso', payload);
+      setSso(prev => ({ ...prev, clientSecret: '' }));
+      setSsoSecretSet(!!sso.clientId);
+      notifications.show({ title: 'Saved', message: 'SSO configuration saved', color: 'green' });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to save SSO config', color: 'red' });
+    } finally {
+      setSsoSaving(false);
+    }
+  };
+
+  useEffect(() => { setDraft(orgSettings); setIsDirty(false); }, [orgSettings]);
 
   const handleChange = (key: keyof OrgConfig, val: string | null) => {
     setDraft(prev => ({ ...prev, [key]: val }));
@@ -344,10 +407,7 @@ export default function OrgSettingsPage() {
   };
 
   const handleFeatureToggle = (flagKey: string, enabled: boolean) => {
-    setDraft(prev => ({
-      ...prev,
-      features: { ...prev.features, [flagKey]: enabled },
-    }));
+    setDraft(prev => ({ ...prev, features: { ...prev.features, [flagKey]: enabled } }));
     setIsDirty(true);
   };
 
@@ -355,353 +415,325 @@ export default function OrgSettingsPage() {
     setSaving(true);
     try {
       await apiClient.put('/org/settings', {
-        orgName:         draft.orgName,
-        orgSlug:         draft.orgSlug,
-        logoUrl:         draft.logoUrl,
-        primaryColor:    draft.primaryColor,
-        secondaryColor:  draft.secondaryColor,
-        timezone:        draft.timezone,
-        dateFormat:      draft.dateFormat,
-        fiscalYearStart: draft.fiscalYearStart,
-        features:        draft.features,
+        orgName: draft.orgName, orgSlug: draft.orgSlug, logoUrl: draft.logoUrl,
+        primaryColor: draft.primaryColor, secondaryColor: draft.secondaryColor,
+        timezone: draft.timezone, dateFormat: draft.dateFormat,
+        fiscalYearStart: draft.fiscalYearStart, features: draft.features,
       });
       await refresh();
       setIsDirty(false);
-      notifications.show({ title: 'Saved', message: 'Org settings updated successfully', color: 'green' });
+      notifications.show({ title: 'Saved', message: 'Org settings updated', color: 'green' });
     } catch {
-      notifications.show({ title: 'Error', message: 'Failed to save org settings. Please try again.', color: 'red' });
+      notifications.show({ title: 'Error', message: 'Failed to save. Please try again.', color: 'red' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    setDraft(orgSettings);
-    setIsDirty(false);
-  };
+  if (ctxLoading) return <Center h={200}><Loader color="teal" /></Center>;
 
-  if (ctxLoading) {
-    return <Center h={200}><Loader color="teal" /></Center>;
-  }
+  // ── Nav-link data sets ───────────────────────────────────────────────────
+  const jiraLinks: NavItem[] = [
+    { icon: <IconKey size={15} />,     label: 'Jira Credentials',  path: '/settings/jira-credentials',      desc: 'Configure Jira Cloud/Server connection' },
+    { icon: <IconTicket size={15} />,  label: 'Jira Boards',       path: '/settings/jira',                  desc: 'Map Jira boards to PODs' },
+    { icon: <IconHeadset size={15} />, label: 'Support Boards',    path: '/settings/support-boards',        desc: 'Configure Jira support queue boards' },
+    { icon: <IconPackage size={15} />, label: 'Release Mapping',   path: '/settings/jira-release-mapping',  desc: 'Map Jira fix versions to release calendar' },
+    { icon: <IconUserCog size={15} />, label: 'Resource Mapping',  path: '/settings/jira-resource-mapping', desc: 'Map Jira accounts to resources' },
+  ];
 
+  const azureLinks: NavItem[] = [
+    { icon: <IconKey size={15} />, label: 'Azure DevOps Settings', path: '/settings/azure-devops', desc: 'Configure org URL, project, PAT, and repositories' },
+  ];
+
+  const systemLinks: NavItem[] = [
+    { icon: <IconHistory size={15} />,       label: 'Audit Log',         path: '/settings/audit-log',     desc: 'All system actions and user activity' },
+    { icon: <IconAlertTriangle size={15} />, label: 'Error Log',         path: '/settings/error-log',     desc: 'Frontend and backend errors' },
+    { icon: <IconMessageReport size={15} />, label: 'Feedback Hub',      path: '/settings/feedback-hub',  desc: 'User-submitted feedback' },
+    { icon: <IconArrowsShuffle size={15} />, label: 'Sidebar Order',     path: '/settings/sidebar-order', desc: 'Navigation group and item order' },
+    { icon: <IconDatabase size={15} />,      label: 'Database Browser',  path: '/settings/tables',        desc: 'Raw data tables (admin only)' },
+    { icon: <IconSettings size={15} />,      label: 'Timeline Settings', path: '/settings/timeline',      desc: 'Planning horizon and fiscal months' },
+  ];
+
+  const aiLinks: NavItem[] = [
+    { icon: <IconBrain size={15} />, label: 'NLP Configuration', path: '/settings/nlp',           desc: 'AI provider, model, and query strategy' },
+    { icon: <IconBrain size={15} />, label: 'NLP Optimizer',     path: '/settings/nlp-optimizer', desc: 'Review and train low-confidence patterns' },
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Stack gap="lg">
-      {/* Page header — only shown for branding/workspace/notifications */}
-      <Group justify="space-between" align="flex-start">
+    <Stack gap="md" style={{ minWidth: 0, width: '100%' }}>
+      {/* Page header */}
+      <Group justify="space-between" align="center">
         <div>
           <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Admin Settings</Title>
           <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Configure branding, users, integrations, and system preferences.
+            Branding, users, integrations, and system preferences
           </Text>
         </div>
-        {(activeTab === 'branding' || activeTab === 'workspace' || activeTab === 'notifications') && isDirty && (
-          <Group gap="sm">
-            <Button variant="subtle" color="gray" leftSection={<IconRefresh size={14} />} onClick={handleReset}>
+        {activeTab === 'general' && isDirty && (
+          <Group gap="xs">
+            <Button variant="subtle" color="gray" size="sm"
+              leftSection={<IconRefresh size={13} />}
+              onClick={() => { setDraft(orgSettings); setIsDirty(false); }}>
               Discard
             </Button>
-            <Button color="teal" leftSection={<IconCheck size={14} />} loading={saving} onClick={handleSave}>
+            <Button color="teal" size="sm" leftSection={<IconCheck size={13} />}
+              loading={saving} onClick={handleSave}>
               Save Changes
             </Button>
           </Group>
         )}
       </Group>
 
-      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
-        <Tabs.List mb="lg">
-          <Tabs.Tab value="branding"      leftSection={<IconPalette size={14} />}>Branding</Tabs.Tab>
-          <Tabs.Tab value="workspace"     leftSection={<IconBuilding size={14} />}>Workspace</Tabs.Tab>
-          <Tabs.Tab value="users"         leftSection={<IconUserCog size={14} />}>Users &amp; Access</Tabs.Tab>
-          <Tabs.Tab value="data"          leftSection={<IconDatabase size={14} />}>Reference Data</Tabs.Tab>
-          <Tabs.Tab value="jira"          leftSection={<IconTicket size={14} />}>Integrations</Tabs.Tab>
-          <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
-          <Tabs.Tab value="email"         leftSection={<IconMail size={14} />}>Email / SMTP</Tabs.Tab>
-          <Tabs.Tab value="ai"            leftSection={<IconBrain size={14} />}>AI &amp; NLP</Tabs.Tab>
-          <Tabs.Tab value="system"        leftSection={<IconSettings size={14} />}>System</Tabs.Tab>
+      <Tabs value={activeTab} onChange={handleTabChange} variant="outline" radius="sm">
+        <Tabs.List mb="md">
+          <Tabs.Tab value="general"       leftSection={<IconBuilding size={13} />}>General</Tabs.Tab>
+          <Tabs.Tab value="users"         leftSection={<IconUserCog size={13} />}>Users &amp; Access</Tabs.Tab>
+          <Tabs.Tab value="jira"          leftSection={<IconPlugConnected size={13} />}>Integrations</Tabs.Tab>
+          <Tabs.Tab value="notifications" leftSection={<IconBell size={13} />}>Notifications &amp; Email</Tabs.Tab>
+          <Tabs.Tab value="system"        leftSection={<IconSettings size={13} />}>System</Tabs.Tab>
         </Tabs.List>
 
-        {/* ── BRANDING ─── */}
-        <Tabs.Panel value="branding">
-          <Stack gap="lg" style={{ maxWidth: 860 }}>
+        {/* ── GENERAL (Branding + Workspace side by side) ─── */}
+        <Tabs.Panel value="general">
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg" style={{ alignItems: 'start' }}>
 
-            {/* ── Organization Identity ── */}
-            <Paper withBorder p="lg" radius="md">
-              <Text fw={700} size="sm" mb="lg" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Organization Identity
+            {/* LEFT: Branding ──────────────────────────── */}
+            <Stack gap="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                Branding
               </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                {/* Left: logo */}
-                <Stack align="center" justify="center" gap="md"
-                  style={{ padding: '24px 16px', border: '1px dashed #d0d7e2', borderRadius: 12, background: '#fafbfc' }}>
-                  <Box style={{
-                    width: 88, height: 88, borderRadius: 18,
-                    background: `linear-gradient(135deg, ${draft.secondaryColor} 0%, ${draft.primaryColor} 100%)`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 6px 20px rgba(12,35,64,0.18)',
+
+              {/* Org Identity */}
+              <Paper withBorder p="md" radius="md">
+                <Text fw={600} size="sm" mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  Organization Identity
+                </Text>
+                <Group gap="md" align="flex-start" wrap="nowrap">
+                  {/* Logo block */}
+                  <Stack align="center" gap="xs" style={{
+                    padding: '12px 10px',
+                    border: '1px dashed var(--mantine-color-default-border)',
+                    borderRadius: 10,
                     flexShrink: 0,
                   }}>
-                    {draft.logoUrl ? (
-                      <img src={draft.logoUrl} alt="logo" style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 10 }} />
-                    ) : (
-                      <Text style={{ color: '#fff', fontFamily: FONT_FAMILY, fontSize: 32, fontWeight: 800, lineHeight: 1 }}>
-                        {(draft.orgName || 'A').charAt(0).toUpperCase()}
-                      </Text>
-                    )}
-                  </Box>
-                  <Text size="xs" c="dimmed" ta="center" style={{ fontFamily: FONT_FAMILY }}>
-                    Logo preview
-                  </Text>
-                  <FileButton onChange={() => notifications.show({ title: 'Coming soon', message: 'Logo upload coming soon', color: 'blue' })} accept="image/*">
-                    {(props) => (
-                      <Button {...props} variant="light" size="xs" color="teal" leftSection={<IconUpload size={13} />}>
-                        Upload Logo
-                      </Button>
-                    )}
-                  </FileButton>
-                </Stack>
+                    <Box style={{
+                      width: 64, height: 64, borderRadius: 14,
+                      background: `linear-gradient(135deg, ${draft.secondaryColor} 0%, ${draft.primaryColor} 100%)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 14px rgba(12,35,64,0.16)',
+                    }}>
+                      {draft.logoUrl
+                        ? <img src={draft.logoUrl} alt="logo" style={{ width: 46, height: 46, objectFit: 'contain', borderRadius: 8 }} />
+                        : <Text style={{ color: '#fff', fontFamily: FONT_FAMILY, fontSize: 26, fontWeight: 800, lineHeight: 1 }}>
+                            {(draft.orgName || 'A').charAt(0).toUpperCase()}
+                          </Text>
+                      }
+                    </Box>
+                    <FileButton onChange={() => notifications.show({ title: 'Coming soon', message: 'Logo upload coming soon', color: 'blue' })} accept="image/*">
+                      {(props) => (
+                        <Button {...props} variant="subtle" size="xs" color="teal"
+                          leftSection={<IconUpload size={11} />}>
+                          Upload
+                        </Button>
+                      )}
+                    </FileButton>
+                  </Stack>
 
-                {/* Right: name + slug */}
-                <Stack gap="md" justify="center">
-                  <TextInput
-                    label="Organization Name"
-                    value={draft.orgName}
-                    onChange={e => handleChange('orgName', e.target.value)}
-                    placeholder="e.g. Acme Corp Engineering"
-                    description="Shown in the header and throughout the app"
+                  {/* Fields */}
+                  <Stack gap="sm" style={{ flex: 1, minWidth: 0 }}>
+                    <TextInput
+                      label="Organization Name"
+                      value={draft.orgName}
+                      onChange={e => handleChange('orgName', e.target.value)}
+                      placeholder="e.g. Acme Corp Engineering"
+                      size="sm"
+                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+                    />
+                    <TextInput
+                      label="Org Slug"
+                      value={draft.orgSlug}
+                      onChange={e => handleChange('orgSlug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                      placeholder="acme-eng"
+                      size="sm"
+                      leftSectionWidth={68}
+                      leftSection={
+                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'nowrap' }}>
+                          epp.app/
+                        </Text>
+                      }
+                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+                    />
+                  </Stack>
+                </Group>
+              </Paper>
+
+              {/* Accent Colors */}
+              <Paper withBorder p="md" radius="md">
+                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  Accent Colors
+                </Text>
+                <SimpleGrid cols={2} spacing="sm" mb="md">
+                  <ColorInput
+                    label="Primary"
+                    value={draft.primaryColor}
+                    onChange={v => handleChange('primaryColor', v)}
+                    format="hex"
+                    size="sm"
+                    description="Buttons, active states"
                     styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
                   />
-                  <TextInput
-                    label="Org Slug"
-                    value={draft.orgSlug}
-                    onChange={e => handleChange('orgSlug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-                    placeholder="acme-eng"
-                    description="Used in URLs and API identifiers — lowercase, hyphens only"
-                    leftSectionWidth={72}
-                    leftSection={
-                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'nowrap' }}>
-                        epp.app/
-                      </Text>
-                    }
+                  <ColorInput
+                    label="Secondary"
+                    value={draft.secondaryColor}
+                    onChange={v => handleChange('secondaryColor', v)}
+                    format="hex"
+                    size="sm"
+                    description="Sidebar background"
                     styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
                   />
-                </Stack>
-              </SimpleGrid>
-            </Paper>
+                </SimpleGrid>
 
-            {/* ── Accent Colors ── */}
-            <Paper withBorder p="lg" radius="md">
-              <Text fw={700} size="sm" mb={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Accent Colors
-              </Text>
-              <Text size="xs" c="dimmed" mb="lg" style={{ fontFamily: FONT_FAMILY }}>
-                Customize the primary and secondary colors used across the interface. Changes apply after saving.
-              </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <ColorInput
-                  label="Primary Color"
-                  value={draft.primaryColor}
-                  onChange={v => handleChange('primaryColor', v)}
-                  format="hex"
-                  description="Action buttons, active states, highlights"
-                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
-                />
-                <ColorInput
-                  label="Secondary Color"
-                  value={draft.secondaryColor}
-                  onChange={v => handleChange('secondaryColor', v)}
-                  format="hex"
-                  description="Sidebar and header background"
-                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
-                />
-              </SimpleGrid>
-
-              <Divider my="lg" label="Live Preview" labelPosition="left" />
-
-              {/* Sidebar-style preview */}
-              <Box style={{
-                borderRadius: 12,
-                overflow: 'hidden',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-              }}>
-                {/* Mock sidebar strip */}
+                {/* Compact live preview */}
                 <Box style={{
-                  display: 'flex',
-                  height: 220,
+                  borderRadius: 10, overflow: 'hidden',
+                  border: '1px solid var(--mantine-color-default-border)',
+                  display: 'flex', height: 140,
                 }}>
-                  {/* Sidebar */}
+                  {/* Sidebar strip */}
                   <Box style={{
-                    width: 180,
-                    background: draft.secondaryColor,
-                    borderRight: `2px solid ${draft.primaryColor}22`,
-                    padding: '16px 0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    flexShrink: 0,
+                    width: 130, background: draft.secondaryColor,
+                    padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0,
                   }}>
-                    {/* Logo row */}
-                    <Box style={{ padding: '0 12px 12px', borderBottom: `1px solid rgba(255,255,255,0.08)`, marginBottom: 8 }}>
-                      <Group gap={8}>
-                        <Box style={{
-                          width: 28, height: 28, borderRadius: 6,
-                          background: draft.primaryColor,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <Text style={{ color: draft.secondaryColor, fontWeight: 800, fontSize: 13, fontFamily: FONT_FAMILY }}>
+                    <Box style={{ padding: '0 8px 8px', borderBottom: `1px solid rgba(255,255,255,0.08)`, marginBottom: 4 }}>
+                      <Group gap={5}>
+                        <Box style={{ width: 20, height: 20, borderRadius: 4, background: draft.primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: draft.secondaryColor, fontWeight: 800, fontSize: 10, fontFamily: FONT_FAMILY }}>
                             {(draft.orgName || 'A').charAt(0).toUpperCase()}
                           </Text>
                         </Box>
-                        <Text size="xs" fw={700} style={{ color: '#fff', fontFamily: FONT_FAMILY, opacity: 0.9 }} truncate>
+                        <Text size="10px" fw={700} style={{ color: '#fff', fontFamily: FONT_FAMILY, opacity: 0.9 }} truncate>
                           {draft.orgName || 'Your Org'}
                         </Text>
                       </Group>
                     </Box>
-                    {/* Nav items */}
-                    {[
-                      { label: 'Dashboard', active: true },
-                      { label: 'Projects', active: false },
-                      { label: 'Resources', active: false },
-                      { label: 'Analytics', active: false },
-                    ].map(item => (
-                      <Box key={item.label} style={{
-                        padding: '6px 12px',
-                        margin: '0 8px',
-                        borderRadius: 6,
-                        background: item.active ? `${draft.primaryColor}22` : 'transparent',
-                        borderLeft: item.active ? `3px solid ${draft.primaryColor}` : '3px solid transparent',
+                    {['Dashboard', 'Projects', 'Resources'].map((item, i) => (
+                      <Box key={item} style={{
+                        padding: '4px 8px', margin: '0 6px', borderRadius: 5,
+                        background: i === 0 ? `${draft.primaryColor}22` : 'transparent',
+                        borderLeft: i === 0 ? `2px solid ${draft.primaryColor}` : '2px solid transparent',
                       }}>
-                        <Text size="xs" style={{
-                          color: item.active ? draft.primaryColor : 'rgba(255,255,255,0.55)',
-                          fontFamily: FONT_FAMILY,
-                          fontWeight: item.active ? 700 : 400,
-                        }}>
-                          {item.label}
-                        </Text>
+                        <Text size="9px" style={{
+                          color: i === 0 ? draft.primaryColor : 'rgba(255,255,255,0.5)',
+                          fontFamily: FONT_FAMILY, fontWeight: i === 0 ? 700 : 400,
+                        }}>{item}</Text>
                       </Box>
                     ))}
-                    {/* Version */}
-                    <Box style={{ marginTop: 'auto', padding: '8px 12px' }}>
-                      <Text size="10px" style={{ color: 'rgba(255,255,255,0.25)', fontFamily: FONT_FAMILY }}>v12.5</Text>
+                    <Box style={{ marginTop: 'auto', padding: '6px 8px' }}>
+                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.2)', fontFamily: FONT_FAMILY }}>v18.7</Text>
                     </Box>
                   </Box>
-
-                  {/* Main content area mock */}
-                  <Box style={{ flex: 1, background: '#f8fafc', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Main area */}
+                  <Box style={{ flex: 1, background: 'var(--mantine-color-default)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <Group justify="space-between" align="center">
-                      <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Dashboard</Text>
-                      <Badge size="sm" style={{ background: draft.primaryColor, color: '#fff', fontFamily: FONT_FAMILY, fontWeight: 600 }}>
-                        Preview
-                      </Badge>
+                      <Text size="xs" fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Dashboard</Text>
+                      <Badge size="xs" style={{ background: draft.primaryColor, color: '#fff', fontFamily: FONT_FAMILY }}>Preview</Badge>
                     </Group>
-                    <Box style={{ height: 1, background: '#e2e8f0' }} />
-                    <SimpleGrid cols={3} spacing="xs">
+                    <Box style={{ height: 1, background: 'var(--mantine-color-default-border)' }} />
+                    <SimpleGrid cols={3} spacing={6}>
                       {['Projects', 'Resources', 'Capacity'].map(card => (
                         <Box key={card} style={{
-                          background: '#fff',
-                          borderRadius: 8,
-                          padding: '10px 12px',
-                          border: '1px solid #e9ecef',
-                          borderTop: `3px solid ${draft.primaryColor}`,
+                          background: 'var(--mantine-color-body)', borderRadius: 5,
+                          padding: '6px 8px', border: '1px solid var(--mantine-color-default-border)',
+                          borderTop: `2px solid ${draft.primaryColor}`,
                         }}>
-                          <Text size="10px" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{card}</Text>
-                          <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>—</Text>
+                          <Text size="9px" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{card}</Text>
+                          <Text size="10px" fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>—</Text>
                         </Box>
                       ))}
                     </SimpleGrid>
-                    <Button size="xs" style={{ background: draft.primaryColor, color: '#fff', alignSelf: 'flex-start', fontFamily: FONT_FAMILY }}>
-                      Primary Action
-                    </Button>
                   </Box>
                 </Box>
-              </Box>
+                <Text size="xs" c="dimmed" mt="xs" style={{ fontFamily: FONT_FAMILY }}>
+                  Live preview — changes apply after saving.
+                </Text>
+              </Paper>
+            </Stack>
 
-              <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
-                This preview reflects how your color choices appear in the sidebar and main content area.
+            {/* RIGHT: Workspace ────────────────────────── */}
+            <Stack gap="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                Workspace
               </Text>
-            </Paper>
 
-          </Stack>
-        </Tabs.Panel>
+              {/* Regional */}
+              <Paper withBorder p="md" radius="md">
+                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  Regional Settings
+                </Text>
+                <SimpleGrid cols={2} spacing="sm">
+                  <Select label="Timezone" data={TIMEZONES} value={draft.timezone}
+                    onChange={val => handleChange('timezone', val)} searchable size="sm"
+                    styles={{ label: { fontFamily: FONT_FAMILY } }} />
+                  <Select label="Fiscal Year Start" data={MONTHS} value={draft.fiscalYearStart}
+                    onChange={val => handleChange('fiscalYearStart', val)} size="sm"
+                    styles={{ label: { fontFamily: FONT_FAMILY } }} />
+                </SimpleGrid>
+              </Paper>
 
-        {/* ── WORKSPACE ─── */}
-        <Tabs.Panel value="workspace">
-          <Stack gap="lg" style={{ maxWidth: 860 }}>
-            <Paper withBorder p="lg" radius="md">
-              <Text fw={600} mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Regional Settings</Text>
-              <SimpleGrid cols={2} spacing="md">
-                <Select
-                  label="Timezone"
-                  data={TIMEZONES}
-                  value={draft.timezone}
-                  onChange={val => handleChange('timezone', val)}
-                  searchable
-                  styles={{ label: { fontFamily: FONT_FAMILY } }}
-                />
-                <Select
-                  label="Fiscal Year Start"
-                  data={MONTHS}
-                  value={draft.fiscalYearStart}
-                  onChange={val => handleChange('fiscalYearStart', val)}
-                  styles={{ label: { fontFamily: FONT_FAMILY } }}
-                />
-              </SimpleGrid>
-            </Paper>
-            <Paper withBorder p="lg" radius="md">
-              <Text fw={600} mb={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Feature Flags</Text>
-              <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-                Toggle features on/off — disabled features are hidden from the sidebar for all users.
-              </Text>
-              <Stack gap={0}>
-                {/* ── Module toggles ─────────────────────────────────────── */}
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: '0.06em' }}>Modules</Text>
-                {[
-                  { key: 'jira',            label: 'Jira Integration',       desc: 'POD Dashboard, Releases, Actuals, Support Queue, Worklog, Portfolio Sync',  defaultOn: true  },
-                  { key: 'engineering',     label: 'Engineering Analytics',   desc: 'DORA, Eng. Intelligence, Delivery Predictability, Sprint Retro, Dashboard Builder', defaultOn: true  },
-                  { key: 'simulations',     label: 'Simulators',             desc: 'Timeline Simulator and Scenario Simulator',                                  defaultOn: true  },
-                  { key: 'advanced_people', label: 'Advanced People Reports', desc: 'Capacity Forecast, Skills Matrix, Team Pulse, Resource Performance & Intelligence', defaultOn: true  },
-                  { key: 'financials',      label: 'Financial Tracking',      desc: 'Budget & CapEx / OpEx tracking',                                             defaultOn: true  },
-                ].map(flag => (
-                  <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
-                    style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-                    <div>
-                      <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
-                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
-                    </div>
-                    <Switch
-                      checked={draft.features?.[flag.key] ?? flag.defaultOn}
-                      onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
-                      color="teal"
-                      size="sm"
-                    />
-                  </Group>
-                ))}
-                {/* ── Feature toggles ────────────────────────────────────── */}
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mt="md" mb="xs" style={{ letterSpacing: '0.06em' }}>Features</Text>
-                {[
-                  { key: 'ai',         label: 'AI Features',        desc: 'Ask AI, Smart Notifications — requires OpenAI/Anthropic API key', defaultOn: true  },
-                  { key: 'okr',        label: 'OKR Tracking',       desc: 'Objectives & Key Results management',                             defaultOn: true  },
-                  { key: 'risk',       label: 'Risk Register',      desc: 'Risk and issue tracking across projects',                         defaultOn: true  },
-                  { key: 'ideas',      label: 'Ideas Board',        desc: 'Team idea submission and voting',                                  defaultOn: true  },
-                ].map(flag => (
-                  <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
-                    style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-                    <div>
-                      <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
-                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
-                    </div>
-                    <Switch
-                      checked={draft.features?.[flag.key] ?? flag.defaultOn}
-                      onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
-                      color="teal"
-                      size="sm"
-                    />
-                  </Group>
-                ))}
-              </Stack>
-            </Paper>
-            {/* Timeline settings embedded */}
-            <TimelineSettingsPage embedded />
-          </Stack>
+              {/* Feature Flags */}
+              <Paper withBorder p="md" radius="md">
+                <Text fw={600} size="sm" mb={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Feature Flags</Text>
+                <Text size="xs" c="dimmed" mb="sm" style={{ fontFamily: FONT_FAMILY }}>
+                  Disabled features are hidden from the sidebar for all users.
+                </Text>
+                <Stack gap={0}>
+                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: '0.06em', fontFamily: FONT_FAMILY }}>Modules</Text>
+                  {[
+                    { key: 'jira',            label: 'Jira Integration',       desc: 'POD Dashboard, Releases, Actuals, Support Queue' },
+                    { key: 'engineering',     label: 'Engineering Analytics',  desc: 'DORA, Git Intelligence, Sprint Retro' },
+                    { key: 'simulations',     label: 'Simulators',             desc: 'Timeline & Scenario Simulators' },
+                    { key: 'advanced_people', label: 'Advanced People',        desc: 'Capacity Forecast, Skills Matrix, Team Pulse' },
+                    { key: 'financials',      label: 'Financial Tracking',     desc: 'Budget & CapEx / OpEx' },
+                  ].map(flag => (
+                    <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
+                      style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                      <div>
+                        <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
+                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
+                      </div>
+                      <Switch checked={draft.features?.[flag.key] ?? true}
+                        onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
+                        color="teal" size="sm" />
+                    </Group>
+                  ))}
+                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mt="sm" mb="xs" style={{ letterSpacing: '0.06em', fontFamily: FONT_FAMILY }}>Features</Text>
+                  {[
+                    { key: 'ai',    label: 'AI Features',   desc: 'Ask AI, Smart Notifications — requires API key' },
+                    { key: 'okr',   label: 'OKR Tracking',  desc: 'Objectives & Key Results management' },
+                    { key: 'risk',  label: 'Risk Register', desc: 'Risk and issue tracking across projects' },
+                    { key: 'ideas', label: 'Ideas Board',   desc: 'Team idea submission and voting' },
+                  ].map(flag => (
+                    <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
+                      style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                      <div>
+                        <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
+                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
+                      </div>
+                      <Switch checked={draft.features?.[flag.key] ?? true}
+                        onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
+                        color="teal" size="sm" />
+                    </Group>
+                  ))}
+                </Stack>
+              </Paper>
+
+              {/* Timeline embedded */}
+              <TimelineSettingsPage embedded />
+            </Stack>
+          </SimpleGrid>
         </Tabs.Panel>
 
         {/* ── USERS & ACCESS ─── */}
@@ -709,418 +741,388 @@ export default function OrgSettingsPage() {
           <UserManagementPage embedded />
         </Tabs.Panel>
 
-        {/* ── REFERENCE DATA ─── */}
-        <Tabs.Panel value="data">
-          <RefDataSettingsPage embedded />
-        </Tabs.Panel>
-
         {/* ── INTEGRATIONS ─── */}
         <Tabs.Panel value="jira">
-          <Stack gap="xl">
+          <Stack gap="lg">
+
             {/* Jira */}
-            <Stack gap="sm">
+            <Stack gap="xs">
               <Group gap="xs">
-                <ThemeIcon variant="light" color="teal" size={28} radius="md">
-                  <IconTicket size={15} />
+                <ThemeIcon variant="light" color="teal" size={24} radius="md">
+                  <IconTicket size={13} />
                 </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  Jira Configuration
-                </Text>
+                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Jira</Text>
               </Group>
-              <JiraHubPanel />
+              <NavGrid items={jiraLinks} color="teal" cols={3} />
             </Stack>
 
-            <Divider />
-
-            {/* Jira Epic Auto-Sync (Projects SoT) */}
-            <Stack gap="sm">
-              <Group gap="xs" justify="space-between">
-                <Group gap="xs">
-                  <ThemeIcon variant="light" color="teal" size={28} radius="md">
-                    <IconCloudDownload size={15} />
-                  </ThemeIcon>
-                  <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                    Project Sync (Jira Epics → PP)
-                  </Text>
-                  <Badge size="xs" color={schedule.jiraSyncEnabled ? 'teal' : 'gray'} variant="light">
-                    {schedule.jiraSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
-                  </Badge>
-                </Group>
-                <Switch
-                  size="sm"
-                  color="teal"
-                  label="Enable auto-sync"
-                  checked={schedule.jiraSyncEnabled}
-                  onChange={e => setSchedule(p => ({ ...p, jiraSyncEnabled: e.currentTarget.checked }))}
-                />
-              </Group>
-              {schedule.jiraSyncEnabled && (
-                <TextInput
-                  size="xs"
-                  label="Sync cron (Spring format)"
-                  placeholder="0 0 */2 * * *"
-                  value={schedule.jiraSyncCron}
-                  onChange={e => setSchedule(p => ({ ...p, jiraSyncCron: e.target.value }))}
-                  description="Default: every 2 hours. Changes take effect at next tick — no restart needed."
-                  style={{ maxWidth: 320 }}
-                />
-              )}
-              <Button
-                size="xs"
-                variant="subtle"
-                color="teal"
-                onClick={handleScheduleSave}
-                loading={scheduleSaving}
-                style={{ alignSelf: 'flex-start' }}
-              >
-                Save sync settings
-              </Button>
-              <JiraEpicSyncPanel />
-            </Stack>
+            {/* Project Sync */}
+            <JiraEpicSyncPanel
+              schedule={schedule}
+              setSchedule={setSchedule}
+              scheduleSaving={scheduleSaving}
+              handleScheduleSave={handleScheduleSave}
+            />
 
             <Divider />
 
             {/* Azure DevOps */}
-            <Stack gap="sm">
+            <Stack gap="xs">
               <Group gap="xs">
-                <ThemeIcon variant="light" color="blue" size={28} radius="md">
-                  <IconBrandAzure size={15} />
+                <ThemeIcon variant="light" color="blue" size={24} radius="md">
+                  <IconBrandAzure size={13} />
                 </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  Azure DevOps
-                </Text>
+                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Azure DevOps</Text>
               </Group>
-              <AzureDevOpsPanel />
+              <NavGrid items={azureLinks} color="blue" cols={1} />
             </Stack>
-          </Stack>
-        </Tabs.Panel>
 
-        {/* ── NOTIFICATIONS ─── */}
-        <Tabs.Panel value="notifications">
-          <Stack gap="md" style={{ maxWidth: 860 }}>
+            <Divider />
 
-            {/* Notification Bell — what it actually does */}
-            <Paper withBorder p="lg" radius="md">
-              <Group gap="sm" mb="xs">
-                <ThemeIcon variant="light" color="orange" size={32} radius="md">
-                  <IconBell size={16} />
-                </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  In-App Notification Bell
-                </Text>
-                <Badge size="sm" color="teal" variant="light">Live</Badge>
-              </Group>
-              <Text size="sm" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-                The bell icon in the top-right toolbar is active and shows real-time alerts for
-                <strong> Blocker</strong> and <strong>Critical</strong> Jira tickets in your linked support boards.
-                Alerts are dismissed per-browser and reset on next visit if unresolved.
-              </Text>
-              <Divider mb="md" />
+            {/* SSO / OIDC — gated by 'sso' feature flag */}
+            {draft.features?.sso ? (
               <Stack gap="xs">
-                <Group gap="xs" align="flex-start">
-                  <Badge size="xs" color="red" variant="filled" style={{ marginTop: 2 }}>Requires</Badge>
-                  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                    Jira credentials must be configured under <strong>Admin Settings → Jira Integration → Jira Credentials</strong>.
-                    Without a Jira connection, the bell is hidden.
-                  </Text>
-                </Group>
-                <Group gap="xs" align="flex-start">
-                  <Badge size="xs" color="blue" variant="filled" style={{ marginTop: 2 }}>Scope</Badge>
-                  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                    Monitors Blocker / Critical / Highest priority tickets from your configured Jira support boards only.
-                  </Text>
-                </Group>
-                <Group gap="xs" align="flex-start">
-                  <Badge size="xs" color="gray" variant="filled" style={{ marginTop: 2 }}>Storage</Badge>
-                  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                    Dismissed alerts are stored in your browser's local storage — they do not sync across devices or users.
-                  </Text>
-                </Group>
-              </Stack>
-            </Paper>
-
-            {/* Email Alerts — links to SMTP tab */}
-            <Paper withBorder p="lg" radius="md">
-              <Group gap="sm" mb="xs">
-                <ThemeIcon variant="light" color={smtp.enabled ? 'teal' : 'gray'} size={32} radius="md">
-                  <IconMail size={16} />
-                </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  Email Alert Delivery
-                </Text>
-                <Badge size="sm" color={smtp.enabled ? 'teal' : 'gray'} variant="light">
-                  {smtp.enabled ? 'Configured' : 'Not configured'}
-                </Badge>
-              </Group>
-              <Text size="sm" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-                Email delivery for alerts (overdue projects, capacity thresholds, risk notifications)
-                requires an SMTP server connection.
-                {!smtp.enabled && ' Configure it in the Email / SMTP tab.'}
-              </Text>
-              <Divider mb="md" />
-              <Stack gap="xs">
-                {[
-                  { label: 'Project overdue alerts',    desc: 'Alert when a project passes its target date' },
-                  { label: 'Budget overrun warnings',   desc: 'Alert when project spending exceeds budget' },
-                  { label: 'Capacity threshold alerts', desc: 'Alert when utilization exceeds 90%' },
-                  { label: 'New risk logged',            desc: 'Notify owner when a critical risk is filed' },
-                  { label: 'Support queue staleness',   desc: 'Alert when tickets are stale for 48h' },
-                  { label: 'AI weekly digest',          desc: 'Weekly AI-generated portfolio summary email' },
-                ].map(item => (
-                  <Group key={item.label} justify="space-between" wrap="nowrap"
-                         style={{ opacity: smtp.enabled ? 1 : 0.5 }}>
-                    <div>
-                      <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{item.label}</Text>
-                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{item.desc}</Text>
-                    </div>
-                    <Tooltip label={smtp.enabled ? 'SMTP configured' : 'Requires SMTP configuration'}
-                             position="left" withArrow>
-                      <Switch disabled color="teal" size="sm" />
-                    </Tooltip>
+                <Group justify="space-between" align="center">
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" color="violet" size={24} radius="md">
+                      <IconShield size={13} />
+                    </ThemeIcon>
+                    <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                      SSO / OIDC
+                    </Text>
+                    <Badge size="xs" color={sso.enabled ? 'violet' : 'gray'} variant="light">
+                      {sso.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
                   </Group>
-                ))}
-              </Stack>
-              {!smtp.enabled && (
-                <Button size="xs" variant="light" color="teal" mt="md"
-                        leftSection={<IconMail size={12} />}
-                        onClick={() => setActiveTab('email')}>
-                  Configure SMTP
-                </Button>
-              )}
-            </Paper>
-
-          </Stack>
-        </Tabs.Panel>
-
-        {/* ── EMAIL / SMTP ─── */}
-        <Tabs.Panel value="email">
-          <Stack gap="md" style={{ maxWidth: 640 }}>
-            <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-              Configure the outbound SMTP server used for email alerts and the weekly digest.
-              Changes take effect immediately — no server restart required.
-            </Text>
-
-            <Paper withBorder p="lg" radius="md">
-              <Group gap="sm" mb="lg">
-                <ThemeIcon variant="light" color="teal" size={32} radius="md">
-                  <IconMail size={16} />
-                </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  SMTP Server
-                </Text>
-                <Switch
-                  label="Enable email delivery"
-                  size="sm"
-                  color="teal"
-                  checked={smtp.enabled}
-                  onChange={e => setSmtp(p => ({ ...p, enabled: e.currentTarget.checked }))}
-                />
-              </Group>
-
-              <Stack gap="sm">
-                <SimpleGrid cols={2} spacing="sm">
-                  <TextInput
-                    label="SMTP Host"
-                    placeholder="smtp.gmail.com"
-                    value={smtp.host}
-                    onChange={e => setSmtp(p => ({ ...p, host: e.target.value }))}
-                  />
-                  <NumberInput
-                    label="Port"
-                    placeholder="587"
-                    value={smtp.port}
-                    min={1}
-                    max={65535}
-                    onChange={v => setSmtp(p => ({ ...p, port: Number(v) || 587 }))}
-                  />
-                </SimpleGrid>
-
-                <TextInput
-                  label="Username"
-                  placeholder="your@gmail.com"
-                  value={smtp.username}
-                  onChange={e => setSmtp(p => ({ ...p, username: e.target.value }))}
-                />
-
-                <PasswordInput
-                  label={smtp.passwordSet ? 'Password (leave blank to keep current)' : 'Password'}
-                  placeholder={smtp.passwordSet ? '••••••••  (stored)' : 'Enter password'}
-                  value={smtp.password}
-                  onChange={e => setSmtp(p => ({ ...p, password: e.target.value }))}
-                />
-
-                <TextInput
-                  label="From Address"
-                  placeholder="noreply@yourcompany.com"
-                  value={smtp.fromAddress}
-                  onChange={e => setSmtp(p => ({ ...p, fromAddress: e.target.value }))}
-                />
-
-                <Switch
-                  label="Use STARTTLS (recommended)"
-                  size="sm"
-                  color="teal"
-                  checked={smtp.useTls}
-                  onChange={e => setSmtp(p => ({ ...p, useTls: e.currentTarget.checked }))}
-                />
-              </Stack>
-
-              <Group mt="lg" gap="sm">
-                <Button
-                  color="teal"
-                  leftSection={<IconCheck size={14} />}
-                  loading={smtpSaving}
-                  onClick={handleSmtpSave}
-                >
-                  Save Settings
-                </Button>
-                <Button
-                  variant="light"
-                  color="blue"
-                  leftSection={<IconPlugConnected size={14} />}
-                  loading={smtpTesting}
-                  onClick={handleSmtpTest}
-                >
-                  Test Connection
-                </Button>
-              </Group>
-            </Paper>
-
-            <Paper withBorder p="md" radius="md" style={{ background: '#f8fafb' }}>
-              <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>
-                Gmail / Google Workspace tip
-              </Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                Use <strong>smtp.gmail.com</strong>, port <strong>587</strong>, STARTTLS enabled.
-                Your password must be an <strong>App Password</strong> (not your account password).
-                Generate one at <em>Google Account → Security → App Passwords</em>.
-              </Text>
-            </Paper>
-
-            {/* ── Notification Schedule ── */}
-            <Paper withBorder p="lg" radius="md">
-              <Group gap="sm" mb="lg">
-                <ThemeIcon variant="light" color="orange" size={32} radius="md">
-                  <IconClock size={16} />
-                </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-                  Notification Schedule
-                </Text>
-              </Group>
-
-              <Stack gap="sm">
-                <TextInput
-                  label="Recipients"
-                  placeholder="alice@company.com, bob@company.com"
-                  description="Comma-separated email addresses. Used by both digest and staleness alerts."
-                  value={schedule.recipients}
-                  onChange={e => setSchedule(p => ({ ...p, recipients: e.target.value }))}
-                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
-                />
-
-                <Divider label="Weekly Portfolio Digest" labelPosition="left" mt="xs" />
-                <Group gap="md" align="flex-start">
                   <Switch
-                    label="Enable weekly digest"
                     size="sm"
-                    color="teal"
-                    checked={schedule.digestEnabled}
-                    onChange={e => setSchedule(p => ({ ...p, digestEnabled: e.currentTarget.checked }))}
-                    mt={6}
-                  />
-                  <TextInput
-                    label="Cron expression"
-                    placeholder="0 0 8 * * MON"
-                    value={schedule.digestCron}
-                    onChange={e => setSchedule(p => ({ ...p, digestCron: e.target.value }))}
-                    description="Spring cron: sec min hr day month weekday"
-                    style={{ flex: 1 }}
-                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                    color="violet"
+                    label="Enable SSO"
+                    checked={sso.enabled}
+                    onChange={e => setSso(p => ({ ...p, enabled: e.currentTarget.checked }))}
                   />
                 </Group>
 
-                <Divider label="Support Staleness Alert" labelPosition="left" mt="xs" />
-                <Group gap="md" align="flex-start">
-                  <Switch
-                    label="Enable staleness alert"
-                    size="sm"
-                    color="teal"
-                    checked={schedule.stalenessEnabled}
-                    onChange={e => setSchedule(p => ({ ...p, stalenessEnabled: e.currentTarget.checked }))}
-                    mt={6}
-                  />
-                  <TextInput
-                    label="Cron expression"
-                    placeholder="0 0 9 * * MON"
-                    value={schedule.stalenessCron}
-                    onChange={e => setSchedule(p => ({ ...p, stalenessCron: e.target.value }))}
-                    description="Spring cron: sec min hr day month weekday"
-                    style={{ flex: 1 }}
-                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
-                  />
-                </Group>
+                <Paper withBorder radius="md" p="md">
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                    <Select
+                      label="Identity provider"
+                      size="sm"
+                      value={sso.provider}
+                      onChange={v => setSso(p => ({ ...p, provider: v ?? 'GOOGLE' }))}
+                      data={[
+                        { value: 'GOOGLE',    label: 'Google Workspace' },
+                        { value: 'MICROSOFT', label: 'Microsoft Entra ID' },
+                        { value: 'OKTA',      label: 'Okta' },
+                        { value: 'CUSTOM',    label: 'Custom OIDC' },
+                      ]}
+                    />
+                    <TextInput
+                      label="Client ID"
+                      size="sm"
+                      placeholder="OAuth2 client ID"
+                      value={sso.clientId}
+                      onChange={e => setSso(p => ({ ...p, clientId: e.currentTarget.value }))}
+                    />
+                    <PasswordInput
+                      label="Client secret"
+                      size="sm"
+                      placeholder={ssoSecretSet ? '••••••••  (set — enter new to change)' : 'OAuth2 client secret'}
+                      value={sso.clientSecret}
+                      onChange={e => setSso(p => ({ ...p, clientSecret: e.currentTarget.value }))}
+                      description="Stored server-side; never exposed in the UI"
+                    />
+                    <Box>
+                      <TextInput
+                        label="Redirect URI"
+                        size="sm"
+                        placeholder="https://yourdomain.com/login/oauth2/code/sso"
+                        value={sso.redirectUri}
+                        onChange={e => setSso(p => ({ ...p, redirectUri: e.currentTarget.value }))}
+                        rightSection={
+                          sso.redirectUri ? (
+                            <Tooltip label="Copy">
+                              <IconCopy
+                                size={14}
+                                style={{ cursor: 'pointer', color: 'var(--mantine-color-dimmed)' }}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(sso.redirectUri);
+                                  notifications.show({ message: 'Redirect URI copied', color: 'teal', autoClose: 2000 });
+                                }}
+                              />
+                            </Tooltip>
+                          ) : undefined
+                        }
+                      />
+                    </Box>
+                    {(sso.provider === 'OKTA' || sso.provider === 'CUSTOM') && (
+                      <TextInput
+                        label="OIDC Discovery URL"
+                        size="sm"
+                        placeholder="https://your-domain/.well-known/openid-configuration"
+                        value={sso.discoveryUrl}
+                        onChange={e => setSso(p => ({ ...p, discoveryUrl: e.currentTarget.value }))}
+                        description="Required for Okta and Custom OIDC providers"
+                      />
+                    )}
+                  </SimpleGrid>
+
+                  <Group justify="flex-end" mt="md" gap="xs">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      leftSection={<IconLink size={13} />}
+                      disabled={!sso.clientId}
+                      onClick={() => notifications.show({ title: 'Test connection', message: 'Full OIDC flow test will be available once SSO auth flow is configured.', color: 'blue', autoClose: 4000 })}
+                    >
+                      Test connection
+                    </Button>
+                    <Button
+                      color="violet"
+                      size="sm"
+                      leftSection={<IconCheck size={13} />}
+                      loading={ssoSaving}
+                      onClick={handleSsoSave}
+                    >
+                      Save SSO config
+                    </Button>
+                  </Group>
+                </Paper>
               </Stack>
-
-              <Group mt="lg" gap="sm">
-                <Button
-                  color="teal"
-                  leftSection={<IconCheck size={14} />}
-                  loading={scheduleSaving}
-                  onClick={handleScheduleSave}
-                >
-                  Save Schedule
-                </Button>
-              </Group>
-            </Paper>
-
-            <Paper withBorder p="md" radius="md" style={{ background: '#f8fafb' }}>
-              <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>
-                Cron expression reference
-              </Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-                Format: <strong>sec min hr day month weekday</strong> — e.g.{' '}
-                <code>0 0 8 * * MON</code> = every Monday at 08:00,{' '}
-                <code>0 0 9 * * MON,FRI</code> = Monday &amp; Friday at 09:00.
-                Changes take effect at the next scheduled tick with no restart required.
-              </Text>
-            </Paper>
-          </Stack>
-        </Tabs.Panel>
-
-        {/* ── AI & NLP ─── */}
-        <Tabs.Panel value="ai">
-          <Stack gap="sm" style={{ maxWidth: 860 }}>
-            <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-              Configure AI and NLP settings. Each section opens its dedicated configuration page.
-            </Text>
-            {[
-              { icon: <IconBrain size={18} />, label: 'NLP Configuration',   path: '/settings/nlp',           desc: 'Configure AI provider, model, and query strategy' },
-              { icon: <IconBrain size={18} />, label: 'NLP Optimizer',       path: '/settings/nlp-optimizer', desc: 'Review and train low-confidence query patterns' },
-            ].map(s => (
-              <Paper key={s.path} withBorder p="md" radius="md" style={{ cursor: 'pointer' }}
-                onClick={() => navigate(s.path)}>
-                <Group gap="md">
-                  <ThemeIcon variant="light" color="violet" size={36} radius="md">{s.icon}</ThemeIcon>
-                  <div>
-                    <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{s.label}</Text>
-                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{s.desc}</Text>
-                  </div>
-                  <IconExternalLink size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
+            ) : (
+              <Paper withBorder radius="md" p="md"
+                style={{ borderStyle: 'dashed', background: 'var(--mantine-color-default-hover)' }}>
+                <Group gap="sm">
+                  <ThemeIcon variant="light" color="gray" size={28} radius="md">
+                    <IconShield size={14} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>SSO / OIDC — Enterprise Auth</Text>
+                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                      Enable the <strong>sso</strong> feature flag in General → Features to configure
+                      Google Workspace, Microsoft Entra, Okta, or Custom OIDC single sign-on.
+                    </Text>
+                  </Box>
                 </Group>
               </Paper>
-            ))}
+            )}
+
           </Stack>
+        </Tabs.Panel>
+
+        {/* ── NOTIFICATIONS & EMAIL ─── */}
+        <Tabs.Panel value="notifications">
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg" style={{ alignItems: 'start' }}>
+
+            {/* LEFT: Notification info + SMTP ───── */}
+            <Stack gap="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                Notifications
+              </Text>
+
+              {/* In-app bell */}
+              <Paper withBorder p="md" radius="md">
+                <Group gap="sm" mb="sm">
+                  <ThemeIcon variant="light" color="orange" size={28} radius="md">
+                    <IconBell size={14} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    In-App Notification Bell
+                  </Text>
+                  <Badge size="xs" color="teal" variant="light">Live</Badge>
+                </Group>
+                <Text size="xs" c="dimmed" mb="sm" style={{ fontFamily: FONT_FAMILY }}>
+                  Shows real-time alerts for <strong>Blocker</strong> and <strong>Critical</strong> Jira
+                  tickets from your linked support boards. Requires Jira credentials under{' '}
+                  <strong>Integrations → Jira Credentials</strong>.
+                </Text>
+                <Group gap="xs" wrap="wrap">
+                  <Badge size="xs" color="red" variant="light">Requires Jira connection</Badge>
+                  <Badge size="xs" color="gray" variant="light">Browser-local dismiss</Badge>
+                  <Badge size="xs" color="blue" variant="light">Blocker + Critical only</Badge>
+                </Group>
+              </Paper>
+
+              {/* Email delivery status */}
+              <Paper withBorder p="md" radius="md">
+                <Group gap="sm" mb="sm">
+                  <ThemeIcon variant="light" color={smtp.enabled ? 'teal' : 'gray'} size={28} radius="md">
+                    <IconMail size={14} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    Email Alert Delivery
+                  </Text>
+                  <Badge size="xs" color={smtp.enabled ? 'teal' : 'gray'} variant="light">
+                    {smtp.enabled ? 'SMTP configured' : 'SMTP not configured'}
+                  </Badge>
+                </Group>
+                <Stack gap={4}>
+                  {[
+                    'Project overdue alerts',
+                    'Budget overrun warnings',
+                    'Capacity threshold alerts',
+                    'New risk logged',
+                    'Support queue staleness',
+                    'AI weekly digest',
+                  ].map(item => (
+                    <Group key={item} justify="space-between" wrap="nowrap"
+                           style={{ opacity: smtp.enabled ? 1 : 0.45 }}>
+                      <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{item}</Text>
+                      <Tooltip label={smtp.enabled ? 'Active' : 'Requires SMTP'} position="left" withArrow>
+                        <Switch disabled color="teal" size="xs" />
+                      </Tooltip>
+                    </Group>
+                  ))}
+                </Stack>
+              </Paper>
+
+              {/* Notification schedule */}
+              <Paper withBorder p="md" radius="md">
+                <Group gap="sm" mb="sm">
+                  <ThemeIcon variant="light" color="orange" size={28} radius="md">
+                    <IconClock size={14} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    Notification Schedule
+                  </Text>
+                </Group>
+                <Stack gap="sm">
+                  <TextInput
+                    label="Recipients"
+                    placeholder="alice@company.com, bob@company.com"
+                    description="Comma-separated. Used by digest and staleness alerts."
+                    value={schedule.recipients}
+                    onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, recipients: e.target.value }))}
+                    size="sm"
+                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                  />
+                  <Divider label="Weekly Portfolio Digest" labelPosition="left" />
+                  <Group gap="sm" align="flex-start">
+                    <Switch label="Enable" size="sm" color="teal"
+                      checked={schedule.digestEnabled}
+                      onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, digestEnabled: e.currentTarget.checked }))}
+                      mt={6} />
+                    <TextInput label="Cron" placeholder="0 0 8 * * MON"
+                      value={schedule.digestCron}
+                      onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, digestCron: e.target.value }))}
+                      description="sec min hr day month weekday"
+                      size="sm" style={{ flex: 1 }}
+                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }} />
+                  </Group>
+                  <Divider label="Support Staleness Alert" labelPosition="left" />
+                  <Group gap="sm" align="flex-start">
+                    <Switch label="Enable" size="sm" color="teal"
+                      checked={schedule.stalenessEnabled}
+                      onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, stalenessEnabled: e.currentTarget.checked }))}
+                      mt={6} />
+                    <TextInput label="Cron" placeholder="0 0 9 * * MON"
+                      value={schedule.stalenessCron}
+                      onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, stalenessCron: e.target.value }))}
+                      description="sec min hr day month weekday"
+                      size="sm" style={{ flex: 1 }}
+                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }} />
+                  </Group>
+                </Stack>
+                <Button mt="sm" size="xs" color="teal" leftSection={<IconCheck size={12} />}
+                  loading={scheduleSaving} onClick={handleScheduleSave}>
+                  Save Schedule
+                </Button>
+              </Paper>
+            </Stack>
+
+            {/* RIGHT: SMTP + AI ────────────────────── */}
+            <Stack gap="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                Email / SMTP
+              </Text>
+
+              <Paper withBorder p="md" radius="md">
+                <Group gap="sm" mb="md">
+                  <ThemeIcon variant="light" color="teal" size={28} radius="md">
+                    <IconMail size={14} />
+                  </ThemeIcon>
+                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    SMTP Server
+                  </Text>
+                  <Switch label="Enable" size="sm" color="teal"
+                    checked={smtp.enabled}
+                    onChange={e => setSmtp(p => ({ ...p, enabled: e.currentTarget.checked }))} />
+                </Group>
+
+                <Stack gap="sm">
+                  <SimpleGrid cols={2} spacing="sm">
+                    <TextInput label="SMTP Host" placeholder="smtp.gmail.com" size="sm"
+                      value={smtp.host} onChange={e => setSmtp(p => ({ ...p, host: e.target.value }))} />
+                    <NumberInput label="Port" placeholder="587" value={smtp.port} min={1} max={65535}
+                      size="sm" onChange={v => setSmtp(p => ({ ...p, port: Number(v) || 587 }))} />
+                  </SimpleGrid>
+                  <TextInput label="Username" placeholder="your@gmail.com" size="sm"
+                    value={smtp.username} onChange={e => setSmtp(p => ({ ...p, username: e.target.value }))} />
+                  <PasswordInput
+                    label={smtp.passwordSet ? 'Password (leave blank to keep)' : 'Password'}
+                    placeholder={smtp.passwordSet ? '•••••••• (stored)' : 'Enter password'}
+                    size="sm" value={smtp.password}
+                    onChange={e => setSmtp(p => ({ ...p, password: e.target.value }))} />
+                  <TextInput label="From Address" placeholder="noreply@yourcompany.com" size="sm"
+                    value={smtp.fromAddress} onChange={e => setSmtp(p => ({ ...p, fromAddress: e.target.value }))} />
+                  <Switch label="Use STARTTLS (recommended)" size="sm" color="teal"
+                    checked={smtp.useTls} onChange={e => setSmtp(p => ({ ...p, useTls: e.currentTarget.checked }))} />
+                </Stack>
+
+                <Group mt="md" gap="xs">
+                  <Button size="xs" color="teal" leftSection={<IconCheck size={12} />}
+                    loading={smtpSaving} onClick={handleSmtpSave}>
+                    Save
+                  </Button>
+                  <Button size="xs" variant="light" color="blue"
+                    leftSection={<IconPlugConnected size={12} />}
+                    loading={smtpTesting} onClick={handleSmtpTest}>
+                    Test Connection
+                  </Button>
+                </Group>
+
+                <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
+                  <strong>Gmail tip:</strong> Use <code>smtp.gmail.com</code> port <code>587</code>,
+                  STARTTLS on. Password must be an <em>App Password</em> (Google Account → Security).
+                </Text>
+              </Paper>
+
+              <Divider label={
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                  AI &amp; NLP
+                </Text>
+              } labelPosition="left" />
+
+              <NavGrid items={aiLinks} color="violet" cols={1} />
+            </Stack>
+          </SimpleGrid>
         </Tabs.Panel>
 
         {/* ── SYSTEM ─── */}
         <Tabs.Panel value="system">
-          <Stack gap="lg" style={{ maxWidth: 860 }}>
-            <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-              System administration tools. Admin-only access.
-            </Text>
-            <SystemLinksPanel />
+          <Stack gap="lg">
+            <Stack gap="xs">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                System Tools
+              </Text>
+              <NavGrid items={systemLinks} color="blue" cols={3} />
+            </Stack>
+
+            <Divider label={
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                Reference Data
+              </Text>
+            } labelPosition="left" />
+
+            <Box style={{ overflowX: 'auto', width: '100%' }}>
+              <RefDataSettingsPage embedded />
+            </Box>
           </Stack>
         </Tabs.Panel>
+
       </Tabs>
     </Stack>
   );

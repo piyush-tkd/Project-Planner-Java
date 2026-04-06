@@ -65,8 +65,8 @@ function WrikeCard({ title, count, children, minH, onTitleClick }: {
       radius="lg"
       p={0}
       style={{
-        border: '1px solid #e2e8f0',
-        background: '#fff',
+        border: '1px solid var(--mantine-color-default-border)',
+        background: 'var(--mantine-color-body)',
         boxShadow: '0 1px 4px rgba(12,35,64,0.06)',
         overflow: 'hidden',
         minHeight: minH,
@@ -107,9 +107,9 @@ function StatusPill({ status }: { status: string }) {
 // ── Big KPI number card ───────────────────────────────────────────────────
 function KpiNumberCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid #e2e8f0', background: '#fff', textAlign: 'center' }}>
+    <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)', textAlign: 'center' }}>
       <Text size="xs" fw={600} tt="uppercase" style={{ color: '#94a3b8', letterSpacing: '0.6px', marginBottom: 8 }}>{label}</Text>
-      <Text style={{ fontSize: 40, fontWeight: 800, color: '#0f172a', lineHeight: 1, fontFamily: FONT_FAMILY }}>{value}</Text>
+      <Text style={{ fontSize: 40, fontWeight: 800, color: 'var(--mantine-color-text)', lineHeight: 1, fontFamily: FONT_FAMILY }}>{value}</Text>
       {sub && <Text size="xs" c="dimmed" mt={4}>{sub}</Text>}
     </Paper>
   );
@@ -165,9 +165,9 @@ function ActionIcon({ icon }: { icon: React.ReactNode }) {
     <Box
       style={{
         width: 32, height: 32, borderRadius: 8,
-        border: '1px solid #e2e8f0', display: 'flex',
+        border: '1px solid var(--mantine-color-default-border)', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', color: '#64748b', background: '#fff',
+        cursor: 'pointer', color: '#64748b', background: 'var(--mantine-color-body)',
       }}
     >
       {icon}

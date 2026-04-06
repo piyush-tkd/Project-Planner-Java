@@ -7,8 +7,9 @@ import {
 import {
   IconBriefcase, IconUsers, IconTargetArrow, IconAlertTriangle,
   IconRocket, IconRefresh, IconTrendingUp, IconTrendingDown,
-  IconCircleCheck, IconShieldCheck, IconFlame,
+  IconCircleCheck, IconShieldCheck, IconFlame, IconDownload,
 } from '@tabler/icons-react';
+import { downloadCsv } from '../../utils/csv';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer,
@@ -130,6 +131,35 @@ export default function ExecSummaryPage() {
               Last refreshed: {generatedLabel}
             </Text>
           )}
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={14} />}
+            size="sm"
+            onClick={() =>
+              downloadCsv('executive-summary', [
+                { metric: 'Total Projects',       value: portfolio.total },
+                { metric: 'Active Projects',      value: portfolio.active },
+                { metric: 'Completed Projects',   value: portfolio.completed },
+                { metric: 'At-Risk Projects',     value: portfolio.atRisk },
+                { metric: 'On-Track %',           value: portfolio.onTrackPct },
+                { metric: 'Avg Utilization %',    value: capacity.avgUtilizationPct },
+                { metric: 'PODs in Deficit',      value: capacity.podsInDeficit },
+                { metric: 'Total PODs',           value: capacity.totalPods },
+                { metric: 'OKRs Total',           value: okrs.total },
+                { metric: 'OKRs Completed',       value: okrs.completed },
+                { metric: 'OKR Avg Progress %',   value: okrs.avgProgress },
+                { metric: 'Open Risks',           value: risks.totalOpen },
+                { metric: 'Critical Risks',       value: risks.critical },
+                { metric: 'Avg Sprint Velocity',  value: velocity.avgPoints },
+                { metric: 'Sprint Retros Count',  value: velocity.retroCount },
+              ], [
+                { key: 'metric', header: 'KPI' },
+                { key: 'value',  header: 'Value' },
+              ])
+            }
+          >
+            Export CSV
+          </Button>
           <Tooltip label="Refresh data">
             <ActionIcon
               variant="light" color="blue" size="lg"

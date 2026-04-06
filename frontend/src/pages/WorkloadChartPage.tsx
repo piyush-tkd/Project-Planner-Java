@@ -11,7 +11,10 @@ import {
 import {
   IconFilter, IconDownload,
 } from '@tabler/icons-react';
+import { Alert } from '@mantine/core';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const PODS = ['All PODs', 'Portal V1', 'Portal V2', 'Integrations', 'Accessioning', 'LIS/Reporting', 'Enterprise Systems'];
 
@@ -85,6 +88,7 @@ function ChartLegend({ items }: { items: { color: string; label: string }[] }) {
 }
 
 export default function WorkloadChartPage() {
+  const isDark = useDarkMode();
   const [filterPod, setFilterPod] = useState('All PODs');
   const [viewMode, setViewMode] = useState('individual');
 
@@ -107,6 +111,18 @@ export default function WorkloadChartPage() {
 
   return (
     <Box className="page-enter" style={{ paddingBottom: 32 }}>
+      {/* Sample-data notice */}
+      <Alert
+        icon={<IconInfoCircle size={16} />}
+        color="blue"
+        variant="light"
+        mb="md"
+        style={{ fontSize: 13 }}
+      >
+        This page currently displays <strong>illustrative sample data</strong>. Live utilization will be derived
+        from resource allocations once the Workload API endpoint is fully wired up.
+      </Alert>
+
       {/* Header */}
       <Group justify="space-between" mb="lg">
         <Box>
@@ -161,7 +177,9 @@ export default function WorkloadChartPage() {
               { label: 'By POD',         value: 'pod'        },
               { label: 'Monthly Trend',  value: 'trend'      },
             ]}
-            style={{ background: '#f1f5f9' }}
+            style={{
+              background: isDark ? 'var(--mantine-color-dark-6)' : '#f1f5f9',
+            }}
           />
         </Group>
       </Paper>

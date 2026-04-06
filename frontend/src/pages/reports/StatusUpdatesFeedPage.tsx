@@ -5,8 +5,9 @@ import {
 } from '@mantine/core';
 import {
   IconCircle, IconPlus, IconTrash, IconRefresh, IconAlertTriangle,
-  IconCircleCheck, IconCircleX,
+  IconCircleCheck, IconCircleX, IconDownload,
 } from '@tabler/icons-react';
+import { downloadCsv } from '../../utils/csv';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +105,24 @@ export default function StatusUpdatesFeedPage() {
           <ActionIcon variant="light" color="blue" size="lg" onClick={() => refetch()}>
             <IconRefresh size={16} />
           </ActionIcon>
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={14} />}
+            onClick={() =>
+              downloadCsv('status-updates-feed', feed as unknown as Record<string, unknown>[], [
+                { key: 'projectName',  header: 'Project' },
+                { key: 'ragStatus',    header: 'RAG Status' },
+                { key: 'summary',      header: 'Summary' },
+                { key: 'whatDone',     header: 'What Done' },
+                { key: 'whatsNext',    header: "What's Next" },
+                { key: 'blockers',     header: 'Blockers' },
+                { key: 'author',       header: 'Author' },
+                { key: 'createdAt',    header: 'Date', format: (r) => new Date(r.createdAt as string).toLocaleDateString() },
+              ])
+            }
+          >
+            Export CSV
+          </Button>
           <Button leftSection={<IconPlus size={15} />} onClick={() => setPostModal(true)}>
             Post Update
           </Button>

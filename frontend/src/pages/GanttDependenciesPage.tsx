@@ -10,6 +10,7 @@ import {
   IconCode, IconTestPipe,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 import { useProjects } from '../api/projects';
 import { useProjectPodMatrix } from '../api/projects';
 import { useResources } from '../api/resources';
@@ -183,9 +184,9 @@ function depPath(fromX: number, fromY: number, toX: number, toY: number): string
 
 // ── Capacity progress bar (reusable) ─────────────────────────────────────────
 
-function CapBar({ label, icon, used, total, needed, conflict }: {
+function CapBar({ label, icon, used, total, needed, conflict, isDark }: {
   label: string; icon: React.ReactNode;
-  used: number; total: number; needed: number; conflict: boolean;
+  used: number; total: number; needed: number; conflict: boolean; isDark: boolean;
 }) {
   const pctUsed   = Math.min(100, (used   / total) * 100);
   const pctNeeded = Math.min(100 - pctUsed, (needed / total) * 100);
@@ -203,8 +204,8 @@ function CapBar({ label, icon, used, total, needed, conflict }: {
           : <Badge size="xs" color="green" variant="light">OK</Badge>
         }
       </Group>
-      <Box style={{ position: 'relative', height: 8, borderRadius: 4, background: '#e9ecef', overflow: 'hidden' }}>
-        <Box style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctUsed}%`, background: '#cbd5e1', borderRadius: 4 }} />
+      <Box style={{ position: 'relative', height: 8, borderRadius: 4, background: isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef', overflow: 'hidden' }}>
+        <Box style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctUsed}%`, background: isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1', borderRadius: 4 }} />
         <Box style={{ position: 'absolute', left: `${pctUsed}%`, top: 0, height: '100%', width: `${pctNeeded}%`, background: conflict ? '#ef4444' : AQUA, borderRadius: 4 }} />
       </Box>
     </Box>
@@ -214,6 +215,7 @@ function CapBar({ label, icon, used, total, needed, conflict }: {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function GanttDependenciesPage() {
+  const isDark = useDarkMode();
   const [filterPod, setFilterPod] = useState<string | null>(null);
   const [view, setView] = useState('gantt');
 
@@ -316,7 +318,7 @@ export default function GanttDependenciesPage() {
       {/* Header */}
       <Group justify="space-between" mb="lg">
         <Box>
-          <Title order={1} style={{ color: DEEP_BLUE, fontWeight: 800 }}>Gantt &amp; Dependencies</Title>
+          <Title order={1} style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE, fontWeight: 800 }}>Gantt &amp; Dependencies</Title>
           <Text c="dimmed" size="sm" mt={2}>
             Capacity-aware timeline — arrows only flag conflicts when a POD genuinely can't spare the headcount
           </Text>
@@ -341,7 +343,7 @@ export default function GanttDependenciesPage() {
 
       {/* Conflict banner */}
       {conflicts.length > 0 && (
-        <Paper withBorder radius="md" p="md" mb="lg" style={{ background: '#fff5f5', borderColor: '#fecdd3' }}>
+        <Paper withBorder radius="md" p="md" mb="lg" style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fff5f5', borderColor: isDark ? 'rgba(239,68,68,0.35)' : '#fecdd3' }}>
           <Group gap="xs" mb="xs">
             <IconAlertTriangle size={15} color="#dc2626" />
             <Text size="sm" fw={700} c="red">{conflicts.length} capacity conflict{conflicts.length !== 1 ? 's' : ''}</Text>
@@ -365,7 +367,7 @@ export default function GanttDependenciesPage() {
             clearable size="sm" leftSection={<IconFilter size={14} />} style={{ width: 210 }} />
           <SegmentedControl size="sm" value={view} onChange={setView}
             data={[{ label: 'Gantt Chart', value: 'gantt' }, { label: 'Capacity Detail', value: 'list' }, { label: 'POD Headcount', value: 'pods' }]}
-            style={{ background: '#f1f5f9' }}
+            style={{ background: isDark ? 'var(--mantine-color-dark-6)' : '#f1f5f9' }}
           />
         </Group>
       </Paper>
@@ -407,19 +409,21 @@ export default function GanttDependenciesPage() {
                       key={project.id}
                       style={{
                         display: 'flex', height: ROW_HEIGHT, alignItems: 'center',
-                        background: hasConflict
-                          ? '#fff8f8'
-                          : isEven ? '#ffffff' : '#fafbfc',
-                        borderBottom: '1px solid #edf0f4',
+                        background: isDark
+                          ? (hasConflict ? 'rgba(239,68,68,0.07)' : isEven ? 'var(--mantine-color-dark-7)' : 'var(--mantine-color-dark-6)')
+                          : (hasConflict ? '#fff8f8' : isEven ? '#ffffff' : '#fafbfc'),
+                        borderBottom: '1px solid var(--mantine-color-default-border)',
                         transition: 'background 80ms',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
-                      onMouseLeave={e => (e.currentTarget.style.background = hasConflict ? '#fff8f8' : isEven ? '#ffffff' : '#fafbfc')}
+                      onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(14,165,233,0.09)' : '#f0f9ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = isDark
+                        ? (hasConflict ? 'rgba(239,68,68,0.07)' : isEven ? 'var(--mantine-color-dark-7)' : 'var(--mantine-color-dark-6)')
+                        : (hasConflict ? '#fff8f8' : isEven ? '#ffffff' : '#fafbfc'))}
                     >
                       {/* Label */}
                       <Box style={{
                         width: LABEL_WIDTH, flexShrink: 0, height: '100%',
-                        borderRight: '1px solid #edf0f4',
+                        borderRight: '1px solid var(--mantine-color-default-border)',
                         display: 'flex', alignItems: 'center',
                         padding: '0 14px 0 12px', gap: 8,
                         borderLeft: `3px solid ${hasConflict ? '#ef4444' : podColor}`,
@@ -435,7 +439,7 @@ export default function GanttDependenciesPage() {
                           </Tooltip>
                         )}
                         <Box style={{ overflow: 'hidden', flex: 1 }}>
-                          <Text size="xs" fw={600} style={{ color: DEEP_BLUE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Text size="xs" fw={600} style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {project.name}
                           </Text>
                           <Group gap={5} mt={2}>
@@ -454,7 +458,9 @@ export default function GanttDependenciesPage() {
                         {weeks.map((_, wi) => (
                           <Box key={wi} style={{
                             width: WEEK_WIDTH, flexShrink: 0,
-                            borderLeft: wi % 4 === 0 ? '1px solid #e8ecf0' : '1px solid #f4f6f8',
+                            borderLeft: wi % 4 === 0
+                              ? '1px solid var(--mantine-color-default-border)'
+                              : isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #f4f6f8',
                             height: '100%',
                           }} />
                         ))}
@@ -515,7 +521,7 @@ export default function GanttDependenciesPage() {
           </ScrollArea>
 
           {/* Legend */}
-          <Box style={{ padding: '10px 16px', borderTop: '1px solid #edf0f4', background: '#fafbfc' }}>
+          <Box style={{ padding: '10px 16px', borderTop: '1px solid var(--mantine-color-default-border)', background: isDark ? 'var(--mantine-color-dark-6)' : '#fafbfc' }}>
             <Group gap="lg" wrap="wrap" align="center">
               <Group gap="xs">
                 <Text size="11px" c="dimmed" fw={600}>PODs:</Text>
@@ -554,7 +560,7 @@ export default function GanttDependenciesPage() {
                 <Group justify="space-between" mb="md">
                   <Box>
                     <Group gap="sm">
-                      <Text fw={700} size="sm" style={{ color: DEEP_BLUE }}>{project.name}</Text>
+                      <Text fw={700} size="sm" style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE }}>{project.name}</Text>
                       <Badge size="xs" style={{ background: `${PRIORITY_COLORS[project.priority]}14`, color: PRIORITY_COLORS[project.priority], border: `1px solid ${PRIORITY_COLORS[project.priority]}30` }}>{project.priority}</Badge>
                       <Badge size="sm" style={{ background: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}` }}>{project.status}</Badge>
                     </Group>
@@ -582,7 +588,7 @@ export default function GanttDependenciesPage() {
                       const allocQa   = c.podTotalQa   - c.minAvailQa;
                       return (
                         <Paper key={rd.pod} withBorder p="md" radius="sm"
-                          style={{ background: c.conflict ? '#fff5f5' : '#f8fffe', borderColor: c.conflict ? '#fecdd3' : '#cef0f1' }}>
+                          style={{ background: isDark ? (c.conflict ? 'rgba(239,68,68,0.09)' : 'rgba(0,200,183,0.07)') : (c.conflict ? '#fff5f5' : '#f8fffe'), borderColor: isDark ? (c.conflict ? 'rgba(239,68,68,0.35)' : 'rgba(0,200,183,0.35)') : (c.conflict ? '#fecdd3' : '#cef0f1') }}>
                           <Group gap="sm" mb="md">
                             <IconUsers size={14} color={depColor} />
                             <Text size="sm" fw={700} style={{ color: depColor }}>{rd.pod} POD</Text>
@@ -590,8 +596,8 @@ export default function GanttDependenciesPage() {
                             <Text size="xs" c="dimmed" style={{ marginLeft: 'auto' }}>during wk {project.startWeek}–{project.startWeek + project.durationWeeks}</Text>
                           </Group>
                           <Stack gap={10}>
-                            <CapBar label="Developers"    icon={<IconCode     size={11} color="#94a3b8" />} used={allocDevs} total={c.podTotalDevs} needed={rd.needs.devs} conflict={c.shortfallDevs > 0} />
-                            <CapBar label="QA Engineers"  icon={<IconTestPipe size={11} color="#94a3b8" />} used={allocQa}   total={c.podTotalQa}   needed={rd.needs.qa}   conflict={c.shortfallQa   > 0} />
+                            <CapBar label="Developers"    icon={<IconCode     size={11} color="#94a3b8" />} used={allocDevs} total={c.podTotalDevs} needed={rd.needs.devs} conflict={c.shortfallDevs > 0} isDark={isDark} />
+                            <CapBar label="QA Engineers"  icon={<IconTestPipe size={11} color="#94a3b8" />} used={allocQa}   total={c.podTotalQa}   needed={rd.needs.qa}   conflict={c.shortfallQa   > 0} isDark={isDark} />
                           </Stack>
                           {c.conflict && (
                             <Text size="xs" c="red" mt="sm" fw={500}>
@@ -626,7 +632,7 @@ export default function GanttDependenciesPage() {
             return (
               <Paper key={pod} withBorder radius="md" p="lg" style={{ borderTop: `3px solid ${podColor}` }}>
                 <Group justify="space-between" mb="md">
-                  <Group gap={8}><IconUsers size={15} color={podColor} /><Text fw={700} size="sm" style={{ color: DEEP_BLUE }}>{pod}</Text></Group>
+                  <Group gap={8}><IconUsers size={15} color={podColor} /><Text fw={700} size="sm" style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE }}>{pod}</Text></Group>
                   <Badge size="sm" style={{ background: `${podColor}12`, color: podColor, border: `1px solid ${podColor}30` }}>
                     {cap.devs}d · {cap.qa}q{cap.ux ? ` · ${cap.ux}ux` : ''}
                   </Badge>
@@ -653,7 +659,7 @@ export default function GanttDependenciesPage() {
                 {podProjects.map(p => (
                   <Group key={p.id} gap={6} mb={3}>
                     <Box style={{ width: 6, height: 6, borderRadius: '50%', background: podColor, flexShrink: 0, marginTop: 2 }} />
-                    <Text size="xs" style={{ color: DEEP_BLUE, flex: 1 }}>{p.name}</Text>
+                    <Text size="xs" style={{ color: isDark ? 'var(--mantine-color-gray-3)' : DEEP_BLUE, flex: 1 }}>{p.name}</Text>
                     <Text size="10px" c="dimmed">{p.ownUse.devs}d/{p.ownUse.qa}q</Text>
                   </Group>
                 ))}
@@ -667,7 +673,7 @@ export default function GanttDependenciesPage() {
                       return (
                         <Group key={p.id} gap={6} mb={3}>
                           <Box style={{ width: 6, height: 6, borderRadius: '50%', background: c?.conflict ? '#ef4444' : AQUA, flexShrink: 0, marginTop: 2 }} />
-                          <Text size="xs" style={{ color: DEEP_BLUE, flex: 1 }}>{p.name}</Text>
+                          <Text size="xs" style={{ color: isDark ? 'var(--mantine-color-gray-3)' : DEEP_BLUE, flex: 1 }}>{p.name}</Text>
                           <Text size="10px" c="dimmed">{rd.needs.devs}d/{rd.needs.qa}q {c?.conflict ? '⚠' : '✓'}</Text>
                         </Group>
                       );

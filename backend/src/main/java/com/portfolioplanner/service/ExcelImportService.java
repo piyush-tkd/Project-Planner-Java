@@ -161,13 +161,23 @@ public class ExcelImportService {
             counts.put("timeline", 1);
 
             // ── Insert: Pods ──
+            // NOTE: Pods are saved directly via podRepository rather than through PodService.create()
+            // because this import runs inside a single transaction managed by the EntityManager.
+            // PodService.create() is intentionally NOT called here — calling it would:
+            //   (a) open a nested transaction that would prevent rollback of the full import on failure, and
+            //   (b) re-query findMaxDisplayOrder() on every iteration, producing incorrect order when
+            //       the flush hasn't happened yet and previously saved pods aren't yet visible to the query.
+            // displayOrder is set explicitly using a local counter (podOrder++) which is safe and consistent
+            // within this batch. If this block is ever refactored to use PodService.create(), both of the
+            // above issues must be addressed and the explicit setDisplayOrder() call must be removed to
+            // avoid double-assignment.
             Map<String, Pod> podMap = new HashMap<>();
             int podOrder = 1;
             for (String podName : allPodNames) {
                 Pod pod = new Pod();
                 pod.setName(podName);
                 pod.setComplexityMultiplier(podComplexityMap.getOrDefault(podName, BigDecimal.ONE));
-                pod.setDisplayOrder(podOrder++);
+                pod.setDisplayOrder(podOrder++); // explicit — do not remove, see note above
                 pod.setActive(true);
                 podMap.put(podName, podRepository.save(pod));
             }

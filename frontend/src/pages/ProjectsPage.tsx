@@ -118,9 +118,10 @@ export default function ProjectsPage() {
   };
 
   // ── Inline table editing ──────────────────────────────────────────────
-  type EditableField = 'name' | 'owner' | 'priority' | 'status';
+  type EditableField = 'name' | 'owner' | 'priority' | 'status' | 'startDate' | 'targetDate';
   const [editingCell, setEditingCell] = useState<{ id: number; field: EditableField } | null>(null);
   const [editDraft, setEditDraft] = useState<string>('');
+  const [editDateDraft, setEditDateDraft] = useState<Date | null>(null);
   // Inline add-row state
   const [addRowActive, setAddRowActive] = useState(false);
   const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string; startMonth: number; durationMonths: number; defaultPattern: string }>({
@@ -447,14 +448,28 @@ export default function ProjectsPage() {
   // ── Inline cell editing helpers ───────────────────────────────────────
   const startEdit = (id: number, field: EditableField, currentValue: string) => {
     setEditingCell({ id, field });
-    setEditDraft(currentValue ?? '');
+    if (field === 'startDate' || field === 'targetDate') {
+      setEditDateDraft(currentValue ? new Date(currentValue) : null);
+    } else {
+      setEditDraft(currentValue ?? '');
+    }
   };
 
   const commitEdit = (project: ProjectResponse) => {
     if (!editingCell || editingCell.id !== project.id) return;
-    const updated = { ...project, [editingCell.field]: editDraft };
+    const isDateField = editingCell.field === 'startDate' || editingCell.field === 'targetDate';
+    let updatedStartDate = project.startDate ?? null;
+    let updatedTargetDate = project.targetDate ?? null;
+    let updated = { ...project };
+    if (isDateField) {
+      const isoStr = editDateDraft ? editDateDraft.toISOString().split('T')[0] : null;
+      if (editingCell.field === 'startDate') updatedStartDate = isoStr;
+      else updatedTargetDate = isoStr;
+    } else {
+      updated = { ...project, [editingCell.field]: editDraft };
+    }
     updateMutation.mutate(
-      { id: project.id, data: { name: updated.name, priority: updated.priority, owner: updated.owner ?? '', startMonth: updated.startMonth ?? 1, durationMonths: updated.durationMonths ?? 1, defaultPattern: updated.defaultPattern ?? 'Flat', status: updated.status, notes: updated.notes ?? null, startDate: updated.startDate ?? null, targetDate: updated.targetDate ?? null, client: updated.client ?? null } },
+      { id: project.id, data: { name: updated.name, priority: updated.priority, owner: updated.owner ?? '', startMonth: updated.startMonth ?? 1, durationMonths: updated.durationMonths ?? 1, defaultPattern: updated.defaultPattern ?? 'Flat', status: updated.status, notes: updated.notes ?? null, startDate: updatedStartDate, targetDate: updatedTargetDate, client: updated.client ?? null } },
       {
         onError: () => notifications.show({ color: 'red', title: 'Error', message: 'Failed to save change' }),
       }
@@ -935,8 +950,52 @@ export default function ProjectsPage() {
                             ) : p.owner}
                           </Table.Td>
                         )}
-                        {visibleCols.has('Start') && <Table.Td>{formatProjectDate(p.startDate, p.startMonth, monthLabels)}</Table.Td>}
-                        {visibleCols.has('End') && <Table.Td>{formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}</Table.Td>}
+                        {/* Inline-editable startDate */}
+                        {visibleCols.has('Start') && (
+                          <Table.Td style={{ cursor: 'pointer', minWidth: 120 }}
+                            onClick={e => { e.stopPropagation(); startEdit(p.id, 'startDate', p.startDate ?? ''); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'startDate' ? (
+                              <DateInput
+                                size="xs"
+                                value={editDateDraft}
+                                autoFocus
+                                clearable
+                                onChange={d => setEditDateDraft(d)}
+                                onBlur={() => commitEdit(p)}
+                                onClick={e => e.stopPropagation()}
+                                valueFormat="MMM D, YYYY"
+                                popoverProps={{ withinPortal: true }}
+                              />
+                            ) : (
+                              <span style={{ color: p.startDate ? 'inherit' : 'var(--mantine-color-dimmed)' }}>
+                                {formatProjectDate(p.startDate, p.startMonth, monthLabels)}
+                              </span>
+                            )}
+                          </Table.Td>
+                        )}
+                        {/* Inline-editable targetDate */}
+                        {visibleCols.has('End') && (
+                          <Table.Td style={{ cursor: 'pointer', minWidth: 120 }}
+                            onClick={e => { e.stopPropagation(); startEdit(p.id, 'targetDate', p.targetDate ?? ''); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'targetDate' ? (
+                              <DateInput
+                                size="xs"
+                                value={editDateDraft}
+                                autoFocus
+                                clearable
+                                onChange={d => setEditDateDraft(d)}
+                                onBlur={() => commitEdit(p)}
+                                onClick={e => e.stopPropagation()}
+                                valueFormat="MMM D, YYYY"
+                                popoverProps={{ withinPortal: true }}
+                              />
+                            ) : (
+                              <span style={{ color: p.targetDate ? 'inherit' : 'var(--mantine-color-dimmed)' }}>
+                                {formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}
+                              </span>
+                            )}
+                          </Table.Td>
+                        )}
                         {visibleCols.has('Duration') && <Table.Td>{p.durationMonths}m</Table.Td>}
                         {visibleCols.has('Pattern') && <Table.Td>{p.defaultPattern}</Table.Td>}
                         {/* Inline-editable status */}

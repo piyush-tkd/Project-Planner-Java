@@ -1,8 +1,14 @@
 /**
- * GlobalSearch — Cmd+K / Ctrl+K command palette.
+ * GlobalSearch — Cmd+K / Ctrl+K command palette.  Sprint 7 S7.1 enhanced.
  *
  * Searches across: pages (nav), projects, resources, PODs.
  * Results are purely client-side (uses already-cached TanStack Query data).
+ *
+ * New in Sprint 7:
+ *   - Recent pages tracking (last 8, persisted to localStorage)
+ *   - Action commands: New Project, Ask AI, Export, Sprint Planner
+ *   - People / resource search surfaced at top level
+ *   - Fuzzy-ish matching: checks label, sublabel and all badges
  */
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +28,9 @@ import {
   IconReportMoney, IconRocket, IconChartDots3, IconLayoutDashboard,
   IconPlayerPlay, IconAdjustments, IconBellRinging, IconPlugConnected,
   IconBuildingFactory, IconTrendingUp, IconUserSearch,
-  IconChartPie,
+  IconChartPie, IconSparkles, IconBellCog,
+  IconLayoutBoard, IconUpload, IconTarget, IconLayoutGrid,
+  IconHistory, IconBolt, IconPlus,
 } from '@tabler/icons-react';
 import { useProjects } from '../../api/projects';
 import { useResources } from '../../api/resources';
@@ -36,6 +44,27 @@ interface SearchResult {
   icon: React.ReactNode;
   path: string;
   badges?: string[];
+  isAction?: boolean;     // action commands don't get "recent" tracked
+}
+
+// ── Recent pages (localStorage) ─────────────────────────────────────────────
+const RECENT_KEY = 'pp_recent_pages';
+const MAX_RECENT  = 8;
+
+interface RecentEntry { id: string; label: string; path: string; category: string }
+
+function getRecent(): RecentEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+  } catch { return []; }
+}
+
+function addRecent(result: SearchResult) {
+  if (result.isAction) return;
+  const entry: RecentEntry = { id: result.id, label: result.label, path: result.path, category: result.category };
+  const existing = getRecent().filter(r => r.id !== entry.id);
+  const next = [entry, ...existing].slice(0, MAX_RECENT);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(next));
 }
 
 // ── Static nav pages — kept in sync with navGroups in AppShell.tsx ──────────
@@ -59,8 +88,11 @@ const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-book',   label: 'Bookings',           category: 'People',      icon: <IconCalendarPlus size={15} />,     path: '/resource-bookings' },
   { id: 'p-caphub', label: 'Capacity',           category: 'People',      icon: <IconFlame size={15} />,            path: '/capacity' },
   { id: 'p-leave',  label: 'Leave & Holidays',   category: 'People',      icon: <IconCalendarOff size={15} />,      path: '/leave' },
-  { id: 'p-rpf',    label: 'Resource Performance', category: 'People',    icon: <IconTrendingUp size={15} />,       path: '/reports/resource-performance' },
-  { id: 'p-rint',   label: 'Resource Intelligence', category: 'People',   icon: <IconUserSearch size={15} />,       path: '/reports/resource-intelligence' },
+  { id: 'p-rpf',    label: 'Resource Performance',  category: 'People',    icon: <IconTrendingUp size={15} />,       path: '/reports/resource-performance' },
+  { id: 'p-rint',   label: 'Resource Intelligence', category: 'People',    icon: <IconUserSearch size={15} />,       path: '/reports/resource-intelligence' },
+  { id: 'p-skills', label: 'Skills Matrix',          category: 'People',    icon: <IconChartPie size={15} />,         path: '/reports/skills-matrix' },
+  { id: 'p-tpulse', label: 'Team Pulse',             category: 'People',    icon: <IconHeartRateMonitor size={15} />, path: '/reports/team-pulse' },
+  { id: 'p-capf',   label: 'Capacity Forecast',      category: 'People',    icon: <IconChartBar size={15} />,         path: '/reports/capacity-forecast' },
 
   // Calendar
   { id: 'p-cal',    label: 'Strategic Calendar', category: 'Calendar',    icon: <IconCalendar size={15} />,         path: '/calendar' },
@@ -83,6 +115,9 @@ const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-psig',   label: 'Project Signals',        category: 'Portfolio Analysis', icon: <IconChartInfographic size={15} />,  path: '/reports/project-signals' },
   { id: 'p-dep',    label: 'Dependency Map',         category: 'Portfolio Analysis', icon: <IconGitBranch size={15} />,         path: '/reports/dependency-map' },
   { id: 'p-gdep',   label: 'Gantt & Dependencies',   category: 'Portfolio Analysis', icon: <IconChartBar size={15} />,          path: '/reports/gantt-dependencies' },
+  { id: 'p-exec',   label: 'Executive Summary',      category: 'Portfolio Analysis', icon: <IconLayoutDashboard size={15} />,   path: '/reports/executive-summary' },
+  { id: 'p-rheat',  label: 'Risk Heatmap',           category: 'Portfolio Analysis', icon: <IconChartDots3 size={15} />,        path: '/reports/risk-heatmap' },
+  { id: 'p-statup', label: 'Status Updates',         category: 'Portfolio Analysis', icon: <IconBellRinging size={15} />,       path: '/reports/status-updates' },
 
   // Engineering
   { id: 'p-eintel', label: 'Eng. Intelligence',      category: 'Engineering',  icon: <IconReportMoney size={15} />,      path: '/reports/engineering-intelligence' },
@@ -90,6 +125,7 @@ const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-dpred',  label: 'Delivery Predictability', category: 'Engineering', icon: <IconChartDots3 size={15} />,       path: '/reports/delivery-predictability' },
   { id: 'p-janalytics', label: 'Jira Analytics',     category: 'Engineering',  icon: <IconChartInfographic size={15} />, path: '/reports/jira-analytics' },
   { id: 'p-jdbuild', label: 'Dashboard Builder',     category: 'Engineering',  icon: <IconLayoutDashboard size={15} />,  path: '/reports/jira-dashboard-builder' },
+  { id: 'p-sret',   label: 'Sprint Retro',           category: 'Engineering',  icon: <IconChartBar size={15} />,          path: '/reports/sprint-retro' },
 
   // Simulations
   { id: 'p-timsim', label: 'Timeline Simulator',     category: 'Simulations',  icon: <IconPlayerPlay size={15} />,       path: '/simulator/timeline' },
@@ -107,12 +143,48 @@ const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-audit',  label: 'Audit Log',              category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/audit-log' },
   { id: 'p-resmap', label: 'Jira Resource Mapping',  category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/jira-resource-mapping' },
   { id: 'p-relmap', label: 'Jira Release Mapping',   category: 'Settings',     icon: <IconSettings size={15} />,         path: '/settings/jira-release-mapping' },
+  { id: 'p-autoeng',   label: 'Automation Engine',         category: 'Settings',   icon: <IconPlayerPlay size={15} />,  path: '/automation-engine' },
+  { id: 'p-insights',     label: 'Smart Insights',            category: 'Portfolio',  icon: <IconSparkles size={15} />,      path: '/smart-insights' },
+  { id: 'p-notifpref',   label: 'Notification Preferences',  category: 'Settings',   icon: <IconBellCog size={15} />,       path: '/settings/notification-preferences' },
+  { id: 'p-customdash',  label: 'Custom Dashboard',          category: 'Workspace',  icon: <IconLayoutGrid size={15} />,   path: '/custom-dashboard' },
+  { id: 'p-approvals',   label: 'Approval Queue',            category: 'Projects',   icon: <IconTarget size={15} />,       path: '/approvals' },
+  { id: 'p-bulkimport',  label: 'Bulk Import',               category: 'Settings',   icon: <IconUpload size={15} />,       path: '/bulk-import' },
+  { id: 'p-advtimeline', label: 'Advanced Timeline',         category: 'Portfolio',  icon: <IconLayoutBoard size={15} />,   path: '/advanced-timeline' },
+];
+
+// ── Action commands — never tracked as "recent" ──────────────────────────────
+const ACTION_RESULTS: SearchResult[] = [
+  {
+    id: 'act-new-project', label: 'New Project',
+    sublabel: 'Create a new portfolio project',
+    category: 'Actions', icon: <IconPlus size={15} />,
+    path: '/projects?action=create', isAction: true,
+  },
+  {
+    id: 'act-ask-ai', label: 'Ask AI',
+    sublabel: 'Open the AI assistant',
+    category: 'Actions', icon: <IconBrain size={15} />,
+    path: '/nlp', isAction: true,
+  },
+  {
+    id: 'act-sprint', label: 'Sprint Planner',
+    sublabel: 'Plan next sprint',
+    category: 'Actions', icon: <IconBolt size={15} />,
+    path: '/sprint-planner', isAction: true,
+  },
+  {
+    id: 'act-inbox', label: 'Open Inbox',
+    sublabel: 'View pending notifications',
+    category: 'Actions', icon: <IconInbox size={15} />,
+    path: '/inbox', isAction: true,
+  },
 ];
 
 const CATEGORY_ORDER = [
+  'Recent', 'Actions',
   'Home', 'Portfolio', 'People', 'Calendar', 'Delivery',
   'Portfolio Analysis', 'Engineering', 'Simulations', 'Settings',
-  'Projects', 'Resources', 'PODs',
+  'Projects', 'Resources', 'PODs', 'Workspace',
 ];
 
 function highlight(text: string, query: string): React.ReactNode {
@@ -128,6 +200,18 @@ function highlight(text: string, query: string): React.ReactNode {
       {text.slice(idx + query.length)}
     </>
   );
+}
+
+// Build a SearchResult from a RecentEntry, using the icon from PAGE_RESULTS
+function recentToResult(r: RecentEntry): SearchResult {
+  const found = PAGE_RESULTS.find(p => p.id === r.id);
+  return {
+    id: `recent-${r.id}`,
+    label: r.label,
+    category: 'Recent',
+    icon: found?.icon ?? <IconHistory size={15} />,
+    path: r.path,
+  };
 }
 
 export function useGlobalSearch() {
@@ -152,38 +236,55 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([]);
 
   const { data: projects = [] } = useProjects();
   const { data: resources = [] } = useResources();
   const { data: pods = [] } = usePods();
 
-  // Reset query when modal opens
+  // Reset query when modal opens; refresh recent list
   useEffect(() => {
     if (opened) {
       setQuery('');
       setSelectedIdx(0);
+      setRecentEntries(getRecent());
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [opened]);
 
   const results = useMemo((): SearchResult[] => {
     const q = query.trim().toLowerCase();
-    if (!q) return PAGE_RESULTS.slice(0, 12);
+
+    if (!q) {
+      // Empty query: show Recent + Actions + first few pages
+      const recent = recentEntries.slice(0, 6).map(recentToResult);
+      const combined = [...recent, ...ACTION_RESULTS, ...PAGE_RESULTS.slice(0, 8)];
+      return combined;
+    }
 
     const matched: SearchResult[] = [];
 
+    // Action commands
+    for (const a of ACTION_RESULTS) {
+      if (a.label.toLowerCase().includes(q) || (a.sublabel?.toLowerCase().includes(q))) {
+        matched.push(a);
+      }
+    }
+
     // Pages
     for (const p of PAGE_RESULTS) {
-      if (p.label.toLowerCase().includes(q)) matched.push(p);
+      if (p.label.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)) {
+        matched.push(p);
+      }
     }
 
     // Projects
     for (const p of projects) {
-      if (p.name.toLowerCase().includes(q) || String(p.id) === q) {
+      if (p.name.toLowerCase().includes(q) || String(p.id) === q || p.owner?.toLowerCase().includes(q)) {
         matched.push({
           id: `proj-${p.id}`,
           label: p.name,
-          sublabel: `Project · M${p.startMonth}–M${(p.startMonth ?? 1) + (p.durationMonths ?? 1) - 1}`,
+          sublabel: `Project · ${p.owner ?? ''} · M${p.startMonth}–M${(p.startMonth ?? 1) + (p.durationMonths ?? 1) - 1}`,
           category: 'Projects',
           icon: <IconBriefcase size={15} />,
           path: `/projects/${p.id}`,
@@ -192,9 +293,9 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       }
     }
 
-    // Resources
+    // Resources / People
     for (const r of resources) {
-      if (r.name.toLowerCase().includes(q)) {
+      if (r.name.toLowerCase().includes(q) || r.role?.toLowerCase().includes(q) || r.location?.toLowerCase().includes(q)) {
         matched.push({
           id: `res-${r.id}`,
           label: r.name,
@@ -221,8 +322,8 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       }
     }
 
-    return matched.slice(0, 50);
-  }, [query, projects, resources, pods]);
+    return matched.slice(0, 60);
+  }, [query, projects, resources, pods, recentEntries]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -231,23 +332,20 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       if (!map.has(r.category)) map.set(r.category, []);
       map.get(r.category)!.push(r);
     }
-    // Sort by CATEGORY_ORDER
     return CATEGORY_ORDER
       .filter(c => map.has(c))
       .map(c => ({ category: c, items: map.get(c)! }));
   }, [results]);
 
-  // Flat index for keyboard nav
   const flatResults = useMemo(() => results, [results]);
 
-  function handleSelect(path: string) {
+  function handleSelect(item: SearchResult) {
+    addRecent(item);
     onClose();
-    navigate(path);
+    navigate(item.path);
   }
 
-  useEffect(() => {
-    setSelectedIdx(0);
-  }, [query]);
+  useEffect(() => { setSelectedIdx(0); }, [query]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
@@ -258,9 +356,14 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       setSelectedIdx(i => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       const item = flatResults[selectedIdx];
-      if (item) handleSelect(item.path);
+      if (item) handleSelect(item);
     }
   }
+
+  const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+    Recent: <IconHistory size={11} />,
+    Actions: <IconBolt size={11} />,
+  };
 
   return (
     <Modal
@@ -280,7 +383,7 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
         value={query}
         onChange={e => setQuery(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Search pages, projects, resources, PODs…"
+        placeholder="Search pages, projects, people, PODs… or type a command"
         leftSection={<IconSearch size={16} />}
         rightSection={<Kbd size="xs">Esc</Kbd>}
         size="lg"
@@ -300,37 +403,58 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       {results.length === 0 ? (
         <Stack align="center" py="xl" gap="xs">
           <Text c="dimmed" size="sm">No results for "{query}"</Text>
+          <Text c="dimmed" size="xs">Try searching for a project name, page, or person</Text>
         </Stack>
       ) : (
         <ScrollArea h={440} p="xs">
           {grouped.map((group, gi) => {
             const prevCount = grouped.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
+            const isSpecialCategory = group.category === 'Recent' || group.category === 'Actions';
             return (
               <div key={group.category}>
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" px="sm" pt={gi === 0 ? 8 : 4} pb={4}
-                  style={{ letterSpacing: '0.06em', fontSize: 10 }}>
-                  {group.category}
-                </Text>
+                <Group gap={4} px="sm" pt={gi === 0 ? 8 : 4} pb={4}>
+                  {CATEGORY_ICONS[group.category] && (
+                    <span style={{ color: 'var(--mantine-color-dimmed)' }}>
+                      {CATEGORY_ICONS[group.category]}
+                    </span>
+                  )}
+                  <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                    style={{ letterSpacing: '0.06em', fontSize: 10 }}>
+                    {group.category}
+                  </Text>
+                  {group.category === 'Recent' && (
+                    <Badge size="xs" variant="dot" color="blue" ml="auto">
+                      {group.items.length}
+                    </Badge>
+                  )}
+                </Group>
                 {group.items.map((item, ii) => {
                   const flatIdx = prevCount + ii;
                   const isSelected = flatIdx === selectedIdx;
                   return (
                     <UnstyledButton
                       key={item.id}
-                      onClick={() => handleSelect(item.path)}
+                      onClick={() => handleSelect(item)}
                       onMouseEnter={() => setSelectedIdx(flatIdx)}
                       style={{
                         display: 'block',
                         width: '100%',
                         padding: '8px 12px',
                         borderRadius: 6,
-                        backgroundColor: isSelected ? 'var(--mantine-color-blue-0)' : 'transparent',
+                        backgroundColor: isSelected
+                          ? (isSpecialCategory ? 'var(--mantine-color-teal-0)' : 'var(--mantine-color-blue-0)')
+                          : 'transparent',
                         transition: 'background 0.1s',
                       }}
                     >
                       <Group justify="space-between" wrap="nowrap">
                         <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }}>
+                          <span style={{
+                            color: item.isAction
+                              ? 'var(--mantine-color-teal-6)'
+                              : 'var(--mantine-color-dimmed)',
+                            flexShrink: 0,
+                          }}>
                             {item.icon}
                           </span>
                           <div style={{ minWidth: 0 }}>
@@ -344,6 +468,9 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
                           {(item.badges ?? []).map(b => (
                             <Badge key={b} size="xs" variant="light" color="gray">{b}</Badge>
                           ))}
+                          {item.isAction && (
+                            <Badge size="xs" variant="light" color="teal" ml="auto">action</Badge>
+                          )}
                         </Group>
                         {isSelected && <IconArrowRight size={14} color="var(--mantine-color-blue-6)" />}
                       </Group>
@@ -366,6 +493,10 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
         <Group gap={4}>
           <Kbd size="xs">↵</Kbd>
           <Text size="xs" c="dimmed">open</Text>
+        </Group>
+        <Group gap={4}>
+          <Kbd size="xs">⌘K</Kbd>
+          <Text size="xs" c="dimmed">toggle</Text>
         </Group>
         <Group gap={4}>
           <Kbd size="xs">Esc</Kbd>

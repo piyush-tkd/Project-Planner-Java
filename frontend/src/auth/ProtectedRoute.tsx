@@ -18,7 +18,7 @@ function AccessDenied() {
         <ThemeIcon size={64} radius="xl" color="red" variant="light">
           <IconLock size={32} />
         </ThemeIcon>
-        <Title order={2} ta="center" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+        <Title order={2} ta="center" style={{ color: 'var(--mantine-color-text)', fontFamily: FONT_FAMILY }}>
           Access Denied
         </Title>
         <Text ta="center" c="dimmed" size="sm">

@@ -45,7 +45,7 @@ class AuthCookieTest {
         userRepository.findByUsername(TEST_USER).ifPresentOrElse(
                 u -> { /* already exists */ },
                 () -> userRepository.save(new AppUser(
-                        null, TEST_USER, passwordEncoder.encode(TEST_PASS), "ADMIN", true, "Cookie Tester")));
+                        null, TEST_USER, passwordEncoder.encode(TEST_PASS), "ADMIN", true, "Cookie Tester", null)));
     }
 
     // ── 1. Login sets HttpOnly cookie ─────────────────────────────────────────

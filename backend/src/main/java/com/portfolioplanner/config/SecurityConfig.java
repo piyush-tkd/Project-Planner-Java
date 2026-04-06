@@ -1,6 +1,7 @@
 package com.portfolioplanner.config;
 
 import com.portfolioplanner.security.JwtAuthenticationFilter;
+import com.portfolioplanner.security.SsoAuthSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +16,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -29,28 +30,50 @@ import jakarta.servlet.DispatcherType;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final UserDetailsService userDetailsService;
+    private final JwtAuthenticationFilter      jwtAuthFilter;
+    private final UserDetailsService           userDetailsService;
+    private final PasswordEncoder              passwordEncoder;
+    private final SsoAuthSuccessHandler        ssoSuccessHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                // Allow async dispatches (SSE streaming completion) — security was already checked on initial request
+                // Allow async dispatches (SSE streaming) — security already checked on initial request
                 .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
-                // Login endpoint is always public
+                // Username+password login
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                // H2 console (useful in dev, harmless in prod since H2 isn't on classpath)
+                // Forgot-password flow — both endpoints are public
+                .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
+                // SSO status check — used by login page before user is authenticated
+                .requestMatchers(HttpMethod.GET, "/api/auth/sso-status").permitAll()
+                // Spring Security OAuth2 login redirects — must be reachable without a token
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                // H2 console (dev only)
                 .requestMatchers("/h2-console/**").permitAll()
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated()
             )
+            // Stateless JWT for regular API calls
             .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            // OAuth2 / OIDC login — only active when clientRegistrationRepository has registrations
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(ep -> ep
+                    .baseUri("/oauth2/authorization")
+                )
+                .redirectionEndpoint(ep -> ep
+                    .baseUri("/login/oauth2/code/*")
+                )
+                .successHandler(ssoSuccessHandler)
+                .failureUrl("/login?error=sso_failed")
+            );
 
         return http.build();
     }
@@ -59,7 +82,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         var provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
+        provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
@@ -70,14 +93,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public RestTemplate restTemplate() {
-        // Connect timeout: 5 s — fail fast if Jira is unreachable
-        // Read timeout: 20 s — allow enough time for paginated sprint issue fetches
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(20_000);

@@ -25,9 +25,11 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: 'General',
     shortcuts: [
-      { keys: ['⌘K'],          description: 'Open command palette / search' },
-      { keys: ['?'],            description: 'Show keyboard shortcuts' },
-      { keys: ['Esc'],          description: 'Close modal / cancel' },
+      { keys: ['⌘K'],  description: 'Open command palette / search' },
+      { keys: ['⌘J'],  description: 'Ask AI assistant' },
+      { keys: ['⌘\\'], description: 'Toggle sidebar' },
+      { keys: ['?'],   description: 'Show keyboard shortcuts' },
+      { keys: ['Esc'], description: 'Close modal / cancel' },
     ],
   },
   {
@@ -117,6 +119,21 @@ export function useShortcutsPanel() {
     function handler(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+
+      // ⌘J — Ask AI (fires even when typing, like ⌘K)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('navigate-shortcut', { detail: { path: '/nlp' } }));
+        return;
+      }
+
+      // ⌘\ — Toggle sidebar
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('pp-toggle-sidebar'));
+        return;
+      }
+
       if (isTyping) return;
 
       // "?" toggles shortcuts panel

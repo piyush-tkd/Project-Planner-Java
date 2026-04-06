@@ -3,15 +3,34 @@ import {
  Title, Stack, Group, Select, Text, Badge, Box, SimpleGrid, Alert,
  Progress, ThemeIcon, Center, Loader, Paper, Tooltip,
  Table, Anchor, Divider, Button, SegmentedControl, TextInput,
+ NumberInput, Slider, Collapse, ActionIcon,
 } from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
+import apiClient from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
  IconBrain, IconAlertTriangle, IconCheck, IconInfoCircle,
  IconChevronDown, IconChevronUp, IconExternalLink, IconTrendingUp,
  IconTrendingDown, IconEqual, IconRocket, IconBulb, IconTarget,
  IconArrowRight, IconSearch, IconSortAscending, IconSortDescending,
- IconFilter, IconSubtask,
+ IconFilter, IconSubtask, IconAdjustments, IconChartBar,
 } from '@tabler/icons-react';
+
+// ── Scope Recommender types ───────────────────────────────────────────────────
+interface ScopeRecommendRequest {
+ avgVelocity: number;
+ backlogPoints: number | null;
+ teamCapacity: number;
+ projectKey?: string;
+}
+interface ScopeRecommendResponse {
+ recommendedPoints: number;
+ confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+ riskLevel: 'GREEN' | 'AMBER' | 'RED';
+ rationale: string;
+ historicalBaseline: number | null;
+ sprintsAnalyzed: number | null;
+}
 import { useSprints } from '../api/sprints';
 import { useSprintCalendarIssues, useJiraStatus, type ReleaseMetrics, type IssueRow } from '../api/jira';
 import { useCapacityGap } from '../api/reports';
@@ -640,6 +659,19 @@ interface UnifiedPod {
 export default function SprintPlanningRecommenderPage() {
  const isDark = useDarkMode();
  const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
+
+ // ── Scope Recommender state ─────────────────────────────────────────────────
+ const [recOpen, setRecOpen] = useState(false);
+ const [recVelocity, setRecVelocity] = useState<number | string>(40);
+ const [recBacklog, setRecBacklog] = useState<number | string>('');
+ const [recCapacity, setRecCapacity] = useState<number>(100);
+ const [recProjectKey, setRecProjectKey] = useState('');
+ const [recResult, setRecResult] = useState<ScopeRecommendResponse | null>(null);
+
+ const recommendMutation = useMutation<ScopeRecommendResponse, Error, ScopeRecommendRequest>({
+   mutationFn: (body) => apiClient.post('/sprints/recommend', body).then(r => r.data),
+   onSuccess: (data) => setRecResult(data),
+ });
  const [podHealthFilter, setPodHealthFilter] = useState<PodHealthFilter>('all');
  const [podSortBy, setPodSortBy] = useState<PodSortBy>('name');
  const [podSearch, setPodSearch] = useState('');
@@ -949,6 +981,147 @@ export default function SprintPlanningRecommenderPage() {
  </Group>
  </Alert>
  )}
+
+ {/* ── Scope Recommender panel ───────────────────────────────────────── */}
+ <Paper withBorder radius="md" p="md">
+   <Group justify="space-between" style={{ cursor: 'pointer' }} onClick={() => setRecOpen(o => !o)}>
+     <Group gap="sm">
+       <ThemeIcon size="md" radius="sm" color="indigo" variant="light">
+         <IconChartBar size={16} />
+       </ThemeIcon>
+       <Box>
+         <Text size="sm" fw={700}>Scope Recommender</Text>
+         <Text size="xs" c="dimmed">Get an AI-assisted story-point target based on velocity, backlog, and team capacity</Text>
+       </Box>
+     </Group>
+     <ActionIcon variant="subtle" color="dimmed" size="sm">
+       {recOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+     </ActionIcon>
+   </Group>
+
+   <Collapse in={recOpen}>
+     <Divider my="sm" />
+     <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
+       <NumberInput
+         label="Avg velocity (pts/sprint)"
+         description="Last 3 sprints average"
+         placeholder="e.g. 40"
+         min={0}
+         max={500}
+         value={recVelocity}
+         onChange={setRecVelocity}
+         size="sm"
+       />
+       <NumberInput
+         label="Backlog size (pts)"
+         description="Ready backlog — optional"
+         placeholder="e.g. 120"
+         min={0}
+         max={9999}
+         value={recBacklog}
+         onChange={setRecBacklog}
+         size="sm"
+       />
+       <Box>
+         <Text size="sm" fw={500} mb={4}>Team capacity: <b>{recCapacity}%</b></Text>
+         <Text size="xs" c="dimmed" mb="xs">Adjust for PTO, ceremonies, on-call</Text>
+         <Slider
+           min={10}
+           max={100}
+           step={5}
+           value={recCapacity}
+           onChange={setRecCapacity}
+           marks={[
+             { value: 50, label: '50%' },
+             { value: 75, label: '75%' },
+             { value: 100, label: '100%' },
+           ]}
+           color="indigo"
+         />
+       </Box>
+       <TextInput
+         label="Project key (optional)"
+         description="Enriches with Jira sprint history"
+         placeholder="e.g. PROJ"
+         value={recProjectKey}
+         onChange={e => setRecProjectKey(e.currentTarget.value)}
+         size="sm"
+       />
+     </SimpleGrid>
+
+     <Group mt="md" justify="flex-end">
+       <Button
+         size="sm"
+         color="indigo"
+         leftSection={<IconAdjustments size={14} />}
+         loading={recommendMutation.isPending}
+         onClick={() => recommendMutation.mutate({
+           avgVelocity: Number(recVelocity) || 0,
+           backlogPoints: recBacklog !== '' ? Number(recBacklog) : null,
+           teamCapacity: recCapacity / 100,
+           projectKey: recProjectKey.trim() || undefined,
+         })}
+       >
+         Get Recommendation
+       </Button>
+     </Group>
+
+     {recommendMutation.isError && (
+       <Alert color="red" icon={<IconAlertTriangle size={14} />} mt="sm">
+         Failed to get recommendation. Please try again.
+       </Alert>
+     )}
+
+     {recResult && !recommendMutation.isPending && (
+       <Paper
+         withBorder
+         radius="md"
+         p="md"
+         mt="sm"
+         style={{
+           borderColor: recResult.riskLevel === 'GREEN' ? 'var(--mantine-color-green-4)'
+             : recResult.riskLevel === 'AMBER' ? 'var(--mantine-color-yellow-4)'
+             : 'var(--mantine-color-red-4)',
+           borderWidth: 2,
+         }}
+       >
+         <Group justify="space-between" align="flex-start" wrap="nowrap">
+           <Box>
+             <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={2}>Recommended Scope</Text>
+             <Group gap="sm" align="baseline">
+               <Text size="xl" fw={900} style={{ fontSize: 36, lineHeight: 1 }}>
+                 {recResult.recommendedPoints}
+               </Text>
+               <Text size="sm" c="dimmed">story points</Text>
+             </Group>
+           </Box>
+           <Stack gap="xs" align="flex-end">
+             <Badge
+               size="lg"
+               variant="filled"
+               color={recResult.confidence === 'HIGH' ? 'green' : recResult.confidence === 'MEDIUM' ? 'yellow' : 'gray'}
+             >
+               {recResult.confidence} confidence
+             </Badge>
+             <Badge
+               size="sm"
+               variant="light"
+               color={recResult.riskLevel === 'GREEN' ? 'green' : recResult.riskLevel === 'AMBER' ? 'yellow' : 'red'}
+             >
+               Risk: {recResult.riskLevel}
+             </Badge>
+           </Stack>
+         </Group>
+         <Text size="sm" c="dimmed" mt="sm">{recResult.rationale}</Text>
+         {recResult.sprintsAnalyzed != null && recResult.sprintsAnalyzed > 0 && (
+           <Text size="xs" c="dimmed" mt={4}>
+             Based on {recResult.sprintsAnalyzed} closed sprint{recResult.sprintsAnalyzed !== 1 ? 's' : ''} from Jira history.
+           </Text>
+         )}
+       </Paper>
+     )}
+   </Collapse>
+ </Paper>
 
  {/* ── Summary stats row ──────────────────────────────────────────────── */}
  {allPods.length > 0 && activeSprint && (

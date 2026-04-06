@@ -77,83 +77,139 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '60vh',
+          minHeight: '65vh',
           padding: 32,
           fontFamily: FONT_FAMILY,
         }}>
+          {/* Keyframe animation injected inline — safe for class components */}
+          <style>{`
+            @keyframes errPulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(45,204,211,0.4); }
+              50%       { box-shadow: 0 0 0 14px rgba(45,204,211,0); }
+            }
+            @keyframes errFloat {
+              0%, 100% { transform: translateY(0px); }
+              50%       { transform: translateY(-6px); }
+            }
+          `}</style>
+
           <div style={{
-            maxWidth: 480,
+            maxWidth: 520,
             width: '100%',
             textAlign: 'center',
+            background: 'var(--mantine-color-default)',
+            border: '1px solid var(--mantine-color-default-border)',
+            borderRadius: 20,
+            padding: '48px 40px 40px',
+            boxShadow: SHADOW.lg,
+            position: 'relative',
+            overflow: 'hidden',
           }}>
-            {/* Animated broken-circuit icon */}
+
+            {/* Decorative background dots */}
+            <svg width="320" height="120" viewBox="0 0 320 120"
+              style={{ position: 'absolute', top: 0, right: 0, opacity: 0.04, pointerEvents: 'none' }}>
+              {[0,1,2,3,4,5,6,7].map(col => [0,1,2,3].map(row => (
+                <circle key={`${col}-${row}`} cx={col * 44 + 12} cy={row * 30 + 12} r={3}
+                  fill="currentColor" />
+              )))}
+            </svg>
+
+            {/* Pulsing teal icon */}
             <div style={{
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               borderRadius: '50%',
-              background: `linear-gradient(135deg, ${DEEP_BLUE} 0%, ${DEEP_BLUE_TINTS[80]} 100%)`,
+              background: `linear-gradient(135deg, ${AQUA} 0%, #1a8fa8 100%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 24px',
-              boxShadow: SHADOW.lg,
+              margin: '0 auto 28px',
+              animation: 'errPulse 2.4s ease-in-out infinite, errFloat 3s ease-in-out infinite',
+              position: 'relative',
+              zIndex: 1,
             }}>
-              <IconBug size={36} color={AQUA} stroke={1.5} />
+              <IconBug size={40} color="#fff" stroke={1.5} />
             </div>
 
             <Title order={2} style={{
-              color: DEEP_BLUE,
+              color: 'var(--mantine-color-text)',
               fontFamily: FONT_FAMILY,
               fontWeight: 300,
-              fontSize: 28,
-              marginBottom: 8,
+              fontSize: 26,
+              marginBottom: 10,
+              position: 'relative',
             }}>
               {this.wittyMessage}
             </Title>
 
             <Text size="sm" c="dimmed" style={{
               fontFamily: FONT_FAMILY,
-              marginBottom: 24,
-              lineHeight: 1.6,
+              marginBottom: 28,
+              lineHeight: 1.7,
+              maxWidth: 380,
+              margin: '0 auto 28px',
             }}>
-              Something unexpected happened. The error has been logged and our team will look into it.
-              In the meantime, you can try refreshing or head back to the dashboard.
+              Something unexpected happened on this page. The error has been logged automatically —
+              no action needed on your end. You can reload the page or return to the dashboard.
             </Text>
 
-            {/* Error detail — collapsible */}
+            {/* Error detail — shown only in development or when meaningful */}
             {this.state.error?.message && (
-              <div style={{
-                background: DEEP_BLUE_TINTS[10],
-                borderRadius: 8,
-                padding: '10px 16px',
-                marginBottom: 24,
-                textAlign: 'left',
-              }}>
-                <Text size="xs" ff="monospace" c={DEEP_BLUE_TINTS[70]} style={{ wordBreak: 'break-word' }}>
-                  {this.state.error.message}
-                </Text>
-              </div>
+              <details style={{ marginBottom: 28, textAlign: 'left' }}>
+                <summary style={{
+                  fontSize: 12,
+                  color: 'var(--mantine-color-dimmed)',
+                  cursor: 'pointer',
+                  fontFamily: FONT_FAMILY,
+                  marginBottom: 8,
+                  userSelect: 'none',
+                }}>
+                  Technical details
+                </summary>
+                <div style={{
+                  background: 'var(--mantine-color-default-hover)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  border: '1px solid var(--mantine-color-default-border)',
+                  marginTop: 6,
+                }}>
+                  <Text size="xs" ff="monospace" c="dimmed" style={{ wordBreak: 'break-word', lineHeight: 1.5 }}>
+                    {this.state.error.message}
+                  </Text>
+                </div>
+              </details>
             )}
 
             <Group justify="center" gap="sm">
               <Button
-                leftSection={<IconRefresh size={16} />}
+                leftSection={<IconRefresh size={15} />}
                 variant="filled"
-                onClick={this.handleReset}
+                onClick={this.handleReload}
                 style={{
                   backgroundColor: DEEP_BLUE,
                   fontFamily: FONT_FAMILY,
                   fontWeight: 500,
+                  borderRadius: 10,
                 }}
               >
-                Try Again
+                Reload page
               </Button>
               <Button
-                leftSection={<IconHome size={16} />}
+                leftSection={<IconRefresh size={15} />}
+                variant="subtle"
+                color="gray"
+                onClick={this.handleReset}
+                style={{ fontFamily: FONT_FAMILY, borderRadius: 10 }}
+              >
+                Try again
+              </Button>
+              <Button
+                leftSection={<IconHome size={15} />}
                 variant="light"
                 color="teal"
                 onClick={this.handleGoHome}
-                style={{ fontFamily: FONT_FAMILY }}
+                style={{ fontFamily: FONT_FAMILY, borderRadius: 10 }}
               >
                 Dashboard
               </Button>

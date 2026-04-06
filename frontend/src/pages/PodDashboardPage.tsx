@@ -672,7 +672,7 @@ function PodTable({
  return (
  <tr
  key={pod.podDisplayName + idx}
- style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafb', cursor: 'pointer' }}
+ style={{ backgroundColor: idx % 2 === 0 ? 'var(--mantine-color-body)' : 'var(--mantine-color-default-hover)', cursor: 'pointer' }}
  onClick={() => onRowClick(pod)}
  >
  <td style={{ padding: '10px 12px' }}>

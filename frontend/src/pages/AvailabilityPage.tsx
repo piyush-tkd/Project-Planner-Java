@@ -571,7 +571,16 @@ export default function AvailabilityPage() {
               const hasAnyLeave = Object.keys(leaveMap[row.resourceId] ?? {}).length > 0;
 
               return (
-                <Table.Tr key={row.resourceId} bg={isSource ? (dark ? 'blue.9' : 'blue.0') : isSelected ? (dark ? 'dark.6' : 'gray.0') : undefined}>
+                <Table.Tr
+                  key={row.resourceId}
+                  style={{
+                    backgroundColor: isSource
+                      ? (dark ? 'rgba(34,139,230,0.18)' : 'rgba(34,139,230,0.07)')
+                      : isSelected
+                      ? (dark ? 'rgba(45,204,211,0.13)' : 'rgba(45,204,211,0.07)')
+                      : undefined,
+                  }}
+                >
 
                   {/* Checkbox */}
                   <Table.Td style={{ textAlign: 'center', padding: 4 }}>

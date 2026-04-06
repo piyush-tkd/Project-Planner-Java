@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock, IconMessageCircle, IconTarget } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
@@ -25,6 +25,8 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
 import PushToJiraModal from '../components/projects/PushToJiraModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ProjectCommentSection from '../components/projects/ProjectCommentSection';
+import ProjectApprovalSection from '../components/projects/ProjectApprovalSection';
 import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
@@ -491,6 +493,8 @@ export default function ProjectDetailPage() {
      <Tabs.Tab value="raci" leftSection={<IconUsers size={14} />}>RACI</Tabs.Tab>
      <Tabs.Tab value="health" leftSection={<IconHeartRateMonitor size={14} />}>Health Score</Tabs.Tab>
      <Tabs.Tab value="status-updates" leftSection={<IconMessageReport size={14} />}>Status Updates</Tabs.Tab>
+     <Tabs.Tab value="discussion"    leftSection={<IconMessageCircle size={14} />}>Discussion</Tabs.Tab>
+     <Tabs.Tab value="approval"      leftSection={<IconTarget size={14} />}>Approval</Tabs.Tab>
    </Tabs.List>
 
    {/* ── OVERVIEW TAB ─── */}
@@ -719,7 +723,7 @@ export default function ProjectDetailPage() {
          { label: 'Actuals (YTD)', value: '—', sub: 'Connect Jira worklog', icon: <IconChartBar size={20} />, color: '#6366f1' },
          { label: 'Variance', value: '—', sub: 'Budget vs actuals', icon: <IconTrendingUp size={20} />, color: '#f59e0b' },
        ].map(stat => (
-         <Paper key={stat.label} withBorder p="md" radius="md" style={{ background: 'linear-gradient(135deg, #fff 0%, #f8faff 100%)' }}>
+         <Paper key={stat.label} withBorder p="md" radius="md" style={{ background: isDark ? 'var(--mantine-color-dark-6)' : 'linear-gradient(135deg, #fff 0%, #f8faff 100%)' }}>
            <Group gap="sm" mb={8}>
              <Center w={36} h={36} style={{ background: `${stat.color}15`, borderRadius: 8 }}>
                <span style={{ color: stat.color }}>{stat.icon}</span>
@@ -733,11 +737,51 @@ export default function ProjectDetailPage() {
          </Paper>
        ))}
      </SimpleGrid>
-     <Paper withBorder p="xl" radius="md" style={{ textAlign: 'center', background: `${AQUA}08` }}>
-       <IconCurrencyDollar size={40} color={AQUA} style={{ marginBottom: 12 }} />
-       <Title order={4} mb={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Financial tracking coming soon</Title>
-       <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-         Connect your budget, track actuals via Jira worklog hours, and monitor CapEx vs OpEx split. Set alerts for budget overruns.
+     <SimpleGrid cols={{ base: 1, sm: 2 }} mb="lg">
+       <Paper withBorder p="lg" radius="md" style={{ borderLeft: `3px solid ${AQUA}`, background: `${AQUA}06` }}>
+         <Group gap="sm" mb={8}>
+           <IconCurrencyDollar size={18} color={AQUA} />
+           <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Budget &amp; CapEx</Text>
+         </Group>
+         <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
+           View the full cost breakdown, CapEx / OpEx classification and budget tracking for this project.
+         </Text>
+         <Button
+           size="xs" variant="light" color="cyan"
+           leftSection={<IconExternalLink size={13} />}
+           onClick={() => navigate('/reports/budget-capex')}
+         >
+           Open Budget &amp; CapEx
+         </Button>
+       </Paper>
+
+       <Paper withBorder p="lg" radius="md" style={{ borderLeft: `3px solid #6366f1`, background: `#6366f108` }}>
+         <Group gap="sm" mb={8}>
+           <IconChartBar size={18} color="#6366f1" />
+           <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Jira Actuals</Text>
+         </Group>
+         <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
+           See actual hours logged against this project's Jira tickets via worklog sync.
+         </Text>
+         <Button
+           size="xs" variant="light" color="violet"
+           leftSection={<IconExternalLink size={13} />}
+           onClick={() => navigate('/jira-actuals')}
+         >
+           Open Jira Actuals
+         </Button>
+       </Paper>
+     </SimpleGrid>
+
+     <Paper withBorder p="lg" radius="md" style={{ background: `${DEEP_BLUE}04` }}>
+       <Group gap="sm" mb={6}>
+         <IconTrendingUp size={16} color={DEEP_BLUE} />
+         <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Engineering Productivity</Text>
+       </Group>
+       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+         Per-project cost roll-ups (resource rate × hours), variance analysis, and delivery ROI are available in the
+         {' '}<Text component="span" size="xs" c="cyan" style={{ cursor: 'pointer' }} onClick={() => navigate('/reports/engineering-intelligence')}>Engineering Intelligence</Text>{' '}
+         report. Budget fields will be editable per-project in a future release once cost rates are configured.
        </Text>
      </Paper>
    </Tabs.Panel>
@@ -878,6 +922,14 @@ export default function ProjectDetailPage() {
    {/* ── STATUS UPDATES TAB ── */}
    <Tabs.Panel value="status-updates" pt="md">
      <StatusUpdatesTab projectId={Number(id)} />
+   </Tabs.Panel>
+
+   <Tabs.Panel value="discussion" pt="md">
+     <ProjectCommentSection projectId={Number(id)} />
+   </Tabs.Panel>
+
+   <Tabs.Panel value="approval" pt="md">
+     <ProjectApprovalSection projectId={Number(id)} />
    </Tabs.Panel>
 
  </Tabs>

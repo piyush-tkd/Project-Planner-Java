@@ -14,13 +14,22 @@ import {
 } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 import { useSprints } from '../api/sprints';
 import { useReleases } from '../api/releases';
 import { useHolidays } from '../api/holidays';
 
 export default function CalendarHubPage() {
+  const isDark = useDarkMode();
+  const cellBorder = isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)';
+  const gridBg     = isDark ? 'var(--mantine-color-dark-7)'    : '#fff';
+  const emptyBg    = isDark ? 'rgba(255,255,255,0.02)'         : 'rgba(0,0,0,0.018)';
+  const todayBg    = AQUA;
+  const dayNumColor = (isCurrentDate: boolean) =>
+    isCurrentDate ? '#fff' : isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE;
+
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentYear, setCurrentYear]   = useState(new Date().getFullYear());
   const [activeLayers, setActiveLayers] = useState<Set<string>>(
     new Set(['Sprints', 'Releases', 'Holidays', 'Code Freeze'])
   );
@@ -173,36 +182,63 @@ export default function CalendarHubPage() {
       </Group>
 
       {/* Calendar Grid */}
-      <Paper p="md" radius="md" withBorder style={{ borderColor: 'rgba(12, 35, 64, 0.1)', background: 'white' }}>
-        {/* Day Headers */}
-        <SimpleGrid cols={7} spacing="xs" mb="sm">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <Center key={day}>
-              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{day}</Text>
-            </Center>
+      <Paper radius="md" withBorder style={{ background: gridBg, overflow: 'hidden' }}>
+        {/* Day header row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          borderBottom: cellBorder,
+        }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+            <div key={day} style={{
+              padding: '10px 8px',
+              textAlign: 'center',
+              borderRight: i < 6 ? cellBorder : 'none',
+              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(12,35,64,0.03)',
+            }}>
+              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: isDark ? 'rgba(255,255,255,0.5)' : DEEP_BLUE }}>
+                {day}
+              </Text>
+            </div>
           ))}
-        </SimpleGrid>
+        </div>
 
-        {/* Calendar Days */}
-        <SimpleGrid cols={7} spacing="xs">
+        {/* Calendar day cells — 7-col grid, no gaps, shared borders */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+        }}>
           {calendarDays.map((date, idx) => {
-            const events = date ? getEventsForDate(date) : [];
+            const col        = idx % 7;
+            const events     = date ? getEventsForDate(date) : [];
             const isCurrentDate = date ? isToday(date) : false;
+            const isLastRow  = idx >= calendarDays.length - 7;
 
             return (
-              <Box key={idx} style={{
-                padding: '6px',
-                border: `1px solid ${date ? 'rgba(12, 35, 64, 0.1)' : 'transparent'}`,
-                borderRadius: '6px',
-                backgroundColor: isCurrentDate ? AQUA : 'transparent',
+              <div key={idx} style={{
+                padding: '6px 8px',
+                borderRight:  col < 6 ? cellBorder : 'none',
+                borderBottom: !isLastRow ? cellBorder : 'none',
                 minHeight: '90px',
                 display: 'flex',
                 flexDirection: 'column',
+                backgroundColor: isCurrentDate
+                  ? todayBg
+                  : date
+                  ? 'transparent'
+                  : emptyBg,
               }}>
                 {date && (
                   <>
-                    <Text size="sm" fw={isCurrentDate ? 700 : 500}
-                      style={{ fontFamily: FONT_FAMILY, color: isCurrentDate ? 'white' : DEEP_BLUE }}>
+                    <Text
+                      size="sm"
+                      fw={isCurrentDate ? 700 : 500}
+                      style={{
+                        fontFamily: FONT_FAMILY,
+                        color: dayNumColor(isCurrentDate),
+                        lineHeight: 1.4,
+                      }}
+                    >
                       {date.getDate()}
                     </Text>
                     <Stack gap={2} mt={4}>
@@ -215,12 +251,13 @@ export default function CalendarHubPage() {
                             fontFamily: FONT_FAMILY,
                             fontSize: '9px',
                             height: 'auto',
-                            padding: '2px 4px',
-                            background: `${evt.color}20`,
+                            padding: '2px 5px',
+                            background: `${evt.color}25`,
                             color: evt.color,
-                            border: `1px solid ${evt.color}40`,
+                            border: `1px solid ${evt.color}50`,
                             whiteSpace: 'normal',
                             textAlign: 'left',
+                            lineHeight: 1.4,
                           }}
                         >
                           {evt.event}
@@ -229,10 +266,10 @@ export default function CalendarHubPage() {
                     </Stack>
                   </>
                 )}
-              </Box>
+              </div>
             );
           })}
-        </SimpleGrid>
+        </div>
       </Paper>
 
       {/* Legend */}

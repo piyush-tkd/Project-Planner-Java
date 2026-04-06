@@ -29,15 +29,18 @@ interface Crumb {
 /* ── Section anchors (all clickable) ───────────────────────────────── */
 const H: Crumb = { label: 'Home', path: '/', isHome: true };
 
+// Section anchor paths MUST point to hub pages that are distinct from sub-pages.
+// This ensures "Section > Page" breadcrumbs are never self-referential.
+// When visiting the hub page itself, the deduplication in resolveTrail() removes the redundant middle crumb.
 const SEC = {
-  DATA:      { label: 'Data Entry',      path: '/resources' } as Crumb,
-  CAPACITY:  { label: 'Capacity',        path: '/capacity' } as Crumb,
-  PORTFOLIO: { label: 'Portfolio',       path: '/reports/project-health' } as Crumb,
-  STRATEGY:  { label: 'Strategy',        path: '/objectives' } as Crumb,
-  PLANNING:  { label: 'Planning',        path: '/sprint-planner' } as Crumb,
-  INTEG:     { label: 'Integrations',    path: '/jira-pods' } as Crumb,
-  SIM:       { label: 'Simulators',      path: '/simulator/timeline' } as Crumb,
-  ADMIN:     { label: 'Admin',           path: '/settings/org' } as Crumb,
+  DATA:      { label: 'People',    path: '/resources' } as Crumb,
+  CAPACITY:  { label: 'Analytics', path: '/reports/status-updates' } as Crumb,
+  PORTFOLIO: { label: 'Portfolio', path: '/reports/executive-summary' } as Crumb,
+  STRATEGY:  { label: 'Projects',  path: '/projects' } as Crumb,
+  PLANNING:  { label: 'Planning',  path: '/calendar' } as Crumb,
+  INTEG:     { label: 'Delivery',  path: '/jira-pods' } as Crumb,
+  SIM:       { label: 'Tools',     path: '/custom-dashboard' } as Crumb,
+  ADMIN:     { label: 'Admin',     path: '/settings/org' } as Crumb,
 };
 
 /* ── Full route trail map ───────────────────────────────────────────── */
@@ -66,7 +69,7 @@ const ROUTE_TRAILS: Record<string, Crumb[]> = {
   '/ideas':         [H, SEC.STRATEGY, { label: 'Ideas Board',   path: '/ideas' }],
 
   /* ── Planning / Calendar ── */
-  '/calendar':          [H, SEC.PLANNING, { label: 'Calendar Hub',    path: '/calendar' }],
+  '/calendar':          [H, SEC.PLANNING, { label: 'Strategic Calendar', path: '/calendar' }],
   '/team-calendar':     [H, SEC.PLANNING, { label: 'Team Calendar',   path: '/team-calendar' }],
   '/sprint-calendar':   [H, SEC.PLANNING, { label: 'Sprint Calendar', path: '/sprint-calendar' }],
   '/release-calendar':  [H, SEC.PLANNING, { label: 'Release Calendar',path: '/release-calendar' }],
@@ -101,6 +104,13 @@ const ROUTE_TRAILS: Record<string, Crumb[]> = {
   '/reports/delivery-predictability':    [H, SEC.PORTFOLIO, { label: 'Delivery Predictability',    path: '/reports/delivery-predictability' }],
   '/reports/smart-notifications':        [H, SEC.PORTFOLIO, { label: 'Smart Notifications',        path: '/reports/smart-notifications' }],
   '/reports/gantt-dependencies':         [H, SEC.PORTFOLIO, { label: 'Gantt Dependencies',         path: '/reports/gantt-dependencies' }],
+  '/reports/executive-summary':          [H, SEC.PORTFOLIO, { label: 'Executive Summary',           path: '/reports/executive-summary' }],
+  '/reports/risk-heatmap':               [H, SEC.PORTFOLIO, { label: 'Risk Heatmap',                path: '/reports/risk-heatmap' }],
+  '/reports/status-updates':             [H, SEC.PORTFOLIO, { label: 'Status Updates',              path: '/reports/status-updates' }],
+  '/reports/sprint-retro':               [H, SEC.PORTFOLIO, { label: 'Sprint Retro',                path: '/reports/sprint-retro' }],
+  '/reports/skills-matrix':              [H, SEC.CAPACITY,  { label: 'Skills Matrix',               path: '/reports/skills-matrix' }],
+  '/reports/team-pulse':                 [H, SEC.CAPACITY,  { label: 'Team Pulse',                  path: '/reports/team-pulse' }],
+  '/reports/capacity-forecast':          [H, SEC.CAPACITY,  { label: 'Capacity Forecast',           path: '/reports/capacity-forecast' }],
 
   /* ── Integrations ── */
   '/jira-pods':       [H, SEC.INTEG, { label: 'POD Dashboard', path: '/jira-pods' }],
@@ -115,43 +125,95 @@ const ROUTE_TRAILS: Record<string, Crumb[]> = {
   '/simulator/timeline': [H, SEC.SIM, { label: 'Timeline Simulator', path: '/simulator/timeline' }],
   '/simulator/scenario': [H, SEC.SIM, { label: 'Scenario Simulator', path: '/simulator/scenario' }],
 
-  /* ── Admin ── */
-  '/settings/org':                   [H, SEC.ADMIN, { label: 'Admin Settings',        path: '/settings/org' }],
-  '/settings/users':                 [H, SEC.ADMIN, { label: 'User Management',        path: '/settings/users' }],
-  '/settings/audit-log':             [H, SEC.ADMIN, { label: 'Audit Log',              path: '/settings/audit-log' }],
-  '/settings/tables':                [H, SEC.ADMIN, { label: 'DB Browser',             path: '/settings/tables' }],
-  '/settings/feedback-hub':          [H, SEC.ADMIN, { label: 'Feedback Hub',           path: '/settings/feedback-hub' }],
-  '/settings/error-log':             [H, SEC.ADMIN, { label: 'Error Log',              path: '/settings/error-log' }],
-  '/settings/sidebar-order':         [H, SEC.ADMIN, { label: 'Sidebar Order',          path: '/settings/sidebar-order' }],
-  '/settings/timeline':              [H, SEC.ADMIN, { label: 'Timeline Settings',      path: '/settings/timeline' }],
-  '/settings/ref-data':              [H, SEC.ADMIN, { label: 'Reference Data',         path: '/settings/ref-data' }],
-  '/settings/jira':                  [H, SEC.ADMIN, { label: 'Jira Boards',            path: '/settings/jira' }],
-  '/settings/releases':              [H, SEC.ADMIN, { label: 'Release Versions',       path: '/settings/releases' }],
-  '/settings/jira-credentials':      [H, SEC.ADMIN, { label: 'Jira Credentials',       path: '/settings/jira-credentials' }],
-  '/settings/support-boards':        [H, SEC.ADMIN, { label: 'Support Boards',         path: '/settings/support-boards' }],
-  '/settings/nlp':                   [H, SEC.ADMIN, { label: 'NLP Configuration',      path: '/settings/nlp' }],
-  '/settings/nlp-optimizer':         [H, SEC.ADMIN, { label: 'NLP Optimizer',          path: '/settings/nlp-optimizer' }],
-  '/settings/jira-resource-mapping': [H, SEC.ADMIN, { label: 'Resource Mapping',       path: '/settings/jira-resource-mapping' }],
-  '/settings/jira-release-mapping':  [H, SEC.ADMIN, { label: 'Release Mapping',        path: '/settings/jira-release-mapping' }],
+  /* ── Admin — Org Settings hub ── */
+  '/settings/org':                   [H, SEC.ADMIN, { label: 'Org Settings',          path: '/settings/org' }],
+  '/settings/org?tab=general':       [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'General' }],
+  '/settings/org?tab=users':         [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'Users & Access' }],
+  '/settings/org?tab=jira':          [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'Integrations' }],
+  '/settings/org?tab=notifications': [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'Notifications & Email' }],
+  '/settings/org?tab=system':        [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'System' }],
+  // Legacy tab keys — resolved by OrgSettingsPage LEGACY_MAP on mount
+  '/settings/org?tab=branding':      [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'General' }],
+  '/settings/org?tab=workspace':     [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'General' }],
+  '/settings/org?tab=data':          [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'System' }],
+  '/settings/org?tab=email':         [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'Notifications & Email' }],
+  '/settings/org?tab=ai':            [H, SEC.ADMIN, { label: 'Org Settings', path: '/settings/org' }, { label: 'Notifications & Email' }],
+
+  /* ── Admin — Integrations sub-pages ── */
+  '/settings/jira-credentials':      [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Jira Credentials' }],
+  '/settings/jira':                  [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Jira Boards' }],
+  '/settings/support-boards':        [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Support Boards' }],
+  '/settings/jira-release-mapping':  [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Release Mapping' }],
+  '/settings/jira-resource-mapping': [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Resource Mapping' }],
+  '/settings/azure-devops':          [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Azure DevOps' }],
+  '/settings/smart-mapping':         [H, SEC.ADMIN, { label: 'Integrations', path: '/settings/org?tab=jira' }, { label: 'Smart Mapping' }],
+
+  /* ── Admin — Notifications & Email sub-pages ── */
+  '/settings/nlp':                   [H, SEC.ADMIN, { label: 'Notifications & Email', path: '/settings/org?tab=notifications' }, { label: 'NLP Configuration' }],
+  '/settings/nlp-optimizer':         [H, SEC.ADMIN, { label: 'Notifications & Email', path: '/settings/org?tab=notifications' }, { label: 'NLP Optimizer' }],
+
+  /* ── Admin — System sub-pages ── */
+  '/settings/audit-log':             [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Audit Log' }],
+  '/settings/tables':                [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'DB Browser' }],
+  '/settings/feedback-hub':          [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Feedback Hub' }],
+  '/settings/error-log':             [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Error Log' }],
+  '/settings/sidebar-order':         [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Sidebar Order' }],
+  '/settings/timeline':              [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Timeline Settings' }],
+  '/settings/ref-data':              [H, SEC.ADMIN, { label: 'System', path: '/settings/org?tab=system' }, { label: 'Reference Data' }],
+
+  /* ── Admin — other ── */
+  '/settings/users':                 [H, SEC.ADMIN, { label: 'User Management',  path: '/settings/users' }],
+  '/settings/releases':              [H, SEC.ADMIN, { label: 'Release Versions', path: '/settings/releases' }],
+  '/settings/changelog':             [H, SEC.ADMIN, { label: 'Changelog Admin',  path: '/settings/changelog' }],
+  '/settings/custom-fields':         [H, SEC.ADMIN, { label: 'Custom Fields',    path: '/settings/custom-fields' }],
+  '/automation-engine':                    [H, SEC.SIM,       { label: 'Automation Engine',          path: '/automation-engine' }],
+  '/smart-insights':                       [H, SEC.CAPACITY,  { label: 'Smart Insights',             path: '/smart-insights' }],
+  '/settings/notification-preferences':   [H, SEC.ADMIN,     { label: 'Notification Preferences',   path: '/settings/notification-preferences' }],
+  '/custom-dashboard':                     [H, SEC.SIM,       { label: 'Custom Dashboard',           path: '/custom-dashboard' }],
+  '/approvals':                            [H, SEC.STRATEGY,  { label: 'Approval Queue',             path: '/approvals' }],
+  '/bulk-import':                          [H, SEC.SIM,       { label: 'Bulk Import',                path: '/bulk-import' }],
+  '/advanced-timeline':                    [H, SEC.PLANNING,  { label: 'Advanced Timeline',          path: '/advanced-timeline' }],
 };
 
 /* ── Resolve a live pathname against the trail map ─────────────────── */
-function resolveTrail(pathname: string): Crumb[] {
-  if (ROUTE_TRAILS[pathname]) return ROUTE_TRAILS[pathname];
+function resolveTrail(pathname: string, search?: string): Crumb[] {
+  let trail: Crumb[];
 
-  const parts = pathname.split('/').filter(Boolean);
-  if (parts.length === 2 && parts[0] === 'projects')  return ROUTE_TRAILS['/projects/:id']  ?? [];
-  if (parts.length === 2 && parts[0] === 'pods')       return ROUTE_TRAILS['/pods/:id']      ?? [];
-  if (parts.length === 2 && parts[0] === 'jira-pods')  return ROUTE_TRAILS['/jira-pods/:id'] ?? [];
+  // Try full key (pathname + search) first for query-param-based sub-pages
+  const fullKey = search && search.length > 1 ? pathname + search : pathname;
 
-  // Generic fallback
-  return [
-    H,
-    ...parts.map((seg, i) => ({
-      label: seg.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-      path: '/' + parts.slice(0, i + 1).join('/'),
-    })),
-  ];
+  if (ROUTE_TRAILS[fullKey]) {
+    trail = ROUTE_TRAILS[fullKey];
+  } else if (ROUTE_TRAILS[pathname]) {
+    trail = ROUTE_TRAILS[pathname];
+  } else {
+    const parts = pathname.split('/').filter(Boolean);
+    if (parts.length === 2 && parts[0] === 'projects')  return ROUTE_TRAILS['/projects/:id']  ?? [];
+    if (parts.length === 2 && parts[0] === 'pods')       return ROUTE_TRAILS['/pods/:id']      ?? [];
+    if (parts.length === 2 && parts[0] === 'jira-pods')  return ROUTE_TRAILS['/jira-pods/:id'] ?? [];
+
+    // Generic fallback
+    trail = [
+      H,
+      ...parts.map((seg, i) => ({
+        label: seg.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        path: '/' + parts.slice(0, i + 1).join('/'),
+      })),
+    ];
+  }
+
+  // Deduplication: if the section crumb (index 1) has the same path as the leaf crumb (last),
+  // it means we're ON the section hub page — remove the redundant middle crumb.
+  // e.g.  🏠 > Admin(/settings/org) > Admin Settings(/settings/org) → 🏠 > Admin Settings
+  if (trail.length >= 3) {
+    const sectionCrumb = trail[1];
+    const leafCrumb    = trail[trail.length - 1];
+    if (sectionCrumb.path && leafCrumb.path && sectionCrumb.path === leafCrumb.path) {
+      trail = [trail[0], ...trail.slice(2)];
+    }
+  }
+
+  return trail;
 }
 
 /* ── Dynamic label hook — resolves real entity names ───────────────── */
@@ -188,7 +250,7 @@ export default function GlobalBreadcrumb() {
   const computedColorScheme = useComputedColorScheme('light');
   const isDark = computedColorScheme === 'dark';
 
-  const rawTrail = useMemo(() => resolveTrail(location.pathname), [location.pathname]);
+  const rawTrail = useMemo(() => resolveTrail(location.pathname, location.search), [location.pathname, location.search]);
   const dynamicLabel = useDynamicLabel(location.pathname);
 
   // Replace the last placeholder '…' with the real entity name when available

@@ -436,8 +436,8 @@ export default function FinancialIntelligencePage() {
                 return (
                   <Box key={row.author} style={{
                     display: 'flex', alignItems: 'center', padding: '10px 16px',
-                    borderBottom: '1px solid #f0f4f8',
-                    background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                    borderBottom: '1px solid var(--mantine-color-default-border)',
+                    background: i % 2 === 0 ? 'var(--mantine-color-body)' : 'var(--mantine-color-default-hover)',
                     opacity: row.matched ? 1 : 0.55,
                   }}>
                     <Box style={{ width: 180, flexShrink: 0 }}>

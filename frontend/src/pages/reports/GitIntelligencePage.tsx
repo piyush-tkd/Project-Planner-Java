@@ -296,8 +296,8 @@ export default function GitIntelligencePage() {
                         <Box key={pr.id} style={{
                           display: 'flex', alignItems: 'center',
                           padding: '9px 16px',
-                          borderBottom: '1px solid #f0f4f8',
-                          background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                          borderBottom: '1px solid var(--mantine-color-default-border)',
+                          background: i % 2 === 0 ? 'var(--mantine-color-body)' : 'var(--mantine-color-default-hover)',
                         }}>
                           <Text size="xs" c="dimmed" style={{ width: 60, flexShrink: 0 }}>
                             #{pr.id}
@@ -474,8 +474,8 @@ export default function GitIntelligencePage() {
                           <Box key={`${b.repo}-${b.name}`} style={{
                             display: 'flex', alignItems: 'center',
                             padding: '9px 16px',
-                            borderBottom: '1px solid #f0f4f8',
-                            background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                            borderBottom: '1px solid var(--mantine-color-default-border)',
+                            background: i % 2 === 0 ? 'var(--mantine-color-body)' : 'var(--mantine-color-default-hover)',
                           }}>
                             <Box style={{ width: 320, flexShrink: 0 }}>
                               <Group gap={8}>

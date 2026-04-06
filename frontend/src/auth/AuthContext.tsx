@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { onAuthExpired } from './authEvents';
 
@@ -55,6 +56,7 @@ function loadPages(): string[] | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   // On first render we don't yet know if the cookie is still valid.
   // We'll set initialising=false once the bootstrap check completes.
   const hasStoredSession = !!localStorage.getItem(USER_KEY);
@@ -163,8 +165,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ token: null, username: null, displayName: null, role: null, allowedPages: null });
   }, []);
 
-  // Auto-logout when a 401 is received (JWT expired or cookie missing)
-  useEffect(() => onAuthExpired(logout), [logout]);
+  // Auto-logout + redirect when a 401 is received (JWT expired or cookie missing)
+  useEffect(() => onAuthExpired(() => {
+    logout();
+    navigate('/login', { state: { expired: true }, replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [logout]);
 
   const isSuperAdmin = auth.role === 'SUPER_ADMIN';
   const isAdmin = auth.role === 'ADMIN' || isSuperAdmin;

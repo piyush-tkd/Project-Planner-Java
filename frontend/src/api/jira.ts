@@ -678,13 +678,13 @@ export function useClearJiraCache() {
     mutationFn: () =>
       apiClient.post('/jira/cache/clear').then(r => r.data),
     onSuccess: () => {
-      // Remove all cached Jira data — next load will re-fetch from Jira
-      qc.removeQueries({ queryKey: ['jira', 'projects'] });
-      qc.removeQueries({ queryKey: ['jira', 'pods'] });
-      qc.removeQueries({ queryKey: ['jira', 'actuals'] });
-      qc.removeQueries({ queryKey: ['jira', 'suggestions'] });
-      qc.removeQueries({ queryKey: ['jira', 'releases'] });
-      qc.removeQueries({ queryKey: ['jira', 'support'] });
+      // Invalidate all cached Jira data — marks stale so active queries re-fetch immediately
+      qc.invalidateQueries({ queryKey: ['jira', 'projects'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'pods'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'actuals'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'suggestions'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'releases'] });
+      qc.invalidateQueries({ queryKey: ['jira', 'support'] });
     },
   });
 }

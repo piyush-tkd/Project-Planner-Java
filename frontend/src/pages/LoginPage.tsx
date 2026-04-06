@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
  TextInput,
  PasswordInput,
@@ -8,14 +8,22 @@ import {
  Title,
  Stack,
  Alert,
- Anchor,
+ Divider,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconClockOff, IconShield } from '@tabler/icons-react';
 import { useAuth } from '../auth/AuthContext';
+import apiClient from '../api/client';
 import {
- DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS,
+ DEEP_BLUE, AQUA, DEEP_BLUE_TINTS,
  FONT_FAMILY, SHADOW,
 } from '../brandTokens';
+
+const PROVIDER_LABELS: Record<string, string> = {
+ GOOGLE:    'Google Workspace',
+ MICROSOFT: 'Microsoft Entra ID',
+ OKTA:      'Okta',
+ CUSTOM:    'SSO',
+};
 
 export default function LoginPage() {
  const { login } = useAuth();
@@ -27,7 +35,22 @@ export default function LoginPage() {
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
 
- const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
+ // SSO availability — fetched from the public /api/auth/sso-status endpoint
+ const [ssoEnabled,   setSsoEnabled]   = useState(false);
+ const [ssoProvider,  setSsoProvider]  = useState('SSO');
+
+ useEffect(() => {
+   apiClient.get('/auth/sso-status')
+     .then(({ data }) => {
+       setSsoEnabled(data.enabled ?? false);
+       setSsoProvider(PROVIDER_LABELS[data.provider] ?? 'SSO');
+     })
+     .catch(() => { /* SSO status unavailable — suppress silently */ });
+ }, []);
+
+ const locationState = location.state as { from?: { pathname: string }; expired?: boolean } | null;
+ const from    = locationState?.from?.pathname ?? '/';
+ const expired = !!locationState?.expired;
 
  async function handleSubmit(e: React.FormEvent) {
  e.preventDefault();
@@ -103,16 +126,6 @@ export default function LoginPage() {
  position: 'relative',
  }} />
 
- <Text style={{
- color: AQUA_TINTS[50],
- fontSize: 13,
- fontFamily: FONT_FAMILY,
- textAlign: 'center',
- position: 'relative',
- letterSpacing: '0.02em',
- }}>
- Baylor Genetics
- </Text>
  </div>
 
  {/* ── Right panel: login form ── */}
@@ -147,6 +160,18 @@ export default function LoginPage() {
  }}>
  Log in to manage your portfolio and view reports.
  </Text>
+
+ {expired && (
+ <Alert
+ icon={<IconClockOff size={16} />}
+ color="orange"
+ variant="light"
+ mb="md"
+ style={{ borderRadius: 8 }}
+ >
+ Your session has expired. Please sign in again.
+ </Alert>
+ )}
 
  {error && (
  <Alert
@@ -215,18 +240,17 @@ export default function LoginPage() {
  }}
  />
  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
- <Anchor
- href="#"
+ <Link
+ to="/forgot-password"
  style={{
  fontSize: 13,
  color: AQUA,
  fontFamily: FONT_FAMILY,
  textDecoration: 'none',
  }}
- onClick={e => e.preventDefault()}
  >
  Forgot password?
- </Anchor>
+ </Link>
  </div>
  </div>
 
@@ -250,6 +274,36 @@ export default function LoginPage() {
  >
  Log In
  </Button>
+
+ {ssoEnabled && (
+   <>
+     <Divider
+       label="or"
+       labelPosition="center"
+       my="xs"
+       styles={{ label: { color: DEEP_BLUE_TINTS[40], fontFamily: FONT_FAMILY, fontSize: 12 } }}
+     />
+     <Button
+       component="a"
+       href="/oauth2/authorization/sso"
+       fullWidth
+       variant="outline"
+       leftSection={<IconShield size={16} />}
+       style={{
+         borderColor: DEEP_BLUE_TINTS[20],
+         color: DEEP_BLUE,
+         borderRadius: 6,
+         height: 44,
+         fontFamily: FONT_FAMILY,
+         fontWeight: 500,
+         fontSize: 15,
+       }}
+     >
+       Sign in with {ssoProvider}
+     </Button>
+   </>
+ )}
+
  </Stack>
  </form>
 

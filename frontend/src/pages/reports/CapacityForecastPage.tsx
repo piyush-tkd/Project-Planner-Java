@@ -26,6 +26,7 @@ import {
 import { useCapacityGap } from '../../api/reports';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import { PodMonthGap } from '../../types/report';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 // Traffic-light classification
 function classify(gapHours: number): 'critical' | 'warning' | 'healthy' {
@@ -60,7 +61,20 @@ function utilizationPct(demand: number, capacity: number): number {
   return Math.min(200, Math.round((demand / capacity) * 100));
 }
 
+// Dark-mode-safe background and text per traffic-light status
+const DARK_CARD_STYLES = {
+  critical: { bg: 'rgba(250,82,82,0.12)',  border: 'rgba(250,82,82,0.4)',  labelColor: '#ff8787', valueColor: '#fff' },
+  warning:  { bg: 'rgba(245,159,0,0.12)',  border: 'rgba(245,159,0,0.4)',  labelColor: '#fcc419', valueColor: '#fff' },
+  healthy:  { bg: 'rgba(45,204,211,0.10)', border: 'rgba(45,204,211,0.35)',labelColor: '#63e6be', valueColor: '#fff' },
+};
+const LIGHT_CARD_STYLES = {
+  critical: { bg: 'rgba(255,235,235,0.8)', border: 'rgba(250,82,82,0.3)',  labelColor: '#c92a2a', valueColor: '#212529' },
+  warning:  { bg: 'rgba(255,249,219,0.8)', border: 'rgba(245,159,0,0.35)', labelColor: '#e67700', valueColor: '#212529' },
+  healthy:  { bg: 'rgba(235,251,248,0.8)', border: 'rgba(45,204,211,0.3)', labelColor: '#087f5b', valueColor: '#212529' },
+};
+
 export default function CapacityForecastPage() {
+  const isDark = useDarkMode();
   const { data, isLoading, isError } = useCapacityGap('hours');
 
   // Pick the 3 lowest month indices present in data (= current planning window)
@@ -184,9 +198,16 @@ export default function CapacityForecastPage() {
       {monthLabels.length > 0 && (
         <SimpleGrid cols={3} spacing="sm">
           {monthLabels.map((label, i) => (
-            <Card key={i} withBorder radius="sm" p="xs" ta="center" bg="gray.0">
+            <Card
+              key={i}
+              withBorder
+              radius="sm"
+              p="xs"
+              ta="center"
+              style={{ background: isDark ? 'var(--mantine-color-dark-6)' : 'var(--mantine-color-gray-0)' }}
+            >
               <Group justify="center" gap={6}>
-                <IconChartAreaLine size={14} color="gray" />
+                <IconChartAreaLine size={14} color={isDark ? 'rgba(255,255,255,0.4)' : 'gray'} />
                 <Text fw={600} size="sm" c="dimmed">{label}</Text>
               </Group>
             </Card>
@@ -228,6 +249,10 @@ export default function CapacityForecastPage() {
                   const Icon = cfg.icon;
                   const util = utilizationPct(m.demandHours, m.capacityHours);
 
+                  const cardStyle = isDark
+                    ? DARK_CARD_STYLES[m.status]
+                    : LIGHT_CARD_STYLES[m.status];
+
                   return (
                     <Card
                       key={m.monthIndex}
@@ -235,25 +260,29 @@ export default function CapacityForecastPage() {
                       radius="sm"
                       p="sm"
                       style={{
-                        borderColor: `var(--mantine-color-${cfg.color}-4)`,
-                        backgroundColor: `var(--mantine-color-${cfg.color}-0)`,
+                        borderColor: cardStyle.border,
+                        backgroundColor: cardStyle.bg,
                       }}
                     >
                       <Group justify="space-between" mb={4}>
-                        <Text size="xs" fw={600} c={`${cfg.color}.8`}>{m.monthLabel}</Text>
-                        <Icon size={14} color={`var(--mantine-color-${cfg.color}-7)`} />
+                        <Text size="xs" fw={600} style={{ color: cardStyle.labelColor }}>{m.monthLabel}</Text>
+                        <Icon size={14} color={cardStyle.labelColor} />
                       </Group>
                       <Group gap="xs" mb={6} align="flex-end">
                         <RingProgress
                           size={44}
                           thickness={4}
                           sections={[{ value: Math.min(100, util), color: cfg.color }]}
-                          label={<Text ta="center" size="9px" fw={700}>{util}%</Text>}
+                          label={<Text ta="center" size="9px" fw={700} style={{ color: cardStyle.valueColor }}>{util}%</Text>}
                         />
                         <Stack gap={2}>
-                          <Text size="xs" c="dimmed">Demand: <Text span fw={600} c="dark">{Math.round(m.demandHours)}h</Text></Text>
-                          <Text size="xs" c="dimmed">Capacity: <Text span fw={600} c="dark">{Math.round(m.capacityHours)}h</Text></Text>
-                          <Text size="xs" c={m.gapHours < 0 ? `${cfg.color}.7` : 'teal.7'} fw={700}>
+                          <Text size="xs" c="dimmed">
+                            Demand: <Text span fw={600} style={{ color: cardStyle.valueColor }}>{Math.round(m.demandHours)}h</Text>
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Capacity: <Text span fw={600} style={{ color: cardStyle.valueColor }}>{Math.round(m.capacityHours)}h</Text>
+                          </Text>
+                          <Text size="xs" fw={700} style={{ color: cardStyle.labelColor }}>
                             Gap: {m.gapHours >= 0 ? '+' : ''}{Math.round(m.gapHours)}h
                           </Text>
                         </Stack>

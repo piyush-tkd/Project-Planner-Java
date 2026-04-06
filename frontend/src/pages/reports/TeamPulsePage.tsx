@@ -174,13 +174,17 @@ export default function TeamPulsePage() {
           </Text>
         </div>
         <Group gap="xs">
-          <ActionIcon variant="light" color="blue" size="lg"
-            onClick={() => { qc.invalidateQueries({ queryKey: ['pulse-trend'] }); qc.invalidateQueries({ queryKey: ['pulse-summary'] }); }}>
-            <IconRefresh size={16} />
-          </ActionIcon>
-          <Button leftSection={<IconPlus size={15} />} onClick={() => setModal(true)}>
-            Submit Check-in
-          </Button>
+          <Tooltip label="Refresh data" withArrow>
+            <ActionIcon variant="light" color="blue" size="lg"
+              onClick={() => { qc.invalidateQueries({ queryKey: ['pulse-trend'] }); qc.invalidateQueries({ queryKey: ['pulse-summary'] }); qc.invalidateQueries({ queryKey: ['pulse-week', currentWeekISO()] }); }}>
+              <IconRefresh size={16} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="To edit or delete an entry, scroll down to 'This Week\'s Entries'" withArrow position="bottom">
+            <Button leftSection={<IconPlus size={15} />} onClick={() => setModal(true)}>
+              Submit Check-in
+            </Button>
+          </Tooltip>
         </Group>
       </Group>
 
@@ -322,12 +326,20 @@ export default function TeamPulsePage() {
       </Card>
 
       {/* This week's entries — edit/delete */}
-      <Card withBorder radius="md" p="md">
+      <Card withBorder radius="md" p="md" style={{ borderLeft: '3px solid var(--mantine-color-teal-5)' }}>
         <Group justify="space-between" mb="sm">
-          <Title order={5} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
-            This Week's Entries
-          </Title>
-          <Badge size="sm" variant="light" color="teal">{weekEntries.length} entries</Badge>
+          <Group gap="sm">
+            <ThemeIcon size={28} color="teal" variant="light" radius="sm">
+              <IconPencil size={14} />
+            </ThemeIcon>
+            <div>
+              <Title order={5} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+                This Week's Entries
+              </Title>
+              <Text size="xs" c="dimmed">Edit or delete your submitted check-ins below</Text>
+            </div>
+          </Group>
+          <Badge size="sm" variant="filled" color="teal">{weekEntries.length} entries</Badge>
         </Group>
         {weekLoading ? (
           <Center h={60}><Loader size="sm" /></Center>

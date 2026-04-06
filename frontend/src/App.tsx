@@ -1,107 +1,126 @@
+/**
+ * App.tsx — Sprint 7 S7.10
+ * All page imports converted to React.lazy for code-splitting.
+ * Suspense fallback is provided by AppShell's main area.
+ */
+import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShellLayout from './components/layout/AppShell';
 import ProtectedRoute from './auth/ProtectedRoute';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import ResourcesPage from './pages/ResourcesPage';
-import PodsPage from './pages/PodsPage';
-import ProjectsPage from './pages/ProjectsPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
-import AvailabilityPage from './pages/AvailabilityPage';
-import OverridesPage from './pages/OverridesPage';
-import UtilizationCenterPage from './pages/reports/UtilizationCenterPage';
-import HiringForecastPage from './pages/reports/HiringForecastPage';
-import DeadlineGapPage from './pages/reports/DeadlineGapPage';
-import BudgetPage from './pages/reports/BudgetPage';
-import CapacityDemandPage from './pages/reports/CapacityDemandPage';
-import CapacityForecastPage from './pages/reports/CapacityForecastPage';
-import SprintRetroPage from './pages/reports/SprintRetroPage';
-import ResourceSkillsMatrixPage from './pages/reports/ResourceSkillsMatrixPage';
-import RiskHeatmapPage from './pages/reports/RiskHeatmapPage';
-import ExecSummaryPage from './pages/reports/ExecSummaryPage';
-import StatusUpdatesFeedPage from './pages/reports/StatusUpdatesFeedPage';
-import TeamPulsePage from './pages/reports/TeamPulsePage';
-import ChangelogAdminPage from './pages/settings/ChangelogAdminPage';
-import CustomFieldsAdminPage from './pages/settings/CustomFieldsAdminPage';
-import PodResourceSummaryPage from './pages/reports/PodResourceSummaryPage';
-import PodSplitsPage from './pages/reports/PodSplitsPage';
-import PodDetailPage from './pages/PodDetailPage';
-import ProjectPodMatrixPage from './pages/reports/ProjectPodMatrixPage';
-import PodCapacityPage from './pages/reports/PodCapacityPage';
-import JiraActualsPage from './pages/JiraActualsPage';
-import PodDashboardPage from './pages/PodDashboardPage';
-import JiraPodDetailPage from './pages/JiraPodDetailPage';
-import TimelineSimulatorPage from './pages/simulators/TimelineSimulatorPage';
-import ScenarioSimulatorPage from './pages/simulators/ScenarioSimulatorPage';
-import TimelineSettingsPage from './pages/settings/TimelineSettingsPage';
-import RefDataSettingsPage from './pages/settings/RefDataSettingsPage';
-import JiraSettingsPage from './pages/settings/JiraSettingsPage';
-import ReleasesPage from './pages/ReleasesPage';
-import ReleaseSettingsPage from './pages/settings/ReleaseSettingsPage';
-import JiraCredentialsPage from './pages/settings/JiraCredentialsPage';
-import JiraCapexPage from './pages/JiraCapexPage';
-import JiraSupportPage from './pages/JiraSupportPage';
-import JiraWorklogPage from './pages/JiraWorklogPage';
-import SupportBoardsSettingsPage from './pages/settings/SupportBoardsSettingsPage';
-import UserManagementPage from './pages/settings/UserManagementPage';
-import AuditLogPage from './pages/settings/AuditLogPage';
-import TablesPage from './pages/settings/TablesPage';
-import TeamCalendarPage from './pages/TeamCalendarPage';
-import OwnerDemandPage from './pages/reports/OwnerDemandPage';
-import ProjectHealthPage from './pages/reports/ProjectHealthPage';
-import ResourcePerformancePage from './pages/reports/ResourcePerformancePage';
-import SprintCalendarPage from './pages/SprintCalendarPage';
-import ReleaseCalendarPage from './pages/ReleaseCalendarPage';
-import ReleaseNotesPage from './pages/ReleaseNotesPage';
-import SprintPlanningRecommenderPage from './pages/SprintPlanningRecommenderPage';
-import NlpLandingPage from './pages/NlpLandingPage';
 
-import NlpSettingsPage from './pages/settings/NlpSettingsPage';
-import NlpOptimizerPage from './pages/settings/NlpOptimizerPage';
-import FeedbackHubPage from './pages/settings/FeedbackHubPage';
-import ErrorLogPage from './pages/settings/ErrorLogPage';
-import DoraMetricsPage from './pages/reports/DoraMetricsPage';
-import JiraAnalyticsPage from './pages/reports/JiraAnalyticsPage';
-import JiraDashboardBuilderPage from './pages/reports/JiraDashboardBuilderPage';
-import EngineeringProductivityPage from './pages/reports/EngineeringProductivityPage';
-import EngineeringIntelligencePage from './pages/reports/EngineeringIntelligencePage';
-import SidebarOrderPage from './pages/settings/SidebarOrderPage';
-import HolidayCalendarPage from './pages/settings/HolidayCalendarPage';
-import LeaveManagementPage from './pages/settings/LeaveManagementPage';
-import JiraResourceMappingPage from './pages/settings/JiraResourceMappingPage';
-import JiraReleaseMappingPage from './pages/settings/JiraReleaseMappingPage';
-import PortfolioHealthDashboardPage from './pages/reports/PortfolioHealthDashboardPage';
-import JiraPortfolioSyncPage from './pages/reports/JiraPortfolioSyncPage';
-import FinancialIntelligencePage from './pages/reports/FinancialIntelligencePage';
-import DeliveryPredictabilityPage from './pages/reports/DeliveryPredictabilityPage';
-import SmartNotificationsPage from './pages/reports/SmartNotificationsPage';
-import PodHoursPage from './pages/reports/PodHoursPage';
-import DependencyMapPage from './pages/reports/DependencyMapPage';
-import PortfolioTimelinePage from './pages/reports/PortfolioTimelinePage';
-import ResourceIntelligencePage from './pages/reports/ResourceIntelligencePage';
-import BudgetCapexPage from './pages/reports/BudgetCapexPage';
-import ProjectSignalsPage from './pages/reports/ProjectSignalsPage';
-import ResourceBookingsPage from './pages/ResourceBookingsPage';
-import ProjectTemplatesPage from './pages/ProjectTemplatesPage';
-import WorkloadChartPage from './pages/WorkloadChartPage';
-import GanttDependenciesPage from './pages/GanttDependenciesPage';
-import OrgSettingsPage from './pages/settings/OrgSettingsPage';
-import SmartMappingPage from './pages/SmartMappingPage';
-import InboxPage from './pages/InboxPage';
-import AzureDevOpsSettingsPage from './pages/settings/AzureDevOpsSettingsPage';
-import ObjectivesPage from './pages/ObjectivesPage';
-import RiskRegisterPage from './pages/RiskRegisterPage';
-import IdeasBoardPage from './pages/IdeasBoardPage';
-import CalendarHubPage from './pages/CalendarHubPage';
-import CapacityHubPage from './pages/CapacityHubPage';
-import LeaveHubPage from './pages/LeaveHubPage';
+// ── Public / auth pages (keep eager — they load before AppShell) ─────────────
+import LoginPage          from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage  from './pages/ResetPasswordPage';
 
+// ── Lazy-loaded page components ──────────────────────────────────────────────
+const DashboardPage                 = lazy(() => import('./pages/DashboardPage'));
+const ResourcesPage                 = lazy(() => import('./pages/ResourcesPage'));
+const PodsPage                      = lazy(() => import('./pages/PodsPage'));
+const ProjectsPage                  = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage             = lazy(() => import('./pages/ProjectDetailPage'));
+const AvailabilityPage              = lazy(() => import('./pages/AvailabilityPage'));
+const OverridesPage                 = lazy(() => import('./pages/OverridesPage'));
+const UtilizationCenterPage         = lazy(() => import('./pages/reports/UtilizationCenterPage'));
+const HiringForecastPage            = lazy(() => import('./pages/reports/HiringForecastPage'));
+const DeadlineGapPage               = lazy(() => import('./pages/reports/DeadlineGapPage'));
+const BudgetPage                    = lazy(() => import('./pages/reports/BudgetPage'));
+const CapacityDemandPage            = lazy(() => import('./pages/reports/CapacityDemandPage'));
+const CapacityForecastPage          = lazy(() => import('./pages/reports/CapacityForecastPage'));
+const SprintRetroPage               = lazy(() => import('./pages/reports/SprintRetroPage'));
+const ResourceSkillsMatrixPage      = lazy(() => import('./pages/reports/ResourceSkillsMatrixPage'));
+const RiskHeatmapPage               = lazy(() => import('./pages/reports/RiskHeatmapPage'));
+const ExecSummaryPage               = lazy(() => import('./pages/reports/ExecSummaryPage'));
+const StatusUpdatesFeedPage         = lazy(() => import('./pages/reports/StatusUpdatesFeedPage'));
+const TeamPulsePage                 = lazy(() => import('./pages/reports/TeamPulsePage'));
+const ChangelogAdminPage            = lazy(() => import('./pages/settings/ChangelogAdminPage'));
+const CustomFieldsAdminPage         = lazy(() => import('./pages/settings/CustomFieldsAdminPage'));
+const PodResourceSummaryPage        = lazy(() => import('./pages/reports/PodResourceSummaryPage'));
+const PodSplitsPage                 = lazy(() => import('./pages/reports/PodSplitsPage'));
+const PodDetailPage                 = lazy(() => import('./pages/PodDetailPage'));
+const ProjectPodMatrixPage          = lazy(() => import('./pages/reports/ProjectPodMatrixPage'));
+const PodCapacityPage               = lazy(() => import('./pages/reports/PodCapacityPage'));
+const JiraActualsPage               = lazy(() => import('./pages/JiraActualsPage'));
+const PodDashboardPage              = lazy(() => import('./pages/PodDashboardPage'));
+const JiraPodDetailPage             = lazy(() => import('./pages/JiraPodDetailPage'));
+const TimelineSimulatorPage         = lazy(() => import('./pages/simulators/TimelineSimulatorPage'));
+const ScenarioSimulatorPage         = lazy(() => import('./pages/simulators/ScenarioSimulatorPage'));
+const TimelineSettingsPage          = lazy(() => import('./pages/settings/TimelineSettingsPage'));
+const RefDataSettingsPage           = lazy(() => import('./pages/settings/RefDataSettingsPage'));
+const JiraSettingsPage              = lazy(() => import('./pages/settings/JiraSettingsPage'));
+const ReleasesPage                  = lazy(() => import('./pages/ReleasesPage'));
+const ReleaseSettingsPage           = lazy(() => import('./pages/settings/ReleaseSettingsPage'));
+const JiraCredentialsPage           = lazy(() => import('./pages/settings/JiraCredentialsPage'));
+const JiraCapexPage                 = lazy(() => import('./pages/JiraCapexPage'));
+const JiraSupportPage               = lazy(() => import('./pages/JiraSupportPage'));
+const JiraWorklogPage               = lazy(() => import('./pages/JiraWorklogPage'));
+const SupportBoardsSettingsPage     = lazy(() => import('./pages/settings/SupportBoardsSettingsPage'));
+const UserManagementPage            = lazy(() => import('./pages/settings/UserManagementPage'));
+const AuditLogPage                  = lazy(() => import('./pages/settings/AuditLogPage'));
+const TablesPage                    = lazy(() => import('./pages/settings/TablesPage'));
+const TeamCalendarPage              = lazy(() => import('./pages/TeamCalendarPage'));
+const OwnerDemandPage               = lazy(() => import('./pages/reports/OwnerDemandPage'));
+const ProjectHealthPage             = lazy(() => import('./pages/reports/ProjectHealthPage'));
+const ResourcePerformancePage       = lazy(() => import('./pages/reports/ResourcePerformancePage'));
+const SprintCalendarPage            = lazy(() => import('./pages/SprintCalendarPage'));
+const ReleaseCalendarPage           = lazy(() => import('./pages/ReleaseCalendarPage'));
+const ReleaseNotesPage              = lazy(() => import('./pages/ReleaseNotesPage'));
+const SprintPlanningRecommenderPage = lazy(() => import('./pages/SprintPlanningRecommenderPage'));
+const NlpLandingPage                = lazy(() => import('./pages/NlpLandingPage'));
+const NlpSettingsPage               = lazy(() => import('./pages/settings/NlpSettingsPage'));
+const NlpOptimizerPage              = lazy(() => import('./pages/settings/NlpOptimizerPage'));
+const FeedbackHubPage               = lazy(() => import('./pages/settings/FeedbackHubPage'));
+const ErrorLogPage                  = lazy(() => import('./pages/settings/ErrorLogPage'));
+const DoraMetricsPage               = lazy(() => import('./pages/reports/DoraMetricsPage'));
+const JiraAnalyticsPage             = lazy(() => import('./pages/reports/JiraAnalyticsPage'));
+const JiraDashboardBuilderPage      = lazy(() => import('./pages/reports/JiraDashboardBuilderPage'));
+const EngineeringProductivityPage   = lazy(() => import('./pages/reports/EngineeringProductivityPage'));
+const EngineeringIntelligencePage   = lazy(() => import('./pages/reports/EngineeringIntelligencePage'));
+const SidebarOrderPage              = lazy(() => import('./pages/settings/SidebarOrderPage'));
+const HolidayCalendarPage           = lazy(() => import('./pages/settings/HolidayCalendarPage'));
+const LeaveManagementPage           = lazy(() => import('./pages/settings/LeaveManagementPage'));
+const JiraResourceMappingPage       = lazy(() => import('./pages/settings/JiraResourceMappingPage'));
+const JiraReleaseMappingPage        = lazy(() => import('./pages/settings/JiraReleaseMappingPage'));
+const PortfolioHealthDashboardPage  = lazy(() => import('./pages/reports/PortfolioHealthDashboardPage'));
+const JiraPortfolioSyncPage         = lazy(() => import('./pages/reports/JiraPortfolioSyncPage'));
+const FinancialIntelligencePage     = lazy(() => import('./pages/reports/FinancialIntelligencePage'));
+const DeliveryPredictabilityPage    = lazy(() => import('./pages/reports/DeliveryPredictabilityPage'));
+const SmartNotificationsPage        = lazy(() => import('./pages/reports/SmartNotificationsPage'));
+const PodHoursPage                  = lazy(() => import('./pages/reports/PodHoursPage'));
+const DependencyMapPage             = lazy(() => import('./pages/reports/DependencyMapPage'));
+const PortfolioTimelinePage         = lazy(() => import('./pages/reports/PortfolioTimelinePage'));
+const ResourceIntelligencePage      = lazy(() => import('./pages/reports/ResourceIntelligencePage'));
+const BudgetCapexPage               = lazy(() => import('./pages/reports/BudgetCapexPage'));
+const ProjectSignalsPage            = lazy(() => import('./pages/reports/ProjectSignalsPage'));
+const ResourceBookingsPage          = lazy(() => import('./pages/ResourceBookingsPage'));
+const ProjectTemplatesPage          = lazy(() => import('./pages/ProjectTemplatesPage'));
+const WorkloadChartPage             = lazy(() => import('./pages/WorkloadChartPage'));
+const GanttDependenciesPage         = lazy(() => import('./pages/GanttDependenciesPage'));
+const OrgSettingsPage               = lazy(() => import('./pages/settings/OrgSettingsPage'));
+const SmartMappingPage              = lazy(() => import('./pages/SmartMappingPage'));
+const InboxPage                     = lazy(() => import('./pages/InboxPage'));
+const AzureDevOpsSettingsPage       = lazy(() => import('./pages/settings/AzureDevOpsSettingsPage'));
+const ObjectivesPage                = lazy(() => import('./pages/ObjectivesPage'));
+const RiskRegisterPage              = lazy(() => import('./pages/RiskRegisterPage'));
+const IdeasBoardPage                = lazy(() => import('./pages/IdeasBoardPage'));
+const CalendarHubPage               = lazy(() => import('./pages/CalendarHubPage'));
+const CapacityHubPage               = lazy(() => import('./pages/CapacityHubPage'));
+const LeaveHubPage                  = lazy(() => import('./pages/LeaveHubPage'));
+const AutomationEnginePage          = lazy(() => import('./pages/AutomationEnginePage'));
+const SmartInsightsPage             = lazy(() => import('./pages/SmartInsightsPage'));
+const NotificationPreferencesPage   = lazy(() => import('./pages/settings/NotificationPreferencesPage'));
+const CustomDashboardPage           = lazy(() => import('./pages/CustomDashboardPage'));
+const ProjectApprovalPage           = lazy(() => import('./pages/ProjectApprovalPage'));
+const BulkImportPage                = lazy(() => import('./pages/BulkImportPage'));
+const AdvancedTimelinePage          = lazy(() => import('./pages/AdvancedTimelinePage'));
 
 export default function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login"            element={<LoginPage />} />
+      <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
+      <Route path="/reset-password"   element={<ResetPasswordPage />} />
 
       {/* All other routes require authentication */}
       <Route element={<ProtectedRoute />}>
@@ -193,15 +212,69 @@ export default function App() {
             <Route path="/reports/capacity-demand" element={<CapacityDemandPage />} />
           </Route>
 
-          <Route path="/reports/capacity-forecast" element={<CapacityForecastPage />} />
-          <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
-          <Route path="/reports/skills-matrix" element={<ResourceSkillsMatrixPage />} />
-          <Route path="/reports/risk-heatmap" element={<RiskHeatmapPage />} />
-          <Route path="/reports/executive-summary" element={<ExecSummaryPage />} />
-          <Route path="/reports/status-updates" element={<StatusUpdatesFeedPage />} />
-          <Route path="/reports/team-pulse" element={<TeamPulsePage />} />
-          <Route path="/settings/changelog" element={<ChangelogAdminPage />} />
-          <Route path="/settings/custom-fields" element={<CustomFieldsAdminPage />} />
+          <Route element={<ProtectedRoute pageKey="capacity_forecast" />}>
+            <Route path="/reports/capacity-forecast" element={<CapacityForecastPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="sprint_retro" />}>
+            <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="skills_matrix" />}>
+            <Route path="/reports/skills-matrix" element={<ResourceSkillsMatrixPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="risk_heatmap" />}>
+            <Route path="/reports/risk-heatmap" element={<RiskHeatmapPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="exec_summary" />}>
+            <Route path="/reports/executive-summary" element={<ExecSummaryPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="status_updates" />}>
+            <Route path="/reports/status-updates" element={<StatusUpdatesFeedPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="team_pulse" />}>
+            <Route path="/reports/team-pulse" element={<TeamPulsePage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="changelog_admin" />}>
+            <Route path="/settings/changelog" element={<ChangelogAdminPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="automation_engine" />}>
+            <Route path="/automation-engine" element={<AutomationEnginePage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="custom_fields_admin" />}>
+            <Route path="/settings/custom-fields" element={<CustomFieldsAdminPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="smart_insights" />}>
+            <Route path="/smart-insights" element={<SmartInsightsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="notification_preferences" />}>
+            <Route path="/settings/notification-preferences" element={<NotificationPreferencesPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="custom_dashboard" />}>
+            <Route path="/custom-dashboard" element={<CustomDashboardPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="project_approvals" />}>
+            <Route path="/approvals" element={<ProjectApprovalPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="bulk_import" />}>
+            <Route path="/bulk-import" element={<BulkImportPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="advanced_timeline" />}>
+            <Route path="/advanced-timeline" element={<AdvancedTimelinePage />} />
+          </Route>
 
           <Route element={<ProtectedRoute pageKey="pod_resources" />}>
             <Route path="/reports/pod-resources" element={<PodResourceSummaryPage />} />
@@ -446,10 +519,12 @@ export default function App() {
             <Route path="/settings/smart-mapping" element={<SmartMappingPage />} />
           </Route>
 
-          {/* Admin-only pages — no pageKey needed (nav already hides them) */}
-          <Route path="/settings/users" element={<UserManagementPage />} />
-          <Route path="/settings/audit-log" element={<AuditLogPage />} />
-          <Route path="/settings/tables" element={<TablesPage />} />
+          {/* Admin-only pages — guarded by org_settings permission */}
+          <Route element={<ProtectedRoute pageKey="org_settings" />}>
+            <Route path="/settings/users" element={<UserManagementPage />} />
+            <Route path="/settings/audit-log" element={<AuditLogPage />} />
+            <Route path="/settings/tables" element={<TablesPage />} />
+          </Route>
 
         </Route>
       </Route>

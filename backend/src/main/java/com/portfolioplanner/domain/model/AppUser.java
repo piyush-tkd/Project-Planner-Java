@@ -31,4 +31,8 @@ public class AppUser {
     /** Optional display name shown in the UI (e.g. "John Smith"). */
     @Column(name = "display_name", length = 150)
     private String displayName;
+
+    /** Email address — used for password-reset and SSO account matching. */
+    @Column(length = 255)
+    private String email;
 }

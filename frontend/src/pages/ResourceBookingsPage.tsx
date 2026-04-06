@@ -40,6 +40,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 interface Resource {
   id: number | string;
@@ -109,6 +110,7 @@ const BOOKING_COLORS = [
 ];
 
 export default function ResourceBookingsPage() {
+  const isDark = useDarkMode();
   const queryClient = useQueryClient();
   const [weekOffset, setWeekOffset] = useState(0);
   const [filterPod, setFilterPod] = useState<string | null>(null);
@@ -468,8 +470,8 @@ export default function ResourceBookingsPage() {
                     style={{
                       display: 'flex',
                       height: ROW_H,
-                      borderBottom: '1px solid #e7e9ec',
-                      background: ri % 2 === 0 ? '#fff' : '#fafbfc',
+                      borderBottom: '1px solid var(--mantine-color-default-border)',
+                      background: ri % 2 === 0 ? 'var(--mantine-color-body)' : 'var(--mantine-color-default-hover)',
                       alignItems: 'center',
                     }}
                   >
@@ -482,7 +484,7 @@ export default function ResourceBookingsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        borderRight: '1px solid #e7e9ec',
+                        borderRight: '1px solid var(--mantine-color-default-border)',
                         height: '100%',
                       }}
                     >

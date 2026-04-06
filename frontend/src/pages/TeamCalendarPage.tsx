@@ -379,7 +379,7 @@ export default function TeamCalendarPage() {
  {/* ── Data rows ─────────────────────────────────────────── */}
  <tbody>
  {rows.map((row, ri) => (
- <tr key={row.podName} style={{ background: ri % 2 === 0 ? '#fff' : '#f8f9fa' }}>
+ <tr key={row.podName} style={{ background: isDark ? (ri % 2 === 0 ? '#1a1b1e' : '#222222') : (ri % 2 === 0 ? '#fff' : '#f8f9fa') }}>
  {/* POD name cell */}
  <td style={{
  padding: '10px 16px',

@@ -36,6 +36,10 @@ public class PodService {
     @CacheEvict(value = "calculations", allEntries = true)
     public PodResponse create(Pod pod) {
         if (pod.getActive() == null) pod.setActive(true);
+        // Ensure display_order is never null — append after existing pods
+        if (pod.getDisplayOrder() == null) {
+            pod.setDisplayOrder(podRepository.findMaxDisplayOrder() + 1);
+        }
         pod = podRepository.save(pod);
         return mapper.toPodResponse(pod);
     }

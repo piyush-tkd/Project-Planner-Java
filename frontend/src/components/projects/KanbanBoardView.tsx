@@ -10,6 +10,7 @@ import {
 import { DEEP_BLUE, AQUA } from '../../brandTokens';
 
 const CUSTOM_LANES_KEY = 'pp_kanban_custom_lanes';
+const HIDDEN_LANES_KEY = 'pp_kanban_hidden_lanes';
 
 interface Project {
   id: number;
@@ -219,6 +220,14 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
   });
+  // Hidden default lanes — default columns the user has dismissed, persisted to localStorage
+  const [hiddenDefaultLanes, setHiddenDefaultLanes] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(HIDDEN_LANES_KEY);
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
+
   const [addLaneOpen, setAddLaneOpen] = useState(false);
   const [newLaneName, setNewLaneName] = useState('');
   const [deleteProjectConfirm, setDeleteProjectConfirm] = useState<Project | null>(null);
@@ -228,6 +237,11 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
     try { localStorage.setItem(CUSTOM_LANES_KEY, JSON.stringify(customLanes)); } catch {}
   }, [customLanes]);
 
+  // Persist hidden default lanes
+  useEffect(() => {
+    try { localStorage.setItem(HIDDEN_LANES_KEY, JSON.stringify([...hiddenDefaultLanes])); } catch {}
+  }, [hiddenDefaultLanes]);
+
   // Drag state
   const draggingProjectId = useRef<number | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -236,12 +250,13 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   // Optimistic status for immediate visual feedback while API is in flight
   const [optimisticStatus, setOptimisticStatus] = useState<Record<number, string>>({});
 
-  // Combine default + custom lanes, and also discover any statuses in the data not covered by defaults
+  // Combine default + custom lanes, filtering out hidden defaults
   const allColumns = useMemo(() => {
+    const visibleDefaults = DEFAULT_COLUMNS.filter(c => !hiddenDefaultLanes.has(c.key));
     const knownKeys = new Set([...DEFAULT_COLUMNS.map(c => c.key), ...customLanes.map(c => c.key)]);
     const extraStatuses = projects
       .map(p => (p.status || 'NOT_STARTED').toUpperCase())
-      .filter(s => !knownKeys.has(s));
+      .filter(s => !knownKeys.has(s) && !hiddenDefaultLanes.has(s));
     const uniqueExtra = [...new Set(extraStatuses)];
 
     const extraCols = uniqueExtra.map((s, i) => ({
@@ -250,8 +265,8 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
       ...CUSTOM_COLUMN_COLORS[i % CUSTOM_COLUMN_COLORS.length],
     }));
 
-    return [...DEFAULT_COLUMNS, ...customLanes, ...extraCols];
-  }, [customLanes, projects]);
+    return [...visibleDefaults, ...customLanes, ...extraCols];
+  }, [customLanes, projects, hiddenDefaultLanes]);
 
   const columns = useMemo(() => {
     return allColumns.map(col => ({
@@ -313,12 +328,26 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   const handleAddLane = () => {
     const key = newLaneName.trim().toUpperCase().replace(/\s+/g, '_');
     if (!key) return;
-    // Don't add duplicates
+
+    // If this matches a previously-hidden default lane, just unhide it
+    if (hiddenDefaultLanes.has(key)) {
+      setHiddenDefaultLanes(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setAddLaneOpen(false);
+      setNewLaneName('');
+      return;
+    }
+
+    // Don't add duplicates of currently-visible lanes
     if (allColumns.some(c => c.key === key)) {
       setAddLaneOpen(false);
       setNewLaneName('');
       return;
     }
+
     const colorIdx = customLanes.length % CUSTOM_COLUMN_COLORS.length;
     setCustomLanes(prev => [
       ...prev,
@@ -329,9 +358,15 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   };
 
   const handleDeleteLane = (key: string) => {
-    // Remove from custom lanes (covers both user-added and any discovered extras tracked here)
-    setCustomLanes(prev => prev.filter(l => l.key !== key));
-    // If this lane had projects, move them to NOT_STARTED via status change
+    const isDefaultLane = DEFAULT_COLUMNS.some(d => d.key === key);
+    if (isDefaultLane) {
+      // Hide it — added to the hidden-defaults set so it disappears from allColumns
+      setHiddenDefaultLanes(prev => new Set([...prev, key]));
+    } else {
+      // Remove custom / auto-discovered lane from the list
+      setCustomLanes(prev => prev.filter(l => l.key !== key));
+    }
+    // Move any projects that were in this lane to NOT_STARTED
     const affectedProjects = projects.filter(p => {
       const s = optimisticStatus[p.id] ?? (p.status || 'NOT_STARTED');
       return s.toUpperCase() === key;
@@ -358,8 +393,8 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
         >
           {columns.map(col => {
             const isOver = dragOverColumn === col.key;
-            // Deletable = anything not in the fixed DEFAULT_COLUMNS
-            const isDeletable = !DEFAULT_COLUMNS.some(d => d.key === col.key);
+            // Deletable = any lane except NOT_STARTED (the fallback bucket must always exist)
+            const isDeletable = col.key !== 'NOT_STARTED';
             return (
               <Box
                 key={col.key}
