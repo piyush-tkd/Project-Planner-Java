@@ -647,16 +647,44 @@ export default function OrgSettingsPage() {
               </SimpleGrid>
             </Paper>
             <Paper withBorder p="lg" radius="md">
-              <Text fw={600} mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Feature Flags</Text>
-              <Stack gap="sm">
+              <Text fw={600} mb={4} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Feature Flags</Text>
+              <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
+                Toggle features on/off — disabled features are hidden from the sidebar for all users.
+              </Text>
+              <Stack gap={0}>
+                {/* ── Module toggles ─────────────────────────────────────── */}
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: '0.06em' }}>Modules</Text>
                 {[
-                  { key: 'ai',         label: 'AI Features',        desc: 'Enable Ask AI, Smart Notifications, and delivery predictions', defaultOn: true  },
-                  { key: 'ideas',      label: 'Ideas Board',        desc: 'Allow team members to submit and vote on ideas',               defaultOn: true  },
-                  { key: 'risk',       label: 'Risk Register',      desc: 'Enable risk and issue tracking across projects',              defaultOn: true  },
-                  { key: 'okr',        label: 'OKR Tracking',       desc: 'Enable Objectives & Key Results management',                  defaultOn: true  },
-                  { key: 'financials', label: 'Financial Tracking', desc: 'Show budget, actuals, and CapEx/OpEx tracking',               defaultOn: false },
+                  { key: 'jira',            label: 'Jira Integration',       desc: 'POD Dashboard, Releases, Actuals, Support Queue, Worklog, Portfolio Sync',  defaultOn: true  },
+                  { key: 'engineering',     label: 'Engineering Analytics',   desc: 'DORA, Eng. Intelligence, Delivery Predictability, Sprint Retro, Dashboard Builder', defaultOn: true  },
+                  { key: 'simulations',     label: 'Simulators',             desc: 'Timeline Simulator and Scenario Simulator',                                  defaultOn: true  },
+                  { key: 'advanced_people', label: 'Advanced People Reports', desc: 'Capacity Forecast, Skills Matrix, Team Pulse, Resource Performance & Intelligence', defaultOn: true  },
+                  { key: 'financials',      label: 'Financial Tracking',      desc: 'Budget & CapEx / OpEx tracking',                                             defaultOn: true  },
                 ].map(flag => (
-                  <Group key={flag.key} justify="space-between" wrap="nowrap">
+                  <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
+                    style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+                    <div>
+                      <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
+                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
+                    </div>
+                    <Switch
+                      checked={draft.features?.[flag.key] ?? flag.defaultOn}
+                      onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
+                      color="teal"
+                      size="sm"
+                    />
+                  </Group>
+                ))}
+                {/* ── Feature toggles ────────────────────────────────────── */}
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mt="md" mb="xs" style={{ letterSpacing: '0.06em' }}>Features</Text>
+                {[
+                  { key: 'ai',         label: 'AI Features',        desc: 'Ask AI, Smart Notifications — requires OpenAI/Anthropic API key', defaultOn: true  },
+                  { key: 'okr',        label: 'OKR Tracking',       desc: 'Objectives & Key Results management',                             defaultOn: true  },
+                  { key: 'risk',       label: 'Risk Register',      desc: 'Risk and issue tracking across projects',                         defaultOn: true  },
+                  { key: 'ideas',      label: 'Ideas Board',        desc: 'Team idea submission and voting',                                  defaultOn: true  },
+                ].map(flag => (
+                  <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
+                    style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
                     <div>
                       <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>

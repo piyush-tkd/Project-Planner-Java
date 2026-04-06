@@ -41,6 +41,15 @@ public class TimelineService {
             for (int m = 1; m <= 12; m++) defaultHours.put("M" + m, 160);
             config.setWorkingHours(defaultHours);
         }
+        // Always compute currentMonthIndex dynamically from today's real date
+        // so the "NOW" marker stays accurate without manual admin updates.
+        int todayMonth = LocalDate.now().getMonthValue();
+        int todayYear  = LocalDate.now().getYear();
+        int startMonth = config.getStartMonth();
+        int startYear  = config.getStartYear();
+        int monthsFromStart = (todayYear - startYear) * 12 + (todayMonth - startMonth) + 1;
+        int dynamicCurrentIndex = Math.max(1, Math.min(12, monthsFromStart));
+        config.setCurrentMonthIndex(dynamicCurrentIndex);
         return mapper.toTimelineResponse(config, monthLabels);
     }
 

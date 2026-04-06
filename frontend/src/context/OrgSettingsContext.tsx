@@ -25,11 +25,15 @@ const DEFAULTS: OrgConfig = {
   dateFormat:      'MMM DD, YYYY',
   fiscalYearStart: 'January',
   features: {
-    ai:         true,
-    okr:        true,
-    risk:       true,
-    ideas:      true,
-    financials: true,
+    ai:              true,
+    okr:             true,
+    risk:            true,
+    ideas:           true,
+    financials:      true,
+    jira:            true,
+    engineering:     true,
+    simulations:     true,
+    advanced_people: true,
   },
 };
 

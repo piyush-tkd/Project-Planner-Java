@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import ErrorBoundary from '../common/ErrorBoundary';
 import { useOrgSettings } from '../../context/OrgSettingsContext';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
 import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
@@ -143,11 +144,11 @@ const navGroups: NavGroup[] = [
       { label: 'Bookings',              path: '/resource-bookings',              icon: <IconCalendarPlus size={17} />,    pageKey: 'resource_bookings' },
       { label: 'Capacity',              path: '/capacity',                       icon: <IconFlame size={17} />,           pageKey: 'capacity_hub' },
       { label: 'Leave & Holidays',      path: '/leave',                          icon: <IconCalendarOff size={17} />,     pageKey: 'leave_hub' },
-      { label: 'Capacity Forecast',     path: '/reports/capacity-forecast',      icon: <IconRadar size={17} />,           pageKey: 'capacity_forecast' },
-      { label: 'Skills Matrix',         path: '/reports/skills-matrix',          icon: <IconStars size={17} />,           pageKey: 'skills_matrix' },
-      { label: 'Team Pulse',            path: '/reports/team-pulse',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'team_pulse' },
-      { label: 'Resource Performance',  path: '/reports/resource-performance',   icon: <IconTrendingUp size={17} />,      pageKey: 'resource_performance' },
-      { label: 'Resource Intelligence', path: '/reports/resource-intelligence',  icon: <IconUserSearch size={17} />,      pageKey: 'resource_intelligence' },
+      { label: 'Capacity Forecast',     path: '/reports/capacity-forecast',      icon: <IconRadar size={17} />,           pageKey: 'capacity_forecast',      featureFlag: 'advanced_people' },
+      { label: 'Skills Matrix',         path: '/reports/skills-matrix',          icon: <IconStars size={17} />,           pageKey: 'skills_matrix',          featureFlag: 'advanced_people' },
+      { label: 'Team Pulse',            path: '/reports/team-pulse',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'team_pulse',             featureFlag: 'advanced_people' },
+      { label: 'Resource Performance',  path: '/reports/resource-performance',   icon: <IconTrendingUp size={17} />,      pageKey: 'resource_performance',   featureFlag: 'advanced_people' },
+      { label: 'Resource Intelligence', path: '/reports/resource-intelligence',  icon: <IconUserSearch size={17} />,      pageKey: 'resource_intelligence',  featureFlag: 'advanced_people' },
     ],
   },
   // ── CALENDAR ───────────────────────────────────────────────────────────────
@@ -165,12 +166,12 @@ const navGroups: NavGroup[] = [
   {
     label: 'Delivery',
     items: [
-      { label: 'POD Dashboard',  path: '/jira-pods',      icon: <IconUsersGroup size={17} />,  pageKey: 'jira_pods' },
-      { label: 'Releases',       path: '/jira-releases',  icon: <IconTag size={17} />,          pageKey: 'jira_releases' },
-      { label: 'Release Notes',  path: '/release-notes',  icon: <IconPackage size={17} />,      pageKey: 'release_notes' },
-      { label: 'Jira Actuals',   path: '/jira-actuals',   icon: <IconTicket size={17} />,       pageKey: 'jira_actuals' },
-      { label: 'Support Queue',  path: '/jira-support',   icon: <IconHeadset size={17} />,      pageKey: 'jira_support', alertKey: 'supportStale' },
-      { label: 'Worklog',        path: '/jira-worklog',   icon: <IconClock size={17} />,        pageKey: 'jira_worklog' },
+      { label: 'POD Dashboard',  path: '/jira-pods',      icon: <IconUsersGroup size={17} />,  pageKey: 'jira_pods',      featureFlag: 'jira' },
+      { label: 'Releases',       path: '/jira-releases',  icon: <IconTag size={17} />,          pageKey: 'jira_releases',  featureFlag: 'jira' },
+      { label: 'Release Notes',  path: '/release-notes',  icon: <IconPackage size={17} />,      pageKey: 'release_notes',  featureFlag: 'jira' },
+      { label: 'Jira Actuals',   path: '/jira-actuals',   icon: <IconTicket size={17} />,       pageKey: 'jira_actuals',   featureFlag: 'jira' },
+      { label: 'Support Queue',  path: '/jira-support',   icon: <IconHeadset size={17} />,      pageKey: 'jira_support',   featureFlag: 'jira', alertKey: 'supportStale' },
+      { label: 'Worklog',        path: '/jira-worklog',   icon: <IconClock size={17} />,        pageKey: 'jira_worklog',   featureFlag: 'jira' },
       { label: 'Budget & CapEx', path: '/reports/budget-capex', icon: <IconCurrencyDollar size={17} />, pageKey: 'budget_capex', featureFlag: 'financials' },
     ],
   },
@@ -193,22 +194,22 @@ const navGroups: NavGroup[] = [
   {
     label: 'Engineering',
     items: [
-      { label: 'Eng. Intelligence',   path: '/reports/engineering-intelligence',   icon: <IconReportMoney size={17} />,       pageKey: 'engineering_intelligence' },
-      { label: 'DORA Metrics',        path: '/reports/dora',                       icon: <IconRocket size={17} />,            pageKey: 'dora_metrics' },
-      { label: 'Delivery Predict.',   path: '/reports/delivery-predictability',    icon: <IconChartDots3 size={17} />,        pageKey: 'delivery_predictability' },
-      { label: 'Sprint Retro',        path: '/reports/sprint-retro',               icon: <IconListCheck size={17} />,         pageKey: 'sprint_retro' },
-      { label: 'Jira Analytics',      path: '/reports/jira-analytics',             icon: <IconChartInfographic size={17} />,  pageKey: 'jira_analytics' },
-      { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder',     icon: <IconLayoutDashboard size={17} />,   pageKey: 'jira_dashboard_builder' },
+      { label: 'Eng. Intelligence',   path: '/reports/engineering-intelligence',   icon: <IconReportMoney size={17} />,       pageKey: 'engineering_intelligence', featureFlag: 'engineering' },
+      { label: 'DORA Metrics',        path: '/reports/dora',                       icon: <IconRocket size={17} />,            pageKey: 'dora_metrics',             featureFlag: 'engineering' },
+      { label: 'Delivery Predict.',   path: '/reports/delivery-predictability',    icon: <IconChartDots3 size={17} />,        pageKey: 'delivery_predictability',  featureFlag: 'engineering' },
+      { label: 'Sprint Retro',        path: '/reports/sprint-retro',               icon: <IconListCheck size={17} />,         pageKey: 'sprint_retro',             featureFlag: 'engineering' },
+      { label: 'Jira Analytics',      path: '/reports/jira-analytics',             icon: <IconChartInfographic size={17} />,  pageKey: 'jira_analytics',           featureFlag: 'engineering' },
+      { label: 'Dashboard Builder',   path: '/reports/jira-dashboard-builder',     icon: <IconLayoutDashboard size={17} />,   pageKey: 'jira_dashboard_builder',   featureFlag: 'engineering' },
     ],
   },
   // ── SIMULATIONS & TOOLS ────────────────────────────────────────────────────
   {
     label: 'Simulations',
     items: [
-      { label: 'Timeline Simulator',  path: '/simulator/timeline',              icon: <IconPlayerPlay size={17} />,    pageKey: 'timeline_simulator' },
-      { label: 'Scenario Simulator',  path: '/simulator/scenario',              icon: <IconAdjustments size={17} />,   pageKey: 'scenario_simulator' },
-      { label: 'Smart Notifications', path: '/reports/smart-notifications',     icon: <IconBellRinging size={17} />,   pageKey: 'smart_notifications' },
-      { label: 'Jira Portfolio Sync', path: '/reports/jira-portfolio-sync',     icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync' },
+      { label: 'Timeline Simulator',  path: '/simulator/timeline',              icon: <IconPlayerPlay size={17} />,    pageKey: 'timeline_simulator',  featureFlag: 'simulations' },
+      { label: 'Scenario Simulator',  path: '/simulator/scenario',              icon: <IconAdjustments size={17} />,   pageKey: 'scenario_simulator',  featureFlag: 'simulations' },
+      { label: 'Smart Notifications', path: '/reports/smart-notifications',     icon: <IconBellRinging size={17} />,   pageKey: 'smart_notifications', featureFlag: 'ai' },
+      { label: 'Jira Portfolio Sync', path: '/reports/jira-portfolio-sync',     icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync', featureFlag: 'jira' },
     ],
   },
   // ── ADMIN ──────────────────────────────────────────────────────────────────
@@ -745,7 +746,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v15.2
+              Portfolio Planner v15.3
             </Text>
           </div>
         </MantineAppShell.Section>
@@ -753,9 +754,11 @@ export default function AppShellLayout() {
 
       <MantineAppShell.Main>
         <GlobalBreadcrumb />
-        <div key={location.pathname} className="page-transition">
-          <Outlet />
-        </div>
+        <ErrorBoundary key={location.pathname}>
+          <div className="page-transition">
+            <Outlet />
+          </div>
+        </ErrorBoundary>
       </MantineAppShell.Main>
 
       <ExcelUploadModal opened={excelModalOpen} onClose={() => setExcelModalOpen(false)} />
