@@ -116,8 +116,8 @@ export default function ProjectsPage() {
   const [editDraft, setEditDraft] = useState<string>('');
   // Inline add-row state
   const [addRowActive, setAddRowActive] = useState(false);
-  const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string }>({
-    name: '', priority: 'P2', owner: '', status: 'ACTIVE',
+  const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string; startMonth: number; durationMonths: number; defaultPattern: string }>({
+    name: '', priority: 'P2', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat',
   });
   const { data: effortPatterns } = useEffortPatterns();
   const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraAllProjectsSimple();
@@ -420,11 +420,11 @@ export default function ProjectsPage() {
   const submitAddRow = () => {
     if (!addRowForm.name.trim()) { setAddRowActive(false); return; }
     createMutation.mutate(
-      { name: addRowForm.name.trim(), priority: addRowForm.priority, owner: addRowForm.owner, startMonth: 1, durationMonths: 3, defaultPattern: 'Flat', status: addRowForm.status, notes: null, startDate: null, targetDate: null, client: null },
+      { name: addRowForm.name.trim(), priority: addRowForm.priority, owner: addRowForm.owner, startMonth: addRowForm.startMonth, durationMonths: addRowForm.durationMonths, defaultPattern: addRowForm.defaultPattern, status: addRowForm.status, notes: null, startDate: null, targetDate: null, client: null },
       {
         onSuccess: () => {
           setAddRowActive(false);
-          setAddRowForm({ name: '', priority: 'P2', owner: '', status: 'ACTIVE' });
+          setAddRowForm({ name: '', priority: 'P2', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat' });
           notifications.show({ title: 'Created', message: 'Project created', color: 'green' });
         },
         onError: (err: any) => notifications.show({ color: 'red', title: 'Error', message: err?.response?.data?.message || 'Failed to create project' }),
@@ -960,10 +960,14 @@ export default function ProjectsPage() {
                 {/* ── Inline add-row ── */}
                 {addRowActive ? (
                   <Table.Tr style={{ background: isDark ? 'rgba(45,204,211,0.06)' : '#f0fdfa' }}>
+                    {/* checkbox */}
                     <Table.Td />
+                    {/* expand chevron — always present in header */}
+                    <Table.Td />
+                    {/* # */}
                     {visibleCols.has('#') && <Table.Td />}
-                    {/* Name */}
-                    <Table.Td>
+                    {/* Name — always visible */}
+                    <Table.Td style={{ minWidth: 180 }}>
                       <TextInput
                         size="xs"
                         placeholder="Project name…"
@@ -977,7 +981,7 @@ export default function ProjectsPage() {
                     {visibleCols.has('Priority') && (
                       <Table.Td>
                         <Select size="xs" data={priorityOptions} value={addRowForm.priority}
-                          onChange={v => setAddRowForm(f => ({ ...f, priority: v ?? 'P2' }))} />
+                          onChange={v => setAddRowForm(f => ({ ...f, priority: v ?? 'P2' }))} style={{ minWidth: 80 }} />
                       </Table.Td>
                     )}
                     {/* Owner */}
@@ -987,18 +991,44 @@ export default function ProjectsPage() {
                           onChange={e => setAddRowForm(f => ({ ...f, owner: e.currentTarget.value }))} />
                       </Table.Td>
                     )}
-                    {visibleCols.has('Start') && <Table.Td />}
+                    {/* Start month */}
+                    {visibleCols.has('Start') && (
+                      <Table.Td style={{ minWidth: 70 }}>
+                        <NumberInput size="xs" placeholder="M1" value={addRowForm.startMonth}
+                          min={1} max={12} hideControls
+                          onChange={v => setAddRowForm(f => ({ ...f, startMonth: Number(v) || 1 }))} />
+                      </Table.Td>
+                    )}
+                    {/* End — computed, not editable inline */}
                     {visibleCols.has('End') && <Table.Td />}
-                    {visibleCols.has('Duration') && <Table.Td />}
-                    {visibleCols.has('Pattern') && <Table.Td />}
+                    {/* Duration */}
+                    {visibleCols.has('Duration') && (
+                      <Table.Td style={{ minWidth: 70 }}>
+                        <NumberInput size="xs" placeholder="3" value={addRowForm.durationMonths}
+                          min={1} max={60} hideControls
+                          onChange={v => setAddRowForm(f => ({ ...f, durationMonths: Number(v) || 3 }))} />
+                      </Table.Td>
+                    )}
+                    {/* Pattern */}
+                    {visibleCols.has('Pattern') && (
+                      <Table.Td>
+                        <Select size="xs"
+                          data={(effortPatterns ?? []).map(ep => ({ value: ep.name, label: ep.name }))}
+                          value={addRowForm.defaultPattern}
+                          onChange={v => setAddRowForm(f => ({ ...f, defaultPattern: v ?? 'Flat' }))} />
+                      </Table.Td>
+                    )}
                     {/* Status */}
                     {visibleCols.has('Status') && (
                       <Table.Td>
                         <Select size="xs" data={statusOptions} value={addRowForm.status}
-                          onChange={v => setAddRowForm(f => ({ ...f, status: v ?? 'ACTIVE' }))} />
+                          onChange={v => setAddRowForm(f => ({ ...f, status: v ?? 'ACTIVE' }))} style={{ minWidth: 100 }} />
                       </Table.Td>
                     )}
                     {visibleCols.has('Created') && <Table.Td />}
+                    {/* Source — always visible in header */}
+                    <Table.Td />
+                    {/* Actions */}
                     <Table.Td>
                       <Group gap={4}>
                         <ActionIcon size="sm" color="teal" variant="light" onClick={submitAddRow} loading={createMutation.isPending}>
