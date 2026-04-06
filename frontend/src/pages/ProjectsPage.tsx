@@ -1184,6 +1184,11 @@ export default function ProjectsPage() {
           onProjectClick={(id) => navigate(`/projects/${id}`)}
           onStatusChange={handleBoardStatusChange}
           onDeleteProject={(id) => confirmDelete([id])}
+          onAddProject={(status) => {
+            setForm({ ...emptyForm, status });
+            setNameError('');
+            setModalOpen(true);
+          }}
         />
       )}
 

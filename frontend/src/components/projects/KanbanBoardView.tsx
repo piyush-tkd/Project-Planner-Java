@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   Box, Text, Badge, Group, Stack, Tooltip, Avatar,
-  ActionIcon, Card, ScrollArea, Divider, TextInput,
+  ActionIcon, Card, ScrollArea, TextInput,
   Modal, Button,
 } from '@mantine/core';
 import {
@@ -27,6 +27,8 @@ interface KanbanBoardViewProps {
   onProjectClick?: (id: number) => void;
   onStatusChange?: (projectId: number, newStatus: string) => void;
   onDeleteProject?: (id: number) => void;
+  /** Called when user clicks "+ Add" inside a column; receives the column's status key */
+  onAddProject?: (status: string) => void;
 }
 
 const DEFAULT_COLUMNS: { key: string; label: string; color: string; borderColor: string }[] = [
@@ -70,6 +72,14 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
+// Vibrant gradient palettes per priority for the card header strip
+const CARD_PALETTE: Record<string, { gradient: string; accent: string; textColor: string }> = {
+  P0: { gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', accent: '#ee5a24', textColor: '#fff' },
+  P1: { gradient: 'linear-gradient(135deg, #fd9644 0%, #e67e22 100%)', accent: '#e67e22', textColor: '#fff' },
+  P2: { gradient: 'linear-gradient(135deg, #4dabf7 0%, #228be6 100%)', accent: '#228be6', textColor: '#fff' },
+  P3: { gradient: 'linear-gradient(135deg, #adb5bd 0%, #868e96 100%)', accent: '#868e96', textColor: '#fff' },
+};
+
 function KanbanCard({
   project,
   onClick,
@@ -88,6 +98,7 @@ function KanbanCard({
   const initials = project.owner
     ? project.owner.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
+  const palette = CARD_PALETTE[project.priority] ?? CARD_PALETTE['P3'];
 
   return (
     <Card
@@ -104,65 +115,103 @@ function KanbanCard({
         position: 'relative',
         opacity: dragging ? 0.45 : 1,
         transform: dragging ? 'rotate(2deg) scale(0.97)' : undefined,
-        transition: 'opacity 0.1s, transform 0.1s',
+        transition: 'opacity 0.1s, transform 0.1s, box-shadow 0.15s',
+        boxShadow: hovered && !dragging
+          ? `0 4px 16px ${palette.accent}33, 0 1px 4px rgba(0,0,0,0.08)`
+          : '0 1px 4px rgba(0,0,0,0.06)',
+        borderLeft: `3px solid ${palette.accent}`,
+        padding: 0,
+        overflow: 'hidden',
       }}
-      p="sm"
       radius="md"
       withBorder
     >
-      {/* Delete button — appears on hover */}
-      {onDelete && hovered && (
-        <ActionIcon
+      {/* Coloured header strip */}
+      <Box
+        style={{
+          background: palette.gradient,
+          padding: '7px 10px 6px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 6,
+        }}
+      >
+        <Text
           size="xs"
-          variant="filled"
-          color="red"
-          style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}
-          onClick={e => { e.stopPropagation(); onDelete(e); }}
-          title="Delete project"
+          fw={700}
+          lineClamp={2}
+          style={{ color: palette.textColor, flex: 1, lineHeight: 1.35, fontSize: 12 }}
         >
-          <IconTrash size={11} />
-        </ActionIcon>
-      )}
-      <Stack gap={8}>
-        <Group justify="space-between" align="flex-start" pr={onDelete ? 20 : 0}>
-          <Text size="sm" fw={600} style={{ color: DEEP_BLUE, flex: 1, lineHeight: 1.3 }}>
-            {project.name}
-          </Text>
-          <PriorityBadge priority={project.priority} />
-        </Group>
+          {project.name}
+        </Text>
+        <Box
+          style={{
+            background: 'rgba(255,255,255,0.25)',
+            borderRadius: 10,
+            padding: '1px 6px',
+            fontSize: 10,
+            fontWeight: 800,
+            color: palette.textColor,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          {project.priority}
+        </Box>
+      </Box>
 
-        {project.pod && (
-          <Text size="xs" c="dimmed">{project.pod}</Text>
+      {/* Card body */}
+      <Box p="xs" style={{ background: 'var(--mantine-color-body)' }}>
+        {/* Delete button — appears on hover */}
+        {onDelete && hovered && (
+          <ActionIcon
+            size="xs"
+            variant="filled"
+            color="red"
+            style={{ position: 'absolute', top: 34, right: 6, zIndex: 2 }}
+            onClick={e => { e.stopPropagation(); onDelete(e); }}
+            title="Delete project"
+          >
+            <IconTrash size={11} />
+          </ActionIcon>
         )}
 
-        <Divider />
+        {project.pod && (
+          <Text size="xs" c="dimmed" mb={4}>{project.pod}</Text>
+        )}
 
-        <Group justify="space-between">
-          <Group gap={6}>
-            {project.targetDate && (
-              <Group gap={3}>
-                <IconClock size={11} color="#94a3b8" />
-                <Text size="xs" c="dimmed">{project.targetDate}</Text>
-              </Group>
-            )}
-          </Group>
+        <Group justify="space-between" mt={2}>
+          {project.targetDate ? (
+            <Group gap={3}>
+              <IconClock size={11} color="#94a3b8" />
+              <Text size="xs" c="dimmed">{project.targetDate}</Text>
+            </Group>
+          ) : <Box />}
           {project.owner && (
             <Tooltip label={project.owner} withArrow>
-              <Avatar size={22} radius="xl"
-                color="teal"
-                style={{ fontSize: 10, fontWeight: 700, background: AQUA, color: DEEP_BLUE }}
+              <Avatar
+                size={20}
+                radius="xl"
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  background: palette.gradient,
+                  color: '#fff',
+                  border: `2px solid ${palette.accent}44`,
+                }}
               >
                 {initials}
               </Avatar>
             </Tooltip>
           )}
         </Group>
-      </Stack>
+      </Box>
     </Card>
   );
 }
 
-export default function KanbanBoardView({ projects, onProjectClick, onStatusChange, onDeleteProject }: KanbanBoardViewProps) {
+export default function KanbanBoardView({ projects, onProjectClick, onStatusChange, onDeleteProject, onAddProject }: KanbanBoardViewProps) {
   // Custom lanes — persisted to localStorage so they survive refreshes
   const [customLanes, setCustomLanes] = useState<{ key: string; label: string; color: string; borderColor: string }[]>(() => {
     try {
@@ -418,6 +467,42 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                         />
                       )}
                     </>
+                  )}
+
+                  {/* ── Per-column Add project button ── */}
+                  {onAddProject && (
+                    <Box
+                      onClick={() => onAddProject(col.key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        padding: '7px 12px',
+                        borderRadius: 8,
+                        border: `1.5px dashed ${col.borderColor}66`,
+                        color: col.borderColor,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        opacity: 0.75,
+                        transition: 'opacity 0.15s, border-color 0.15s, background 0.15s',
+                        marginTop: col.items.length > 0 ? 4 : 0,
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.opacity = '1';
+                        (e.currentTarget as HTMLElement).style.background = `${col.borderColor}12`;
+                        (e.currentTarget as HTMLElement).style.borderColor = col.borderColor;
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.opacity = '0.75';
+                        (e.currentTarget as HTMLElement).style.background = 'transparent';
+                        (e.currentTarget as HTMLElement).style.borderColor = `${col.borderColor}66`;
+                      }}
+                    >
+                      <IconPlus size={13} />
+                      Add project
+                    </Box>
                   )}
                 </Stack>
               </Box>
