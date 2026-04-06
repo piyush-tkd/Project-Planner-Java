@@ -34,7 +34,8 @@ import { usePagination } from '../hooks/usePagination';
 import { formatProjectDate } from '../utils/formatting';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
-const statusOptions = Object.values(ProjectStatus).map(s => ({ value: s, label: s.replace('_', ' ') }));
+// Base enum statuses — custom project statuses discovered from data are appended at runtime
+const BASE_STATUS_OPTIONS = Object.values(ProjectStatus).map(s => ({ value: s, label: s.replace(/_/g, ' ') }));
 
 const emptyForm: ProjectRequest = {
   name: '',
@@ -379,6 +380,19 @@ export default function ProjectsPage() {
 
   const { sorted: sortedProjects, sortKey, sortDir, onSort } = useTableSort(filtered, 'createdAt', 'desc');
   const { paginatedData: pagedProjects, ...pagination } = usePagination(sortedProjects, 25);
+
+  // Dynamic status options — includes any custom statuses found in loaded projects
+  const statusOptions = useMemo(() => {
+    const base = new Set<string>(BASE_STATUS_OPTIONS.map(o => o.value as string));
+    const extras = (projects ?? [])
+      .map(p => p.status as string)
+      .filter(s => s && !base.has(s))
+      .filter((s, i, arr) => arr.indexOf(s) === i); // unique
+    return [
+      ...BASE_STATUS_OPTIONS,
+      ...extras.map(s => ({ value: s, label: s.replace(/_/g, ' ') })),
+    ];
+  }, [projects]);
 
   const stats = useMemo(() => {
     const all = projects ?? [];
@@ -1066,6 +1080,7 @@ export default function ProjectsPage() {
           projects={boardProjects.map(p => ({ ...p, targetDate: p.targetDate ?? undefined }))}
           onProjectClick={(id) => navigate(`/projects/${id}`)}
           onStatusChange={handleBoardStatusChange}
+          onDeleteProject={(id) => confirmDelete([id])}
         />
       )}
 

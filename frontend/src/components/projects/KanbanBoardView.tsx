@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   Box, Text, Badge, Group, Stack, Tooltip, Avatar,
   ActionIcon, Card, ScrollArea, Divider, TextInput,
@@ -8,6 +8,8 @@ import {
   IconPlus, IconClock, IconX, IconCheck, IconTrash,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA } from '../../brandTokens';
+
+const CUSTOM_LANES_KEY = 'pp_kanban_custom_lanes';
 
 interface Project {
   id: number;
@@ -24,6 +26,7 @@ interface KanbanBoardViewProps {
   projects: Project[];
   onProjectClick?: (id: number) => void;
   onStatusChange?: (projectId: number, newStatus: string) => void;
+  onDeleteProject?: (id: number) => void;
 }
 
 const DEFAULT_COLUMNS: { key: string; label: string; color: string; borderColor: string }[] = [
@@ -70,14 +73,17 @@ function PriorityBadge({ priority }: { priority: string }) {
 function KanbanCard({
   project,
   onClick,
+  onDelete,
   onDragStart,
   onDragEnd,
 }: {
   project: Project;
   onClick?: () => void;
+  onDelete?: (e: React.MouseEvent) => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const initials = project.owner
     ? project.owner.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
@@ -89,13 +95,28 @@ function KanbanCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      style={{ cursor: 'grab', userSelect: 'none' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ cursor: 'grab', userSelect: 'none', position: 'relative' }}
       p="sm"
       radius="md"
       withBorder
     >
+      {/* Delete button — appears on hover */}
+      {onDelete && hovered && (
+        <ActionIcon
+          size="xs"
+          variant="filled"
+          color="red"
+          style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}
+          onClick={e => { e.stopPropagation(); onDelete(e); }}
+          title="Delete project"
+        >
+          <IconTrash size={11} />
+        </ActionIcon>
+      )}
       <Stack gap={8}>
-        <Group justify="space-between" align="flex-start">
+        <Group justify="space-between" align="flex-start" pr={onDelete ? 20 : 0}>
           <Text size="sm" fw={600} style={{ color: DEEP_BLUE, flex: 1, lineHeight: 1.3 }}>
             {project.name}
           </Text>
@@ -133,11 +154,22 @@ function KanbanCard({
   );
 }
 
-export default function KanbanBoardView({ projects, onProjectClick, onStatusChange }: KanbanBoardViewProps) {
-  // Custom lanes added by the user (persisted only for the session; server status is the source of truth)
-  const [customLanes, setCustomLanes] = useState<{ key: string; label: string; color: string; borderColor: string }[]>([]);
+export default function KanbanBoardView({ projects, onProjectClick, onStatusChange, onDeleteProject }: KanbanBoardViewProps) {
+  // Custom lanes — persisted to localStorage so they survive refreshes
+  const [customLanes, setCustomLanes] = useState<{ key: string; label: string; color: string; borderColor: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_LANES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
   const [addLaneOpen, setAddLaneOpen] = useState(false);
   const [newLaneName, setNewLaneName] = useState('');
+  const [deleteProjectConfirm, setDeleteProjectConfirm] = useState<Project | null>(null);
+
+  // Persist custom lanes whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(CUSTOM_LANES_KEY, JSON.stringify(customLanes)); } catch {}
+  }, [customLanes]);
 
   // Drag state
   const draggingProjectId = useRef<number | null>(null);
@@ -240,7 +272,17 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   };
 
   const handleDeleteLane = (key: string) => {
+    // Remove from custom lanes (covers both user-added and any discovered extras tracked here)
     setCustomLanes(prev => prev.filter(l => l.key !== key));
+    // If this lane had projects, move them to NOT_STARTED via status change
+    const affectedProjects = projects.filter(p => {
+      const s = optimisticStatus[p.id] ?? (p.status || 'NOT_STARTED');
+      return s.toUpperCase() === key;
+    });
+    for (const p of affectedProjects) {
+      setOptimisticStatus(prev => ({ ...prev, [p.id]: 'NOT_STARTED' }));
+      onStatusChange?.(p.id, 'NOT_STARTED');
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -259,7 +301,8 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
         >
           {columns.map(col => {
             const isOver = dragOverColumn === col.key;
-            const isCustom = customLanes.some(l => l.key === col.key);
+            // Deletable = anything not in the fixed DEFAULT_COLUMNS
+            const isDeletable = !DEFAULT_COLUMNS.some(d => d.key === col.key);
             return (
               <Box
                 key={col.key}
@@ -310,16 +353,18 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                       >
                         {col.items.length}
                       </Badge>
-                      {isCustom && (
-                        <ActionIcon
-                          size="xs"
-                          variant="subtle"
-                          color="red"
-                          onClick={() => handleDeleteLane(col.key)}
-                          title="Remove lane"
-                        >
-                          <IconX size={11} />
-                        </ActionIcon>
+                      {isDeletable && (
+                        <Tooltip label={col.items.length > 0 ? `Remove lane (${col.items.length} project${col.items.length !== 1 ? 's' : ''} → Not Started)` : 'Remove lane'} withArrow>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="red"
+                            onClick={() => handleDeleteLane(col.key)}
+                            title="Remove lane"
+                          >
+                            <IconX size={11} />
+                          </ActionIcon>
+                        </Tooltip>
                       )}
                     </Group>
                   </Group>
@@ -346,6 +391,7 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                         key={project.id}
                         project={project}
                         onClick={() => onProjectClick?.(project.id)}
+                        onDelete={onDeleteProject ? () => setDeleteProjectConfirm(project) : undefined}
                         onDragStart={e => handleDragStart(e, project.id)}
                         onDragEnd={handleDragEnd}
                       />
@@ -382,6 +428,36 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
           </Box>
         </Box>
       </ScrollArea>
+
+      {/* Delete project confirmation modal */}
+      <Modal
+        opened={!!deleteProjectConfirm}
+        onClose={() => setDeleteProjectConfirm(null)}
+        title={<Text fw={700} c="red" size="sm">Delete Project?</Text>}
+        size="xs"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Delete <strong>{deleteProjectConfirm?.name}</strong>? This cannot be undone.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" onClick={() => setDeleteProjectConfirm(null)}>Cancel</Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => {
+                if (deleteProjectConfirm) {
+                  onDeleteProject?.(deleteProjectConfirm.id);
+                  setDeleteProjectConfirm(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       {/* Add lane modal */}
       <Modal
