@@ -2,11 +2,11 @@ import { useState } from 'react';
 import {
   Title, Text, Stack, SimpleGrid, Card, Group, Badge, Button,
   Modal, Select, Textarea, Loader, Center, ThemeIcon, Tooltip,
-  NumberInput, ActionIcon,
+  NumberInput, ActionIcon, Table, ScrollArea, Paper, Divider,
 } from '@mantine/core';
 import {
   IconHeartRateMonitor, IconUsers, IconTrendingUp, IconPlus,
-  IconMoodSmile, IconRefresh,
+  IconMoodSmile, IconRefresh, IconPencil, IconTrash,
 } from '@tabler/icons-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -22,6 +22,7 @@ interface TrendPoint { week: string; label: string; avg: number | null; count: n
 interface PodWeek    { week: string; label: string; avg: number | null; count: number }
 interface PodRow     { pod: string; weeks: PodWeek[]; overallAvg: number | null; resourceCount: number }
 interface Resource   { id: number; name: string; }
+interface PulseEntry { id: number; resourceId: number; resourceName: string; weekStart: string; score: number; comment: string | null; createdAt: string | null; }
 
 // ── Score → colour mapping ────────────────────────────────────────────────────
 function scoreColor(score: number | null | undefined): string {
@@ -51,12 +52,26 @@ function ScoreCell({ score }: { score: number | null }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
+// Current week Monday ISO string
+function currentWeekISO(): string {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+}
+
 export default function TeamPulsePage() {
   const qc = useQueryClient();
   const [modal, setModal] = useState(false);
   const [form,  setForm]  = useState<{ resourceId: string; score: number; comment: string }>({
     resourceId: '', score: 3, comment: '',
   });
+
+  // Edit/delete state
+  const [editModal, setEditModal] = useState<PulseEntry | null>(null);
+  const [editScore, setEditScore] = useState(3);
+  const [editComment, setEditComment] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<PulseEntry | null>(null);
 
   const { data: trend = [], isLoading: trendLoading } = useQuery<TrendPoint[]>({
     queryKey: ['pulse-trend'],
@@ -73,6 +88,38 @@ export default function TeamPulsePage() {
     queryFn: async () => { const r = await apiClient.get('/resources'); return r.data; },
   });
 
+  // Current week entries (for edit/delete list)
+  const currentWeek = currentWeekISO();
+  const { data: weekEntries = [], isLoading: weekLoading } = useQuery<PulseEntry[]>({
+    queryKey: ['pulse-week', currentWeek],
+    queryFn: async () => { const r = await apiClient.get(`/pulse/week/${currentWeek}`); return r.data; },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, score, comment }: { id: number; score: number; comment: string }) =>
+      apiClient.put(`/pulse/${id}`, { score, comment: comment || null }),
+    onSuccess: () => {
+      notifications.show({ message: 'Entry updated', color: 'teal' });
+      qc.invalidateQueries({ queryKey: ['pulse-trend'] });
+      qc.invalidateQueries({ queryKey: ['pulse-summary'] });
+      qc.invalidateQueries({ queryKey: ['pulse-week', currentWeek] });
+      setEditModal(null);
+    },
+    onError: () => notifications.show({ message: 'Failed to update entry', color: 'red' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/pulse/${id}`),
+    onSuccess: () => {
+      notifications.show({ message: 'Entry deleted', color: 'orange' });
+      qc.invalidateQueries({ queryKey: ['pulse-trend'] });
+      qc.invalidateQueries({ queryKey: ['pulse-summary'] });
+      qc.invalidateQueries({ queryKey: ['pulse-week', currentWeek] });
+      setDeleteConfirm(null);
+    },
+    onError: () => notifications.show({ message: 'Failed to delete entry', color: 'red' }),
+  });
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       await apiClient.post('/pulse', {
@@ -86,6 +133,7 @@ export default function TeamPulsePage() {
       notifications.show({ message: 'Pulse check-in submitted!', color: 'teal' });
       qc.invalidateQueries({ queryKey: ['pulse-trend'] });
       qc.invalidateQueries({ queryKey: ['pulse-summary'] });
+      qc.invalidateQueries({ queryKey: ['pulse-week', currentWeek] });
       setModal(false);
       setForm({ resourceId: '', score: 3, comment: '' });
     },
@@ -272,6 +320,134 @@ export default function TeamPulsePage() {
           ))}
         </Group>
       </Card>
+
+      {/* This week's entries — edit/delete */}
+      <Card withBorder radius="md" p="md">
+        <Group justify="space-between" mb="sm">
+          <Title order={5} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+            This Week's Entries
+          </Title>
+          <Badge size="sm" variant="light" color="teal">{weekEntries.length} entries</Badge>
+        </Group>
+        {weekLoading ? (
+          <Center h={60}><Loader size="sm" /></Center>
+        ) : weekEntries.length === 0 ? (
+          <Text size="sm" c="dimmed" ta="center" py="md" style={{ fontFamily: FONT_FAMILY }}>
+            No check-ins this week yet.
+          </Text>
+        ) : (
+          <ScrollArea>
+            <Table fz="xs" withTableBorder withColumnBorders>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ width: 160 }}>Team Member</Table.Th>
+                  <Table.Th style={{ width: 80, textAlign: 'center' }}>Score</Table.Th>
+                  <Table.Th>Comment</Table.Th>
+                  <Table.Th style={{ width: 80, textAlign: 'center' }}>Actions</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {weekEntries.map(entry => (
+                  <Table.Tr key={entry.id}>
+                    <Table.Td>
+                      <Text size="xs" fw={600}>{entry.resourceName}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <ScoreCell score={entry.score} />
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs" c={entry.comment ? undefined : 'dimmed'} fs={entry.comment ? undefined : 'italic'}>
+                        {entry.comment ?? 'No comment'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap={4} justify="center">
+                        <Tooltip label="Edit entry">
+                          <ActionIcon size="sm" variant="light" color="blue"
+                            onClick={() => { setEditModal(entry); setEditScore(entry.score); setEditComment(entry.comment ?? ''); }}>
+                            <IconPencil size={12} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Delete entry">
+                          <ActionIcon size="sm" variant="light" color="red"
+                            onClick={() => setDeleteConfirm(entry)}>
+                            <IconTrash size={12} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        )}
+      </Card>
+
+      {/* Edit entry modal */}
+      <Modal
+        opened={!!editModal}
+        onClose={() => setEditModal(null)}
+        title={<Text fw={600}>Edit Check-in — {editModal?.resourceName}</Text>}
+        size="sm"
+      >
+        <Stack gap="sm">
+          <div>
+            <Text size="sm" fw={500} mb={6} style={{ fontFamily: FONT_FAMILY }}>
+              Score (1 = terrible, 5 = great)
+            </Text>
+            <Group gap="xs" justify="center">
+              {[1, 2, 3, 4, 5].map(n => (
+                <Button
+                  key={n}
+                  variant={editScore === n ? 'filled' : 'outline'}
+                  color={scoreColor(n) === '#fa5252' ? 'red' : scoreColor(n) === '#fd7e14' ? 'orange' : scoreColor(n) === '#fab005' ? 'yellow' : scoreColor(n) === '#40c057' ? 'green' : 'cyan'}
+                  size="md"
+                  style={{ minWidth: 44, fontFamily: FONT_FAMILY }}
+                  onClick={() => setEditScore(n)}
+                >
+                  {n}
+                </Button>
+              ))}
+            </Group>
+          </div>
+          <Textarea
+            label="Comment (optional)"
+            value={editComment}
+            onChange={e => setEditComment(e.currentTarget.value)}
+            autosize minRows={2}
+          />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="subtle" onClick={() => setEditModal(null)}>Cancel</Button>
+            <Button
+              loading={editMutation.isPending}
+              onClick={() => editModal && editMutation.mutate({ id: editModal.id, score: editScore, comment: editComment })}
+            >
+              Save Changes
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        opened={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title={<Text fw={600} c="red">Delete Entry?</Text>}
+        size="sm"
+      >
+        <Text size="sm" mb="md">
+          Delete the check-in for <strong>{deleteConfirm?.resourceName}</strong> (score: {deleteConfirm?.score})?
+          This cannot be undone.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+          <Button color="red" loading={deleteMutation.isPending}
+            onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm.id)}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
 
       {/* Submit check-in modal */}
       <Modal opened={modal} onClose={() => setModal(false)} title="Submit Weekly Check-in" size="sm">

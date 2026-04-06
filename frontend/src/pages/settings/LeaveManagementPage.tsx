@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import {
   Title, Text, Group, Button, Badge, Table, ActionIcon, Tooltip,
   Stack, Paper, Select, Modal, Alert, Progress, SimpleGrid, ThemeIcon,
-  Box, ScrollArea,
+  Box, ScrollArea, Avatar,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -10,6 +10,7 @@ import {
   IconUsers, IconClock, IconCalendarEvent,
 } from '@tabler/icons-react';
 import { useLeaveEntries, useImportLeave, useDeleteLeaveEntry } from '../../api/leave';
+import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
@@ -32,6 +33,12 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
   const { data: entries = [], isLoading, error, refetch } = useLeaveEntries(year);
   const importMut = useImportLeave();
   const deleteMut = useDeleteLeaveEntry();
+  const { data: allResources = [] } = useResources();
+  const avatarMap = useMemo(() => {
+    const m = new Map<number, { avatarUrl?: string | null; jiraAccountId?: string | null }>();
+    for (const r of allResources) m.set(r.id, { avatarUrl: r.avatarUrl, jiraAccountId: r.jiraAccountId });
+    return m;
+  }, [allResources]);
 
   // Group by resource
   const grouped = useMemo(() => {
@@ -191,7 +198,20 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
                 {tableRows.map(row => (
                   <Table.Tr key={row.id}>
                     <Table.Td>
-                      <Text size="sm" fw={500}>{row.resourceName}</Text>
+                      <Group gap={6} wrap="nowrap">
+                        {(() => {
+                          const resourceId = grouped[row.resourceName]?.resourceId;
+                          const info = resourceId != null ? avatarMap.get(resourceId) : undefined;
+                          return (
+                            <Tooltip label={info?.jiraAccountId ? 'Jira connected' : row.resourceName} withArrow position="top">
+                              <Avatar src={info?.avatarUrl ?? null} size={22} radius="xl" color={info?.jiraAccountId ? 'teal' : 'gray'}>
+                                {row.resourceName.charAt(0).toUpperCase()}
+                              </Avatar>
+                            </Tooltip>
+                          );
+                        })()}
+                        <Text size="sm" fw={500}>{row.resourceName}</Text>
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{MONTHS[row.monthIndex]}</Text>

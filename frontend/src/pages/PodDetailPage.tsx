@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
- Title, Text, Stack, Group, Card, Table, Badge, ActionIcon, SimpleGrid, Tooltip, ScrollArea} from '@mantine/core';
+ Title, Text, Stack, Group, Card, Table, Badge, ActionIcon, SimpleGrid, Tooltip, ScrollArea, Avatar} from '@mantine/core';
 import { IconBriefcase, IconUsers, IconClock, IconAlertTriangle } from '@tabler/icons-react';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import { usePods } from '../api/pods';
@@ -158,6 +158,16 @@ export default function PodDetailPage() {
  <Table.Tr key={r.id}>
  <Table.Td fw={500}>
  <Group gap={6} wrap="nowrap">
+ <Tooltip label={r.jiraAccountId ? 'Jira connected' : r.name} withArrow position="top">
+ <Avatar
+ src={r.avatarUrl ?? null}
+ size={24}
+ radius="xl"
+ color={r.jiraAccountId ? 'teal' : 'blue'}
+ >
+ {r.name.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase()}
+ </Avatar>
+ </Tooltip>
  {r.name}
  {overCount && (
  <Tooltip label={`${overCount} month(s) exceed ${Math.round(fte * 100)}% FTE cap`}>

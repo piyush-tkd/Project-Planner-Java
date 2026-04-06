@@ -15,9 +15,11 @@ import {
  ThemeIcon,
  Accordion,
  Paper,
+ Avatar,
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { useResourceAllocation } from '../../api/reports';
+import { useResources } from '../../api/resources';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -54,6 +56,12 @@ const getUtilizationLevel = (pct: number) => {
 export default function ResourcePodMatrixPage() {
  const dark = useDarkMode();
  const { data: allocations, isLoading, error } = useResourceAllocation();
+ const { data: allResources = [] } = useResources();
+ const avatarMap = useMemo(() => {
+ const m = new Map<number, { avatarUrl?: string | null; jiraAccountId?: string | null }>();
+ for (const r of allResources) m.set(r.id, { avatarUrl: r.avatarUrl, jiraAccountId: r.jiraAccountId });
+ return m;
+ }, [allResources]);
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const [selectedPods, setSelectedPods] = useState<string[]>([]);
  const [sortBy, setSortBy] = useState<SortBy>('name');
@@ -153,7 +161,19 @@ export default function ResourcePodMatrixPage() {
  minWidth: '140px',
  }}
  >
- {resource.resourceName}
+ <Group gap={6} wrap="nowrap">
+ {(() => {
+ const info = avatarMap.get(resource.resourceId);
+ return (
+ <Tooltip label={info?.jiraAccountId ? 'Jira connected' : resource.resourceName} withArrow position="right">
+ <Avatar src={info?.avatarUrl ?? null} size={22} radius="xl" color={info?.jiraAccountId ? 'teal' : 'gray'}>
+ {resource.resourceName.charAt(0).toUpperCase()}
+ </Avatar>
+ </Tooltip>
+ );
+ })()}
+ <span>{resource.resourceName}</span>
+ </Group>
  </Table.Td>
  <Table.Td
  style={{

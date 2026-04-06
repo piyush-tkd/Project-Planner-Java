@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Title, Text, Group, Select, Table, TextInput,
   Stack, SimpleGrid, ScrollArea, ThemeIcon, SegmentedControl,
-  Tooltip, Modal, Badge, Paper, Loader, Box, UnstyledButton,
+  Tooltip, Modal, Badge, Paper, Loader, Box, UnstyledButton, Avatar,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -17,6 +17,7 @@ import {
   useResourcePerformance, useResourceIssues,
   ResourceMetrics, PeriodMetrics, PerformanceSummary,
 } from '../../api/resourcePerformance';
+import { useResources } from '../../api/resources';
 import SummaryCard from '../../components/charts/SummaryCard';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -134,6 +135,13 @@ export default function ResourcePerformancePage() {
   const [drilldownOpened, { open: openDrilldown, close: closeDrilldown }] = useDisclosure(false);
   const [drillResource, setDrillResource] = useState<{ id: number; name: string } | null>(null);
   const [drillPeriod, setDrillPeriod] = useState<{ index: number; label: string }>({ index: 0, label: '' });
+
+  const { data: allResources = [] } = useResources();
+  const avatarMap = useMemo(() => {
+    const m = new Map<number, { avatarUrl?: string | null; jiraAccountId?: string | null }>();
+    for (const r of allResources) m.set(r.id, { avatarUrl: r.avatarUrl, jiraAccountId: r.jiraAccountId });
+    return m;
+  }, [allResources]);
 
   const { data, isLoading, error, refetch } = useResourcePerformance(year, period);
   const { data: drillIssues, isLoading: drillLoading } = useResourceIssues(
@@ -381,9 +389,20 @@ export default function ResourcePerformancePage() {
                       style={{ cursor: 'pointer' }}
                       onClick={() => handleDrilldown(r)}
                     >
-                      <ThemeIcon size={24} radius="xl" color="blue" variant="light" style={{ flexShrink: 0 }}>
-                        <Text size="xs" fw={700} style={{ fontSize: 9 }}>{initials(r.resourceName)}</Text>
-                      </ThemeIcon>
+                      <Tooltip
+                        label={avatarMap.get(r.resourceId)?.jiraAccountId ? 'Jira connected' : r.resourceName}
+                        withArrow position="top"
+                      >
+                        <Avatar
+                          src={avatarMap.get(r.resourceId)?.avatarUrl ?? null}
+                          size={26}
+                          radius="xl"
+                          color={avatarMap.get(r.resourceId)?.jiraAccountId ? 'teal' : 'blue'}
+                          style={{ flexShrink: 0 }}
+                        >
+                          {initials(r.resourceName)}
+                        </Avatar>
+                      </Tooltip>
                       <div style={{ minWidth: 0 }}>
                         <Text size="xs" fw={600} style={{ lineHeight: 1.2, color: AQUA, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {r.resourceName}
@@ -588,9 +607,14 @@ export default function ResourcePerformancePage() {
         onClose={closeDrilldown}
         title={
           <Group gap="xs">
-            <ThemeIcon size={28} radius="xl" color="blue" variant="light">
-              <Text fw={700} style={{ fontSize: 10 }}>{drillResource ? initials(drillResource.name) : ''}</Text>
-            </ThemeIcon>
+            <Avatar
+              src={drillResource ? (avatarMap.get(drillResource.id)?.avatarUrl ?? null) : null}
+              size={28}
+              radius="xl"
+              color={drillResource && avatarMap.get(drillResource.id)?.jiraAccountId ? 'teal' : 'blue'}
+            >
+              {drillResource ? initials(drillResource.name) : ''}
+            </Avatar>
             <div>
               <Text fw={700} size="sm" style={{ fontFamily: FONT_FAMILY }}>{drillResource?.name}</Text>
               <Text size="xs" c="dimmed">{drillPeriod.label} · Issues & Worklogs</Text>

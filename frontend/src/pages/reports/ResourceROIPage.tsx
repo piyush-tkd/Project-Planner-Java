@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
  Title, Text, Paper, Group, Stack, Badge, Table, NumberInput,
  ActionIcon, Tooltip, Loader, Center, Alert, Tabs, ThemeIcon,
- SimpleGrid, Card, Divider, Button, TextInput, ScrollArea,
+ SimpleGrid, Card, Divider, Button, TextInput, ScrollArea, Avatar,
 } from '@mantine/core';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
@@ -60,9 +60,16 @@ function RateRow({ resource, defaultRate }: RateRowProps) {
  <Table.Tr>
  <Table.Td>
  <Group gap="sm" wrap="nowrap">
- <ThemeIcon size={28} radius="xl" color="blue" variant="light">
- <Text size="xs" fw={700}>{resource.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}</Text>
- </ThemeIcon>
+ <Tooltip label={resource.jiraAccountId ? 'Jira connected' : resource.name} withArrow position="top">
+ <Avatar
+ src={resource.avatarUrl ?? null}
+ size={28}
+ radius="xl"
+ color={resource.jiraAccountId ? 'teal' : 'blue'}
+ >
+ {resource.name.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase()}
+ </Avatar>
+ </Tooltip>
  <div>
  <Text fw={500} size="sm">{resource.name}</Text>
  {resource.podAssignment && (

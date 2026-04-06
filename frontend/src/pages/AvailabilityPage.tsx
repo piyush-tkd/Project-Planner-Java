@@ -3,7 +3,7 @@ import {
   Title, Stack, Table, NumberInput, Button, Text, Group,
   Checkbox, Menu, ActionIcon, Tooltip, Badge, Paper, Select,
   UnstyledButton, ScrollArea, SimpleGrid, RingProgress, Center,
-  Divider, SegmentedControl, ThemeIcon, TextInput,
+  Divider, SegmentedControl, ThemeIcon, TextInput, Avatar,
 } from '@mantine/core';
 import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
@@ -12,7 +12,7 @@ import {
   IconArrowUp, IconArrowDown, IconArrowsSort, IconCalendarOff,
   IconUsers, IconClock, IconBeach, IconSunHigh, IconSearch,
 } from '@tabler/icons-react';
-import { useAllAvailability } from '../api/resources';
+import { useAllAvailability, useResources } from '../api/resources';
 import apiClient from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMonthLabels } from '../hooks/useMonthLabels';
@@ -38,6 +38,12 @@ const TEMPLATES: Record<string, number[]> = {
 
 export default function AvailabilityPage() {
   const { data: availability, isLoading, error } = useAllAvailability();
+  const { data: allResources = [] } = useResources();
+  const avatarMap = useMemo(() => {
+    const m = new Map<number, { avatarUrl?: string | null; jiraAccountId?: string | null }>();
+    for (const r of allResources) m.set(r.id, { avatarUrl: r.avatarUrl, jiraAccountId: r.jiraAccountId });
+    return m;
+  }, [allResources]);
   const { monthLabels, currentMonthIndex } = useMonthLabels();
   const dark = useDarkMode();
   const { data: timeline } = useTimeline();
@@ -576,7 +582,22 @@ export default function AvailabilityPage() {
                   <Table.Td style={{ padding: '4px 8px' }}>
                     <Stack gap={2}>
                       <Group gap={4} wrap="nowrap">
-                        <Text size="xs" fw={600} truncate style={{ maxWidth: 140 }}>
+                        {(() => {
+                          const info = avatarMap.get(row.resourceId);
+                          return (
+                            <Tooltip label={info?.jiraAccountId ? 'Jira connected' : row.resourceName} withArrow position="top">
+                              <Avatar
+                                src={info?.avatarUrl ?? null}
+                                size={20}
+                                radius="xl"
+                                color={info?.jiraAccountId ? 'teal' : 'gray'}
+                              >
+                                {row.resourceName.charAt(0).toUpperCase()}
+                              </Avatar>
+                            </Tooltip>
+                          );
+                        })()}
+                        <Text size="xs" fw={600} truncate style={{ maxWidth: 120 }}>
                           {formatResourceName(row.resourceName)}
                         </Text>
                         {isSource && <Badge size="xs" variant="light" color="blue">source</Badge>}

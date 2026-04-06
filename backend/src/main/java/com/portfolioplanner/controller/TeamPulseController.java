@@ -153,6 +153,28 @@ public class TeamPulseController {
         }).collect(Collectors.toList()));
     }
 
+    // ── Update a pulse entry ──────────────────────────────────────────────────
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody UpdateRequest req) {
+        return pulseRepo.findById(id).map(pulse -> {
+            if (req.score() != null) {
+                if (req.score() < 1 || req.score() > 5)
+                    return ResponseEntity.badRequest().body(Map.of("error", "Score must be 1–5"));
+                pulse.setScore(req.score().shortValue());
+            }
+            pulse.setComment(req.comment());
+            return ResponseEntity.ok((Object) toMap(pulseRepo.save(pulse)));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // ── Delete a pulse entry ──────────────────────────────────────────────────
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (!pulseRepo.existsById(id)) return ResponseEntity.notFound().build();
+        pulseRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     private static LocalDate currentWeekStart() {
         return LocalDate.now().with(WeekFields.ISO.dayOfWeek(), 1); // Monday
@@ -175,4 +197,5 @@ public class TeamPulseController {
     }
 
     record SubmitRequest(Long resourceId, Integer score, String comment, LocalDate weekStart) {}
+    record UpdateRequest(Integer score, String comment) {}
 }
