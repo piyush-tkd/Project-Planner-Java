@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
   Title,
   Text,
@@ -59,6 +60,7 @@ interface CreateRiskPayload {
 }
 
 export default function RiskRegisterPage() {
+  const dark = useDarkMode();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [modalOpen, setModalOpen] = useState(false);
@@ -379,7 +381,7 @@ export default function RiskRegisterPage() {
               }}
             >
               <Table striped highlightOnHover>
-                <Table.Thead style={{ backgroundColor: '#F7F9FB' }}>
+                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : '#F7F9FB' }}>
                   <Table.Tr>
                     <Table.Th style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 }}>
                       Title
@@ -470,7 +472,7 @@ export default function RiskRegisterPage() {
               }}
             >
               <Table striped highlightOnHover>
-                <Table.Thead style={{ backgroundColor: '#F7F9FB' }}>
+                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : '#F7F9FB' }}>
                   <Table.Tr>
                     <Table.Th style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 }}>
                       Title

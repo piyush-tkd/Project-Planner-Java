@@ -1571,3 +1571,49 @@ h4.mantine-Title-root { font-weight: 600 !important; }
 }
 
 
+
+/* ── Sprint 6 — Dark mode global fixes ──────────────────────────────
+   These override hardcoded light-mode backgrounds that appear across
+   many pages, without requiring per-file changes.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* Table header backgrounds: many pages use backgroundColor: '#F7F9FB' / #f8f9fa inline */
+[data-mantine-color-scheme="dark"] .mantine-Table-thead,
+[data-mantine-color-scheme="dark"] .mantine-Table-thead tr,
+[data-mantine-color-scheme="dark"] .mantine-Table-thead th {
+  background-color: var(--mantine-color-dark-7) !important;
+  color: var(--mantine-color-gray-3) !important;
+}
+
+/* Zebra striping in dark mode (even rows) */
+[data-mantine-color-scheme="dark"] tr:nth-of-type(even) > td {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Paper / Card subtle tinted backgrounds */
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="#f8f9fa"],
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="#f8fafc"],
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="#F7F9FB"],
+[data-mantine-color-scheme="dark"] .mantine-Paper-root[style*="#fafbfc"] {
+  background-color: var(--mantine-color-dark-6) !important;
+}
+
+/* Dashboard / workload chart row hover — prevent blinding white flash */
+[data-mantine-color-scheme="dark"] tr:hover > td {
+  background-color: rgba(45, 204, 211, 0.05) !important;
+}
+
+/* Inline dimmed text that uses hardcoded #666 / #888 */
+[data-mantine-color-scheme="dark"] [style*="color: #666"],
+[data-mantine-color-scheme="dark"] [style*="color: #888"],
+[data-mantine-color-scheme="dark"] [style*="color: #94a3b8"],
+[data-mantine-color-scheme="dark"] [style*="color: #64748b"] {
+  color: var(--mantine-color-gray-5) !important;
+}
+
+/* Border colors: hardcoded light-mode borders */
+[data-mantine-color-scheme="dark"] [style*="border-color: #e9ecef"],
+[data-mantine-color-scheme="dark"] [style*="border-color: #e2e8f0"],
+[data-mantine-color-scheme="dark"] [style*="borderColor: #e9ecef"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}

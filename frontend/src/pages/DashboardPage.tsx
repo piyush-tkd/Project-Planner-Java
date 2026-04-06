@@ -178,6 +178,7 @@ function ActionIcon({ icon }: { icon: React.ReactNode }) {
 // ── TEAM DASHBOARD ────────────────────────────────────────────────────────
 function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
   const navigate = useNavigate();
+  const dark = useDarkMode();
   const today = new Date();
   const oneWeekLater = new Date(today); oneWeekLater.setDate(today.getDate() + 7);
 
@@ -240,11 +241,16 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
   };
 
   const tableHeaderStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, color: '#94a3b8', textTransform: 'none',
+    fontSize: 12, fontWeight: 500, color: dark ? '#9ca3af' : '#94a3b8', textTransform: 'none',
     letterSpacing: 0, padding: '10px 16px', background: 'transparent',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
   };
-  const tdStyle: React.CSSProperties = { padding: '12px 16px', borderBottom: '1px solid #f8fafc', fontSize: 13, color: '#1e293b' };
+  const tdStyle: React.CSSProperties = {
+    padding: '12px 16px',
+    borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#f8fafc'}`,
+    fontSize: 13,
+    color: dark ? '#e2e8f0' : '#1e293b',
+  };
 
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
@@ -264,7 +270,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
             )}
             {dueSoon.map(p => (
               <tr key={p.id} style={{ transition: 'background 0.1s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : '#f8fafc')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <td style={tdStyle}>{p.name.length > 24 ? p.name.slice(0, 24) + '…' : p.name}</td>
                 <td style={{ ...tdStyle, textAlign: 'center' }}><StatusPill status={p.status} /></td>
@@ -331,7 +337,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
             )}
             {inProgress.map(p => (
               <tr key={p.id}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : '#f8fafc')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <td style={tdStyle}>{p.name.length > 24 ? p.name.slice(0, 24) + '…' : p.name}</td>
                 <td style={{ ...tdStyle, textAlign: 'center' }}>
