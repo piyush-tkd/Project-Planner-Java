@@ -289,10 +289,15 @@ export default function NlpSettingsPage() {
  {/* ── Cloud LLM Settings ── */}
  {chain.includes('CLOUD_LLM') && (
  <Paper p="md" radius="md" withBorder>
- <Group gap="xs" mb="sm">
+ <Group gap="xs" mb="xs">
  <IconCloud size={18} />
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Cloud LLM</Text>
+ <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Cloud LLM — Org-Level Key</Text>
+ <Badge size="xs" color="teal" variant="light">Shared with all users</Badge>
  </Group>
+ <Text size="xs" c="dimmed" mb="sm">
+   When this key is configured, every user in the org uses it automatically for AI features.
+   Individual users can also set a personal key in <b>My AI Settings</b> as a fallback when no org key is set.
+ </Text>
  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
  <Select
  label="Provider"

@@ -1,8 +1,10 @@
 package com.portfolioplanner.controller;
 
+import com.portfolioplanner.service.UserAiKeyService;
 import com.portfolioplanner.service.nlp.CloudLlmStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,11 +14,12 @@ import java.util.Map;
  *
  * POST /api/ai/generate
  *   Body: { type, context, projectId?, tone? }
- *   Returns: { output: string }
+ *   Returns: { output: string, source: "ORG" | "USER" }
  *
- * Delegates to CloudLlmStrategy (Anthropic / OpenAI) if a cloud API key is configured.
- * Returns HTTP 503 when the AI service is not configured so the frontend can
- * gracefully fall back to its built-in template previews.
+ * Key resolution priority:
+ *  1. Org-level key (nlp_config.cloud_api_key) — if set, used for all users
+ *  2. User's personal key (user_ai_config) — fallback when no org key
+ *  3. HTTP 503 when neither is configured
  */
 @RestController
 @RequestMapping("/api/ai")
@@ -24,6 +27,7 @@ import java.util.Map;
 public class AiContentController {
 
     private final CloudLlmStrategy cloudLlm;
+    private final UserAiKeyService userAiKeyService;
 
     public record GenerateRequest(
         String type,       // status_email | retro_summary | risk_brief | meeting_actions
@@ -33,23 +37,33 @@ public class AiContentController {
     ) {}
 
     @PostMapping("/generate")
-    public ResponseEntity<Map<String, String>> generate(@RequestBody GenerateRequest req) {
-        if (!cloudLlm.isAvailable()) {
-            // Frontend expects this to fail so it can use its mock fallback
+    public ResponseEntity<Map<String, String>> generate(
+            @RequestBody GenerateRequest req,
+            Authentication auth) {
+
+        UserAiKeyService.ResolvedCredentials creds = userAiKeyService.resolve(auth.getName());
+
+        if ("NONE".equals(creds.source())) {
             return ResponseEntity.status(503)
-                .body(Map.of("error", "AI service not configured. Set a cloud API key in NLP Settings."));
+                .body(Map.of(
+                    "error", "No AI key configured. Set an org key in NLP Settings or add your personal key in My AI Settings.",
+                    "source", "NONE"
+                ));
         }
 
         String systemPrompt = buildSystemPrompt(req.type(), req.tone());
         String userMessage  = buildUserMessage(req.type(), req.context(), req.projectId());
 
-        String output = cloudLlm.generateContent(systemPrompt, userMessage);
+        String output = cloudLlm.generateContentWith(
+                creds.provider(), creds.model(), creds.apiKey(),
+                systemPrompt, userMessage);
+
         if (output == null || output.isBlank()) {
             return ResponseEntity.status(502)
-                .body(Map.of("error", "AI generation returned empty response."));
+                .body(Map.of("error", "AI generation returned empty response.", "source", creds.source()));
         }
 
-        return ResponseEntity.ok(Map.of("output", output));
+        return ResponseEntity.ok(Map.of("output", output, "source", creds.source()));
     }
 
     private String buildSystemPrompt(String type, String tone) {

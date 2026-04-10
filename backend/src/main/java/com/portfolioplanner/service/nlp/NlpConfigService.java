@@ -134,6 +134,23 @@ public class NlpConfigService {
         return getConfig();
     }
 
+    // ── Org-level cloud AI getters (used by UserAiKeyService) ─────────────
+
+    /** Returns the org-level cloud API key, or empty string if not set. */
+    public String getOrgCloudApiKey() {
+        return getStringValue("cloud_api_key", "");
+    }
+
+    /** Returns the org-level cloud provider (ANTHROPIC | OPENAI). */
+    public String getOrgCloudProvider() {
+        return getStringValue("cloud_provider", "ANTHROPIC");
+    }
+
+    /** Returns the org-level cloud model name. */
+    public String getOrgCloudModel() {
+        return getStringValue("cloud_model", "claude-haiku-4-5-20251001");
+    }
+
     // ── Config value helpers ───────────────────────────────────────────────
     private String getStringValue(String key, String defaultValue) {
         return configRepo.findByConfigKey(key)

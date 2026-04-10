@@ -73,6 +73,7 @@ const NlpLandingPage                = lazy(() => import('./pages/NlpLandingPage'
 const NlpHistoryPage                = lazy(() => import('./pages/NlpHistoryPage'));
 const NlpSettingsPage               = lazy(() => import('./pages/settings/NlpSettingsPage'));
 const NlpOptimizerPage              = lazy(() => import('./pages/settings/NlpOptimizerPage'));
+const UserAiSettingsPage            = lazy(() => import('./pages/settings/UserAiSettingsPage'));
 const FeedbackHubPage               = lazy(() => import('./pages/settings/FeedbackHubPage'));
 const ErrorLogPage                  = lazy(() => import('./pages/settings/ErrorLogPage'));
 const DoraMetricsPage               = lazy(() => import('./pages/reports/DoraMetricsPage'));
@@ -529,6 +530,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="nlp_optimizer" />}>
             <Route path="/settings/nlp-optimizer" element={<NlpOptimizerPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="my_ai_settings" />}>
+            <Route path="/settings/my-ai" element={<UserAiSettingsPage />} />
           </Route>
 
           {/* ── Feedback & Error Logs ─────────────────────── */}

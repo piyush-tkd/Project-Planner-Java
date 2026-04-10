@@ -241,6 +241,7 @@ const navGroups: NavGroup[] = [
           { label: 'Scheduled Reports', path: '/settings/scheduled-reports',      icon: <IconCalendarTime size={15} />,   pageKey: 'scheduled_reports' },
           { label: 'Cost Rates',        path: '/settings/cost-rates',             icon: <IconTableOptions size={15} />,   pageKey: 'cost_rates' },
           { label: 'Changelog',         path: '/settings/changelog',              icon: <IconHistory size={15} />,        pageKey: 'changelog_admin' },
+          { label: 'My AI Settings',    path: '/settings/my-ai',                  icon: <IconKey size={15} />,            pageKey: 'my_ai_settings' },
         ],
       },
     ],
@@ -1070,7 +1071,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: isDark ? undefined : 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v28.7
+              Portfolio Planner v28.8
             </Text>
           </div>
         </MantineAppShell.Section>

@@ -899,7 +899,7 @@ public class CloudLlmStrategy implements NlpStrategy {
     // ── Free-form content generation ──────────────────────────────────────────
 
     /**
-     * Generates free-form text content (not classification).
+     * Generates free-form text content using the configured (org-level) credentials.
      * Used by AiContentController for status emails, retro summaries, etc.
      *
      * @param systemPrompt  Instructions describing what to generate
@@ -908,28 +908,55 @@ public class CloudLlmStrategy implements NlpStrategy {
      */
     public String generateContent(String systemPrompt, String userMessage) {
         if (!isAvailable()) return null;
+        return generateContentWith(provider, model, apiKey, systemPrompt, userMessage);
+    }
+
+    /**
+     * Generates free-form text content using explicitly supplied credentials.
+     * Used when resolving org vs. user-level API keys at request time.
+     *
+     * @param overrideProvider  ANTHROPIC or OPENAI
+     * @param overrideModel     Model name (e.g. claude-haiku-4-5-20251001)
+     * @param overrideApiKey    The API key to use
+     * @param systemPrompt      Instructions describing what to generate
+     * @param userMessage       The user's input / context
+     * @return Generated text, or null if failed
+     */
+    public String generateContentWith(String overrideProvider, String overrideModel,
+                                      String overrideApiKey,
+                                      String systemPrompt, String userMessage) {
+        if (overrideApiKey == null || overrideApiKey.isBlank()) return null;
         try {
-            if ("ANTHROPIC".equalsIgnoreCase(provider)) {
-                return generateWithAnthropic(systemPrompt, userMessage);
-            } else if ("OPENAI".equalsIgnoreCase(provider)) {
-                return generateWithOpenAI(systemPrompt, userMessage);
+            if ("ANTHROPIC".equalsIgnoreCase(overrideProvider)) {
+                return generateWithAnthropicKey(overrideModel, overrideApiKey, systemPrompt, userMessage);
+            } else if ("OPENAI".equalsIgnoreCase(overrideProvider)) {
+                return generateWithOpenAIKey(overrideModel, overrideApiKey, systemPrompt, userMessage);
             }
         } catch (Exception e) {
-            log.warn("generateContent failed: {}", e.getMessage());
+            log.warn("generateContentWith failed: {}", e.getMessage());
         }
         return null;
     }
 
     private String generateWithAnthropic(String systemPrompt, String userMessage) throws Exception {
+        return generateWithAnthropicKey(model, apiKey, systemPrompt, userMessage);
+    }
+
+    private String generateWithOpenAI(String systemPrompt, String userMessage) throws Exception {
+        return generateWithOpenAIKey(model, apiKey, systemPrompt, userMessage);
+    }
+
+    private String generateWithAnthropicKey(String mdl, String key,
+                                             String systemPrompt, String userMessage) throws Exception {
         Map<String, Object> requestBody = Map.of(
-            "model", model,
+            "model", mdl,
             "max_tokens", 2048,
             "system", systemPrompt,
             "messages", List.of(Map.of("role", "user", "content", userMessage))
         );
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", apiKey);
+        headers.set("x-api-key", key);
         headers.set("anthropic-version", "2023-06-01");
 
         RestTemplate rt = new RestTemplate();
@@ -941,9 +968,10 @@ public class CloudLlmStrategy implements NlpStrategy {
         return root.path("content").get(0).path("text").asText(null);
     }
 
-    private String generateWithOpenAI(String systemPrompt, String userMessage) throws Exception {
+    private String generateWithOpenAIKey(String mdl, String key,
+                                          String systemPrompt, String userMessage) throws Exception {
         Map<String, Object> requestBody = Map.of(
-            "model", model,
+            "model", mdl,
             "max_tokens", 2048,
             "messages", List.of(
                 Map.of("role", "system", "content", systemPrompt),
@@ -952,7 +980,7 @@ public class CloudLlmStrategy implements NlpStrategy {
         );
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
+        headers.setBearerAuth(key);
 
         RestTemplate rt = new RestTemplate();
         HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
