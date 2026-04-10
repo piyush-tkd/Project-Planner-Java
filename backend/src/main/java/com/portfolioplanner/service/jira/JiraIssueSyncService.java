@@ -43,6 +43,7 @@ public class JiraIssueSyncService {
     private final JiraIssueWorklogRepository worklogRepo;
     private final JiraIssueTransitionRepository transitionRepo;
     private final JiraIssueCommentRepository commentRepo;
+    private final JiraCommentSyncHelper commentSyncHelper;
     private final JiraSyncedSprintRepository sprintRepo;
     private final JiraSprintIssueRepository sprintIssueRepo;   // ← populates jira_sprint_issue join table
     private final JiraSyncStatusRepository syncStatusRepo;
@@ -483,7 +484,11 @@ public class JiraIssueSyncService {
             }
         }
 
-        commentRepo.deleteByIssueKey(issueKey);
+        // Parse comment data into plain records before persisting.
+        // Persistence is delegated to JiraCommentSyncHelper which runs in
+        // REQUIRES_NEW — so a constraint violation or any save failure rolls
+        // back only that sub-transaction and never poisons the outer session.
+        List<JiraCommentSyncHelper.CommentData> commentData = new ArrayList<>();
         for (Map<String, Object> c : comments) {
             String commentId = str(c, "id");
             if (commentId == null) continue;
@@ -494,26 +499,30 @@ public class JiraIssueSyncService {
             if (bodyRaw instanceof String) {
                 body = (String) bodyRaw;
             } else if (bodyRaw != null) {
-                // ADF format
                 body = extractTextFromAdf(bodyRaw);
             }
             if (body == null || body.isBlank()) continue;
 
-            // Truncate very long comments to 4000 chars to avoid DB bloat
             if (body.length() > 4000) {
                 body = body.substring(0, 4000) + "…";
             }
 
-            JiraIssueComment comment = new JiraIssueComment(
+            commentData.add(new JiraCommentSyncHelper.CommentData(
                     commentId,
-                    issueKey,
                     author != null ? str(author, "accountId") : null,
                     author != null ? str(author, "displayName") : null,
                     body,
                     parseDateTime(str(c, "created")),
                     parseDateTime(str(c, "updated"))
-            );
-            commentRepo.save(comment);
+            ));
+        }
+
+        if (!commentData.isEmpty()) {
+            try {
+                commentSyncHelper.replaceComments(issueKey, commentData);
+            } catch (Exception e) {
+                log.warn("  Comment sync failed for {} (skipped): {}", issueKey, e.getMessage());
+            }
         }
     }
 
