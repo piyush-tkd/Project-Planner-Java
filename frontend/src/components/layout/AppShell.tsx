@@ -3,10 +3,17 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import PageSkeleton from '../common/PageSkeleton';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { useOrgSettings } from '../../context/OrgSettingsContext';
+import { useFavoritesContext } from '../../context/FavoritesContext';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
 import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
+import { CommandPalette } from '../common/CommandPalette';
 import GlobalBreadcrumb from '../common/GlobalBreadcrumb';
 import UserPreferencesDrawer from '../common/UserPreferencesDrawer';
+import { PPPreferencesPanel } from '../pp';
+import { useKeyboardNav } from '../../hooks/useKeyboardNav';
+import GHint from '../common/GHint';
+import KeyboardShortcutsModal from '../common/KeyboardShortcutsModal';
+import OnboardingWizard from '../onboarding/OnboardingWizard';
 import {
   AppShell as MantineAppShell,
   Burger,
@@ -49,8 +56,6 @@ import {
   IconBrandAzure,
   IconSun,
   IconMoon,
-  IconFileSpreadsheet,
-  IconTableExport,
   IconTicket,
   IconLogout,
   IconChevronDown,
@@ -103,9 +108,13 @@ import {
   IconLayoutGrid,
   IconStar,
   IconStarFilled,
+  IconWebhook,
+  IconMailCog,
+  IconCalendarTime,
+  IconTableOptions,
+  IconWand,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import ExcelUploadModal from '../common/ExcelUploadModal';
 import NotificationBell from '../common/NotificationBell';
 import TourGuide from '../common/TourGuide';
 import FeedbackWidget from '../common/FeedbackWidget';
@@ -115,145 +124,125 @@ import { useAuth } from '../../auth/AuthContext';
 import apiClient from '../../api/client';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
 import { useSidebarOrder } from '../../api/widgetPreferences';
-import {
-  DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS,
-  FONT_FAMILY, SHADOW, SURFACE_SIDEBAR, BORDER_DEFAULT,
-  TEXT_SECONDARY,
-} from '../../brandTokens';
+import { AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER_DARK, COLOR_ERROR, COLOR_WARNING, DARK_ELEMENT, DARK_TEXT_PRIMARY, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, SURFACE_SIDEBAR, TEXT_GRAY, TEXT_SECONDARY, TEXT_SUBTLE } from '../../brandTokens';
 
 interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string; featureFlag?: string; children?: NavItem[] }
 interface NavGroup { label: string; items: NavItem[] }
 
+// ── DL-9: Consolidated navigation (7 groups, ~35 items) ─────────────────────
 const navGroups: NavGroup[] = [
-  // ── HOME ───────────────────────────────────────────────────────────────────
+  // ── HOME (always visible, not collapsible) ─────────────────────────────────
   {
     label: 'Home',
     items: [
-      { label: 'Dashboard', path: '/',      icon: <IconDashboard size={17} />, pageKey: 'dashboard' },
-      { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={17} />,     pageKey: 'inbox' },
-      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={17} />,     pageKey: 'nlp_landing', featureFlag: 'ai' },
-    ],
-  },
-  // ── PROJECTS ───────────────────────────────────────────────────────────────
-  {
-    label: 'Projects',
-    items: [
-      { label: 'Projects',        path: '/projects',      icon: <IconBriefcase size={17} />,     pageKey: 'projects' },
-      { label: 'PODs',            path: '/pods',          icon: <IconHexagons size={17} />,      pageKey: 'pods' },
-      { label: 'Approval Queue',  path: '/approvals',     icon: <IconTarget size={17} />,        pageKey: 'project_approvals' },
-      { label: 'Risk & Issues',   path: '/risk-register', icon: <IconAlertTriangle size={17} />, pageKey: 'risk_register', featureFlag: 'risk' },
-      { label: 'Objectives',      path: '/objectives',    icon: <IconTargetArrow size={17} />,   pageKey: 'objectives',    featureFlag: 'okr' },
-      { label: 'Ideas Board',     path: '/ideas',         icon: <IconBulb size={17} />,          pageKey: 'ideas_board',   featureFlag: 'ideas' },
-    ],
-  },
-  // ── PEOPLE ─────────────────────────────────────────────────────────────────
-  {
-    label: 'People',
-    items: [
-      { label: 'Resources',        path: '/resources',         icon: <IconUsers size={17} />,          pageKey: 'resources' },
-      { label: 'Availability',     path: '/availability',      icon: <IconCalendarStats size={17} />,  pageKey: 'availability' },
-      { label: 'Bookings',         path: '/resource-bookings', icon: <IconCalendarPlus size={17} />,   pageKey: 'resource_bookings' },
-      { label: 'Capacity Hub',     path: '/capacity',          icon: <IconFlame size={17} />,          pageKey: 'capacity_hub' },
-      { label: 'Leave & Holidays', path: '/leave',             icon: <IconCalendarOff size={17} />,    pageKey: 'leave_hub' },
-      { label: 'Overrides',        path: '/overrides',         icon: <IconArrowsShuffle size={17} />,  pageKey: 'overrides' },
-    ],
-  },
-  // ── PLANNING ───────────────────────────────────────────────────────────────
-  // Replaces "Calendar" — all scheduling, sprint, and timeline planning tools
-  {
-    label: 'Planning',
-    items: [
-      { label: 'Strategic Calendar', path: '/calendar',           icon: <IconCalendar size={17} />,      pageKey: 'calendar_hub' },
-      { label: 'Sprint Planner',     path: '/sprint-planner',     icon: <IconBrain size={17} />,         pageKey: 'sprint_planner' },
-      { label: 'Sprint Calendar',    path: '/sprint-calendar',    icon: <IconCalendarEvent size={17} />, pageKey: 'sprint_calendar' },
-      { label: 'Release Calendar',   path: '/release-calendar',   icon: <IconCalendarPlus size={17} />,  pageKey: 'release_calendar' },
-      { label: 'Advanced Timeline',  path: '/advanced-timeline',  icon: <IconTimeline size={17} />,      pageKey: 'advanced_timeline' },
-      { label: 'Project Templates',  path: '/project-templates',  icon: <IconTemplate size={17} />,      pageKey: 'project_templates' },
-    ],
-  },
-  // ── DELIVERY ───────────────────────────────────────────────────────────────
-  {
-    label: 'Delivery',
-    items: [
-      { label: 'POD Dashboard', path: '/jira-pods',            icon: <IconUsersGroup size={17} />, pageKey: 'jira_pods',      featureFlag: 'jira' },
-      { label: 'Releases',      path: '/jira-releases',        icon: <IconTag size={17} />,        pageKey: 'jira_releases',  featureFlag: 'jira' },
-      { label: 'Release Notes', path: '/release-notes',        icon: <IconPackage size={17} />,    pageKey: 'release_notes',  featureFlag: 'jira' },
-      { label: 'Jira Actuals',  path: '/jira-actuals',         icon: <IconTicket size={17} />,     pageKey: 'jira_actuals',   featureFlag: 'jira' },
-      { label: 'Support Queue', path: '/jira-support',         icon: <IconHeadset size={17} />,    pageKey: 'jira_support',   featureFlag: 'jira', alertKey: 'supportStale' },
-      { label: 'Worklog',       path: '/jira-worklog',         icon: <IconClock size={17} />,      pageKey: 'jira_worklog',   featureFlag: 'jira' },
+      { label: 'Dashboard', path: '/',      icon: <IconDashboard size={14} />, pageKey: 'dashboard' },
+      { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={14} />,     pageKey: 'inbox' },
+      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={14} />,     pageKey: 'nlp_landing', featureFlag: 'ai' },
+      { label: 'AI Content Studio', path: '/ai-content-studio', icon: <IconWand size={14} />, pageKey: 'ai_content_studio', featureFlag: 'ai' },
     ],
   },
   // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   {
     label: 'Portfolio',
     items: [
-      { label: 'Executive Summary',    path: '/reports/executive-summary',          icon: <IconLayoutDashboard size={17} />, pageKey: 'exec_summary' },
-      { label: 'Portfolio Health',     path: '/reports/portfolio-health-dashboard', icon: <IconShieldCheck size={17} />,     pageKey: 'portfolio_health_dashboard' },
-      { label: 'Project Health',       path: '/reports/project-health',             icon: <IconHeartRateMonitor size={17} />, pageKey: 'project_health' },
-      { label: 'Portfolio Timeline',   path: '/reports/portfolio-timeline',         icon: <IconChartAreaLine size={17} />,   pageKey: 'portfolio_timeline' },
-      { label: 'Gantt & Dependencies', path: '/reports/gantt-dependencies',         icon: <IconGitBranch size={17} />,       pageKey: 'gantt_dependencies' },
-      { label: 'Dependency Map',       path: '/reports/dependency-map',             icon: <IconLink size={17} />,            pageKey: 'dependency_map' },
-      { label: 'Risk Heatmap',         path: '/reports/risk-heatmap',               icon: <IconChartDots3 size={17} />,      pageKey: 'risk_heatmap' },
-      { label: 'Budget & CapEx',       path: '/reports/budget-capex',               icon: <IconCurrencyDollar size={17} />,  pageKey: 'budget_capex', featureFlag: 'financials' },
+      { label: 'Projects',                 path: '/projects',                         icon: <IconBriefcase size={14} />,       pageKey: 'projects' },
+      { label: 'Portfolio Health',         path: '/portfolio/health',                 icon: <IconShieldCheck size={14} />,     pageKey: 'portfolio_health_dashboard' },
+      { label: 'Portfolio Timeline',       path: '/portfolio/timeline',               icon: <IconChartAreaLine size={14} />,   pageKey: 'portfolio_timeline' },
+      { label: 'Project Health',          path: '/reports/project-health',            icon: <IconHeartRateMonitor size={14} />, pageKey: 'project_health' },
+      { label: 'Objectives',              path: '/objectives',                         icon: <IconTargetArrow size={14} />,     pageKey: 'objectives' },
+      { label: 'Risk Register',           path: '/risk-register',                      icon: <IconRadar size={14} />,           pageKey: 'risk_register' },
+      { label: 'Risk Heatmap',            path: '/reports/risk-heatmap',              icon: <IconChartDots3 size={14} />,      pageKey: 'risk_heatmap' },
+      { label: 'Dependency Map',          path: '/reports/dependency-map',            icon: <IconLink size={14} />,            pageKey: 'dependency_map' },
+      { label: 'Gantt Dependencies',      path: '/reports/gantt-dependencies',        icon: <IconTimeline size={14} />,        pageKey: 'gantt_dependencies' },
+      { label: 'Delivery Predictability', path: '/reports/delivery-predictability',   icon: <IconRocket size={14} />,          pageKey: 'delivery_predictability' },
+      { label: 'Executive Summary',       path: '/reports/executive-summary',         icon: <IconLayoutDashboard size={14} />, pageKey: 'exec_summary' },
     ],
   },
-  // ── ANALYTICS ─────────────────────────────────────────────────────────────
-  // People analytics + project insights — replaces items scattered across People & Portfolio
+  // ── PEOPLE ─────────────────────────────────────────────────────────────────
   {
-    label: 'Analytics',
+    label: 'People',
     items: [
-      { label: 'Status Updates',       path: '/reports/status-updates',           icon: <IconMessageReport size={17} />,    pageKey: 'status_updates' },
-      { label: 'Project Signals',      path: '/reports/project-signals',          icon: <IconChartInfographic size={17} />, pageKey: 'project_signals' },
-      { label: 'Smart Insights',       path: '/smart-insights',                   icon: <IconSparkles size={17} />,         pageKey: 'smart_insights' },
-      { label: 'Capacity Forecast',    path: '/reports/capacity-forecast',        icon: <IconRadar size={17} />,            pageKey: 'capacity_forecast',    featureFlag: 'advanced_people' },
-      { label: 'Skills Matrix',        path: '/reports/skills-matrix',            icon: <IconStars size={17} />,            pageKey: 'skills_matrix',        featureFlag: 'advanced_people' },
-      { label: 'Team Pulse',           path: '/reports/team-pulse',               icon: <IconHeartRateMonitor size={17} />, pageKey: 'team_pulse',           featureFlag: 'advanced_people' },
-      { label: 'Resource Intelligence',path: '/reports/resource-intelligence',    icon: <IconUserSearch size={17} />,       pageKey: 'resource_intelligence',featureFlag: 'advanced_people' },
-      { label: 'Resource Performance', path: '/reports/resource-performance',     icon: <IconTrendingUp size={17} />,       pageKey: 'resource_performance', featureFlag: 'advanced_people' },
+      { label: 'Resources',             path: '/people/resources',              icon: <IconUsers size={14} />,           pageKey: 'resources' },
+      { label: 'Core Teams',            path: '/teams?type=core',               icon: <IconUsersGroup size={14} />,      pageKey: 'core_teams' },
+      { label: 'Project Teams',         path: '/teams?type=project',            icon: <IconBriefcase size={14} />,       pageKey: 'project_teams' },
+      { label: 'Capacity',              path: '/people/capacity',               icon: <IconFlame size={14} />,           pageKey: 'capacity_hub' },
+      { label: 'Performance',           path: '/people/performance',            icon: <IconTrendingUp size={14} />,      pageKey: 'resource_performance', featureFlag: 'advanced_people' },
+      { label: 'Workload Chart',        path: '/reports/workload-chart',        icon: <IconChartInfographic size={14} />, pageKey: 'workload_chart' },
+      { label: 'Hiring Forecast',       path: '/reports/hiring-forecast',       icon: <IconUserPlus size={14} />,        pageKey: 'hiring_forecast' },
+      { label: 'Resource Intelligence', path: '/reports/resource-intelligence', icon: <IconUserSearch size={14} />,      pageKey: 'resource_intelligence' },
+      { label: 'Skills Matrix',         path: '/reports/skills-matrix',         icon: <IconStars size={14} />,           pageKey: 'skills_matrix', featureFlag: 'advanced_people' },
+      { label: 'Team Pulse',            path: '/reports/team-pulse',            icon: <IconHeartRateMonitor size={14} />, pageKey: 'team_pulse', featureFlag: 'advanced_people' },
+      { label: 'Resource Pools',        path: '/resource-pools',                icon: <IconDatabase size={14} />,        pageKey: 'resource_pools' },
+      { label: 'Supply vs Demand',      path: '/supply-demand',                 icon: <IconChartBar size={14} />,        pageKey: 'supply_demand' },
+      { label: 'Demand Forecast',       path: '/demand-forecast',               icon: <IconChartBar size={14} />,        pageKey: 'demand_forecast' },
+      { label: 'Skills Matrix (New)',   path: '/skills-matrix',                 icon: <IconLayoutGrid size={14} />,      pageKey: 'skills_matrix_new' },
     ],
   },
-  // ── ENGINEERING ───────────────────────────────────────────────────────────
+  // ── CALENDAR ───────────────────────────────────────────────────────────────
   {
-    label: 'Engineering',
+    label: 'Calendar',
     items: [
-      { label: 'Eng Intelligence',      path: '/reports/engineering-intelligence',  icon: <IconReportMoney size={17} />,      pageKey: 'engineering_intelligence', featureFlag: 'engineering' },
-      { label: 'DORA Metrics',          path: '/reports/dora',                      icon: <IconRocket size={17} />,           pageKey: 'dora_metrics',             featureFlag: 'engineering' },
-      { label: 'Delivery Predictability',path: '/reports/delivery-predictability',  icon: <IconChartBar size={17} />,         pageKey: 'delivery_predictability',  featureFlag: 'engineering' },
-      { label: 'Sprint Retro',          path: '/reports/sprint-retro',              icon: <IconListCheck size={17} />,        pageKey: 'sprint_retro',             featureFlag: 'engineering' },
-      { label: 'Jira Analytics',        path: '/reports/jira-analytics',            icon: <IconChartAreaLine size={17} />,    pageKey: 'jira_analytics',           featureFlag: 'engineering' },
-      { label: 'Dashboard Builder',     path: '/reports/jira-dashboard-builder',    icon: <IconLayoutDashboard size={17} />,  pageKey: 'jira_dashboard_builder',   featureFlag: 'engineering' },
+      { label: 'Strategic Calendar', path: '/calendar',          icon: <IconCalendar size={14} />,      pageKey: 'calendar_hub' },
+      { label: 'Team Calendar',      path: '/team-calendar',     icon: <IconCalendarStats size={14} />, pageKey: 'team_calendar' },
+      { label: 'Sprint Planner',     path: '/sprint-planner',    icon: <IconBrain size={14} />,         pageKey: 'sprint_planner' },
+      { label: 'Sprint Calendar',    path: '/sprint-calendar',   icon: <IconCalendarEvent size={14} />, pageKey: 'sprint_calendar' },
+      { label: 'Release Calendar',   path: '/release-calendar',  icon: <IconCalendarPlus size={14} />,  pageKey: 'release_calendar' },
+      { label: 'Project Templates',  path: '/project-templates', icon: <IconTemplate size={14} />,      pageKey: 'project_templates' },
     ],
   },
-  // ── TOOLS ─────────────────────────────────────────────────────────────────
-  // Replaces "Simulations" — user-facing productivity and automation tools
+  // ── DELIVERY ───────────────────────────────────────────────────────────────
   {
-    label: 'Tools',
+    label: 'Delivery',
     items: [
-      { label: 'Custom Dashboard',   path: '/custom-dashboard',               icon: <IconLayoutGrid size={17} />,    pageKey: 'custom_dashboard' },
-      { label: 'Automation Engine',  path: '/automation-engine',              icon: <IconPlayerPlay size={17} />,    pageKey: 'automation_engine' },
-      { label: 'Bulk Import',        path: '/bulk-import',                    icon: <IconUpload size={17} />,        pageKey: 'bulk_import' },
-      { label: 'Timeline Simulator', path: '/simulator/timeline',             icon: <IconAdjustments size={17} />,   pageKey: 'timeline_simulator',  featureFlag: 'simulations' },
-      { label: 'Scenario Simulator', path: '/simulator/scenario',             icon: <IconAdjustments size={17} />,   pageKey: 'scenario_simulator',  featureFlag: 'simulations' },
-      { label: 'Smart Notifications',path: '/reports/smart-notifications',    icon: <IconBellRinging size={17} />,   pageKey: 'smart_notifications', featureFlag: 'ai' },
-      { label: 'Jira Portfolio Sync',path: '/reports/jira-portfolio-sync',    icon: <IconPlugConnected size={17} />, pageKey: 'jira_portfolio_sync', featureFlag: 'jira' },
+      { label: 'PODs',             path: '/pods',              icon: <IconHexagons size={14} />,        pageKey: 'pods' },
+      { label: 'Ideas Board',      path: '/ideas',             icon: <IconBulb size={14} />,            pageKey: 'ideas_board' },
+      { label: 'Budget & CapEx',   path: '/reports/budget-capex', icon: <IconCurrencyDollar size={14} />, pageKey: 'budget_capex', featureFlag: 'financials' },
+      { label: 'Smart Insights',   path: '/smart-insights',    icon: <IconSparkles size={14} />,        pageKey: 'smart_insights' },
+      { label: 'Engineering Hub',  path: '/engineering/hub',   icon: <IconReportMoney size={14} />,     pageKey: 'engineering_intelligence', featureFlag: 'engineering' },
     ],
   },
-  // ── ADMIN ─────────────────────────────────────────────────────────────────
-  // Replaces "Workspace" admin items — configuration and platform settings
+  // ── ECONOMICS (Sprint 13) ─────────────────────────────────────────────────
+  {
+    label: 'Economics',
+    items: [
+      { label: 'Engineering Economics', path: '/engineering-economics', icon: <IconCoin size={14} />,      pageKey: 'engineering_economics' },
+      { label: 'ROI Calculator',        path: '/roi-calculator',        icon: <IconChartPie size={14} />,    pageKey: 'roi_calculator' },
+      { label: 'Scenario Planning',     path: '/scenario-planning',     icon: <IconAdjustments size={14} />, pageKey: 'scenario_planning' },
+    ],
+  },
+  // ── JIRA ──────────────────────────────────────────────────────────────────
+  {
+    label: 'Jira',
+    items: [
+      { label: 'POD Dashboard',     path: '/delivery/jira',                  icon: <IconUsersGroup size={14} />,      pageKey: 'jira_pods',            featureFlag: 'jira', alertKey: 'supportStale' },
+      { label: 'Sprint Backlog',    path: '/sprint-backlog',                 icon: <IconLayoutBoard size={14} />,     pageKey: 'sprint_backlog',       featureFlag: 'jira' },
+      { label: 'Sprint Retro',      path: '/reports/sprint-retro',           icon: <IconListCheck size={14} />,       pageKey: 'sprint_retro',         featureFlag: 'jira' },
+      { label: 'Releases',          path: '/delivery/releases',              icon: <IconTag size={14} />,             pageKey: 'jira_releases',        featureFlag: 'jira' },
+      { label: 'Jira Analytics',    path: '/reports/jira-analytics',         icon: <IconChartAreaLine size={14} />,   pageKey: 'jira_analytics',       featureFlag: 'jira' },
+      { label: 'Dashboard Builder', path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={14} />, pageKey: 'jira_dashboard_builder', featureFlag: 'jira' },
+      { label: 'Portfolio Sync',    path: '/reports/jira-portfolio-sync',    icon: <IconPlugConnected size={14} />,   pageKey: 'jira_portfolio_sync',  featureFlag: 'jira' },
+    ],
+  },
+  // ── TOOLS & ADMIN ─────────────────────────────────────────────────────────
   {
     label: 'Admin',
     items: [
+      { label: 'Approval Queue',      path: '/approvals',                         icon: <IconTarget size={14} />,         pageKey: 'project_approvals' },
+      { label: 'Scenario Tools',      path: '/tools/scenarios',                   icon: <IconAdjustments size={14} />,    pageKey: 'timeline_simulator',  featureFlag: 'simulations' },
+      { label: 'Automation Engine',   path: '/automation-engine',                 icon: <IconPlayerPlay size={14} />,     pageKey: 'automation_engine' },
+      { label: 'Smart Notifications', path: '/reports/smart-notifications',       icon: <IconBellRinging size={14} />,    pageKey: 'smart_notifications', featureFlag: 'ai' },
       {
-        label: 'Org Settings', path: '/settings/org', icon: <IconBuildingFactory size={17} />, pageKey: 'org_settings',
+        label: 'Settings',            path: '/settings/org',                      icon: <IconSettings size={14} />,       pageKey: 'org_settings',
         children: [
-          { label: 'Integrations', path: '/settings/org?tab=jira',   icon: <IconPlugConnected size={15} />, pageKey: 'org_settings' },
-          { label: 'System',       path: '/settings/org?tab=system', icon: <IconSettings size={15} />,      pageKey: 'org_settings' },
+          { label: 'Email Templates', path: '/settings/email-templates',          icon: <IconMailCog size={15} />,        pageKey: 'email_templates' },
+          { label: 'Notification Prefs', path: '/settings/notification-preferences', icon: <IconBellCog size={15} />,    pageKey: 'notification_preferences' },
+          { label: 'Custom Fields',   path: '/settings/custom-fields',            icon: <IconAdjustments size={15} />,    pageKey: 'custom_fields_admin' },
+          { label: 'Webhooks',          path: '/settings/webhooks',                 icon: <IconWebhook size={15} />,        pageKey: 'webhook_settings' },
+          { label: 'Scheduled Reports', path: '/settings/scheduled-reports',      icon: <IconCalendarTime size={15} />,   pageKey: 'scheduled_reports' },
+          { label: 'Cost Rates',        path: '/settings/cost-rates',             icon: <IconTableOptions size={15} />,   pageKey: 'cost_rates' },
+          { label: 'Changelog',         path: '/settings/changelog',              icon: <IconHistory size={15} />,        pageKey: 'changelog_admin' },
         ],
       },
-      { label: 'Custom Fields',       path: '/settings/custom-fields',              icon: <IconAdjustments size={17} />,    pageKey: 'custom_fields_admin' },
-      { label: 'Smart Mapping',       path: '/settings/smart-mapping',              icon: <IconDatabase size={17} />,       pageKey: 'smart_mapping_admin' },
-      { label: 'Changelog',           path: '/settings/changelog',                  icon: <IconHistory size={17} />,        pageKey: 'changelog_admin' },
-      { label: 'Notification Prefs',  path: '/settings/notification-preferences',  icon: <IconBellCog size={17} />,        pageKey: 'notification_preferences' },
     ],
   },
 ];
@@ -267,8 +256,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function AppShellLayout() {
   const [opened, setOpened]                 = useState(true);
-  const [excelModalOpen, setExcelModalOpen] = useState(false);
-  const [downloading, setDownloading]       = useState(false);
+  const [navFilter, setNavFilter]           = useState('');
   const [whatsNewOpen,  setWhatsNewOpen]    = useState(false);
   const [activityOpen,  setActivityOpen]    = useState(false);
   const [prefsOpen,     setPrefsOpen]       = useState(false);
@@ -288,32 +276,31 @@ export default function AppShellLayout() {
   const { opened: searchOpened, setOpened: setSearchOpened } = useGlobalSearch();
   const { opened: shortcutsOpened, setOpened: setShortcutsOpened } = useShortcutsPanel();
   const { sidebarOrder } = useSidebarOrder();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
-  async function handleExportReconciliation() {
-    setDownloading(true);
-    try {
-      const response = await apiClient.get('/reports/export/reconciliation', {
-        responseType: 'blob',
-        timeout: 60000,
-      });
-      const url = URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'capacity-reconciliation.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      notifications.show({
-        title: 'Export failed',
-        message: 'Could not generate the reconciliation workbook. Please try again.',
-        color: 'red',
-      });
-    } finally {
-      setDownloading(false);
+  // Initialize onboarding state on mount
+  useEffect(() => {
+    const isComplete = localStorage.getItem('pp_onboarding_complete');
+    setShowOnboarding(!isComplete);
+  }, []);
+
+  // Apply org theming CSS variables
+  useEffect(() => {
+    if (orgPrimary) {
+      document.documentElement.style.setProperty('--pp-primary', orgPrimary);
     }
-  }
+    if (orgSecondary) {
+      document.documentElement.style.setProperty('--pp-secondary', orgSecondary);
+    }
+  }, [orgPrimary, orgSecondary]);
+
+  // Keyboard navigation hooks
+  const { showHint } = useKeyboardNav(
+    () => setPaletteOpen(true),
+    () => setShowShortcutsModal(true)
+  );
 
   function handleLogout() {
     logout();
@@ -375,20 +362,10 @@ export default function AppShellLayout() {
       .filter(group => group.items.length > 0);
   }, [sidebarOrder, isAdmin, canAccess, orgSettings.features]);
 
-  // ── Sidebar Favorites (S7.3) ─────────────────────────────────────────────
-  const FAVS_KEY = 'pp_sidebar_favs';
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(FAVS_KEY) ?? '[]')); }
-    catch { return new Set(); }
-  });
-  const toggleFavorite = useCallback((path: string) => {
-    setFavorites(prev => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path); else next.add(path);
-      localStorage.setItem(FAVS_KEY, JSON.stringify(Array.from(next)));
-      return next;
-    });
-  }, []);
+  // ── Sidebar Favorites — backend-synced via FavoritesContext ──────────────
+  const { favorites: favEntries, isFavorite, toggle: toggleFavorite } = useFavoritesContext();
+  // Derive a Set<path> for O(1) membership checks used throughout the nav render
+  const favorites = useMemo(() => new Set(favEntries.map(f => f.pagePath)), [favEntries]);
 
   // ── Recent pages (S7 gap) ────────────────────────────────────────────────
   const RECENT_NAV_KEY = 'pp_recent_pages';
@@ -413,6 +390,22 @@ export default function AppShellLayout() {
     window.addEventListener('pp-toggle-sidebar', handleToggle);
     return () => window.removeEventListener('pp-toggle-sidebar', handleToggle);
   }, []);
+
+  // Wire ⌘K → open command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Color scheme is persisted by Mantine itself in 'mantine-color-scheme' localStorage key.
+  // PPPreferencesPanel calls useMantineColorScheme().setColorScheme() to change AND persist it.
+  // No extra restoration effect needed here — Mantine handles it automatically.
 
   // ── Collapsible nav groups ────────────────────────────────────────────────
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -440,8 +433,9 @@ export default function AppShellLayout() {
     if (group.label === 'Home') return false;
     // If the user has explicitly toggled this group, respect that preference
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
-    // Default: all groups open on first load — don't hide sections the user hasn't seen yet
-    return false;
+    // Default: collapse all groups except the one containing the current route
+    const containsActive = group.items.some(i => i.path === location.pathname || (i.children && i.children.some(c => c.path === location.pathname)));
+    return !containsActive;
   }
 
   return (
@@ -508,46 +502,6 @@ export default function AppShellLayout() {
 
           {/* Right: actions + user menu */}
           <Group gap={6}>
-            {/* Search bar button */}
-            <Tooltip label="Search (⌘K)" position="bottom">
-              <UnstyledButton
-                onClick={() => setSearchOpened(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '5px 12px',
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'rgba(255,255,255,0.7)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontFamily: FONT_FAMILY,
-                  minWidth: 180,
-                }}
-                visibleFrom="sm"
-              >
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <IconSearch size={14} />
-                  <div className="search-ready-indicator" style={{ position: 'absolute', bottom: -2, right: -3, width: 5, height: 5, backgroundColor: orgPrimary, borderRadius: '50%', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-                </div>
-                <Text size="sm" style={{ flex: 1, color: 'rgba(255,255,255,0.55)', fontFamily: FONT_FAMILY }}>Search…</Text>
-                <Kbd size="xs" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', border: 'none', fontFamily: FONT_FAMILY }}>⌘K</Kbd>
-              </UnstyledButton>
-            </Tooltip>
-            <Tooltip label="Search (⌘K)" position="bottom">
-              <ActionIcon
-                variant="subtle"
-                size="lg"
-                onClick={() => setSearchOpened(true)}
-                style={{ color: 'rgba(255,255,255,0.75)' }}
-                hiddenFrom="sm"
-              >
-                <IconSearch size={19} />
-              </ActionIcon>
-            </Tooltip>
-
             <NotificationBell />
 
             {/* Activity Feed button */}
@@ -577,33 +531,10 @@ export default function AppShellLayout() {
                   <div style={{
                     position: 'absolute', top: 2, right: 2,
                     width: 8, height: 8, borderRadius: '50%',
-                    background: '#fa5252', pointerEvents: 'none',
+                    background: COLOR_ERROR, pointerEvents: 'none',
                   }} />
                 )}
               </div>
-            </Tooltip>
-
-            <Tooltip label="Upload Excel" position="bottom">
-              <ActionIcon
-                variant="subtle"
-                size="lg"
-                onClick={() => setExcelModalOpen(true)}
-                style={{ color: 'rgba(255,255,255,0.75)' }}
-              >
-                <IconFileSpreadsheet size={19} />
-              </ActionIcon>
-            </Tooltip>
-
-            <Tooltip label="Export Reconciliation Workbook" position="bottom">
-              <ActionIcon
-                variant="subtle"
-                size="lg"
-                loading={downloading}
-                onClick={handleExportReconciliation}
-                style={{ color: 'rgba(255,255,255,0.75)' }}
-              >
-                <IconTableExport size={19} />
-              </ActionIcon>
             </Tooltip>
 
             <Tooltip label={isDark ? 'Light mode' : 'Dark mode'} position="bottom">
@@ -684,66 +615,181 @@ export default function AppShellLayout() {
       <MantineAppShell.Navbar
         p="xs"
         style={{
-          backgroundColor: isDark ? undefined : SURFACE_SIDEBAR,
-          borderRight: `1px solid ${isDark ? 'rgba(45, 204, 211, 0.08)' : BORDER_DEFAULT}`,
-          boxShadow: isDark ? `1px 0 20px rgba(0, 0, 0, 0.3)` : `1px 0 12px rgba(12, 35, 64, 0.04)`,
+          // DL-6: sidebar is darkest layer — creates depth separation from content
+          backgroundColor: isDark ? '#0a0a0f' : SURFACE_SIDEBAR,
+          borderRight: isDark ? '1px solid rgba(46, 51, 70, 0.5)' : `1px solid ${BORDER_DEFAULT}`,
+          boxShadow: isDark ? `1px 0 20px rgba(0, 0, 0, 0.4)` : `1px 0 12px rgba(12, 35, 64, 0.04)`,
         }}
       >
         <MantineAppShell.Section grow component={ScrollArea}>
-          {/* ── Starred Favorites (S7.3) ── */}
-          {favorites.size > 0 && (() => {
-            // Collect all nav items across all visible groups that are starred
-            const favItems: NavItem[] = [];
+          {/* ── Sidebar nav filter ── */}
+          <div style={{ padding: '8px 8px 4px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 8px',
+              borderRadius: 6,
+              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)',
+            }}>
+              <IconSearch size={11} color={isDark ? '#6b7280' : TEXT_SUBTLE} style={{ flexShrink: 0 }} />
+              <input
+                value={navFilter}
+                onChange={e => setNavFilter(e.target.value)}
+                placeholder="Filter pages..."
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 12,
+                  fontFamily: FONT_FAMILY,
+                  color: isDark ? '#c9cdd4' : DARK_TEXT_PRIMARY,
+                  minWidth: 0,
+                }}
+              />
+              {navFilter && (
+                <button
+                  onClick={() => setNavFilter('')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: isDark ? '#6b7280' : TEXT_SUBTLE,
+                    fontSize: 14,
+                    lineHeight: 1,
+                  }}
+                >×</button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Filtered flat view ── */}
+          {navFilter.trim() && (() => {
+            const q = navFilter.trim().toLowerCase();
+            const matches: Array<{ item: typeof visibleGroups[0]['items'][0]; groupLabel: string }> = [];
             for (const group of visibleGroups) {
               for (const item of group.items) {
-                if (favorites.has(item.path)) favItems.push(item);
+                if (item.label.toLowerCase().includes(q)) {
+                  matches.push({ item, groupLabel: group.label });
+                }
+                if (item.children) {
+                  for (const child of item.children) {
+                    if (child.label.toLowerCase().includes(q)) {
+                      matches.push({ item: child, groupLabel: group.label });
+                    }
+                  }
+                }
               }
             }
-            if (favItems.length === 0) return null;
+            if (matches.length === 0) {
+              return (
+                <Text size="xs" style={{ padding: '12px 14px', color: isDark ? '#5a5e70' : TEXT_SUBTLE, fontFamily: FONT_FAMILY, fontStyle: 'italic' }}>
+                  No pages match "{navFilter}"
+                </Text>
+              );
+            }
             return (
-              <div className="nav-group-container" style={{ marginBottom: 4 }}>
-                <div style={{ padding: '8px 8px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <IconStarFilled size={10} color={isDark ? '#F59E0B' : '#D97706'} />
-                  <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                    style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, fontSize: 9 }}>
-                    Starred
-                  </Text>
-                </div>
-                {favItems.map(item => {
-                  const isActive = item.path === '/' ? location.pathname === '/' :
-                    location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+              <div style={{ paddingBottom: 4 }}>
+                {matches.map(({ item }) => {
+                  const isActive = item.path.includes('?')
+                    ? location.pathname + location.search === item.path
+                    : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                   return (
                     <NavLink
-                      key={`fav-${item.path}`}
-                      label={
-                        <Group gap={6} justify="space-between" wrap="nowrap">
-                          <span style={{ fontFamily: FONT_FAMILY, fontSize: 13 }}>{item.label}</span>
-                          <ActionIcon
-                            size="xs"
-                            variant="transparent"
-                            onClick={e => { e.stopPropagation(); e.preventDefault(); toggleFavorite(item.path); }}
-                            style={{ color: '#F59E0B', opacity: 0.8 }}
-                          >
-                            <IconStarFilled size={11} />
-                          </ActionIcon>
-                        </Group>
-                      }
+                      key={item.path}
+                      label={<span style={{ fontFamily: FONT_FAMILY, fontSize: 13 }}>{item.label}</span>}
                       leftSection={item.icon}
                       active={isActive}
-                      onClick={() => navigate(item.path)}
+                      onClick={() => { navigate(item.path); setNavFilter(''); }}
                       style={{
-                        borderRadius: 10,
-                        fontFamily: FONT_FAMILY,
-                        fontWeight: isActive ? 600 : 400,
-                        fontSize: 13,
-                        borderLeft: isActive ? `3px solid ${orgPrimary}` : 'none',
+                        borderRadius: 6,
+                        borderLeft: isActive ? `3px solid ${isDark ? AQUA : orgPrimary}` : '3px solid transparent',
                         paddingLeft: isActive ? 12 : 15,
-                        background: isActive ? `linear-gradient(90deg, ${orgPrimary}15, transparent)` : undefined,
+                        color: isDark ? (isActive ? AQUA : '#6a6a80') : undefined,
+                        background: isActive ? (isDark ? 'rgba(45,204,211,0.10)' : `linear-gradient(90deg, ${orgPrimary}15, transparent)`) : undefined,
+                        transition: 'all 150ms ease',
                       }}
                     />
                   );
                 })}
-                <Divider my={4} style={{ opacity: 0.4 }} />
+              </div>
+            );
+          })()}
+
+          {/* ── Normal view (hidden when filter is active) ── */}
+          {!navFilter.trim() && <>
+          {/* ── Starred Favorites — backend-synced ── */}
+          {(() => {
+            // Build icon lookup from visible nav groups
+            const iconByPath = new Map<string, React.ReactNode>();
+            for (const group of visibleGroups) {
+              for (const item of group.items) {
+                iconByPath.set(item.path, item.icon);
+              }
+            }
+            return (
+              <div className="nav-group-container" style={{ marginBottom: 4 }}>
+                <div style={{ padding: '8px 8px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <IconStarFilled size={10} color={isDark ? COLOR_WARNING : COLOR_AMBER_DARK} />
+                  <Text size="xs" fw={700} tt="uppercase"
+                    style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, fontSize: 9, color: isDark ? '#5a5e70' : TEXT_SECONDARY }}>
+                    Favorites
+                  </Text>
+                </div>
+                {favEntries.length === 0 ? (
+                  <Text size="xs" style={{
+                    padding: '4px 12px 8px',
+                    fontSize: 11,
+                    color: isDark ? '#5a5e70' : TEXT_SECONDARY,
+                    fontStyle: 'italic',
+                  }}>
+                    Pin your most-used pages ★
+                  </Text>
+                ) : (
+                  favEntries.map(fav => {
+                    const isActive = fav.pagePath === '/'
+                      ? location.pathname === '/'
+                      : location.pathname === fav.pagePath || location.pathname.startsWith(fav.pagePath + '/');
+                    return (
+                      <NavLink
+                        key={`fav-${fav.pagePath}`}
+                        label={
+                          <Group gap={6} justify="space-between" wrap="nowrap">
+                            <span style={{ fontFamily: FONT_FAMILY, fontSize: 13, color: isDark ? (isActive ? AQUA : '#6a6a80') : undefined }}>
+                              {fav.pageLabel}
+                            </span>
+                            <ActionIcon
+                              size="xs"
+                              variant="transparent"
+                              onClick={e => { e.stopPropagation(); e.preventDefault(); toggleFavorite(fav.pagePath, fav.pageLabel); }}
+                              style={{ color: COLOR_WARNING, opacity: 0.8 }}
+                            >
+                              <IconStarFilled size={11} />
+                            </ActionIcon>
+                          </Group>
+                        }
+                        leftSection={iconByPath.get(fav.pagePath)}
+                        active={isActive}
+                        onClick={() => navigate(fav.pagePath)}
+                        style={{
+                          borderRadius: 6,
+                          fontWeight: isActive ? 500 : 400,
+                          fontSize: 13,
+                          color: isDark ? (isActive ? AQUA : '#6a6a80') : undefined,
+                          background: isActive ? (isDark ? 'rgba(45,204,211,0.10)' : `linear-gradient(90deg, ${orgPrimary}15, transparent)`) : undefined,
+                          borderLeft: isActive ? `3px solid ${isDark ? AQUA : orgPrimary}` : 'none',
+                          paddingLeft: isActive ? 12 : 15,
+                        }}
+                      />
+                    );
+                  })
+                )}
+                <Divider my={4} style={{ opacity: 0.3, borderColor: isDark ? DARK_ELEMENT : undefined }} />
               </div>
             );
           })()}
@@ -752,7 +798,7 @@ export default function AppShellLayout() {
           {recentPages.length > 0 && (
             <div className="nav-group-container" style={{ marginBottom: 4 }}>
               <div style={{ padding: '8px 8px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <IconHistory size={10} color={isDark ? AQUA : '#64748b'} />
+                <IconHistory size={10} color={isDark ? AQUA : TEXT_GRAY} />
                 <Text size="xs" fw={700} tt="uppercase" c="dimmed"
                   style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, fontSize: 9 }}>
                   Recent
@@ -764,7 +810,7 @@ export default function AppShellLayout() {
                   <NavLink
                     key={`recent-${entry.id}`}
                     label={<span style={{ fontFamily: FONT_FAMILY, fontSize: 13 }}>{entry.label}</span>}
-                    leftSection={<IconClock size={14} color={isDark ? AQUA : '#64748b'} />}
+                    leftSection={<IconClock size={14} color={isDark ? AQUA : TEXT_GRAY} />}
                     active={isActive}
                     onClick={() => navigate(entry.path)}
                     style={{
@@ -816,12 +862,12 @@ export default function AppShellLayout() {
                   <Text
                     size="xs" fw={700} tt="uppercase"
                     style={{
-                      color: hasActive ? DEEP_BLUE : TEXT_SECONDARY,
+                      // DL-6: group labels always muted, not tied to active state
+                      color: isDark ? '#5a5e70' : TEXT_SECONDARY,
                       fontFamily: FONT_FAMILY,
                       letterSpacing: '0.8px',
                       fontSize: 10,
-                      opacity: 0.65,
-                      fontWeight: 700,
+                      fontWeight: 600,
                     }}
                   >
                     {group.label}
@@ -865,16 +911,23 @@ export default function AppShellLayout() {
                   const alertCount = typeof rawAlert === 'number' ? rawAlert : 0;
 
                   const navItemStyle = (active: boolean, indent = false) => ({
-                    borderRadius: 10,
+                    // DL-6: dark mode specific colours
+                    borderRadius: isDark ? 6 : 10,
                     fontFamily: FONT_FAMILY,
-                    fontWeight: active ? 600 : 400,
+                    fontWeight: active ? 500 : 400,
                     fontSize: indent ? 12 : 13,
-                    borderLeft: active ? `3px solid ${orgPrimary}` : 'none',
+                    color: isDark
+                      ? (active ? AQUA : '#6a6a80')
+                      : undefined,
+                    borderLeft: active
+                      ? `3px solid ${isDark ? AQUA : orgPrimary}`
+                      : '3px solid transparent',
                     paddingLeft: active ? (indent ? 24 : 12) : (indent ? 27 : 15),
-                    transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: active ? 'translateX(2px)' : 'translateX(0)',
-                    background: active ? `linear-gradient(90deg, ${orgPrimary}15, transparent)` : undefined,
-                    boxShadow: active ? `inset 3px 0 0 ${orgPrimary}, 0 2px 8px ${orgPrimary}10` : undefined,
+                    transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: active
+                      ? (isDark ? 'rgba(45,204,211,0.10)' : `linear-gradient(90deg, ${orgPrimary}15, transparent)`)
+                      : undefined,
+                    boxShadow: active && !isDark ? `0 2px 8px ${orgPrimary}10` : undefined,
                   });
 
                   const isFav = favorites.has(item.path);
@@ -910,10 +963,10 @@ export default function AppShellLayout() {
                           <ActionIcon
                             size={14}
                             variant="transparent"
-                            onClick={e => { e.stopPropagation(); e.preventDefault(); toggleFavorite(item.path); }}
+                            onClick={e => { e.stopPropagation(); e.preventDefault(); toggleFavorite(item.path, item.label); }}
                             className="nav-star-btn"
                             style={{
-                              color: isFav ? '#F59E0B' : 'var(--mantine-color-dimmed)',
+                              color: isFav ? COLOR_WARNING : 'var(--mantine-color-dimmed)',
                               opacity: isFav ? 1 : 0.25,
                               transition: 'opacity 0.15s',
                               flexShrink: 0,
@@ -926,7 +979,7 @@ export default function AppShellLayout() {
                       leftSection={item.icon}
                       active={item.children ? parentActive : isActive}
                       defaultOpened={item.children ? parentActive : undefined}
-                      onClick={item.children ? undefined : () => navigate(item.path)}
+                      onClick={() => navigate(item.path)}
                       className="nav-item-enter"
                       style={navItemStyle(item.children ? parentActive : isActive)}
                       styles={{
@@ -963,27 +1016,61 @@ export default function AppShellLayout() {
               </div>
             );
           })}
+          </>}
         </MantineAppShell.Section>
 
-        {/* Sidebar footer — branding */}
+        {/* Sidebar footer — branding + ⌘K hint (DL-6) */}
         <MantineAppShell.Section>
           <div style={{
-            padding: '12px 8px',
-            borderTop: `1px solid ${isDark ? 'rgba(45, 204, 211, 0.08)' : BORDER_DEFAULT}`,
-            textAlign: 'center',
-            background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(12, 35, 64, 0.02)',
+            padding: '10px 10px 8px',
+            borderTop: isDark ? '1px solid #1a1d27' : `1px solid ${BORDER_DEFAULT}`,
+            background: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(12, 35, 64, 0.02)',
           }}>
+            {/* ⌘K search hint */}
+            <Tooltip label="Search or jump to any page (⌘K)" withArrow position="top">
+              <UnstyledButton
+                onClick={() => setPaletteOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',
+                  marginBottom: 6,
+                  transition: 'background 150ms ease, border-color 150ms ease',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(45,204,211,0.1)' : 'rgba(45,204,211,0.08)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(45,204,211,0.3)' : 'rgba(45,204,211,0.4)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+                }}
+              >
+                <IconSearch size={13} color={isDark ? '#6b7280' : TEXT_SUBTLE} />
+                <Text style={{ flex: 1, fontSize: 12, color: isDark ? '#8b9ab3' : TEXT_GRAY, fontFamily: FONT_FAMILY }}>Search...</Text>
+                <Kbd style={{ fontSize: 9, padding: '1px 5px', background: isDark ? 'rgba(46,51,70,0.8)' : 'rgba(0,0,0,0.06)', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)', color: isDark ? '#6b7280' : TEXT_SUBTLE }}>⌘K</Kbd>
+              </UnstyledButton>
+            </Tooltip>
+            {/* Version */}
             <Text size="xs" c="dimmed" style={{
               fontFamily: FONT_FAMILY,
               fontSize: 9,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              background: `linear-gradient(90deg, ${orgSecondary}80, ${orgPrimary})`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              textAlign: 'center',
+              background: isDark ? undefined : `linear-gradient(90deg, ${orgSecondary}80, ${orgPrimary})`,
+              color: isDark ? '#3a3e52' : undefined,
+              WebkitBackgroundClip: isDark ? undefined : 'text',
+              WebkitTextFillColor: isDark ? undefined : 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v19.2
+              Portfolio Planner v28.6
             </Text>
           </div>
         </MantineAppShell.Section>
@@ -1000,14 +1087,20 @@ export default function AppShellLayout() {
         </ErrorBoundary>
       </MantineAppShell.Main>
 
-      <ExcelUploadModal opened={excelModalOpen} onClose={() => setExcelModalOpen(false)} />
       <GlobalSearch opened={searchOpened} onClose={() => setSearchOpened(false)} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyboardShortcutsPanel opened={shortcutsOpened} onClose={() => setShortcutsOpened(false)} />
-      <UserPreferencesDrawer opened={prefsOpen} onClose={() => setPrefsOpen(false)} />
+      <UserPreferencesDrawer opened={false} onClose={() => {}} />
+      <PPPreferencesPanel opened={prefsOpen} onClose={() => setPrefsOpen(false)} />
       <TourGuide />
       <FeedbackWidget />
       <WhatsNewDrawer opened={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
       <ActivityFeedDrawer opened={activityOpen} onClose={() => setActivityOpen(false)} />
+
+      {/* S6 Sprint additions */}
+      <GHint show={showHint} />
+      <KeyboardShortcutsModal opened={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
+      {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
     </MantineAppShell>
   );
 }

@@ -6,6 +6,8 @@ import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../../bra
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
+  /** Render a compact inline card instead of full-page error UI (for widget-level boundaries) */
+  compact?: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -72,6 +74,44 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
 
   render() {
     if (this.state.hasError) {
+      // ── Compact widget-level error card ────────────────────────────────────
+      if ((this.props as ErrorBoundaryProps).compact) {
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 120,
+            padding: '16px 20px',
+            border: '1px solid var(--mantine-color-default-border)',
+            borderRadius: 12,
+            background: 'var(--mantine-color-default)',
+            fontFamily: FONT_FAMILY,
+            gap: 8,
+          }}>
+            <IconBug size={22} color={AQUA} stroke={1.5} />
+            <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              Widget failed to render
+            </Text>
+            {this.state.error?.message && (
+              <Text size="xs" ff="monospace" c="dimmed" style={{ maxWidth: 280, wordBreak: 'break-word', textAlign: 'center', lineHeight: 1.4 }}>
+                {this.state.error.message}
+              </Text>
+            )}
+            {this.state.error?.stack && (
+              <Text size="xs" ff="monospace" c="dimmed" style={{ maxWidth: 320, wordBreak: 'break-word', textAlign: 'left', lineHeight: 1.4, fontSize: 10, opacity: 0.7, whiteSpace: 'pre-wrap' }}>
+                {this.state.error.stack.split('\n').slice(0, 6).join('\n')}
+              </Text>
+            )}
+            <Button size="xs" variant="subtle" color="gray" onClick={this.handleReset} style={{ fontFamily: FONT_FAMILY }}>
+              Retry
+            </Button>
+          </div>
+        );
+      }
+
+      // ── Full-page error UI ─────────────────────────────────────────────────
       return (
         <div style={{
           display: 'flex',
@@ -185,13 +225,10 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
               <Button
                 leftSection={<IconRefresh size={15} />}
                 variant="filled"
+                color="dark"
                 onClick={this.handleReload}
-                style={{
-                  backgroundColor: DEEP_BLUE,
-                  fontFamily: FONT_FAMILY,
-                  fontWeight: 500,
-                  borderRadius: 10,
-                }}
+                style={{ fontFamily: FONT_FAMILY, fontWeight: 500, borderRadius: 10, backgroundColor: DEEP_BLUE }}
+                styles={{ label: { color: '#ffffff' }, section: { color: '#ffffff' } }}
               >
                 Reload page
               </Button>
