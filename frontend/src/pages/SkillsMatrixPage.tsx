@@ -1,332 +1,313 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Container, Title, Grid, Card, Chip, Stack, Text, Group, Drawer,
-  Button, NumberInput, Select, Loader, Center,
+  Container, Title, Card, Chip, Stack, Text, Group, Drawer,
+  Button, Select, TextInput, Loader, Center, Alert,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
+import apiClient from '../api/client';
 
-interface SkillEntry {
-  resourceName: string;
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface SkillResponse {
+  id: number;
+  resourceId: number;
   skillName: string;
-  proficiencyLevel: number;
+  proficiency: number;       // 1=Beginner 2=Intermediate 3=Advanced 4=Expert
+  proficiencyLabel: string;
+  yearsExperience: number | null;
 }
 
-const MOCK_CATEGORIES = ['Engineering', 'Data & Analytics', 'Product & Design', 'Project Management'];
-const MOCK_RESOURCES = [
-  'Alice Chen', 'Bob Johnson', 'Carol Smith', 'David Lee',
-  'Eva Martinez', 'Frank Wilson', 'Grace Taylor', 'Henry Brown',
-  'Iris Thompson', 'Jack Davis',
-];
-const MOCK_SKILLS = [
-  'Java', 'Python', 'React', 'AWS',
-  'SQL', 'Power BI', 'Agile', 'System Design',
-];
+interface SkillMatrixRow {
+  resourceId: number;
+  resourceName: string;
+  role: string | null;
+  podName: string | null;
+  skills: SkillResponse[];
+}
 
-const generateMockSkills = (): SkillEntry[] => {
-  const skills: SkillEntry[] = [];
-  MOCK_RESOURCES.forEach(resource => {
-    MOCK_SKILLS.forEach(skill => {
-      skills.push({
-        resourceName: resource,
-        skillName: skill,
-        proficiencyLevel: Math.floor(Math.random() * 10) + 1,
-      });
-    });
-  });
-  return skills;
-};
+interface SkillCategory {
+  id: number;
+  name: string;
+}
 
-const MOCK_SKILL_DATA = generateMockSkills();
+interface Skill {
+  id: number;
+  name: string;
+  category: { id: number; name: string } | null;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function getProficiencyColor(level: number): string {
   if (level === 0) return '#E0E0E0';
-  if (level <= 3) return '#FF6B6B';
-  if (level <= 6) return '#FFC922';
-  if (level <= 9) return '#8FE928';
-  return '#2ECC71';
+  if (level === 1) return '#FF6B6B';   // Beginner
+  if (level === 2) return '#FFC922';   // Intermediate
+  if (level === 3) return '#8FE928';   // Advanced
+  return '#2ECC71';                     // Expert
 }
 
+function getProficiencyLabel(level: number): string {
+  return ['—', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][level] ?? '—';
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
+
 export default function SkillsMatrixPage() {
-  const isDarkMode = useDarkMode();
+  const isDark = useDarkMode();
+  const queryClient = useQueryClient();
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [addSkillOpen, setAddSkillOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<string | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const [proficiencyLevel, setProficiencyLevel] = useState(5);
+  const [addOpen, setAddOpen] = useState(false);
+  const [selResourceId, setSelResourceId] = useState<string | null>(null);
+  const [selSkillName, setSelSkillName] = useState<string | null>(null);
+  const [selProficiency, setSelProficiency] = useState<string>('2');
 
-  const filteredSkills = selectedCategory
-    ? MOCK_SKILLS.filter(s => {
-        if (selectedCategory === 'Engineering') return ['Java', 'Python', 'React', 'AWS'].includes(s);
-        if (selectedCategory === 'Data & Analytics') return ['SQL', 'Power BI'].includes(s);
-        if (selectedCategory === 'Project Management') return ['Agile'].includes(s);
-        if (selectedCategory === 'Product & Design') return ['System Design'].includes(s);
-        return true;
-      })
-    : MOCK_SKILLS;
+  // ── Data ──
+  const { data: matrixRows = [], isLoading } = useQuery<SkillMatrixRow[]>({
+    queryKey: ['skills-matrix'],
+    queryFn: () => apiClient.get('/resources/skills/matrix').then(r => r.data),
+  });
 
-  const getSkillLevel = (resource: string, skill: string): number => {
-    const entry = MOCK_SKILL_DATA.find(
-      e => e.resourceName === resource && e.skillName === skill
-    );
-    return entry?.proficiencyLevel || 0;
-  };
+  const { data: categories = [] } = useQuery<SkillCategory[]>({
+    queryKey: ['skill-categories'],
+    queryFn: () => apiClient.get('/skills/categories').then(r => r.data),
+  });
 
-  const handleAddSkill = () => {
-    if (selectedResource && selectedSkill) {
-      setAddSkillOpen(false);
-      setSelectedResource(null);
-      setSelectedSkill(null);
-      setProficiencyLevel(5);
-    }
-  };
+  const { data: skills = [] } = useQuery<Skill[]>({
+    queryKey: ['skills'],
+    queryFn: () => apiClient.get('/skills').then(r => r.data),
+  });
 
-  const bgColor = isDarkMode ? '#1E1E1E' : '#FFF';
-  const borderColor = isDarkMode ? '#333' : '#DDD';
+  // skill name → category name mapping (for filtering)
+  const skillCatMap: Record<string, string> = {};
+  skills.forEach(s => { if (s.category?.name) skillCatMap[s.name] = s.category.name; });
+
+  // All distinct skill names across all resources
+  const allSkillNames = Array.from(
+    new Set(matrixRows.flatMap(r => r.skills.map(s => s.skillName)))
+  ).sort();
+
+  // Unique category names (from taxonomy + "Other" for uncategorised)
+  const usedCategoryNames = Array.from(new Set([
+    ...categories.map(c => c.name),
+    ...(allSkillNames.some(n => !skillCatMap[n]) ? ['Other'] : []),
+  ]));
+
+  const filteredSkillNames = selectedCategory
+    ? allSkillNames.filter(n => (skillCatMap[n] ?? 'Other') === selectedCategory)
+    : allSkillNames;
+
+  // ── Mutation ──
+  const addMutation = useMutation({
+    mutationFn: ({ resourceId, skillName, proficiency }: { resourceId: number; skillName: string; proficiency: number }) =>
+      apiClient.post(`/resources/${resourceId}/skills`, { skillName, proficiency }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['skills-matrix'] });
+      setAddOpen(false);
+      setSelResourceId(null);
+      setSelSkillName(null);
+      setSelProficiency('2');
+      notifications.show({ title: 'Skill saved', message: 'Skills matrix updated.', color: 'teal' });
+    },
+    onError: () => {
+      notifications.show({ title: 'Error', message: 'Failed to save skill.', color: 'red' });
+    },
+  });
+
+  const getLevel = (row: SkillMatrixRow, skillName: string) =>
+    row.skills.find(s => s.skillName === skillName)?.proficiency ?? 0;
+
+  const bg = isDark ? '#1E1E1E' : '#FFF';
+  const border = isDark ? '#333' : '#DDD';
+
+  if (isLoading) {
+    return <Center py="xl"><Loader color="teal" /></Center>;
+  }
 
   return (
     <Container size="xl" py="lg">
       <Group justify="space-between" mb="lg">
-        <Title order={2} style={{ fontFamily: FONT_FAMILY }}>
-          Skills Matrix
-        </Title>
-        <Button
-          onClick={() => setAddSkillOpen(true)}
-          color="aqua"
-          size="sm"
-        >
-          Add Skill
+        <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Skills Matrix</Title>
+        <Button onClick={() => setAddOpen(true)} color="teal" size="sm">
+          + Add Skill
         </Button>
       </Group>
 
-      <Card
-        shadow="sm"
-        padding="md"
-        radius="md"
-        mb="lg"
-        style={{ backgroundColor: bgColor, borderColor }}
-      >
+      {matrixRows.length === 0 && (
+        <Alert color="blue" mb="md">
+          No skill data yet. Use "Add Skill" to start building the matrix, or add skills via
+          each resource's profile.
+        </Alert>
+      )}
+
+      {/* Category filter */}
+      <Card shadow="sm" padding="md" radius="md" mb="lg" style={{ backgroundColor: bg, borderColor: border }}>
         <Stack gap="sm">
-          <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
-            Filter by Category
-          </Text>
+          <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>Filter by Category</Text>
           <Group>
-            <Chip
-              checked={selectedCategory === null}
-              onChange={() => setSelectedCategory(null)}
-              variant="outline"
-            >
-              All
+            <Chip checked={selectedCategory === null} onChange={() => setSelectedCategory(null)} variant="outline">
+              All ({allSkillNames.length})
             </Chip>
-            {MOCK_CATEGORIES.map(cat => (
-              <Chip
-                key={cat}
-                checked={selectedCategory === cat}
-                onChange={() => setSelectedCategory(cat)}
-                variant="outline"
-              >
-                {cat}
-              </Chip>
-            ))}
+            {usedCategoryNames.map(cat => {
+              const count = allSkillNames.filter(n => (skillCatMap[n] ?? 'Other') === cat).length;
+              return (
+                <Chip key={cat} checked={selectedCategory === cat} onChange={() => setSelectedCategory(cat)} variant="outline">
+                  {cat} ({count})
+                </Chip>
+              );
+            })}
           </Group>
         </Stack>
       </Card>
 
-      <Card
-        shadow="sm"
-        padding="lg"
-        radius="md"
-        style={{ backgroundColor: bgColor, borderColor, overflowX: 'auto' }}
-      >
-        <div style={{ display: 'inline-block', minWidth: '100%' }}>
-          <div
-            style={{
+      {/* Matrix grid */}
+      {filteredSkillNames.length > 0 && matrixRows.length > 0 && (
+        <Card shadow="sm" padding="lg" radius="md" style={{ backgroundColor: bg, borderColor: border, overflowX: 'auto' }}>
+          <div style={{ display: 'inline-block', minWidth: '100%' }}>
+            {/* Header */}
+            <div style={{
               display: 'grid',
-              gridTemplateColumns: `150px repeat(${filteredSkills.length}, 60px)`,
-              gap: '1px',
-              backgroundColor: isDarkMode ? '#333' : '#DDD',
-              padding: '1px',
-              marginBottom: '10px',
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: isDarkMode ? '#2A2A2A' : '#F5F5F5',
-                padding: '8px',
-                fontWeight: 600,
-                fontSize: '12px',
-                fontFamily: FONT_FAMILY,
-              }}
-            >
-              Resource
+              gridTemplateColumns: `200px repeat(${filteredSkillNames.length}, 64px)`,
+              gap: '1px', backgroundColor: isDark ? '#333' : '#DDD',
+              padding: '1px', marginBottom: '10px',
+            }}>
+              <div style={{ backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0', padding: '8px', fontWeight: 600, fontSize: '12px', fontFamily: FONT_FAMILY }}>
+                Resource
+              </div>
+              {filteredSkillNames.map(skill => (
+                <div key={skill} style={{
+                  backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0',
+                  padding: '8px', textAlign: 'center', fontWeight: 600, fontSize: '11px',
+                  fontFamily: FONT_FAMILY, writingMode: 'vertical-rl',
+                  textOrientation: 'mixed', transform: 'rotate(180deg)',
+                  height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {skill}
+                </div>
+              ))}
             </div>
-            {filteredSkills.map(skill => (
-              <div
-                key={skill}
-                style={{
-                  backgroundColor: isDarkMode ? '#2A2A2A' : '#F5F5F5',
-                  padding: '8px',
-                  textAlign: 'center',
-                  fontWeight: 600,
-                  fontSize: '11px',
-                  fontFamily: FONT_FAMILY,
-                  writingMode: 'vertical-rl',
-                  textOrientation: 'mixed',
-                  transform: 'rotate(180deg)',
-                }}
-              >
-                {skill}
+
+            {/* Rows */}
+            {matrixRows.map(row => (
+              <div key={row.resourceId} style={{
+                display: 'grid',
+                gridTemplateColumns: `200px repeat(${filteredSkillNames.length}, 64px)`,
+                gap: '1px', backgroundColor: isDark ? '#333' : '#DDD',
+                padding: '1px', marginBottom: '1px',
+              }}>
+                <div style={{
+                  backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5',
+                  padding: '8px', fontWeight: 500, fontSize: '12px',
+                  fontFamily: FONT_FAMILY, wordBreak: 'break-word',
+                }}>
+                  <div>{row.resourceName}</div>
+                  {row.role && (
+                    <div style={{ fontSize: 10, color: isDark ? '#999' : '#666', marginTop: 2 }}>{row.role}</div>
+                  )}
+                </div>
+                {filteredSkillNames.map(skill => {
+                  const level = getLevel(row, skill);
+                  return (
+                    <div
+                      key={`${row.resourceId}-${skill}`}
+                      title={level ? `${getProficiencyLabel(level)} (${level}/4)` : 'Not assessed'}
+                      style={{
+                        backgroundColor: getProficiencyColor(level),
+                        padding: '8px', textAlign: 'center', fontSize: '12px',
+                        fontFamily: FONT_FAMILY, fontWeight: 700,
+                        color: level >= 3 ? '#000' : '#333',
+                        cursor: 'default', transition: 'opacity 180ms',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                    >
+                      {level || '—'}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
 
-          {MOCK_RESOURCES.map(resource => (
-            <div
-              key={resource}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `150px repeat(${filteredSkills.length}, 60px)`,
-                gap: '1px',
-                backgroundColor: isDarkMode ? '#333' : '#DDD',
-                padding: '1px',
-                marginBottom: '1px',
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: isDarkMode ? '#2A2A2A' : '#F5F5F5',
-                  padding: '8px',
-                  fontWeight: 500,
-                  fontSize: '12px',
-                  fontFamily: FONT_FAMILY,
-                  wordBreak: 'break-word',
-                }}
-              >
-                {resource}
-              </div>
-              {filteredSkills.map(skill => {
-                const level = getSkillLevel(resource, skill);
-                return (
-                  <div
-                    key={`${resource}-${skill}`}
-                    style={{
-                      backgroundColor: getProficiencyColor(level),
-                      padding: '8px',
-                      textAlign: 'center',
-                      fontSize: '12px',
-                      fontFamily: FONT_FAMILY,
-                      fontWeight: 600,
-                      color: level > 6 ? '#000' : '#333',
-                      cursor: 'pointer',
-                      transition: 'opacity 200ms',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                  >
-                    {level || '—'}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+          {/* Legend */}
+          <Group mt="lg" gap="lg">
+            <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Proficiency scale:</Text>
+            {[
+              { color: '#FF6B6B', label: '1 — Beginner' },
+              { color: '#FFC922', label: '2 — Intermediate' },
+              { color: '#8FE928', label: '3 — Advanced' },
+              { color: '#2ECC71', label: '4 — Expert' },
+            ].map(item => (
+              <Group key={item.label} gap={6}>
+                <div style={{ width: 14, height: 14, backgroundColor: item.color, borderRadius: 3 }} />
+                <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{item.label}</Text>
+              </Group>
+            ))}
+            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, marginLeft: 'auto' }}>
+              {matrixRows.length} resources · {allSkillNames.length} skills
+            </Text>
+          </Group>
+        </Card>
+      )}
 
-        <Group mt="lg" gap="md">
-          <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>
-            Proficiency:
-          </Text>
-          <Group gap="xs">
-            <div
-              style={{
-                width: '20px',
-                height: '20px',
-                backgroundColor: '#FF6B6B',
-                borderRadius: '4px',
-              }}
-            />
-            <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
-              1-3
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <div
-              style={{
-                width: '20px',
-                height: '20px',
-                backgroundColor: '#FFC922',
-                borderRadius: '4px',
-              }}
-            />
-            <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
-              4-6
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <div
-              style={{
-                width: '20px',
-                height: '20px',
-                backgroundColor: '#8FE928',
-                borderRadius: '4px',
-              }}
-            />
-            <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
-              7-9
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <div
-              style={{
-                width: '20px',
-                height: '20px',
-                backgroundColor: '#2ECC71',
-                borderRadius: '4px',
-              }}
-            />
-            <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
-              10
-            </Text>
-          </Group>
-        </Group>
-      </Card>
-
+      {/* Add Skill Drawer */}
       <Drawer
-        opened={addSkillOpen}
-        onClose={() => setAddSkillOpen(false)}
-        title={<Text style={{ fontFamily: FONT_FAMILY }}>Add Skill</Text>}
+        opened={addOpen}
+        onClose={() => setAddOpen(false)}
+        title={<Text fw={600} style={{ fontFamily: FONT_FAMILY }}>Add / Update Skill</Text>}
         position="right"
+        size="sm"
       >
         <Stack gap="md">
           <Select
             label="Resource"
-            placeholder="Select resource"
-            data={MOCK_RESOURCES}
-            value={selectedResource}
-            onChange={setSelectedResource}
+            placeholder="Select resource..."
+            data={matrixRows.map(r => ({ value: String(r.resourceId), label: r.resourceName }))}
+            value={selResourceId}
+            onChange={setSelResourceId}
+            searchable
             styles={{ label: { fontFamily: FONT_FAMILY } }}
           />
+          <TextInput
+            label="Skill Name"
+            placeholder="e.g. Java, React, SQL..."
+            value={selSkillName ?? ''}
+            onChange={e => setSelSkillName(e.currentTarget.value || null)}
+            list="skill-suggestions"
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <datalist id="skill-suggestions">
+            {allSkillNames.map(s => <option key={s} value={s} />)}
+          </datalist>
           <Select
-            label="Skill"
-            placeholder="Select skill"
-            data={filteredSkills}
-            value={selectedSkill}
-            onChange={setSelectedSkill}
+            label="Proficiency Level"
+            data={[
+              { value: '1', label: '1 — Beginner' },
+              { value: '2', label: '2 — Intermediate' },
+              { value: '3', label: '3 — Advanced' },
+              { value: '4', label: '4 — Expert' },
+            ]}
+            value={selProficiency}
+            onChange={v => setSelProficiency(v ?? '2')}
             styles={{ label: { fontFamily: FONT_FAMILY } }}
           />
-          <NumberInput
-            label="Proficiency Level (1-10)"
-            min={1}
-            max={10}
-            value={proficiencyLevel}
-            onChange={(val) => setProficiencyLevel(Number(val) || 5)}
-            styles={{ label: { fontFamily: FONT_FAMILY } }}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setAddSkillOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddSkill} color="aqua">
-              Add
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button
+              color="teal"
+              loading={addMutation.isPending}
+              disabled={!selResourceId || !selSkillName}
+              onClick={() => addMutation.mutate({
+                resourceId: Number(selResourceId),
+                skillName: selSkillName!,
+                proficiency: Number(selProficiency),
+              })}
+            >
+              Save Skill
             </Button>
           </Group>
         </Stack>

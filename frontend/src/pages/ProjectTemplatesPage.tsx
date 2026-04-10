@@ -1,35 +1,34 @@
 import { useState, useMemo } from 'react';
 import {
   Box, Text, Group, Badge, Button, Card, SimpleGrid,
-  TextInput, ActionIcon, Modal, Stack, Divider, Tabs,
-  Paper, ScrollArea, Select, NumberInput, Textarea,
+  TextInput, ActionIcon, Modal, Stack, Divider,
+  Paper, Select, Loader, Center, Alert,
   ThemeIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconTemplate, IconPlus, IconSearch, IconCopy, IconEdit,
+  IconPlus, IconSearch, IconCopy,
   IconTrash, IconRocket, IconCode, IconChartBar,
   IconBriefcase, IconStar, IconStarFilled, IconCheck,
-  IconDownload, IconArrowRight,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import {
+  useProjectTemplates, useToggleTemplateStar,
+  useMarkTemplateUsed, useDeleteTemplate,
+  type ProjectTemplateResponse, type TemplatePhase,
+} from '../api/projectTemplates';
 import { PPPageLayout } from '../components/pp';
 import { AQUA, COLOR_BLUE, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
-interface Template {
-  id: number;
-  name: string;
-  description: string;
-  category: string;
-  duration: string;
-  team: string;
-  effort: string;
-  tags: string[];
-  starred: boolean;
-  usageCount: number;
-  lastUsed?: string;
-  phases: { name: string; duration: string; description: string }[];
+// Use API type — alias for convenience
+type Template = ProjectTemplateResponse & { parsedPhases: TemplatePhase[] };
+
+function parseTemplate(t: ProjectTemplateResponse): Template {
+  let parsedPhases: TemplatePhase[] = [];
+  try { parsedPhases = JSON.parse(t.phases || '[]'); } catch { /* ignore */ }
+  return { ...t, parsedPhases };
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -46,127 +45,23 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Standard':    COLOR_WARNING,
 };
 
-const INITIAL_TEMPLATES: Template[] = [
-  {
-    id: 1,
-    name: 'Standard Feature Release',
-    description: 'A standard 3-month project template for new feature development with discovery, build, and QA phases.',
-    category: 'Standard',
-    duration: '3 months',
-    team: 'Mixed',
-    effort: 'Flat',
-    tags: ['Feature', 'Development', 'QA'],
-    starred: true,
-    usageCount: 12,
-    lastUsed: 'Mar 2026',
-    phases: [
-      { name: 'Discovery & Design', duration: '2 weeks', description: 'Requirements gathering, UX design, technical spec' },
-      { name: 'Development', duration: '8 weeks', description: 'Frontend + backend implementation' },
-      { name: 'QA & Testing', duration: '2 weeks', description: 'Regression, UAT, performance testing' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Data Migration Project',
-    description: 'Template for large-scale data migration with validation, ETL build, and cutover phases.',
-    category: 'Engineering',
-    duration: '4 months',
-    team: 'Backend + Data',
-    effort: 'Steady',
-    tags: ['Data', 'Migration', 'ETL'],
-    starred: false,
-    usageCount: 5,
-    lastUsed: 'Feb 2026',
-    phases: [
-      { name: 'Data Audit & Mapping', duration: '2 weeks', description: 'Source/target schema analysis' },
-      { name: 'ETL Build', duration: '10 weeks', description: 'Transform scripts + pipeline build' },
-      { name: 'Validation & Cutover', duration: '4 weeks', description: 'Data quality checks + go-live' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Analytics Dashboard Build',
-    description: 'Template for building internal analytics dashboards — from data model to front-end delivery.',
-    category: 'Analytics',
-    duration: '2 months',
-    team: 'Data + Frontend',
-    effort: 'Flat',
-    tags: ['Dashboard', 'Analytics', 'Reporting'],
-    starred: true,
-    usageCount: 8,
-    lastUsed: 'Apr 2026',
-    phases: [
-      { name: 'Requirements & KPI Definition', duration: '1 week', description: 'Stakeholder interviews, metric definitions' },
-      { name: 'Data Modelling', duration: '3 weeks', description: 'Data warehouse queries, calculated fields' },
-      { name: 'UI Build & Testing', duration: '4 weeks', description: 'Dashboard implementation and UAT' },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Product Launch',
-    description: 'End-to-end product launch template covering engineering, QA, marketing readiness, and go-live.',
-    category: 'Launch',
-    duration: '6 months',
-    team: 'Cross-functional',
-    effort: 'Ramp-up',
-    tags: ['Launch', 'Cross-team', 'Go-live'],
-    starred: false,
-    usageCount: 3,
-    phases: [
-      { name: 'Planning & Architecture', duration: '3 weeks', description: 'Scope finalization, tech design' },
-      { name: 'Build Phase 1 - Core', duration: '10 weeks', description: 'Core features, APIs, integrations' },
-      { name: 'Build Phase 2 - Polish', duration: '6 weeks', description: 'UI polish, edge cases, docs' },
-      { name: 'QA & Stabilization', duration: '3 weeks', description: 'Full regression, load tests, fixes' },
-      { name: 'Launch & Hypercare', duration: '2 weeks', description: 'Go-live, 24/7 monitoring, rapid fixes' },
-    ],
-  },
-  {
-    id: 5,
-    name: 'Quick Fix / Patch',
-    description: 'Lightweight template for bug fixes and minor enhancements. Streamlined with minimal process.',
-    category: 'Engineering',
-    duration: '2 weeks',
-    team: 'Dev only',
-    effort: 'Flat',
-    tags: ['Bug Fix', 'Patch', 'Quick'],
-    starred: false,
-    usageCount: 24,
-    lastUsed: 'Apr 2026',
-    phases: [
-      { name: 'Investigation', duration: '2 days', description: 'Root cause analysis' },
-      { name: 'Fix + Test', duration: '1 week', description: 'Implementation and unit tests' },
-      { name: 'Deploy', duration: '2 days', description: 'Staged rollout and monitoring' },
-    ],
-  },
-  {
-    id: 6,
-    name: 'API Integration',
-    description: 'Template for third-party API integrations including contracts, build, security review, and testing.',
-    category: 'Engineering',
-    duration: '6 weeks',
-    team: 'Backend',
-    effort: 'Flat',
-    tags: ['API', 'Integration', 'Backend'],
-    starred: false,
-    usageCount: 7,
-    phases: [
-      { name: 'API Contract & Auth Design', duration: '1 week', description: 'Endpoint mapping, auth scheme' },
-      { name: 'Integration Build', duration: '3 weeks', description: 'Implementation + error handling' },
-      { name: 'Security Review + Testing', duration: '2 weeks', description: 'Pen test, QA, performance' },
-    ],
-  },
-];
-
 export default function ProjectTemplatesPage() {
   const isDark = useDarkMode();
-  const [templates, setTemplates] = useState<Template[]>(INITIAL_TEMPLATES);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
 
+  // ── Live data ──
+  const { data: rawTemplates = [], isLoading } = useProjectTemplates();
+  const toggleStarMutation  = useToggleTemplateStar();
+  const markUsedMutation    = useMarkTemplateUsed();
+  const deleteMutation      = useDeleteTemplate();
+
+  const templates: Template[] = useMemo(() => rawTemplates.map(parseTemplate), [rawTemplates]);
+
   const categories = useMemo(() =>
-    Array.from(new Set(INITIAL_TEMPLATES.map(t => t.category))).sort(), []);
+    Array.from(new Set(templates.map(t => t.category))).sort(), [templates]);
 
   const filtered = useMemo(() => {
     let ts = templates;
@@ -183,18 +78,20 @@ export default function ProjectTemplatesPage() {
   const all = useMemo(() => filtered.filter(t => !t.starred), [filtered]);
 
   function toggleStar(id: number) {
-    setTemplates(ts => ts.map(t => t.id === id ? { ...t, starred: !t.starred } : t));
+    toggleStarMutation.mutate(id);
   }
 
   function handleUseTemplate(template: Template) {
-    notifications.show({
-      title: 'Template Applied',
-      message: `"${template.name}" has been pre-filled into a new project. Review and save to confirm.`,
-      color: 'teal',
-      icon: <IconCheck size={16} />,
+    markUsedMutation.mutate(template.id, {
+      onSuccess: () => {
+        notifications.show({
+          title: 'Template Applied',
+          message: `"${template.name}" has been pre-filled into a new project. Review and save to confirm.`,
+          color: 'teal',
+          icon: <IconCheck size={16} />,
+        });
+      },
     });
-    setTemplates(ts => ts.map(t => t.id === template.id
-      ? { ...t, usageCount: t.usageCount + 1, lastUsed: 'Apr 2026' } : t));
   }
 
   function TemplateCard({ template }: { template: Template }) {
@@ -255,6 +152,14 @@ export default function ProjectTemplatesPage() {
           Use Template
         </Button>
       </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <PPPageLayout title="Project Templates" subtitle="Reusable project blueprints and starter configurations" animate>
+        <Center py="xl"><Loader color="teal" /></Center>
+      </PPPageLayout>
     );
   }
 
@@ -369,7 +274,7 @@ export default function ProjectTemplatesPage() {
             <Divider label="Project Phases" labelPosition="left" />
 
             <Stack gap="sm">
-              {selectedTemplate.phases.map((phase, i) => (
+              {selectedTemplate.parsedPhases.map((phase, i) => (
                 <Paper key={i} withBorder p="sm" radius="md"
                   style={{ borderLeft: `3px solid ${AQUA}` }}>
                   <Group justify="space-between" mb={2}>

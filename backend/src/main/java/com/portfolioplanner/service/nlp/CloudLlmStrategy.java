@@ -895,4 +895,71 @@ public class CloudLlmStrategy implements NlpStrategy {
         sb.append("Return ONLY the JSON object. No text before or after it.");
         return sb.toString();
     }
+
+    // ── Free-form content generation ──────────────────────────────────────────
+
+    /**
+     * Generates free-form text content (not classification).
+     * Used by AiContentController for status emails, retro summaries, etc.
+     *
+     * @param systemPrompt  Instructions describing what to generate
+     * @param userMessage   The user's input / context
+     * @return Generated text, or null if unavailable/failed
+     */
+    public String generateContent(String systemPrompt, String userMessage) {
+        if (!isAvailable()) return null;
+        try {
+            if ("ANTHROPIC".equalsIgnoreCase(provider)) {
+                return generateWithAnthropic(systemPrompt, userMessage);
+            } else if ("OPENAI".equalsIgnoreCase(provider)) {
+                return generateWithOpenAI(systemPrompt, userMessage);
+            }
+        } catch (Exception e) {
+            log.warn("generateContent failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String generateWithAnthropic(String systemPrompt, String userMessage) throws Exception {
+        Map<String, Object> requestBody = Map.of(
+            "model", model,
+            "max_tokens", 2048,
+            "system", systemPrompt,
+            "messages", List.of(Map.of("role", "user", "content", userMessage))
+        );
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", apiKey);
+        headers.set("anthropic-version", "2023-06-01");
+
+        RestTemplate rt = new RestTemplate();
+        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
+        ResponseEntity<String> resp = rt.postForEntity("https://api.anthropic.com/v1/messages", entity, String.class);
+
+        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+        JsonNode root = objectMapper.readTree(resp.getBody());
+        return root.path("content").get(0).path("text").asText(null);
+    }
+
+    private String generateWithOpenAI(String systemPrompt, String userMessage) throws Exception {
+        Map<String, Object> requestBody = Map.of(
+            "model", model,
+            "max_tokens", 2048,
+            "messages", List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userMessage)
+            )
+        );
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+
+        RestTemplate rt = new RestTemplate();
+        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
+        ResponseEntity<String> resp = rt.postForEntity("https://api.openai.com/v1/chat/completions", entity, String.class);
+
+        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+        JsonNode root = objectMapper.readTree(resp.getBody());
+        return root.path("choices").get(0).path("message").path("content").asText(null);
+    }
 }
