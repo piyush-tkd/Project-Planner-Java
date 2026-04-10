@@ -323,6 +323,53 @@ export function useTestNlpConnection() {
   });
 }
 
+// ── Health Check ─────────────────────────────────────────────────────────────
+
+export interface NlpHealthStatus {
+  pgvector: boolean;
+  ollama: boolean;
+  cloudLlm: boolean;
+  /** FULL | DB_ONLY | REGEX_ONLY */
+  tier: 'FULL' | 'DB_ONLY' | 'REGEX_ONLY';
+  strategyAvailability: Record<string, boolean>;
+  activeChain: string[];
+}
+
+/**
+ * Lightweight health check — polled every 60 seconds.
+ * Used by the frontend to show a degraded-mode banner when the LLM is unavailable.
+ */
+export function useNlpHealth() {
+  return useQuery<NlpHealthStatus>({
+    queryKey: ['nlp-health'],
+    queryFn: () => apiClient.get('/nlp/health').then(r => r.data),
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ── Smart Autocomplete ────────────────────────────────────────────────────
+
+/**
+ * Server-side autocomplete suggestions — returns up to 5 example phrases
+ * matching the partial query. Enabled only when query.length >= 2.
+ * Uses a 300ms debounce on the caller side; staleTime=30s so rapid keystrokes
+ * hit the cache rather than the server.
+ */
+export function useNlpSuggest(query: string) {
+  return useQuery<string[]>({
+    queryKey: ['nlp-suggest', query],
+    queryFn: () =>
+      apiClient.get('/nlp/suggest', { params: { q: query } }).then(r => r.data),
+    enabled: query.trim().length >= 2,
+    staleTime: 30 * 1000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  });
+}
+
 // ── Learner / Optimizer Types ──────────────────────────────────────────────
 
 export interface NlpQueryLog {
@@ -542,5 +589,17 @@ export function useToggleNlpPin() {
   return useMutation<NlpConversationSummary, Error, number>({
     mutationFn: (id) =>
       apiClient.put(`/nlp/conversations/${id}/pin`).then(r => r.data),
+  });
+}
+
+/** Get conversation context JSON for restoring session memory on resume. */
+export function useNlpConversationContext(conversationId: number | null) {
+  return useQuery<string | null>({
+    queryKey: ['nlp-conversation-context', conversationId],
+    queryFn: () => conversationId
+      ? apiClient.get(`/nlp/conversations/${conversationId}/context`).then(r => r.data ?? null)
+      : null,
+    enabled: conversationId != null,
+    staleTime: 60 * 1000,
   });
 }

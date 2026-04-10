@@ -1,10 +1,12 @@
 package com.portfolioplanner.controller;
 
+import com.portfolioplanner.dto.ProjectHealthDto;
 import com.portfolioplanner.dto.request.ProjectPodPlanningRequest;
 import com.portfolioplanner.dto.request.ProjectRequest;
 import com.portfolioplanner.dto.response.ProjectPodMatrixResponse;
 import com.portfolioplanner.dto.response.ProjectPodPlanningResponse;
 import com.portfolioplanner.dto.response.ProjectResponse;
+import com.portfolioplanner.service.ProjectHealthService;
 import com.portfolioplanner.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ProjectController {
 
-    private final ProjectService projectService;
+    private final ProjectService       projectService;
+    private final ProjectHealthService projectHealthService;
 
     @GetMapping
     public ResponseEntity<List<ProjectResponse>> getAll(@RequestParam(required = false) String status) {
@@ -89,5 +92,24 @@ public class ProjectController {
             @PathVariable Long id,
             @Valid @RequestBody List<ProjectPodPlanningRequest> requests) {
         return ResponseEntity.ok(projectService.setPodPlannings(id, requests));
+    }
+
+    // ── Health scorecard ──────────────────────────────────────────────────────
+
+    /**
+     * Returns health scorecards for all non-archived projects.
+     * Each entry contains RAG status, overall score, and per-dimension scores.
+     */
+    @GetMapping("/health")
+    public ResponseEntity<List<ProjectHealthDto>> getAllHealth() {
+        return ResponseEntity.ok(projectHealthService.computeAll());
+    }
+
+    /**
+     * Returns the health scorecard for a single project.
+     */
+    @GetMapping("/{id}/health")
+    public ResponseEntity<ProjectHealthDto> getHealth(@PathVariable Long id) {
+        return ResponseEntity.ok(projectHealthService.computeOne(id));
     }
 }

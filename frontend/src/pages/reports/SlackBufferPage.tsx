@@ -20,7 +20,7 @@ import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatGapHours, formatGapFte } from '../../utils/formatting';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_ERROR_DEEP, COLOR_GREEN_DARK, COLOR_GREEN_LIGHT, COLOR_ORANGE_DARK, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM} from '../../brandTokens';
 
 interface PodMonthGap {
  podId: number;
@@ -47,7 +47,7 @@ const getGapColors = (
  return { bg: 'rgba(47, 158, 68, 0.35)', text: '#69db7c' }; // Strong green — clearly darker
  }
  if (gapHours > 0) {
- return { bg: 'rgba(64, 192, 87, 0.12)', text: '#51cf66' }; // Light green — clearly lighter
+ return { bg: 'rgba(64, 192, 87, 0.12)', text: COLOR_GREEN_LIGHT }; // Light green — clearly lighter
  }
  if (Math.abs(gapHours) <= 8) {
  return { bg: 'rgba(255, 255, 255, 0.04)', text: 'rgba(255,255,255,0.5)' };
@@ -58,18 +58,18 @@ const getGapColors = (
  return { bg: 'rgba(201, 42, 42, 0.30)', text: '#ff8787' };
  }
  if (gapHours > 160) {
- return { bg: '#d3f9d8', text: '#2f9e44' }; // Comfortable surplus
+ return { bg: SURFACE_SUCCESS, text: COLOR_GREEN_DARK }; // Comfortable surplus
  }
  if (gapHours > 0) {
- return { bg: '#ebfbee', text: '#40c057' }; // Slight surplus
+ return { bg: '#ebfbee', text: COLOR_SUCCESS }; // Slight surplus
  }
  if (Math.abs(gapHours) <= 8) {
- return { bg: '#f8f9fa', text: '#868e96' }; // Balanced
+ return { bg: SURFACE_SUBTLE, text: TEXT_DIM }; // Balanced
  }
  if (gapHours < 0 && gapHours > -160) {
- return { bg: '#fff3bf', text: '#e67700' }; // Slight deficit
+ return { bg: SURFACE_WARNING, text: COLOR_ORANGE_DARK }; // Slight deficit
  }
- return { bg: '#ffe3e3', text: '#c92a2a' }; // Significant deficit
+ return { bg: SURFACE_ERROR, text: COLOR_ERROR_DEEP }; // Significant deficit
 };
 
 export default function SlackBufferPage() {
@@ -208,17 +208,17 @@ export default function SlackBufferPage() {
  {(isDark
  ? [
  { range: '>160h', color: 'rgba(47, 158, 68, 0.35)', text: '#69db7c' },
- { range: '0–160h', color: 'rgba(64, 192, 87, 0.12)', text: '#51cf66' },
+ { range: '0–160h', color: 'rgba(64, 192, 87, 0.12)', text: COLOR_GREEN_LIGHT },
  { range: '±0–8h', color: 'rgba(255,255,255,0.04)', text: 'rgba(255,255,255,0.5)' },
  { range: '-160–0h', color: 'rgba(230, 119, 0, 0.20)', text: '#ffc078' },
  { range: '<-160h', color: 'rgba(201, 42, 42, 0.30)', text: '#ff8787' },
  ]
  : [
- { range: '>160h', color: '#d3f9d8', text: '#2f9e44' },
- { range: '0–160h', color: '#ebfbee', text: '#40c057' },
- { range: '±0–8h', color: '#f8f9fa', text: '#868e96' },
- { range: '-160–0h', color: '#fff3bf', text: '#e67700' },
- { range: '<-160h', color: '#ffe3e3', text: '#c92a2a' },
+ { range: '>160h', color: SURFACE_SUCCESS, text: COLOR_GREEN_DARK },
+ { range: '0–160h', color: '#ebfbee', text: COLOR_SUCCESS },
+ { range: '±0–8h', color: SURFACE_SUBTLE, text: TEXT_DIM },
+ { range: '-160–0h', color: SURFACE_WARNING, text: COLOR_ORANGE_DARK },
+ { range: '<-160h', color: SURFACE_ERROR, text: COLOR_ERROR_DEEP },
  ]
  ).map((item) => (
  <Group key={item.range} gap={4} wrap="nowrap">
@@ -324,10 +324,10 @@ export default function SlackBufferPage() {
  <td
  key={monthIdx}
  style={{
- backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8f9fa',
+ backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : SURFACE_SUBTLE,
  padding: '12px',
  textAlign: 'center',
- borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
+ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : GRAY_100}`,
  color: isDark ? 'rgba(255,255,255,0.3)' : undefined,
  }}
  >
@@ -347,7 +347,7 @@ export default function SlackBufferPage() {
  backgroundColor: colors.bg,
  padding: '12px',
  textAlign: 'center',
- borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
+ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : GRAY_100}`,
  cursor: 'pointer',
  transition: 'opacity 0.2s',
  }}
@@ -412,7 +412,7 @@ export default function SlackBufferPage() {
  backgroundColor: colors.bg,
  padding: '12px',
  textAlign: 'center',
- borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
+ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : GRAY_100}`,
  fontWeight: 600,
  }}
  >

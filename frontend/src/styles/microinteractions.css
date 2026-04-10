@@ -1,0 +1,113 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Sprint 6: Micro-interactions & Polish (S6-02)
+
+   Button presses, hovers, cell edits, saves, and feedback animations.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Button press — subtle scale and shadow */
+.pp-btn-interactive {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.pp-btn-interactive:active {
+  transform: scale(0.97);
+}
+
+/* Table row hover — light slide and background shift */
+.pp-table-row {
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+.pp-table-row:hover {
+  transform: translateX(2px);
+}
+
+/* Inline edit cell glow — cyan ring on focus */
+.pp-cell-editing {
+  animation: cellGlow 0.3s ease forwards;
+}
+@keyframes cellGlow {
+  from {
+    box-shadow: 0 0 0 0 rgba(45, 204, 211, 0);
+  }
+  to {
+    box-shadow: 0 0 0 3px rgba(45, 204, 211, 0.3);
+  }
+}
+
+/* Save success checkmark pop — elastic bounce */
+.pp-save-success {
+  animation: checkPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes checkPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Delete shake — alert feedback */
+.pp-delete-shake {
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* Favorite star bounce — celebratory pop */
+.pp-favorite-active {
+  animation: starBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes starBounce {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Card hover lift — subtle elevation */
+.pp-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pp-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Respect prefers-reduced-motion across all animations */
+@media (prefers-reduced-motion: reduce) {
+  .pp-btn-interactive,
+  .pp-table-row,
+  .pp-cell-editing,
+  .pp-save-success,
+  .pp-delete-shake,
+  .pp-favorite-active,
+  .pp-card-hover {
+    animation: none !important;
+    transition: none !important;
+  }
+}

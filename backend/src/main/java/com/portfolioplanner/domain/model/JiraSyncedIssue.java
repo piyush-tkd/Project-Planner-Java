@@ -59,6 +59,9 @@ public class JiraSyncedIssue {
     @Column(name = "assignee_display_name")
     private String assigneeDisplayName;
 
+    @Column(name = "assignee_avatar_url", length = 512)
+    private String assigneeAvatarUrl;
+
     @Column(name = "reporter_account_id")
     private String reporterAccountId;
 

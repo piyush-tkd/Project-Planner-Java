@@ -54,6 +54,9 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 // H2 console (dev only)
                 .requestMatchers("/h2-console/**").permitAll()
+                // Avatar proxy — fetched by <img> tags which cannot send JWT headers.
+                // The controller enforces its own URL whitelist so this is safe to open.
+                .requestMatchers(HttpMethod.GET, "/api/jira/avatar-proxy").permitAll()
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated()
             )

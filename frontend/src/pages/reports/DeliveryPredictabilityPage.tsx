@@ -33,7 +33,7 @@ import {
   Line,
 } from 'recharts';
 import { IconCircleCheck, IconCircleX, IconAlertCircle, IconCircle, IconChartBar } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, CHART_COLORS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -44,26 +44,26 @@ import { useProductivityMetrics, useDoraMetrics } from '../../api/reports';
 import { ProjectResponse } from '../../types/project';
 
 const LEVEL_COLORS: Record<string, string> = {
-  elite: '#40c057',
-  high: '#228be6',
+  elite: COLOR_SUCCESS,
+  high: COLOR_BLUE_DARK,
   medium: '#fcc419',
-  low: '#fa5252',
+  low: COLOR_ERROR,
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  COMPLETED: '#40c057',
-  ACTIVE: '#228be6',
+  COMPLETED: COLOR_SUCCESS,
+  ACTIVE: COLOR_BLUE_DARK,
   IN_DISCOVERY: '#7950f2',
-  NOT_STARTED: '#868e96',
-  ON_HOLD: '#fd7e14',
-  CANCELLED: '#fa5252',
+  NOT_STARTED: TEXT_DIM,
+  ON_HOLD: COLOR_ORANGE,
+  CANCELLED: COLOR_ERROR,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#fa5252',
-  P1: '#fd7e14',
+  P0: COLOR_ERROR,
+  P1: COLOR_ORANGE,
   P2: '#fcc419',
-  P3: '#228be6',
+  P3: COLOR_BLUE_DARK,
 };
 
 interface DoraMetric {
@@ -203,9 +203,9 @@ export const DeliveryPredictabilityPage: React.FC = () => {
   };
 
   const completionRateColor = useMemo(() => {
-    if (completionStats.rate > 70) return '#40c057';
+    if (completionStats.rate > 70) return COLOR_SUCCESS;
     if (completionStats.rate > 40) return '#fcc419';
-    return '#fa5252';
+    return COLOR_ERROR;
   }, [completionStats.rate]);
 
   if (isLoading) return <LoadingSpinner />;
@@ -436,7 +436,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
               <XAxis dataKey="range" stroke={isDark ? '#999' : '#666'} />
               <YAxis stroke={isDark ? '#999' : '#666'} />
               <RechartTooltip contentStyle={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', border: `1px solid ${isDark ? '#333' : '#ddd'}` }} />
-              <Bar dataKey="count" fill={AQUA} radius={[8, 8, 0, 0]} />
+              <Bar animationDuration={600} dataKey="count" fill={AQUA_HEX} radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -448,7 +448,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
               <XAxis type="number" stroke={isDark ? '#999' : '#666'} />
               <YAxis dataKey="client" type="category" width={100} stroke={isDark ? '#999' : '#666'} />
               <RechartTooltip contentStyle={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', border: `1px solid ${isDark ? '#333' : '#ddd'}` }} />
-              <Bar dataKey="count" fill={DEEP_BLUE} radius={[0, 8, 8, 0]} />
+              <Bar animationDuration={600} dataKey="count" fill={DEEP_BLUE_HEX} radius={[0, 8, 8, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -460,12 +460,12 @@ export const DeliveryPredictabilityPage: React.FC = () => {
           <AreaChart data={deliveryTrend}>
             <defs>
               <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={AQUA} stopOpacity={0.8} />
-                <stop offset="95%" stopColor={AQUA} stopOpacity={0} />
+                <stop offset="5%" stopColor={AQUA_HEX} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={AQUA_HEX} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={DEEP_BLUE} stopOpacity={0.8} />
-                <stop offset="95%" stopColor={DEEP_BLUE} stopOpacity={0} />
+                <stop offset="5%" stopColor={DEEP_BLUE_HEX} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={DEEP_BLUE_HEX} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
@@ -476,7 +476,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
             <Area
               type="monotone"
               dataKey="created"
-              stroke={AQUA}
+              stroke={AQUA_HEX}
               fillOpacity={1}
               fill="url(#colorCreated)"
               name="Created"
@@ -484,7 +484,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
             <Area
               type="monotone"
               dataKey="completed"
-              stroke={DEEP_BLUE}
+              stroke={DEEP_BLUE_HEX}
               fillOpacity={1}
               fill="url(#colorCompleted)"
               name="Completed"

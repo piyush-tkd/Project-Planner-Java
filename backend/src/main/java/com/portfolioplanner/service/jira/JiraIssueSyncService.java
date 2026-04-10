@@ -44,6 +44,7 @@ public class JiraIssueSyncService {
     private final JiraIssueTransitionRepository transitionRepo;
     private final JiraIssueCommentRepository commentRepo;
     private final JiraSyncedSprintRepository sprintRepo;
+    private final JiraSprintIssueRepository sprintIssueRepo;   // ← populates jira_sprint_issue join table
     private final JiraSyncStatusRepository syncStatusRepo;
     private final JiraPodRepository podRepo;
     private final JiraSupportBoardRepository supportBoardRepo;
@@ -58,7 +59,8 @@ public class JiraIssueSyncService {
             "story_points", "customfield_10016", "customfield_10028",
             "customfield_10034", "customfield_10106", "customfield_10162",
             "customfield_10014", // classic epic link
-            "parent", "project", "sprint",
+            "parent", "project",
+            "customfield_10020", // Jira Cloud sprint field (replaces legacy "sprint")
             "description", "comment", "worklog"
     );
 
@@ -266,9 +268,16 @@ public class JiraIssueSyncService {
         if (assignee != null) {
             issue.setAssigneeAccountId(str(assignee, "accountId"));
             issue.setAssigneeDisplayName(str(assignee, "displayName"));
+            // Extract 48x48 avatar URL for display in Sprint Backlog
+            Object avatarUrls = assignee.get("avatarUrls");
+            if (avatarUrls instanceof Map<?, ?> urlMap) {
+                Object url48 = urlMap.get("48x48");
+                if (url48 instanceof String s) issue.setAssigneeAvatarUrl(s);
+            }
         } else {
             issue.setAssigneeAccountId(null);
             issue.setAssigneeDisplayName("Unassigned");
+            issue.setAssigneeAvatarUrl(null);
         }
 
         Map<String, Object> reporter = asMap(fields, "reporter");
@@ -316,15 +325,42 @@ public class JiraIssueSyncService {
             issue.setEpicKey((String) epicLink);
         }
 
-        // Sprint (take the most recent / active sprint)
-        Object sprintRaw = fields.get("sprint");
-        if (sprintRaw instanceof Map) {
-            Map<String, Object> sprint = (Map<String, Object>) sprintRaw;
-            issue.setSprintId(longVal(sprint, "id"));
-            issue.setSprintName(str(sprint, "name"));
-            issue.setSprintState(str(sprint, "state"));
-            issue.setSprintStartDate(parseDateTime(str(sprint, "startDate")));
-            issue.setSprintEndDate(parseDateTime(str(sprint, "endDate")));
+        // Sprint — Jira Cloud uses customfield_10020 (returns a List of all sprints the
+        // issue has ever been in).  We set the "primary" sprint fields from the highest-
+        // priority sprint (active > future > closed), but we preserve ALL historical sprint
+        // links in jira_sprint_issue so retros and analytics can reference closed sprints.
+        Map<String, Object> resolvedSprint = resolveSprintField(fields);
+        if (resolvedSprint != null) {
+            Long sprintJiraId = longVal(resolvedSprint, "id");
+            issue.setSprintId(sprintJiraId);
+            issue.setSprintName(str(resolvedSprint, "name"));
+            issue.setSprintState(str(resolvedSprint, "state"));
+            issue.setSprintStartDate(parseDateTime(str(resolvedSprint, "startDate")));
+            issue.setSprintEndDate(parseDateTime(str(resolvedSprint, "endDate")));
+        }
+
+        // ── Populate jira_sprint_issue join table (ALL historical sprints) ────────
+        // Preserving every sprint the issue has been in is critical for Sprint Retros:
+        // when a sprint closes and issues move to the next sprint, we must NOT delete
+        // the old sprint link or the retro for that sprint will show 0 issues.
+        Set<Long> allSprintIds = parseAllSprintIds(fields);
+        if (!allSprintIds.isEmpty()) {
+            List<JiraSprintIssue> existingLinks = sprintIssueRepo.findByIssueKey(issueKey);
+            Set<Long> existingIds = existingLinks.stream()
+                    .map(JiraSprintIssue::getSprintJiraId).collect(Collectors.toSet());
+
+            // Remove links for sprints that are completely gone from Jira's history
+            for (JiraSprintIssue link : existingLinks) {
+                if (!allSprintIds.contains(link.getSprintJiraId())) {
+                    sprintIssueRepo.delete(link);
+                }
+            }
+            // Add links for any new sprint the issue has been placed in
+            for (Long sid : allSprintIds) {
+                if (!existingIds.contains(sid)) {
+                    sprintIssueRepo.save(new JiraSprintIssue(sid, issueKey));
+                }
+            }
         }
 
         // Description — extract and store full text
@@ -546,32 +582,149 @@ public class JiraIssueSyncService {
     @SuppressWarnings("unchecked")
     private void syncSprintsForProject(String projectKey) {
         try {
-            List<Map<String, Object>> boards = jiraClient.getBoards(projectKey);
-            for (Map<String, Object> board : boards) {
-                long boardId = ((Number) board.get("id")).longValue();
-                List<Map<String, Object>> sprints = jiraClient.getAllSprints(boardId);
-                for (Map<String, Object> s : sprints) {
-                    Long sprintJiraId = longVal(s, "id");
-                    if (sprintJiraId == null) continue;
+            // Collect board IDs to sync — union of:
+            //   (a) boards discovered via Jira API for this project key
+            //   (b) explicit sprintBoardId overrides configured on any JiraPodBoard for this project
+            Set<Long> boardIds = new LinkedHashSet<>();
 
-                    JiraSyncedSprint sprint = sprintRepo.findBySprintJiraId(sprintJiraId)
-                            .orElseGet(JiraSyncedSprint::new);
-                    sprint.setSprintJiraId(sprintJiraId);
-                    sprint.setBoardId(boardId);
-                    sprint.setName(str(s, "name"));
-                    sprint.setState(str(s, "state"));
-                    sprint.setStartDate(parseDateTime(str(s, "startDate")));
-                    sprint.setEndDate(parseDateTime(str(s, "endDate")));
-                    sprint.setCompleteDate(parseDateTime(str(s, "completeDate")));
-                    sprint.setGoal(str(s, "goal"));
-                    sprint.setProjectKey(projectKey);
-                    sprint.setSyncedAt(LocalDateTime.now());
-                    sprintRepo.save(sprint);
+            // (a) API-discovered boards (boards whose owner project == projectKey)
+            List<Map<String, Object>> apiBoardsList = jiraClient.getBoards(projectKey);
+            for (Map<String, Object> b : apiBoardsList) {
+                Object idVal = b.get("id");
+                if (idVal instanceof Number) boardIds.add(((Number) idVal).longValue());
+            }
+
+            // (b) Explicit sprintBoardId overrides — covers the common case where the
+            //     Scrum board is owned by a different Jira project than the ticket project.
+            for (JiraPod pod : podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc()) {
+                for (JiraPodBoard podBoard : pod.getBoards()) {
+                    if (projectKey.equals(podBoard.getJiraProjectKey())
+                            && podBoard.getSprintBoardId() != null) {
+                        boardIds.add(podBoard.getSprintBoardId());
+                    }
+                }
+            }
+
+            // (c) Board IDs already stored in jira_synced_sprint for this project key.
+            //     If a board was discovered in an earlier sync but is no longer returned
+            //     by getBoards(projectKey) (e.g. board owner project changed, or the Jira
+            //     API simply omits it for the current project), we still need to call
+            //     getAllSprints() for that board so its sprint states (active → closed)
+            //     are kept up-to-date.  Without this, closed sprints keep state = "active"
+            //     in our DB and continue to appear in the Sprint Backlog.
+            for (JiraSyncedSprint existing : sprintRepo.findByProjectKey(projectKey)) {
+                if (existing.getBoardId() != null) {
+                    boardIds.add(existing.getBoardId());
+                }
+            }
+
+            if (boardIds.isEmpty()) {
+                log.debug("  No boards found for project {} — skipping sprint sync", projectKey);
+                return;
+            }
+
+            log.info("  Syncing sprints for project {} via board IDs: {}", projectKey, boardIds);
+            for (Long boardId : boardIds) {
+                try {
+                    List<Map<String, Object>> sprints = jiraClient.getAllSprints(boardId);
+                    for (Map<String, Object> s : sprints) {
+                        Long sprintJiraId = longVal(s, "id");
+                        if (sprintJiraId == null) continue;
+
+                        JiraSyncedSprint sprint = sprintRepo.findBySprintJiraId(sprintJiraId)
+                                .orElseGet(JiraSyncedSprint::new);
+                        sprint.setSprintJiraId(sprintJiraId);
+                        sprint.setBoardId(boardId);
+                        sprint.setName(str(s, "name"));
+                        sprint.setState(str(s, "state"));
+                        sprint.setStartDate(parseDateTime(str(s, "startDate")));
+                        sprint.setEndDate(parseDateTime(str(s, "endDate")));
+                        sprint.setCompleteDate(parseDateTime(str(s, "completeDate")));
+                        sprint.setGoal(str(s, "goal"));
+                        sprint.setProjectKey(projectKey);
+                        sprint.setSyncedAt(LocalDateTime.now());
+                        sprintRepo.save(sprint);
+
+                        // ── For ACTIVE sprints: re-sync all issues currently in the sprint ──
+                        // Incremental sync misses issues that were moved into the sprint without
+                        // being edited (their Jira `updated` timestamp doesn't change, so the
+                        // updated >= lastSyncAt JQL filter skips them). Fetching sprint issues
+                        // directly from the board/sprint API guarantees accuracy.
+                        if ("active".equalsIgnoreCase(str(s, "state"))) {
+                            try {
+                                syncActiveSprintIssues(boardId, sprintJiraId, projectKey);
+                            } catch (Exception spEx) {
+                                log.warn("  Failed to sync active-sprint issues for board={} sprint={}: {}",
+                                        boardId, sprintJiraId, spEx.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception boardEx) {
+                    log.warn("  Failed to sync sprints for board {}: {}", boardId, boardEx.getMessage());
                 }
             }
         } catch (Exception e) {
-            log.warn("  Failed to sync sprints for {}: {}", projectKey, e.getMessage());
+            log.warn("  Failed to sync sprints for project {}: {}", projectKey, e.getMessage());
         }
+    }
+
+    // ── Active sprint issue sync ─────────────────────────────────────────
+
+    /**
+     * Fetches all issues currently in the active sprint from Jira's board/sprint API
+     * and upserts them into the DB. This catches issues that were added to the sprint
+     * after the last incremental sync (Jira doesn't update the `updated` timestamp when
+     * an issue is merely moved into a sprint, so those issues are missed by JQL filters).
+     *
+     * Also removes jira_sprint_issue links for any issue that Jira no longer shows in
+     * this sprint (handles issues removed from the sprint between syncs).
+     */
+    @SuppressWarnings("unchecked")
+    private void syncActiveSprintIssues(Long boardId, Long sprintJiraId, String projectKey) {
+        // Fetch all issues in the sprint from Jira (up to 500; typical sprints are 20-100)
+        List<Map<String, Object>> rawIssues = jiraClient.getSprintIssues(boardId, sprintJiraId, null);
+        if (rawIssues == null || rawIssues.isEmpty()) return;
+
+        Set<String> jiraSprintKeys = new LinkedHashSet<>();
+        int upserted = 0;
+        for (Map<String, Object> rawIssue : rawIssues) {
+            String key = str(rawIssue, "key");
+            if (key == null) continue;
+            jiraSprintKeys.add(key);
+            try {
+                upsertIssue(rawIssue, projectKey);
+                upserted++;
+            } catch (Exception e) {
+                log.warn("  Active-sprint upsert failed for {}: {}", key, e.getMessage());
+            }
+        }
+
+        // Ensure each issue in the sprint has a jira_sprint_issue link.
+        // upsertIssue will have populated links from customfield_10020 (now included
+        // in the getSprintIssues field list), but we also add an explicit link here
+        // as a safety net for cases where customfield_10020 is absent or empty.
+        for (String issueKey : jiraSprintKeys) {
+            boolean linked = sprintIssueRepo.findByIssueKey(issueKey).stream()
+                    .anyMatch(si -> sprintJiraId.equals(si.getSprintJiraId()));
+            if (!linked) {
+                sprintIssueRepo.save(new JiraSprintIssue(sprintJiraId, issueKey));
+            }
+        }
+
+        // Remove sprint_issue links for issues that Jira no longer places in this sprint
+        // (covers cases where an issue was manually moved OUT of the sprint between syncs)
+        List<JiraSprintIssue> existingLinks = sprintIssueRepo.findBySprintJiraId(sprintJiraId);
+        int removed = 0;
+        for (JiraSprintIssue link : existingLinks) {
+            if (!jiraSprintKeys.contains(link.getIssueKey())) {
+                log.debug("  Removing stale sprint_issue link: {} no longer in sprint {}", link.getIssueKey(), sprintJiraId);
+                sprintIssueRepo.delete(link);
+                removed++;
+            }
+        }
+
+        log.info("  Active sprint {}: upserted {} issues, {} stale links removed",
+                sprintJiraId, upserted, removed);
     }
 
     // ── Helper: update sync status ──────────────────────────────────────
@@ -599,6 +752,74 @@ public class JiraIssueSyncService {
     private static Map<String, Object> asMap(Map<String, Object> parent, String key) {
         Object val = parent.get(key);
         return val instanceof Map ? (Map<String, Object>) val : null;
+    }
+
+    /**
+     * Resolves the sprint from an issue's fields map.
+     *
+     * Jira Cloud returns sprints via {@code customfield_10020} as a JSON array
+     * (ordered chronologically, most-recent last in some versions, so we pick by state priority).
+     * Older/self-hosted instances may return a single Map under the {@code "sprint"} key.
+     *
+     * State priority: active > future > closed  (we want the "current" sprint context).
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> resolveSprintField(Map<String, Object> fields) {
+        // 1. Try customfield_10020 (Jira Cloud standard)
+        Object cf = fields.get("customfield_10020");
+        if (cf instanceof List) {
+            List<?> list = (List<?>) cf;
+            Map<String, Object> best = null;
+            int bestPriority = -1;
+            for (Object item : list) {
+                if (!(item instanceof Map)) continue;
+                Map<String, Object> sprint = (Map<String, Object>) item;
+                String state = str(sprint, "state");
+                int priority = "active".equalsIgnoreCase(state) ? 3
+                             : "future".equalsIgnoreCase(state) ? 2
+                             : "closed".equalsIgnoreCase(state) ? 1 : 0;
+                if (priority > bestPriority) {
+                    bestPriority = priority;
+                    best = sprint;
+                }
+            }
+            if (best != null) return best;
+        }
+        if (cf instanceof Map) return (Map<String, Object>) cf;
+
+        // 2. Fallback: legacy "sprint" single-object field
+        Object legacy = fields.get("sprint");
+        if (legacy instanceof Map) return (Map<String, Object>) legacy;
+
+        return null;
+    }
+
+    /**
+     * Returns ALL sprint IDs from customfield_10020 for this issue.
+     * Used to preserve the full sprint history in jira_sprint_issue so that
+     * closed-sprint retros can still look up which issues were in those sprints.
+     */
+    @SuppressWarnings("unchecked")
+    private static Set<Long> parseAllSprintIds(Map<String, Object> fields) {
+        Set<Long> ids = new LinkedHashSet<>();
+        Object cf = fields.get("customfield_10020");
+        if (cf instanceof List) {
+            for (Object item : (List<?>) cf) {
+                if (!(item instanceof Map)) continue;
+                Long id = longVal((Map<String, Object>) item, "id");
+                if (id != null) ids.add(id);
+            }
+        } else if (cf instanceof Map) {
+            Long id = longVal((Map<String, Object>) cf, "id");
+            if (id != null) ids.add(id);
+        }
+        // Fallback: legacy "sprint" field
+        Object legacy = fields.get("sprint");
+        if (legacy instanceof Map) {
+            Long id = longVal((Map<String, Object>) legacy, "id");
+            if (id != null) ids.add(id);
+        }
+        return ids;
     }
 
     private static String str(Map<String, Object> map, String key) {

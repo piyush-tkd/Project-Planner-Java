@@ -33,6 +33,7 @@ export interface ResourceRequest {
   capacityFte: number;
   jiraDisplayName?: string | null;
   jiraAccountId?: string | null;
+  actualRate?: number | null;
 }
 
 export interface ResourcePodAssignment {

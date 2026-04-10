@@ -26,15 +26,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { IconUsers, IconGitBranch, IconAlertTriangle, IconTrendingUp } from '@tabler/icons-react';
-import {
-  DEEP_BLUE,
-  AQUA,
-  FONT_FAMILY,
-  SHADOW,
-  CHART_COLORS,
-  AQUA_TINTS,
-  DEEP_BLUE_TINTS,
-} from '../../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, CHART_COLORS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_200, SHADOW, SURFACE_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -95,8 +87,8 @@ export default function CrossTeamDependencyPage() {
   const { data: gapData, isLoading: loadingGapData } = useCapacityGap('hours');
 
   const dark = useDarkMode();
-  const headingColor = dark ? '#e0e0e0' : DEEP_BLUE;
-  const sectionBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const headingColor = dark ? GRAY_200 : DEEP_BLUE;
+  const sectionBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
   const textColor = dark ? '#a0a0a0' : '#666';
 
   const isLoading =
@@ -559,11 +551,11 @@ export default function CrossTeamDependencyPage() {
                           )
                         : 0
                     }
-                    stroke={DEEP_BLUE}
+                    stroke={DEEP_BLUE_HEX}
                     strokeDasharray="5 5"
                     name="Average"
                   />
-                  <Bar dataKey="Team Size" fill={AQUA} radius={[6, 6, 0, 0]} />
+                  <Bar animationDuration={600} dataKey="Team Size" fill={AQUA_HEX} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -603,11 +595,11 @@ export default function CrossTeamDependencyPage() {
                           ) / 10
                         : 0
                     }
-                    stroke={DEEP_BLUE}
+                    stroke={DEEP_BLUE_HEX}
                     strokeDasharray="5 5"
                     name="Average"
                   />
-                  <Bar dataKey="FTE" fill={DEEP_BLUE} radius={[6, 6, 0, 0]} />
+                  <Bar animationDuration={600} dataKey="FTE" fill={DEEP_BLUE_HEX} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

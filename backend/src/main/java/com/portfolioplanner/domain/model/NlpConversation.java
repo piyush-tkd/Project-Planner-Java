@@ -39,6 +39,9 @@ public class NlpConversation {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "context_json", columnDefinition = "TEXT")
+    private String contextJson;
+
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();

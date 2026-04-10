@@ -2,8 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Engineering Portfolio Planner</title>
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA / mobile meta -->
+    <meta name="theme-color" content="#6366f1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Portfolio Planner" />
+    <meta name="application-name" content="Portfolio Planner" />
+    <meta name="description" content="Engineering Portfolio &amp; Resource Management — plan sprints, track capacity, manage projects." />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Mobile UX reset -->
+    <style>
+      * { -webkit-tap-highlight-color: transparent; }
+      body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    </style>
     <!--
       Brand font: DIN Next LT Pro (Light 300, Regular 400, Medium 500)
       Licensed typeface — load from your org's font CDN or self-host.
@@ -13,8 +30,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Inter — Wrike-inspired clean UI font (replaces unlicensed DIN Next LT Pro) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- JetBrains Mono — monospace font for code/values -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <!--
+      PP color-scheme flash prevention: runs before React hydrates.
+      Reads mantine-color-scheme from localStorage (set by Mantine on toggle)
+      and applies the data-attribute immediately so CSS selectors are correct
+      from the very first paint. Defaults to 'dark' (DL design system is dark-first).
+    -->
+    <script>
+      (function () {
+        try {
+          // 1st priority: Mantine's own persisted key (set by useMantineColorScheme)
+          var scheme = localStorage.getItem('mantine-color-scheme');
+          // 2nd priority: pp_prefs_v1 (set by PPPreferencesPanel before wiring was complete)
+          if (!scheme) {
+            try {
+              var pp = JSON.parse(localStorage.getItem('pp_prefs_v1') || '{}');
+              if (pp.colorScheme && pp.colorScheme !== 'system') scheme = pp.colorScheme;
+            } catch (e2) { /* ignore */ }
+          }
+          document.documentElement.setAttribute(
+            'data-mantine-color-scheme',
+            scheme === 'light' ? 'light' : 'dark'
+          );
+        } catch (e) {
+          document.documentElement.setAttribute('data-mantine-color-scheme', 'dark');
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

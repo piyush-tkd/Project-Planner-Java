@@ -13,7 +13,7 @@ import { useProjectPodMatrix } from '../../api/projects';
 import { deriveTshirtSize } from '../../types/project';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useTableSort } from '../../hooks/useTableSort';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_BLUE_LIGHT, COLOR_ERROR_DEEP, COLOR_GREEN_DARK, COLOR_ORANGE, COLOR_ORANGE_DARK, COLOR_SUCCESS, COLOR_VIOLET_LIGHT, DARK_SURFACE, DEEP_BLUE, FONT_FAMILY, GRAY_100, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM} from '../../brandTokens';
 import SortableHeader from '../../components/common/SortableHeader';
 import SummaryCard from '../../components/charts/SummaryCard';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -49,20 +49,20 @@ const TSHIRT_BADGE_COLORS: Record<string, string> = {
 };
 
 const STATUS_BG: Record<string, string> = {
-  ACTIVE:       '#d3f9d8',
-  ON_HOLD:      '#fff3bf',
+  ACTIVE:       SURFACE_SUCCESS,
+  ON_HOLD:      SURFACE_WARNING,
   COMPLETED:    '#d0ebff',
   NOT_STARTED:  '#f1f3f5',
   IN_DISCOVERY: '#f3d9fa',
-  CANCELLED:    '#ffe3e3',
+  CANCELLED:    SURFACE_ERROR,
 };
 const STATUS_TEXT: Record<string, string> = {
-  ACTIVE:       '#2f9e44',
-  ON_HOLD:      '#e67700',
+  ACTIVE:       COLOR_GREEN_DARK,
+  ON_HOLD:      COLOR_ORANGE_DARK,
   COMPLETED:    '#1971c2',
-  NOT_STARTED:  '#868e96',
+  NOT_STARTED:  TEXT_DIM,
   IN_DISCOVERY: '#862e9c',
-  CANCELLED:    '#c92a2a',
+  CANCELLED:    COLOR_ERROR_DEEP,
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -106,10 +106,10 @@ export default function ProjectPodMatrixPage() {
       </Group>
 
       <SimpleGrid cols={{ base: 2, sm: 4 }} className="stagger-grid">
-        <SummaryCard title="Total Assignments"  value={stats.totalAssignments}   icon={<IconLink      size={20} color="#339af0" />} />
-        <SummaryCard title="Projects"           value={stats.uniqueProjects}     icon={<IconBriefcase size={20} color="#845ef7" />} />
-        <SummaryCard title="PODs Involved"      value={stats.uniquePods}         icon={<IconHexagons  size={20} color="#40c057" />} />
-        <SummaryCard title="Active Assignments" value={stats.activeAssignments}  icon={<IconFlame     size={20} color="#fd7e14" />} />
+        <SummaryCard title="Total Assignments"  value={stats.totalAssignments}   icon={<IconLink      size={20} color={COLOR_BLUE_LIGHT} />} />
+        <SummaryCard title="Projects"           value={stats.uniqueProjects}     icon={<IconBriefcase size={20} color={COLOR_VIOLET_LIGHT} />} />
+        <SummaryCard title="PODs Involved"      value={stats.uniquePods}         icon={<IconHexagons  size={20} color={COLOR_SUCCESS} />} />
+        <SummaryCard title="Active Assignments" value={stats.activeAssignments}  icon={<IconFlame     size={20} color={COLOR_ORANGE} />} />
       </SimpleGrid>
 
       <Tabs
@@ -154,7 +154,7 @@ export default function ProjectPodMatrixPage() {
           <Tabs.Tab value="grid" leftSection={<IconLayoutColumns size={15} color={activeTab === 'grid' ? AQUA : undefined} />}>
             Coverage Grid
           </Tabs.Tab>
-          <Tabs.Tab value="list" leftSection={<IconList size={15} color={activeTab === 'list' ? '#845ef7' : undefined} />}>
+          <Tabs.Tab value="list" leftSection={<IconList size={15} color={activeTab === 'list' ? COLOR_VIOLET_LIGHT : undefined} />}>
             Assignment List
           </Tabs.Tab>
         </Tabs.List>
@@ -183,6 +183,8 @@ function CoverageGridTab({
   const [selectedPods,  setSelectedPods]  = useState<string[]>([]);
   const [statusFilter,  setStatusFilter]  = useState('ALL');
   const [expandedCell,  setExpandedCell]  = useState<string | null>(null);
+  const tableHeaderBg = isDark ? '#1f2937' : DEEP_BLUE;
+  const tableHeaderColor = isDark ? '#e5e7eb' : '#fff';
 
   const { pods, projects } = useMemo(() => {
     const podMap  = new Map<number, string>();
@@ -270,7 +272,7 @@ function CoverageGridTab({
           <thead>
             <tr>
               <th style={{
-                background: DEEP_BLUE, color: '#fff', padding: '10px 14px',
+                background: tableHeaderBg, color: tableHeaderColor, padding: '10px 14px',
                 textAlign: 'left', fontWeight: 600, minWidth: 130,
                 position: 'sticky', left: 0, zIndex: 2,
               }}>
@@ -278,7 +280,7 @@ function CoverageGridTab({
               </th>
               {visibleProjects.map(p => (
                 <th key={p.id} style={{
-                  background: DEEP_BLUE, color: '#fff', padding: '10px 10px',
+                  background: tableHeaderBg, color: tableHeaderColor, padding: '10px 10px',
                   textAlign: 'center', fontWeight: 600, minWidth: 96,
                 }}>
                   <Box style={{ fontSize: 11 }}>{truncate(p.name)}</Box>
@@ -291,7 +293,7 @@ function CoverageGridTab({
             {(selectedPods.length > 0 ? pods.filter(p => selectedPods.includes(p.name)) : pods).map(pod => (
               <tr key={pod.id}>
                 <td style={{
-                  background: DEEP_BLUE, color: '#fff', padding: '10px 14px',
+                  background: tableHeaderBg, color: tableHeaderColor, padding: '10px 14px',
                   fontWeight: 600, position: 'sticky', left: 0, zIndex: 1, fontSize: 12,
                 }}>
                   {pod.name}
@@ -303,11 +305,11 @@ function CoverageGridTab({
                   if (!item) {
                     return (
                       <td key={key} style={{
-                        background: isDark ? '#25262b' : '#f8f9fa',
+                        background: isDark ? DARK_SURFACE : SURFACE_SUBTLE,
                         padding: '10px',
                         textAlign: 'center',
                         color: isDark ? 'rgba(255,255,255,0.2)' : '#ccc',
-                        borderBottom: `1px solid ${isDark ? '#2c2e33' : '#e9ecef'}`,
+                        borderBottom: `1px solid ${isDark ? '#2c2e33' : GRAY_100}`,
                         fontSize: 18,
                       }}>
                         —
@@ -315,8 +317,8 @@ function CoverageGridTab({
                     );
                   }
 
-                  const bg   = STATUS_BG[item.status]   ?? '#f8f9fa';
-                  const tc   = STATUS_TEXT[item.status] ?? '#868e96';
+                  const bg   = STATUS_BG[item.status]   ?? SURFACE_SUBTLE;
+                  const tc   = STATUS_TEXT[item.status] ?? TEXT_DIM;
                   const size = item.tshirtSize ?? deriveTshirtSize(item.totalHours);
                   const range = formatRange(item.podStartMonth, item.durationOverride ?? item.projectDurationMonths);
 
@@ -338,7 +340,7 @@ function CoverageGridTab({
                             background: isDark ? `${bg}22` : bg,
                             padding: '8px 10px',
                             textAlign: 'center',
-                            borderBottom: `1px solid ${isDark ? '#2c2e33' : '#e9ecef'}`,
+                            borderBottom: `1px solid ${isDark ? '#2c2e33' : GRAY_100}`,
                             cursor: 'pointer',
                             transition: 'opacity 150ms',
                           }}

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Title, Text, Stack, Group, Badge, Alert, Loader, Anchor, Paper,
+ Title, Text, Stack, Group, Badge, Alert, Loader, Anchor, Paper, Skeleton,
  Collapse, ActionIcon, Divider, SimpleGrid, ThemeIcon, Tooltip,
  ScrollArea, Table, Box, SegmentedControl, MultiSelect, TextInput, Button,
 } from '@mantine/core';
@@ -15,36 +15,36 @@ import {
 import { useJiraStatus, useReleaseMetrics, useSearchReleaseVersion, useAllFixVersions, type IssueRow, type ReleaseMetrics } from '../api/jira';
 import { useReleases } from '../api/releases';
 import type { ReleaseCalendarResponse } from '../types/project';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DEEP_BLUE, FONT_FAMILY, GRAY_300, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUBTLE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 
 // ── Brand / colour helpers ────────────────────────────────────────────────────
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
  'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
  'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
- 'Incident': { bg: '#FEE2E2', text: '#B91C1C' },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
+ 'Incident': { bg: SURFACE_ERROR_LIGHT, text: '#B91C1C' },
  'Change Request': { bg: '#F3E8FF', text: '#9333EA' },
 };
 
 function issueTypeStyle(type: string) {
- return ISSUE_TYPE_COLORS[type] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[type] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
 const STATUS_CAT_COLOR: Record<string, string> = {
- 'To Do': '#94A3B8',
- 'In Progress': '#F59E0B',
- 'Done': '#22C55E',
+ 'To Do': TEXT_SUBTLE,
+ 'In Progress': COLOR_WARNING,
+ 'Done': COLOR_GREEN,
 };
 
 function statusColor(cat: string) {
- return STATUS_CAT_COLOR[cat] ?? '#94A3B8';
+ return STATUS_CAT_COLOR[cat] ?? TEXT_SUBTLE;
 }
 
 function formatDate(d: string | null) {
@@ -105,12 +105,11 @@ function VersionResultSection({
 
  if (isLoading || isFetching) {
  return (
- <Paper withBorder radius="md" p="md">
- <Group gap="xs">
- <Loader size="xs" />
- <Text size="sm" c="dimmed">Loading <strong>{versionName}</strong> from Jira…</Text>
- </Group>
- </Paper>
+ <Stack gap="xs">
+ <Skeleton height={36} radius="sm" />
+ <Skeleton height={36} radius="sm" />
+ <Skeleton height={36} radius="sm" />
+ </Stack>
  );
  }
  if (!data || data.length === 0) {
@@ -239,7 +238,7 @@ function ReleaseSection({
 
  {/* ── Collapsed: summary only ───────────────────────────────────── */}
  {!expanded && (
- <Box px="md" py="xs" style={{ background: isDark ? '#1a1b1e' : '#f8f9fa' }}>
+ <Box px="md" py="xs" style={{ background: isDark ? DARK_BG : SURFACE_SUBTLE }}>
  <Text size="sm" c="dimmed">
  {metrics.totalIssues} issues · {metrics.totalSP > 0 ? `${metrics.totalSP} SP total, ${metrics.doneSP} SP done` : 'no story points'} · click to expand
  </Text>
@@ -288,7 +287,7 @@ function ReleaseSection({
  </SimpleGrid>
 
  {/* ── Filters ────────────────────────────────────────────── */}
- <Group px="md" py="sm" justify="space-between" wrap="wrap" style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#fafafa' }}>
+ <Group px="md" py="sm" justify="space-between" wrap="wrap" style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? DARK_BG : '#fafafa' }}>
  <SegmentedControl
  size="xs"
  value={typeFilter}
@@ -345,7 +344,7 @@ function ReleaseSection({
  >
  {issue.key}
  </Anchor>
- <IconExternalLink size={11} color="#94A3B8" />
+ <IconExternalLink size={11} color={TEXT_SUBTLE} />
  </Group>
  </Table.Td>
  <Table.Td>
@@ -359,7 +358,7 @@ function ReleaseSection({
  <Table.Td style={{ maxWidth: 500 }}>
  <Tooltip label={issue.summary} disabled={issue.summary.length < 80} withArrow multiline w={400}>
  <Text size="sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 480 }}>
- {isDone && <IconCheck size={12} style={{ marginRight: 4, color: '#22C55E', display: 'inline', verticalAlign: 'middle' }} />}
+ {isDone && <IconCheck size={12} style={{ marginRight: 4, color: COLOR_GREEN, display: 'inline', verticalAlign: 'middle' }} />}
  {issue.summary}
  </Text>
  </Tooltip>
@@ -534,7 +533,7 @@ export default function ReleaseNotesPage() {
  onChange={setSelectedVersions}
  disabled={metricsLoading}
  maxDropdownHeight={340}
- rightSection={(metricsLoading || versionsLoading) ? <Loader size="xs" /> : <IconSearch size={14} color="#adb5bd" />}
+ rightSection={(metricsLoading || versionsLoading) ? <Loader size="xs" /> : <IconSearch size={14} color={GRAY_300} />}
  renderOption={({ option }) => {
  const isTracked = trackedVersionNames.includes(option.value);
  const jv = allFixVersions?.find(v => v.name === option.value);
@@ -618,7 +617,7 @@ export default function ReleaseNotesPage() {
  );
  })}
  <Divider orientation="vertical" />
- {[['To Do', '#94A3B8'], ['In Progress', '#F59E0B'], ['Done', '#22C55E']].map(([label, color]) => (
+ {[['To Do', TEXT_SUBTLE], ['In Progress', COLOR_WARNING], ['Done', COLOR_GREEN]].map(([label, color]) => (
  <Group key={label} gap={6} align="center">
  <Box style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
  <Text size="xs" c="dimmed">{label}</Text>

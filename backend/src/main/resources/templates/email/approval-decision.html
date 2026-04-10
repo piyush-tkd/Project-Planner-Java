@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+        .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+        .header { padding: 24px 32px; color: #fff; }
+        .header.approved { background: #2f9e44; }
+        .header.rejected { background: #c92a2a; }
+        .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+        .header-logo { max-height: 36px; margin-bottom: 10px; display: block; }
+        .body { padding: 24px 32px; }
+        .body p { margin: 0 0 12px; line-height: 1.6; }
+        .detail-box { background: #f8f9fa; border-left: 4px solid #868e96; border-radius: 4px; padding: 12px 16px; margin: 16px 0; font-size: 14px; }
+        .footer { padding: 16px 32px; font-size: 12px; color: #868e96; border-top: 1px solid #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div th:class="${'header ' + decision?.toLowerCase()}">
+        <img th:if="${orgLogoUrl != null}" th:src="${orgLogoUrl}" class="header-logo" alt="Logo" />
+        <h1 th:text="${decision == 'APPROVED' ? '✅ Approval Granted' : '❌ Request Rejected'}">Decision</h1>
+    </div>
+    <div class="body">
+        <p>Hi <span th:text="${ownerName ?: 'there'}">User</span>,</p>
+        <p>
+            Your approval request for project <strong th:text="${projectName}">Project</strong> in
+            <strong th:text="${orgName ?: 'Portfolio Planner'}">Org</strong>
+            has been <strong th:text="${decision?.toLowerCase()}">decided</strong>.
+        </p>
+        <div class="detail-box">
+            <strong>Change requested:</strong> <span th:text="${changeDescription ?: 'N/A'}">change</span><br/>
+            <strong>Reviewed by:</strong> <span th:text="${reviewedBy}">reviewer</span><br/>
+            <span th:if="${reviewComment != null and !reviewComment.isEmpty()}">
+                <strong>Comment:</strong> <span th:text="${reviewComment}">comment</span>
+            </span>
+        </div>
+        <p th:if="${decision == 'APPROVED'}">
+            The change has been applied automatically.
+            <a th:href="${projectUrl}" th:if="${projectUrl != null}">View the updated project →</a>
+        </p>
+        <p th:if="${decision == 'REJECTED'}">
+            No changes have been applied. Please contact your reviewer if you have questions.
+            <a th:href="${projectUrl}" th:if="${projectUrl != null}">View project →</a>
+        </p>
+    </div>
+    <div class="footer">
+        This is an automated message from <span th:text="${orgName ?: 'Portfolio Planner'}">Org</span>. Please do not reply to this email.
+    </div>
+</div>
+</body>
+</html>

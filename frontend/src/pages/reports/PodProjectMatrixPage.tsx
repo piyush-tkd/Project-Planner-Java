@@ -18,7 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_GREEN_DARK, COLOR_ORANGE_DARK, DARK_SURFACE, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_200, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface ProjectPodMatrixResponse {
@@ -41,17 +41,17 @@ interface ProjectPodMatrixResponse {
 }
 
 const STATUS_COLORS: Record<string, string> = {
- ACTIVE: '#d3f9d8',
- ON_HOLD: '#fff3bf',
+ ACTIVE: SURFACE_SUCCESS,
+ ON_HOLD: SURFACE_WARNING,
  COMPLETED: '#d0ebff',
  CANCELLED: '#f1f3f5',
 };
 
 const STATUS_TEXT_COLORS: Record<string, string> = {
- ACTIVE: '#2f9e44',
- ON_HOLD: '#e67700',
+ ACTIVE: COLOR_GREEN_DARK,
+ ON_HOLD: COLOR_ORANGE_DARK,
  COMPLETED: '#1971c2',
- CANCELLED: '#868e96',
+ CANCELLED: TEXT_DIM,
 };
 
 const TSHIRT_BADGE_COLORS: Record<string, string> = {
@@ -66,7 +66,9 @@ export default function PodProjectMatrixPage() {
  const { data: matrixData = [], isLoading, isError } = useProjectPodMatrix();
  const navigate = useNavigate();
  const dark = useDarkMode();
- const headingColor = dark ? '#e0e0e0' : DEEP_BLUE;
+ const headingColor = dark ? GRAY_200 : DEEP_BLUE;
+ const tableHeaderBg = dark ? '#1f2937' : DEEP_BLUE;
+ const tableHeaderColor = dark ? GRAY_200 : 'white';
 
  const [selectedPods, setSelectedPods] = useState<string[]>([]);
  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -205,8 +207,8 @@ export default function PodProjectMatrixPage() {
  <tr>
  <th
  style={{
- backgroundColor: DEEP_BLUE,
- color: 'white',
+ backgroundColor: tableHeaderBg,
+ color: tableHeaderColor,
  padding: '12px',
  textAlign: 'left',
  fontWeight: 600,
@@ -222,8 +224,8 @@ export default function PodProjectMatrixPage() {
  <th
  key={project.id}
  style={{
- backgroundColor: DEEP_BLUE,
- color: 'white',
+ backgroundColor: tableHeaderBg,
+ color: tableHeaderColor,
  padding: '12px',
  textAlign: 'center',
  fontWeight: 600,
@@ -242,8 +244,8 @@ export default function PodProjectMatrixPage() {
  <tr key={pod.id}>
  <td
  style={{
- backgroundColor: DEEP_BLUE,
- color: 'white',
+ backgroundColor: tableHeaderBg,
+ color: tableHeaderColor,
  padding: '12px',
  fontWeight: 600,
  position: 'sticky',
@@ -262,7 +264,7 @@ export default function PodProjectMatrixPage() {
  <td
  key={key}
  style={{
- backgroundColor: dark ? '#25262b' : '#f8f9fa',
+ backgroundColor: dark ? DARK_SURFACE : SURFACE_SUBTLE,
  padding: '12px',
  textAlign: 'center',
  color: '#999',
@@ -274,8 +276,8 @@ export default function PodProjectMatrixPage() {
  );
  }
 
- const bgColor = STATUS_COLORS[item.status] || '#f8f9fa';
- const textColor = STATUS_TEXT_COLORS[item.status] || '#868e96';
+ const bgColor = STATUS_COLORS[item.status] || SURFACE_SUBTLE;
+ const textColor = STATUS_TEXT_COLORS[item.status] || TEXT_DIM;
  const monthRange = formatMonthRange(
  item.podStartMonth,
  item.durationOverride || item.projectDurationMonths

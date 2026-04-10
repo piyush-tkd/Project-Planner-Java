@@ -7,7 +7,7 @@ import {
 import {
   IconPlus, IconClock, IconX, IconCheck, IconTrash,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA } from '../../brandTokens';
+import { AQUA, BORDER_STRONG, COLOR_BLUE, COLOR_BLUE_DARK, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, SURFACE_BLUE, SURFACE_FAINT, SURFACE_SUCCESS_LIGHT, TEXT_DIM, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 
 const CUSTOM_LANES_KEY = 'pp_kanban_custom_lanes';
 const HIDDEN_LANES_KEY = 'pp_kanban_hidden_lanes';
@@ -33,31 +33,31 @@ interface KanbanBoardViewProps {
 }
 
 const DEFAULT_COLUMNS: { key: string; label: string; color: string; borderColor: string }[] = [
-  { key: 'NOT_STARTED',   label: 'Not Started',   color: '#f8fafc', borderColor: '#94a3b8' },
-  { key: 'IN_DISCOVERY',  label: 'In Discovery',  color: '#eff6ff', borderColor: '#3b82f6' },
-  { key: 'ACTIVE',        label: 'Active',        color: '#f0fdf4', borderColor: '#22c55e' },
+  { key: 'NOT_STARTED',   label: 'Not Started',   color: SURFACE_FAINT, borderColor: TEXT_SUBTLE },
+  { key: 'IN_DISCOVERY',  label: 'In Discovery',  color: SURFACE_BLUE, borderColor: COLOR_BLUE },
+  { key: 'ACTIVE',        label: 'Active',        color: SURFACE_SUCCESS_LIGHT, borderColor: COLOR_GREEN },
   { key: 'ON_HOLD',       label: 'On Hold',       color: '#fefce8', borderColor: '#eab308' },
-  { key: 'COMPLETED',     label: 'Completed',     color: '#f0fdf4', borderColor: '#15803d' },
-  { key: 'CANCELLED',     label: 'Cancelled',     color: '#fef2f2', borderColor: '#ef4444' },
+  { key: 'COMPLETED',     label: 'Completed',     color: SURFACE_SUCCESS_LIGHT, borderColor: '#15803d' },
+  { key: 'CANCELLED',     label: 'Cancelled',     color: '#fef2f2', borderColor: COLOR_ERROR_STRONG },
 ];
 
 const CUSTOM_COLUMN_COLORS = [
   { color: '#faf5ff', borderColor: '#a855f7' },
   { color: '#fff1f2', borderColor: '#f43f5e' },
   { color: '#f0f9ff', borderColor: '#0ea5e9' },
-  { color: '#fefce8', borderColor: '#f59e0b' },
-  { color: '#f0fdf4', borderColor: '#10b981' },
+  { color: '#fefce8', borderColor: COLOR_WARNING },
+  { color: SURFACE_SUCCESS_LIGHT, borderColor: COLOR_TEAL },
 ];
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  'P0': { label: 'P0', color: '#dc2626', bg: '#fef2f2' },
-  'P1': { label: 'P1', color: '#ea580c', bg: '#fff7ed' },
-  'P2': { label: 'P2', color: '#2563eb', bg: '#eff6ff' },
-  'P3': { label: 'P3', color: '#16a34a', bg: '#f0fdf4' },
+  'P0': { label: 'P0', color: COLOR_ERROR_DARK, bg: '#fef2f2' },
+  'P1': { label: 'P1', color: COLOR_ORANGE_DEEP, bg: '#fff7ed' },
+  'P2': { label: 'P2', color: COLOR_BLUE_STRONG, bg: SURFACE_BLUE },
+  'P3': { label: 'P3', color: COLOR_GREEN_STRONG, bg: SURFACE_SUCCESS_LIGHT },
 };
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const cfg = PRIORITY_CONFIG[priority] || { label: priority, color: '#64748b', bg: '#f8fafc' };
+  const cfg = PRIORITY_CONFIG[priority] || { label: priority, color: TEXT_GRAY, bg: SURFACE_FAINT };
   return (
     <Box
       style={{
@@ -77,8 +77,8 @@ function PriorityBadge({ priority }: { priority: string }) {
 const CARD_PALETTE: Record<string, { gradient: string; accent: string; textColor: string }> = {
   P0: { gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', accent: '#ee5a24', textColor: '#fff' },
   P1: { gradient: 'linear-gradient(135deg, #fd9644 0%, #e67e22 100%)', accent: '#e67e22', textColor: '#fff' },
-  P2: { gradient: 'linear-gradient(135deg, #4dabf7 0%, #228be6 100%)', accent: '#228be6', textColor: '#fff' },
-  P3: { gradient: 'linear-gradient(135deg, #adb5bd 0%, #868e96 100%)', accent: '#868e96', textColor: '#fff' },
+  P2: { gradient: 'linear-gradient(135deg, #4dabf7 0%, #228be6 100%)', accent: COLOR_BLUE_DARK, textColor: '#fff' },
+  P3: { gradient: 'linear-gradient(135deg, #adb5bd 0%, #868e96 100%)', accent: TEXT_DIM, textColor: '#fff' },
 };
 
 function KanbanCard({
@@ -185,7 +185,7 @@ function KanbanCard({
         <Group justify="space-between" mt={2}>
           {project.targetDate ? (
             <Group gap={3}>
-              <IconClock size={11} color="#94a3b8" />
+              <IconClock size={11} color={TEXT_SUBTLE} />
               <Text size="xs" c="dimmed">{project.targetDate}</Text>
             </Group>
           ) : <Box />}
@@ -247,6 +247,12 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  // Within-column order overrides: colKey → ordered project IDs
+  const [columnOrders, setColumnOrders] = useState<Record<string, number[]>>({});
+
+  // Insert indicator for position-aware drops: where to show the blue line
+  const [insertIndicator, setInsertIndicator] = useState<{ colKey: string; afterId: number | null } | null>(null);
+
   // Optimistic status for immediate visual feedback while API is in flight
   const [optimisticStatus, setOptimisticStatus] = useState<Record<number, string>>({});
 
@@ -269,14 +275,23 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   }, [customLanes, projects, hiddenDefaultLanes]);
 
   const columns = useMemo(() => {
-    return allColumns.map(col => ({
-      ...col,
-      items: projects.filter(p => {
+    return allColumns.map(col => {
+      const rawItems = projects.filter(p => {
         const s = optimisticStatus[p.id] ?? (p.status || 'NOT_STARTED');
         return s.toUpperCase() === col.key;
-      }),
-    }));
-  }, [allColumns, projects, optimisticStatus]);
+      });
+      // Apply within-column order override if present
+      const order = columnOrders[col.key];
+      let items = rawItems;
+      if (order) {
+        const idMap = Object.fromEntries(rawItems.map(p => [p.id, p]));
+        const sorted = order.map(id => idMap[id]).filter(Boolean) as typeof rawItems;
+        const remaining = rawItems.filter(p => !order.includes(p.id));
+        items = [...sorted, ...remaining];
+      }
+      return { ...col, items };
+    });
+  }, [allColumns, projects, optimisticStatus, columnOrders]);
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
 
@@ -291,7 +306,21 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
     draggingProjectId.current = null;
     setDragging(false);
     setDragOverColumn(null);
+    setInsertIndicator(null);
   }, []);
+
+  // Card-level drag-over: detect top/bottom half and set insert indicator
+  const handleDragOverCard = useCallback((e: React.DragEvent, colKey: string, cardId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverColumn(colKey);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const afterId = e.clientY > rect.top + rect.height / 2 ? cardId : null;
+    // "afterId = null" when above the first card means insert at top
+    // We need to get prev card's id when hovering top half
+    setInsertIndicator({ colKey, afterId: e.clientY > rect.top + rect.height / 2 ? cardId : getPrevCardId(colKey, cardId) });
+  }, [columns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDragOver = useCallback((e: React.DragEvent, colKey: string) => {
     e.preventDefault();
@@ -304,24 +333,57 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
     const rel = e.relatedTarget as Node | null;
     if (rel && (e.currentTarget as HTMLElement).contains(rel)) return;
     setDragOverColumn(null);
+    setInsertIndicator(null);
   }, []);
+
+  // Helper: find the project ID before targetId in a column
+  const getPrevCardId = useCallback((colKey: string, targetId: number): number | null => {
+    const col = columns.find(c => c.key === colKey);
+    if (!col) return null;
+    const idx = col.items.findIndex(p => p.id === targetId);
+    return idx > 0 ? col.items[idx - 1].id : null;
+  }, [columns]);
 
   const handleDrop = useCallback((e: React.DragEvent, colKey: string) => {
     e.preventDefault();
     const projectId = draggingProjectId.current;
-    if (projectId == null) return;
+    if (projectId == null) { setInsertIndicator(null); return; }
 
     const project = projects.find(p => p.id === projectId);
-    const currentStatus = (project?.status || 'NOT_STARTED').toUpperCase();
-    if (currentStatus === colKey) return;
+    const currentStatus = (optimisticStatus[project?.id ?? -1] ?? project?.status ?? 'NOT_STARTED').toUpperCase();
 
-    // Optimistic update
-    setOptimisticStatus(prev => ({ ...prev, [projectId]: colKey }));
+    // ── Same column: reorder within column ────────────────────────────────────
+    if (currentStatus === colKey) {
+      const col = columns.find(c => c.key === colKey);
+      if (col) {
+        const currentOrder = col.items.map(p => p.id);
+        const filtered = currentOrder.filter(id => id !== projectId);
+        const afterId = insertIndicator?.colKey === colKey ? insertIndicator.afterId : filtered[filtered.length - 1] ?? null;
+        const insertIdx = afterId === null ? 0 : filtered.indexOf(afterId) + 1;
+        const newOrder = [...filtered];
+        newOrder.splice(insertIdx, 0, projectId);
+        setColumnOrders(prev => ({ ...prev, [colKey]: newOrder }));
+      }
+    }
+    // ── Cross-column: move to new status ──────────────────────────────────────
+    else {
+      setOptimisticStatus(prev => ({ ...prev, [projectId]: colKey }));
+      // Insert at position in new column
+      const targetCol = columns.find(c => c.key === colKey);
+      if (targetCol) {
+        const targetOrder = targetCol.items.map(p => p.id).filter(id => id !== projectId);
+        const afterId = insertIndicator?.colKey === colKey ? insertIndicator.afterId : targetOrder[targetOrder.length - 1] ?? null;
+        const insertIdx = afterId === null ? 0 : targetOrder.indexOf(afterId) + 1;
+        const newOrder = [...targetOrder];
+        newOrder.splice(insertIdx, 0, projectId);
+        setColumnOrders(prev => ({ ...prev, [colKey]: newOrder }));
+      }
+      onStatusChange?.(projectId, colKey);
+    }
+
     setDragOverColumn(null);
-
-    // Notify parent (triggers API call)
-    onStatusChange?.(projectId, colKey);
-  }, [projects, onStatusChange]);
+    setInsertIndicator(null);
+  }, [projects, optimisticStatus, onStatusChange, columns, insertIndicator]);
 
   // ── Add custom lane ────────────────────────────────────────────────────────
 
@@ -468,9 +530,9 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                     <Box
                       style={{
                         padding: '24px 16px', textAlign: 'center',
-                        color: isOver ? col.borderColor : '#94a3b8',
+                        color: isOver ? col.borderColor : TEXT_SUBTLE,
                         fontSize: 12,
-                        border: `2px dashed ${isOver ? col.borderColor : '#e2e8f0'}`,
+                        border: `2px dashed ${isOver ? col.borderColor : BORDER_STRONG}`,
                         borderRadius: 8,
                         transition: 'all 0.15s',
                       }}
@@ -479,28 +541,30 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                     </Box>
                   ) : (
                     <>
-                      {col.items.map(project => (
-                        <KanbanCard
-                          key={project.id}
-                          project={project}
-                          onClick={() => onProjectClick?.(project.id)}
-                          onDelete={onDeleteProject ? () => setDeleteProjectConfirm(project) : undefined}
-                          onDragStart={e => handleDragStart(e, project.id)}
-                          onDragEnd={handleDragEnd}
-                        />
-                      ))}
-                      {/* Drop indicator at bottom when dragging over non-empty column */}
-                      {isOver && dragging && (
-                        <Box
-                          style={{
-                            height: 4,
-                            borderRadius: 4,
-                            background: col.borderColor,
-                            opacity: 0.7,
-                            transition: 'all 0.15s',
-                          }}
-                        />
+                      {/* Insert-at-top indicator */}
+                      {insertIndicator?.colKey === col.key && insertIndicator.afterId === null && (
+                        <Box style={{ height: 3, borderRadius: 2, background: AQUA, boxShadow: `0 0 6px ${AQUA}80` }} />
                       )}
+                      {col.items.map(project => (
+                        <Box key={project.id} style={{ position: 'relative' }}>
+                          <KanbanCard
+                            project={project}
+                            onClick={() => onProjectClick?.(project.id)}
+                            onDelete={onDeleteProject ? () => setDeleteProjectConfirm(project) : undefined}
+                            onDragStart={e => handleDragStart(e, project.id)}
+                            onDragEnd={handleDragEnd}
+                          />
+                          {/* Wrap card with dragOver for position detection */}
+                          <Box
+                            onDragOver={e => handleDragOverCard(e, col.key, project.id)}
+                            style={{ position: 'absolute', inset: 0, pointerEvents: dragging ? 'all' : 'none' }}
+                          />
+                          {/* Insert-after indicator */}
+                          {insertIndicator?.colKey === col.key && insertIndicator.afterId === project.id && (
+                            <Box style={{ height: 3, borderRadius: 2, background: AQUA, boxShadow: `0 0 6px ${AQUA}80`, marginTop: 2 }} />
+                          )}
+                        </Box>
+                      ))}
                     </>
                   )}
 
@@ -556,7 +620,7 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#94a3b8',
+              color: TEXT_SUBTLE,
               gap: 6,
               fontSize: 13,
               fontWeight: 600,

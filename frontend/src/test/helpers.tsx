@@ -107,6 +107,8 @@ export function makeProject(overrides: Partial<ProjectResponse> = {}): ProjectRe
     jiraLastSyncedAt: null,
     jiraSyncError: false,
     archived: false,
+    estimatedBudget: null,
+    actualCost: null,
     ...overrides,
   };
 }

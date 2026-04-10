@@ -1,18 +1,19 @@
 import { useState } from 'react';
+import { notifications } from '@mantine/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
  Box, Title, Text, Group, Stack, Badge, Button, Grid, Paper,
- Progress, Loader, Alert, ThemeIcon, Tooltip,
+ Progress, Skeleton, Alert, ThemeIcon, Tooltip,
  TextInput, Divider, SimpleGrid, Modal, Table, ScrollArea,
- Tabs, Textarea, ActionIcon,
+ Tabs, Textarea, ActionIcon, NumberInput, Select,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/ui';
 import {
  IconTag, IconRefresh, IconAlertTriangle, IconSettings,
  IconSearch, IconPackage, IconClock, IconUser, IconChevronRight,
- IconNotes, IconCheck,
+ IconNotes, IconCheck, IconPencil, IconX, IconTrash,
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -23,48 +24,50 @@ import {
  useSaveReleaseConfig, useReleaseConfig,
  ReleaseMetrics, IssueRow,
 } from '../api/jira';
+import { useReleases, useCreateRelease, useUpdateRelease, useDeleteRelease } from '../api/releases';
+import type { ReleaseCalendarResponse, ReleaseCalendarRequest } from '../types/project';
 import ChartCard from '../components/common/ChartCard';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
 // ── Issue type colour map ──────────────────────────────────────────────
 // Covers the most common Jira issue types. Falls back to a neutral blue.
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
  'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
  'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
- 'Incident': { bg: '#FEE2E2', text: '#B91C1C' },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
+ 'Incident': { bg: SURFACE_ERROR_LIGHT, text: '#B91C1C' },
  'Change Request': { bg: '#F3E8FF', text: '#9333EA' },
 };
 function issueTypeStyle(typeName: string) {
- return ISSUE_TYPE_COLORS[typeName] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[typeName] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
-const AMBER = '#F59E0B';
-const GREEN = '#22C55E';
-const RED = '#EF4444';
-const GRAY = '#94A3B8';
+const AMBER = COLOR_WARNING;
+const GREEN = COLOR_GREEN;
+const RED = COLOR_ERROR_STRONG;
+const GRAY = TEXT_SUBTLE;
 
 const CHART_COLORS = [
- DEEP_BLUE, AQUA, '#7C3AED', '#DB2777', '#D97706',
- '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
- '#9333EA', '#EA580C',
+ DEEP_BLUE, AQUA, COLOR_VIOLET, '#DB2777', COLOR_AMBER_DARK,
+ COLOR_EMERALD, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, '#0891B2', '#65A30D',
+ '#9333EA', COLOR_ORANGE_DEEP,
 ];
 
 const STATUS_CAT_COLORS: Record<string, string> = {
- 'To Do': '#94A3B8',
- 'In Progress': '#F59E0B',
- 'Done': '#22C55E',
+ 'To Do': TEXT_SUBTLE,
+ 'In Progress': COLOR_WARNING,
+ 'Done': COLOR_GREEN,
 };
 
 const STATUS_CAT_BG: Record<string, string> = {
- 'In Progress': '#FEF3C7',
- 'To Do': '#F1F5F9',
+ 'In Progress': SURFACE_AMBER,
+ 'To Do': SURFACE_LIGHT,
  'Done': '#DCFCE7',
 };
 
@@ -168,8 +171,8 @@ function IssueModal({
  size="sm"
  variant="light"
  style={{
- backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? '#F1F5F9',
- color: STATUS_CAT_COLORS[issue.statusCategory] ?? '#64748B',
+ backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? SURFACE_LIGHT,
+ color: STATUS_CAT_COLORS[issue.statusCategory] ?? TEXT_GRAY,
  border: `1px solid ${STATUS_CAT_COLORS[issue.statusCategory] ?? '#CBD5E1'}`,
  }}
  >
@@ -484,7 +487,7 @@ function ReleaseCard({
  <ChartCard title="Issue count by type" minHeight={120}>
  <ResponsiveContainer width="100%" height={120}>
  <BarChart data={typeData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 9 }} allowDecimals={false} />
  <RTooltip contentStyle={{ fontSize: 11 }} />
@@ -559,7 +562,7 @@ function ReleaseCard({
  <ChartCard title="Hours logged per person" minHeight={100}>
  <ResponsiveContainer width="100%" height={100}>
  <BarChart data={hoursData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 9 }} />
  <RTooltip
@@ -567,7 +570,7 @@ function ReleaseCard({
  formatter={(v: number) => [`${v}h`, 'Hours']}
  />
  <Bar
- dataKey="value" fill={AQUA} radius={[3, 3, 0, 0]}
+ dataKey="value" fill={AQUA_HEX} radius={[3, 3, 0, 0]}
  onClick={(entry) => openModal({
  label: `${entry.fullName}'s Issues`,
  predicate: i => i.assignee === entry.fullName,
@@ -587,12 +590,12 @@ function ReleaseCard({
  <ChartCard title="Issues per person" minHeight={100}>
  <ResponsiveContainer width="100%" height={100}>
  <BarChart data={assigneeData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 9 }} allowDecimals={false} />
  <RTooltip contentStyle={{ fontSize: 11 }} />
  <Bar
- dataKey="value" fill={DEEP_BLUE} radius={[3, 3, 0, 0]}
+ dataKey="value" fill={DEEP_BLUE_HEX} radius={[3, 3, 0, 0]}
  onClick={(entry) => openModal({
  label: `${entry.fullName}'s Issues`,
  predicate: i => i.assignee === entry.fullName,
@@ -670,6 +673,235 @@ function ReleaseCard({
  );
 }
 
+// ── Release Calendar Table with Inline Editing ────────────────────────────
+
+interface ReleaseTableForm {
+  name: string;
+  releaseDate: string | null;
+  codeFreezeDate: string | null;
+  type: string;
+  notes: string | null;
+}
+
+function ReleaseCalendarTable() {
+  const isDark = useDarkMode();
+  const { data: releases = [], isLoading } = useReleases();
+  const updateMutation = useUpdateRelease();
+  const deleteMutation = useDeleteRelease();
+
+  const [inlineEditId, setInlineEditId] = useState<number | null>(null);
+  const [inlineForm, setInlineForm] = useState<ReleaseTableForm>({
+    name: '', releaseDate: null, codeFreezeDate: null, type: 'REGULAR', notes: null,
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const startInlineEdit = (r: ReleaseCalendarResponse) => {
+    setInlineEditId(r.id);
+    setInlineForm({
+      name: r.name,
+      releaseDate: r.releaseDate,
+      codeFreezeDate: r.codeFreezeDate,
+      type: r.type,
+      notes: r.notes,
+    });
+  };
+
+  const cancelInlineEdit = () => {
+    setInlineEditId(null);
+  };
+
+  const saveInlineEdit = (r: ReleaseCalendarResponse) => {
+    updateMutation.mutate({
+      id: r.id,
+      data: {
+        name: inlineForm.name,
+        releaseDate: inlineForm.releaseDate!,
+        codeFreezeDate: inlineForm.codeFreezeDate!,
+        type: inlineForm.type,
+        notes: inlineForm.notes,
+      },
+    }, {
+      onSuccess: () => {
+        setInlineEditId(null);
+        notifications.show({ title: 'Release updated', message: `${inlineForm.name} saved` });
+      },
+      onError: () => notifications.show({ title: 'Update failed', message: 'Could not save release changes', color: 'red' }),
+    });
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
+  return (
+    <Paper withBorder radius="md" p="md" mb="lg">
+      <Title order={4} mb="md" style={{ fontFamily: FONT_FAMILY }}>Release Calendar</Title>
+
+      {releases.length === 0 ? (
+        <Text c="dimmed" size="sm">No releases configured. Create your first release in the Configure tab.</Text>
+      ) : (
+        <ScrollArea>
+          <Table fz="xs" withColumnBorders>
+            <Table.Thead style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Release Date</Table.Th>
+                <Table.Th>Code Freeze Date</Table.Th>
+                <Table.Th>Type</Table.Th>
+                <Table.Th>Notes</Table.Th>
+                <Table.Th style={{ width: 80 }}>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {releases.map(r => (
+                <Table.Tr key={r.id}>
+                  <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <TextInput
+                        size="xs"
+                        value={inlineForm.name}
+                        onChange={e => setInlineForm(f => ({ ...f, name: e.target.value }))}
+                        style={{ width: 140 }}
+                        autoFocus
+                        onClick={e => e.stopPropagation()}
+                      />
+                    ) : (
+                      <Text size="sm" fw={600} style={{ color: AQUA }}>{r.name}</Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td onClick={(e: React.MouseEvent) => inlineEditId === r.id && e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <TextInput
+                        size="xs"
+                        type="date"
+                        value={inlineForm.releaseDate ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInlineForm(f => ({ ...f, releaseDate: e.target.value || null }))}
+                        style={{ width: 130 }}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <Text size="sm">{r.releaseDate}</Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td onClick={(e: React.MouseEvent) => inlineEditId === r.id && e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <TextInput
+                        size="xs"
+                        type="date"
+                        value={inlineForm.codeFreezeDate ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInlineForm(f => ({ ...f, codeFreezeDate: e.target.value || null }))}
+                        style={{ width: 130 }}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <Text size="sm">{r.codeFreezeDate}</Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <Select
+                        size="xs"
+                        data={[
+                          { value: 'REGULAR', label: 'Regular' },
+                          { value: 'SPECIAL', label: 'Special' },
+                        ]}
+                        value={inlineForm.type}
+                        onChange={v => v && setInlineForm(f => ({ ...f, type: v }))}
+                        style={{ minWidth: 100 }}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    ) : (
+                      <Badge size="xs" variant="light" color={r.type === 'SPECIAL' ? 'orange' : 'blue'}>
+                        {r.type}
+                      </Badge>
+                    )}
+                  </Table.Td>
+                  <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <TextInput
+                        size="xs"
+                        value={inlineForm.notes ?? ''}
+                        onChange={e => setInlineForm(f => ({ ...f, notes: e.target.value || null }))}
+                        placeholder="Add notes…"
+                        style={{ width: 160 }}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    ) : (
+                      <Text size="sm" c={r.notes ? 'inherit' : 'dimmed'} lineClamp={1}>
+                        {r.notes ?? '—'}
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td onClick={e => e.stopPropagation()}>
+                    {inlineEditId === r.id ? (
+                      <Group gap={4} wrap="nowrap">
+                        <Tooltip label="Save">
+                          <ActionIcon
+                            size="sm" color="green" variant="filled"
+                            loading={updateMutation.isPending}
+                            onClick={() => saveInlineEdit(r)}
+                          >
+                            <IconCheck size={13} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Cancel">
+                          <ActionIcon size="sm" color="gray" variant="subtle" onClick={cancelInlineEdit}>
+                            <IconX size={13} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    ) : (
+                      <Group gap={4} wrap="nowrap">
+                        <Tooltip label="Quick edit">
+                          <ActionIcon size="sm" color="blue" variant="subtle" onClick={() => startInlineEdit(r)}>
+                            <IconPencil size={13} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <ActionIcon
+                          color="red" variant="subtle" size="sm"
+                          onClick={() => setDeleteConfirm(r.id)}
+                          loading={deleteMutation.isPending}
+                        >
+                          <IconTrash size={13} />
+                        </ActionIcon>
+                      </Group>
+                    )}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm !== null && (
+        <Modal opened onClose={() => setDeleteConfirm(null)} title="Delete Release" centered>
+          <Stack gap="md">
+            <Text size="sm">Are you sure you want to delete this release? This action cannot be undone.</Text>
+            <Group justify="flex-end">
+              <Button variant="subtle" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+              <Button
+                color="red"
+                loading={deleteMutation.isPending}
+                onClick={() => {
+                  deleteMutation.mutate(deleteConfirm, {
+                    onSuccess: () => {
+                      setDeleteConfirm(null);
+                      notifications.show({ title: 'Release deleted', message: 'Release removed successfully' });
+                    },
+                    onError: () => notifications.show({ title: 'Delete failed', message: 'Could not delete release', color: 'red' }),
+                  });
+                }}
+              >
+                Delete
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
+      )}
+    </Paper>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────
 
 export default function ReleasesPage() {
@@ -705,7 +937,7 @@ export default function ReleasesPage() {
  const jiraBaseUrl = status?.baseUrl;
 
  const handleRefresh = () => {
- clearCache.mutate(undefined, { onSettled: () => refetch() });
+ clearCache.mutate(undefined, { onSettled: () => refetch(), onSuccess: () => notifications.show({ title: 'Cache cleared', message: 'Release cache refreshed.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Error', message: (e as Error).message || 'Failed to clear cache.', color: 'red' }) });
  };
 
  // All issues across every release — used by the global stat card modals
@@ -782,6 +1014,9 @@ export default function ReleasesPage() {
  </Button>
  </Group>
  </Group>
+
+ {/* ── Release Calendar Table (inline editing) ── */}
+ <ReleaseCalendarTable />
 
  {/* ── Summary bar — all cards clickable ── */}
  {releases.length > 0 && (
@@ -866,10 +1101,7 @@ export default function ReleasesPage() {
 
  {/* ── Content ── */}
  {isLoading ? (
- <Group justify="center" mt="xl">
- <Loader />
- <Text c="dimmed" size="sm">Loading release data from Jira…</Text>
- </Group>
+ <Stack gap="xs">{[...Array(5)].map((_, i) => <Skeleton key={i} height={52} radius="sm" />)}</Stack>
  ) : filtered.length === 0 ? (
  <EmptyState
  icon={<IconTag size={40} />}

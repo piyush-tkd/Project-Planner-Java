@@ -10,7 +10,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours, formatPercent } from '../../utils/formatting';
 import { getUtilizationBgColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, DEEP_BLUE_HEX, DEEP_BLUE, FONT_FAMILY} from '../../brandTokens';
 import SummaryCard from '../../components/charts/SummaryCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
@@ -126,17 +126,17 @@ export default function PodCapacityPage() {
  <SummaryCard
  title={activeMonth ? 'Capacity' : 'Total Capacity'}
  value={formatHours(stats.totalCap)}
- icon={<IconClock size={20} color="#339af0" />}
+ icon={<IconClock size={20} color={COLOR_BLUE_LIGHT} />}
  />
  <SummaryCard
  title={activeMonth ? 'Demand' : 'Total Demand'}
  value={formatHours(stats.totalDem)}
- icon={<IconTrendingUp size={20} color="#845ef7" />}
+ icon={<IconTrendingUp size={20} color={COLOR_VIOLET_LIGHT} />}
  />
  <SummaryCard
  title={activeMonth ? 'Utilization' : 'Avg Utilization'}
  value={formatPercent(stats.avgUtil)}
- icon={<IconFlame size={20} color={stats.avgUtil > 100 ? '#fa5252' : stats.avgUtil > 80 ? '#fd7e14' : '#40c057'} />}
+ icon={<IconFlame size={20} color={stats.avgUtil > 100 ? COLOR_ERROR : stats.avgUtil > 80 ? COLOR_ORANGE : COLOR_SUCCESS} />}
  color={stats.avgUtil > 100 ? 'red' : stats.avgUtil > 80 ? 'orange' : 'green'}
  />
  <SummaryCard
@@ -144,7 +144,7 @@ export default function PodCapacityPage() {
  value={activeMonth
  ? (stats.gap >= 0 ? `+${formatHours(stats.gap)}` : formatHours(stats.gap))
  : `${stats.peakMonth} (${formatPercent(stats.peakUtil)})`}
- icon={<IconCalendarStats size={20} color={activeMonth && stats.gap < 0 ? '#fa5252' : '#fd7e14'} />}
+ icon={<IconCalendarStats size={20} color={activeMonth && stats.gap < 0 ? COLOR_ERROR : COLOR_ORANGE} />}
  color={activeMonth ? (stats.gap < 0 ? 'red' : 'green') : undefined}
  />
  </SimpleGrid>
@@ -162,26 +162,26 @@ export default function PodCapacityPage() {
  <YAxis fontSize={10} />
  <Tooltip formatter={(value: number) => formatHours(value)} />
  <Legend wrapperStyle={{ fontSize: 11 }} />
- <Bar dataKey="capacity" name="Capacity" strokeWidth={2}>
+ <Bar animationDuration={600} dataKey="capacity" name="Capacity" strokeWidth={2}>
  {visibleMonthData.map(d => (
  <Cell key={d.monthIndex}
- fill={activeMonth === d.monthIndex ? '#3b82f6' : 'rgba(59,130,246,0.3)'}
- stroke="#3b82f6"
+ fill={activeMonth === d.monthIndex ? COLOR_BLUE : 'rgba(59,130,246,0.3)'}
+ stroke={COLOR_BLUE}
  />
  ))}
  </Bar>
- <Bar dataKey="demand" name="Demand" strokeWidth={2}>
+ <Bar animationDuration={600} dataKey="demand" name="Demand" strokeWidth={2}>
  {visibleMonthData.map(d => (
  <Cell key={d.monthIndex}
- fill={activeMonth === d.monthIndex ? '#ef4444' : 'rgba(239,68,68,0.35)'}
- stroke="#ef4444"
+ fill={activeMonth === d.monthIndex ? COLOR_ERROR_STRONG : 'rgba(239,68,68,0.35)'}
+ stroke={COLOR_ERROR_STRONG}
  />
  ))}
  </Bar>
  {activeMonth !== null && (
  <ReferenceLine
  x={visibleMonthData.find(d => d.monthIndex === activeMonth)?.month}
- stroke="#0C2340"
+ stroke={DEEP_BLUE_HEX}
  strokeWidth={2}
  strokeDasharray="4 3"
  />
@@ -204,7 +204,7 @@ export default function PodCapacityPage() {
  {activeMonth !== null && (
  <ReferenceLine
  x={visibleMonthData.find(d => d.monthIndex === activeMonth)?.month}
- stroke="#0C2340"
+ stroke={DEEP_BLUE_HEX}
  strokeWidth={2}
  strokeDasharray="4 3"
  />
@@ -212,12 +212,12 @@ export default function PodCapacityPage() {
  <Line
  type="monotone"
  dataKey="utilization"
- stroke="#8b5cf6"
+ stroke={COLOR_VIOLET_ALT}
  fill="rgba(139,92,246,0.1)"
  strokeWidth={2}
  dot={(props: any) => {
  const isActive = visibleMonthData[props.index]?.monthIndex === activeMonth;
- return <circle key={props.index} cx={props.cx} cy={props.cy} r={isActive ? 7 : 4} fill={isActive ? '#0C2340' : '#8b5cf6'} stroke="white" strokeWidth={1} />;
+ return <circle key={props.index} cx={props.cx} cy={props.cy} r={isActive ? 7 : 4} fill={isActive ? DEEP_BLUE : COLOR_VIOLET_ALT} stroke="white" strokeWidth={1} />;
  }}
  name="Utilization %"
  />
@@ -260,7 +260,7 @@ export default function PodCapacityPage() {
  </Table.Td>
  <Table.Td style={{ textAlign: 'right' }}>{formatHours(d.capacity)}</Table.Td>
  <Table.Td style={{ textAlign: 'right' }}>{formatHours(d.demand)}</Table.Td>
- <Table.Td style={{ textAlign: 'right', color: gap < 0 ? '#fa5252' : '#40c057', fontWeight: 600 }}>
+ <Table.Td style={{ textAlign: 'right', color: gap < 0 ? COLOR_ERROR : COLOR_SUCCESS, fontWeight: 600 }}>
  {formatHours(gap)}
  </Table.Td>
  <Table.Td style={{ textAlign: 'right', backgroundColor: getUtilizationBgColor(d.utilization, dark) }}>

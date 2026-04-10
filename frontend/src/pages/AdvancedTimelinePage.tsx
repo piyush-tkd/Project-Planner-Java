@@ -8,10 +8,11 @@
  */
 import { useState, useMemo, useRef } from 'react';
 import {
-  Title, Text, Stack, Group, Button, Paper, Badge, Select, Tabs,
+  Text, Stack, Group, Button, Paper, Badge, Select, Tabs,
   Table, ScrollArea, ThemeIcon, Tooltip, ActionIcon, Modal, TextInput,
   Skeleton, Divider, SimpleGrid, Progress, Alert,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import { notifications } from '@mantine/notifications';
 import {
   IconLayoutBoard, IconFlag, IconHistory, IconCheck, IconPlus,
@@ -23,7 +24,7 @@ import {
   useProjectBaselines, useSnapBaseline, useDeleteBaseline,
   ProjectBaseline,
 } from '../api/projectBaselines';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, COLOR_ERROR, COLOR_ORANGE_DARK, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_BORDER, TEXT_DIM} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import type { ProjectResponse } from '../types/project';
 
@@ -51,8 +52,8 @@ function addDays(d: Date, n: number) {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: '#2DCCD3', NOT_STARTED: '#868e96', ON_HOLD: '#f59f00',
-  COMPLETED: '#40c057', CANCELLED: '#fa5252',
+  ACTIVE: AQUA, NOT_STARTED: TEXT_DIM, ON_HOLD: '#f59f00',
+  COMPLETED: COLOR_SUCCESS, CANCELLED: COLOR_ERROR,
 };
 
 // ── Critical path computation ─────────────────────────────────────────────
@@ -121,7 +122,7 @@ function GanttRow({ project, baseline, isCritical, minDate, totalDays, rowHeight
   const x2 = (daysBetween(minDate, t) / totalDays) * width;
   const barW = Math.max(x2 - x1, 6);
 
-  const color = isCritical ? '#f59f00' : (STATUS_COLOR[project.status] ?? '#2DCCD3');
+  const color = isCritical ? '#f59f00' : (STATUS_COLOR[project.status] ?? AQUA);
   const opacity = project.status === 'CANCELLED' ? 0.4 : 1;
 
   // Baseline ghost bar
@@ -155,7 +156,7 @@ function GanttRow({ project, baseline, isCritical, minDate, totalDays, rowHeight
         rx={4} ry={4}
         fill={color}
         opacity={opacity}
-        stroke={isCritical ? '#e67700' : 'transparent'}
+        stroke={isCritical ? COLOR_ORANGE_DARK : 'transparent'}
         strokeWidth={isCritical ? 1.5 : 0}
       />
       {/* label inside bar */}
@@ -228,8 +229,8 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
     return result;
   }, [minDate, maxDate, totalDays, CHART_W]);
 
-  const axisColor = isDark ? 'rgba(255,255,255,0.12)' : '#dee2e6';
-  const textColor = isDark ? 'rgba(255,255,255,0.45)' : '#868e96';
+  const axisColor = isDark ? 'rgba(255,255,255,0.12)' : GRAY_BORDER;
+  const textColor = isDark ? 'rgba(255,255,255,0.45)' : TEXT_DIM;
   const bgColor   = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
 
   if (filtered.length === 0) {
@@ -271,10 +272,10 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
       {/* Legend */}
       <Group gap="md" fz="xs">
         {[
-          { color: '#2DCCD3', label: 'Active' },
+          { color: AQUA, label: 'Active' },
           { color: '#f59f00', label: 'Critical path' },
-          { color: '#40c057', label: 'Completed' },
-          { color: '#fa5252', label: 'Cancelled' },
+          { color: COLOR_SUCCESS, label: 'Completed' },
+          { color: COLOR_ERROR, label: 'Cancelled' },
         ].map(l => (
           <Group key={l.label} gap={4}>
             <div style={{ width: 12, height: 12, borderRadius: 2, background: l.color }} />
@@ -352,8 +353,8 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
                 if (todayX < 0 || todayX > CHART_W) return null;
                 return (
                   <g>
-                    <line x1={todayX} y1={24} x2={todayX} y2={CHART_H} stroke="#fa5252" strokeWidth={1.5} strokeDasharray="4,3" />
-                    <text x={todayX + 3} y={20} fill="#fa5252" fontSize={9} fontFamily={FONT_FAMILY}>Today</text>
+                    <line x1={todayX} y1={24} x2={todayX} y2={CHART_H} stroke={COLOR_ERROR} strokeWidth={1.5} strokeDasharray="4,3" />
+                    <text x={todayX + 3} y={20} fill={COLOR_ERROR} fontSize={9} fontFamily={FONT_FAMILY}>Today</text>
                   </g>
                 );
               })()}
@@ -400,7 +401,7 @@ function BaselinesTab({ projects, isDark }: { projects: ProjectResponse[]; isDar
   const projectOptions = projects.map(p => ({ value: String(p.id), label: p.name }));
 
   const cardBg      = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
+  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : GRAY_100;
 
   async function handleSnap() {
     if (!selectedId || !snapLabel.trim()) return;
@@ -591,7 +592,7 @@ function BaselinesTab({ projects, isDark }: { projects: ProjectResponse[]; isDar
 
 function MilestonesTab({ projects, isDark }: { projects: ProjectResponse[]; isDark: boolean }) {
   const cardBg      = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
+  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : GRAY_100;
 
   // Milestones = projects where start == target OR duration <= 0 OR name has "milestone"
   const milestones = useMemo(() =>
@@ -712,16 +713,7 @@ export default function AdvancedTimelinePage() {
   }
 
   return (
-    <Stack gap="lg" className="page-enter">
-      <div>
-        <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-          Advanced Timeline
-        </Title>
-        <Text size="sm" c="dimmed" mt={4}>
-          Gantt view with critical path, baseline comparisons, and milestone tracking.
-        </Text>
-      </div>
-
+    <PPPageLayout title="Advanced Timeline" subtitle="Critical path, baselines and milestone tracking" animate>
       <Tabs defaultValue="timeline" variant="outline" radius="sm">
         <Tabs.List mb="md">
           <Tabs.Tab value="timeline"   leftSection={<IconLayoutBoard size={14} />}>Timeline</Tabs.Tab>
@@ -741,6 +733,6 @@ export default function AdvancedTimelinePage() {
           <MilestonesTab projects={projects} isDark={isDark} />
         </Tabs.Panel>
       </Tabs>
-    </Stack>
+    </PPPageLayout>
   );
 }

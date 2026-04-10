@@ -107,7 +107,7 @@ public class CapacityCalculator {
                 BigDecimal holidayHours = locationHolidayDeductions.getOrDefault(m, BigDecimal.ZERO);
                 if (holidayHours.compareTo(BigDecimal.ZERO) > 0) {
                     availHours = availHours.subtract(holidayHours).max(BigDecimal.ZERO);
-                    log.debug("Holiday deduction for {} ({}): month {} → -{} hrs → {} hrs available",
+                    log.trace("Holiday deduction for {} ({}): month {} → -{} hrs → {} hrs available",
                         resource.getName(), locationKey, m, holidayHours, availHours);
                 }
 
@@ -115,7 +115,7 @@ public class CapacityCalculator {
                 BigDecimal leaveHours = resourceLeaveDeductions.getOrDefault(m, BigDecimal.ZERO);
                 if (leaveHours.compareTo(BigDecimal.ZERO) > 0) {
                     availHours = availHours.subtract(leaveHours).max(BigDecimal.ZERO);
-                    log.debug("Leave deduction for {}: month {} → -{} hrs → {} hrs available",
+                    log.trace("Leave deduction for {}: month {} → -{} hrs → {} hrs available",
                         resource.getName(), m, leaveHours, availHours);
                 }
 

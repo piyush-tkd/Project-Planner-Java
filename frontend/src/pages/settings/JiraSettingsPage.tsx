@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
  Title, Text, Group, Button, Select, Badge,
  Alert, Loader, ActionIcon, Tooltip, Paper, Divider,
- ThemeIcon, Box, Stack, MultiSelect, Anchor,
+ ThemeIcon, Box, Stack, MultiSelect, Anchor, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -16,7 +16,8 @@ import {
  PodConfigRequest,
 } from '../../api/jira';
 import { usePods } from '../../api/pods';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, TEXT_SUBTLE } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface PodRow {
  key: string; // local temp key
@@ -37,6 +38,7 @@ function makeRow(overrides: Partial<PodRow> = {}): PodRow {
 
 export default function JiraSettingsPage() {
  const navigate = useNavigate();
+ const isDark = useDarkMode();
 
  const { data: status, isLoading: statusLoading } = useJiraStatus();
  // Full project list — needed so users can pick any Jira project for a new POD mapping
@@ -181,9 +183,8 @@ export default function JiraSettingsPage() {
  )}
 
  {loading && (
- <Stack align="center" py="xl">
- <Loader size="sm" />
- <Text size="sm" c="dimmed">Loading…</Text>
+ <Stack gap="xs" py="sm">
+ {[1,2,3].map(i => <Skeleton key={i} height={56} radius="sm" />)}
  </Stack>
  )}
 
@@ -261,9 +262,8 @@ export default function JiraSettingsPage() {
 
  {/* ── POD rows ── */}
  {ppPodsLoading || projectsLoading ? (
- <Stack align="center" py="lg">
- <Loader size="sm" />
- <Text size="sm" c="dimmed">Loading PODs and boards…</Text>
+ <Stack gap="xs" py="sm">
+ {[1,2,3,4].map(i => <Skeleton key={i} height={52} radius="sm" />)}
  </Stack>
  ) : rows.length === 0 ? (
  <Stack align="center" py="xl" gap="sm">
@@ -289,6 +289,7 @@ export default function JiraSettingsPage() {
  podOptions={availablePodOptions(row.key)}
  boardOptions={availableBoardOptions(row.key)}
  ppPodsLoading={ppPodsLoading}
+ isDark={isDark}
  onChange={patch => updatePod(row.key, patch)}
  onRemove={() => removePod(row.key)}
  />
@@ -336,13 +337,14 @@ export default function JiraSettingsPage() {
 // ── POD row component ─────────────────────────────────────────────────
 
 function PodRow({
- row, index, podOptions, boardOptions, ppPodsLoading, onChange, onRemove,
+ row, index, podOptions, boardOptions, ppPodsLoading, isDark, onChange, onRemove,
 }: {
  row: PodRow;
  index: number;
  podOptions: { value: string; label: string; disabled?: boolean }[];
  boardOptions: { value: string; label: string; disabled?: boolean }[];
  ppPodsLoading: boolean;
+ isDark: boolean;
  onChange: (patch: Partial<PodRow>) => void;
  onRemove: () => void;
 }) {
@@ -360,7 +362,7 @@ function PodRow({
  >
  <Group gap="sm" wrap="nowrap" align="flex-start">
  {/* Drag handle (visual only for now) */}
- <Box pt={8} style={{ color: '#94A3B8', cursor: 'grab', flexShrink: 0 }}>
+ <Box pt={8} style={{ color: TEXT_SUBTLE, cursor: 'grab', flexShrink: 0 }}>
  <IconGripVertical size={16} />
  </Box>
 
@@ -416,7 +418,7 @@ function PodRow({
  error={noBoardsYet ? 'Add at least one board' : undefined}
  styles={{
  input: { minHeight: 32 },
- pill: { backgroundColor: `${DEEP_BLUE}18`, color: DEEP_BLUE, fontWeight: 600 },
+ pill: { backgroundColor: isDark ? `${DEEP_BLUE}22` : `${DEEP_BLUE}18`, color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 600 },
  }}
  />
 

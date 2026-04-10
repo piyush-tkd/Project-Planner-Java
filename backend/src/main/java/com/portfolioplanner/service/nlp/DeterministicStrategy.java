@@ -29,13 +29,16 @@ public class DeterministicStrategy implements NlpStrategy {
     private final NlpToolRegistry toolRegistry;
     private final NlpJiraToolExecutor jiraToolExecutor;
     private final NlpResponseBuilder responseBuilder;
+    private final CompositeToolExecutor compositeToolExecutor;
 
     public DeterministicStrategy(NlpToolRegistry toolRegistry,
                                   NlpJiraToolExecutor jiraToolExecutor,
-                                  NlpResponseBuilder responseBuilder) {
+                                  NlpResponseBuilder responseBuilder,
+                                  CompositeToolExecutor compositeToolExecutor) {
         this.toolRegistry = toolRegistry;
         this.jiraToolExecutor = jiraToolExecutor;
         this.responseBuilder = responseBuilder;
+        this.compositeToolExecutor = compositeToolExecutor;
     }
 
     @Override
@@ -50,7 +53,13 @@ public class DeterministicStrategy implements NlpStrategy {
 
     @Override
     public NlpResult classify(String query, NlpCatalogResponse catalog) {
-        // Try regex-based route matching
+        // Try composite (multi-tool) execution first — comparison queries need two tool calls
+        NlpResult composite = compositeToolExecutor.tryExecute(query, catalog);
+        if (composite != null) {
+            return composite;
+        }
+
+        // Try regex-based route matching (single-tool)
         RouteMatch match = tryRegexRoute(query);
         if (match != null) {
             return executeRoute(match, catalog);
@@ -99,6 +108,15 @@ public class DeterministicStrategy implements NlpStrategy {
             Matcher m = rp.pattern.matcher(query);
             if (m.matches()) {
                 Map<String, String> params = new LinkedHashMap<>();
+
+                // Special handling for log_time_jira which needs multiple capturing groups
+                if ("log_time_jira".equals(rp.toolName)) {
+                    params.put("hours", m.group(1) != null ? m.group(1).trim() : "0");
+                    params.put("issueKey", m.group(2) != null ? m.group(2).trim().toUpperCase() : "");
+                    params.put("date", m.group(3) != null ? m.group(3).trim() : "today");
+                    return new RouteMatch(rp.toolName, params, rp.confidence);
+                }
+
                 if (rp.paramName != null) {
                     if (rp.fixedValue != null) {
                         params.put(rp.paramName, rp.fixedValue);
@@ -347,6 +365,20 @@ public class DeterministicStrategy implements NlpStrategy {
                     Pattern.compile("(?i)^(?:show|get|what(?:'s|\\s+is))\\s+(?:me\\s+)?(?:the\\s+)?(?:jira\\s+)?bug\\s+(?:summary|report|metrics)\\s*\\??$"),
                     "get_jira_bug_summary", null),
 
+            // "Create a ticket for X" / "Create a jira issue about X" / "Log a bug for X"
+            new RoutePattern(
+                    Pattern.compile("(?i)(?:create|log|add|raise|submit)\\s+(?:a\\s+)?(?:jira\\s+)?(?:ticket|issue|bug|story|task|defect)(?:\\s+(?:for|about|regarding|on)\\s+(.+))?"),
+                    "create_jira_issue_form", "summary", null, "issueType", "Task", 0.88),
+
+            // ══════════════════════════════════════════
+            //  ANALYTICS/BUDGET QUERIES
+            // ══════════════════════════════════════════
+
+            // "Show budget" / "Get capex" / "Display capital expenditure"
+            new RoutePattern(
+                    Pattern.compile("(?i)(?:show|get|display|view)\\s+(?:the\\s+)?(?:budget|capex|cap[\\s-]?ex|capital\\s+expenditure|monthly\\s+budget)(?:\\s+(?:summary|report|overview|for|data))?(.*)"),
+                    "get_capex_summary", null),
+
             // ══════════════════════════════════════════
             //  GENERIC "SHOW ALL" PATTERNS
             // ══════════════════════════════════════════
@@ -359,6 +391,34 @@ public class DeterministicStrategy implements NlpStrategy {
             // "Show all resources" / "List resources"
             new RoutePattern(
                     Pattern.compile("(?i)^(?:show|list|get|find|display)\\s+(?:me\\s+)?(?:all\\s+)?(?:the\\s+)?(?:resources?|people|team\\s+members?)\\s*\\??$"),
-                    "list_resources", null)
+                    "list_resources", null),
+
+            // ══════════════════════════════════════════
+            //  FORM PREFILL PATTERNS
+            // ══════════════════════════════════════════
+
+            // "Create a new pod named API" / "Add a pod" / "Create pod called Core Services"
+            new RoutePattern(
+                    Pattern.compile("(?i)^(?:create|add)\\s+(?:a\\s+)?(?:new\\s+)?pod(?:\\s+(?:named|called))?(?:\\s+(.+))?"),
+                    "create_pod_form", "name", null, null, null, 0.85),
+
+            // "Create a new sprint" / "Add a sprint for Q2" / "Create sprint named Sprint 1"
+            new RoutePattern(
+                    Pattern.compile("(?i)^(?:create|add)\\s+(?:a\\s+)?(?:new\\s+)?sprint(?:\\s+(?:named|called|for))?(?:\\s+(.+))?"),
+                    "create_sprint_form", "name", null, null, null, 0.85),
+
+            // "Create a new release" / "Schedule a release" / "Create release for Q2"
+            new RoutePattern(
+                    Pattern.compile("(?i)^(?:create|add|schedule)\\s+(?:a\\s+)?(?:new\\s+)?release(?:\\s+(?:named|called|for))?(?:\\s+(.+))?"),
+                    "create_release_form", "name", null, null, null, 0.85),
+
+            // ══════════════════════════════════════════
+            //  TIME LOGGING
+            // ══════════════════════════════════════════
+
+            // "log 4 hours on PROJ-123" / "log 4h on PROJ-123 for today" / "log 2.5 hours on PROJ-456"
+            new RoutePattern(
+                    Pattern.compile("(?i)(?:log|record|track)\\s+(\\d+(?:\\.\\d+)?)\\s*(?:h(?:ours?)?|hrs?)\\s+(?:on|for|to)\\s+([A-Z][A-Z0-9]+-\\d+)(?:\\s+(?:for|on)\\s+(.+))?"),
+                    "log_time_jira", "hours")
     );
 }

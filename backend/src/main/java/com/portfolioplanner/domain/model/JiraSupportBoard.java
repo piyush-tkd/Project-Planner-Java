@@ -54,4 +54,13 @@ public class JiraSupportBoard {
      */
     @Column(name = "stale_threshold_days", nullable = false)
     private int staleThresholdDays = 3;
+
+    /**
+     * Comma-separated list of Jira priority names that trigger inbox alerts for this board.
+     * Defaults to "Blocker,Critical,Highest". Configurable per board so different support
+     * queues can have different alert sensitivity.
+     * Example: "Blocker,Critical" or "Blocker,Critical,Highest,High"
+     */
+    @Column(name = "alert_priorities", length = 500)
+    private String alertPriorities = "Blocker,Critical,Highest";
 }

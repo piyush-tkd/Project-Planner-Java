@@ -9,7 +9,7 @@ import {
   Badge,
   Button,
   Table,
-  Loader,
+  Skeleton,
   Center,
   ThemeIcon,
   ActionIcon,
@@ -32,6 +32,7 @@ import {
   IconDownload,
 } from '@tabler/icons-react';
 import { downloadCsv } from '../../utils/csv';
+import { exportToPdf } from '../../utils/pdf';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
@@ -154,7 +155,7 @@ export default function ResourceSkillsMatrixPage() {
     ), [matrix, search]
   );
 
-  if (loadingMatrix) return <Center py={120}><Loader size="lg" /></Center>;
+  if (loadingMatrix) return <Stack gap="xs" p="md">{[...Array(8)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>;
 
   return (
     <Stack gap="lg" p="md">
@@ -169,6 +170,15 @@ export default function ResourceSkillsMatrixPage() {
           </Text>
         </div>
         <Group gap="sm">
+          <Button
+            variant="light"
+            color="red"
+            leftSection={<IconDownload size={14} />}
+            size="sm"
+            onClick={() => exportToPdf('Resource Skills Matrix')}
+          >
+            Export PDF
+          </Button>
           <Button
             variant="default"
             leftSection={<IconDownload size={14} />}

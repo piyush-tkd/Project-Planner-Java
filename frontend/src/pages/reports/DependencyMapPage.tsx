@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Tabs, Box, Title, Text, Group } from '@mantine/core';
-import { IconLink, IconGitBranch } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { IconLink, IconGitBranch, IconSitemap } from '@tabler/icons-react';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useProjects } from '../../api/projects';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
 import CrossPodDependencyPage from './CrossPodDependencyPage';
 import CrossTeamDependencyPage from './CrossTeamDependencyPage';
+import DependencyDagTab from './DependencyDagTab';
 
 export default function DependencyMapPage() {
   const dark = useDarkMode();
@@ -56,7 +57,7 @@ export default function DependencyMapPage() {
             borderRadius: 8, padding: '8px 16px', border: 'none',
             color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(12,35,64,0.55)',
             '&[data-active]': {
-              background: dark ? 'rgba(45,204,211,0.14)' : '#ffffff',
+              background: dark ? 'rgba(45,204,211,0.14)' : SURFACE_SUBTLE,
               color: dark ? AQUA : DEEP_BLUE,
               borderBottom: `2.5px solid ${AQUA}`,
               boxShadow: dark ? 'none' : '0 1px 6px rgba(12,35,64,0.12)',
@@ -81,6 +82,12 @@ export default function DependencyMapPage() {
           >
             Team Dependencies
           </Tabs.Tab>
+          <Tabs.Tab
+            value="dag"
+            leftSection={<IconSitemap size={15} color={activeTab === 'dag' ? '#22c55e' : undefined} />}
+          >
+            Visual DAG
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="cross-pod">
@@ -89,6 +96,10 @@ export default function DependencyMapPage() {
 
         <Tabs.Panel value="team-deps">
           <CrossTeamDependencyPage />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="dag">
+          <DependencyDagTab />
         </Tabs.Panel>
       </Tabs>
     </Box>

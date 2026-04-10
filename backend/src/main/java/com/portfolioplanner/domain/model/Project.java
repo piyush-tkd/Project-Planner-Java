@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -111,6 +112,14 @@ public class Project {
 
     @Column(name = "release_date")
     private LocalDate releaseDateMilestone;
+
+    /** Estimated budget for this project (optional). */
+    @Column(name = "estimated_budget", precision = 15, scale = 2)
+    private BigDecimal estimatedBudget;
+
+    /** Actual cost tracked against this project (optional). */
+    @Column(name = "actual_cost", precision = 15, scale = 2)
+    private BigDecimal actualCost;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

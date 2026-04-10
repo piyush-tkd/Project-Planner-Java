@@ -8,11 +8,11 @@ import {
   IconDashboard, IconBriefcase, IconHexagons, IconChartBar,
   IconTicket, IconPlayerPlay, IconCalendar, IconCoin,
   IconArrowRight, IconArrowLeft, IconCheck, IconExternalLink,
-  IconBrain, IconCalendarEvent, IconKeyboard,
+  IconBrain, IconCalendarEvent, IconKeyboard, IconHistory,
 } from '@tabler/icons-react';
 import { useTourStatus, useMarkTourSeen } from '../../api/tour';
 import { useAuth } from '../../auth/AuthContext';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_BLUE_LIGHT, COLOR_VIOLET_LIGHT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, GRAY_BORDER} from '../../brandTokens';
 
 // ── Tour steps ────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ const TOUR_STEPS: TourStep[] = [
     description:
       'Create projects, assign them to PODs, set T-shirt sizes and effort patterns, and track status from kickoff to delivery. Each POD has its own capacity pool and sprint cadence.',
     highlights: ['T-shirt sizing with effort patterns', 'Multi-POD allocation', 'Block / dependency tracking'],
-    color: '#339af0',
+    color: COLOR_BLUE_LIGHT,
     path: '/projects',
     pageLabel: 'View Projects',
   },
@@ -63,7 +63,7 @@ const TOUR_STEPS: TourStep[] = [
     description:
       'Cross-project intelligence: health scores, Gantt charts, budget tracking, cross-POD dependencies, and full resource ROI once Jira hours are synced.',
     highlights: ['Project Health scorecard', 'Budget & Cost tracker', 'Resource ROI'],
-    color: '#845ef7',
+    color: COLOR_VIOLET_LIGHT,
     path: '/reports/project-health',
     pageLabel: 'Open Project Health',
   },
@@ -121,9 +121,29 @@ const TOUR_STEPS: TourStep[] = [
     description:
       'Plan sprints, manage release calendars, and track code-freeze dates. The Sprint Planner uses AI to recommend optimal resource allocation across PODs.',
     highlights: ['Sprint calendar view', 'AI-powered allocation', 'Release tracking'],
-    color: '#f59e0b',
+    color: COLOR_WARNING,
     path: '/sprint-calendar',
     pageLabel: 'View Sprint Calendar',
+  },
+  {
+    icon: <IconChartBar size={32} />,
+    title: 'Jira Actuals & Variance',
+    description:
+      'See actual vs planned hours by sprint, budget burn rates, and velocity trends. Export to CSV anytime.',
+    highlights: ['Sprint velocity trend chart', 'Budget burn % with color coding', 'CSV export'],
+    color: 'blue',
+    path: '/delivery/jira',
+    pageLabel: 'Open Jira Actuals',
+  },
+  {
+    icon: <IconHistory size={32} />,
+    title: 'AI Conversation History',
+    description:
+      'Every query is saved. Resume past conversations with full context restored — the AI remembers where you left off.',
+    highlights: ['Pin important conversations', 'Resume with context', 'Search past queries'],
+    color: 'teal',
+    path: '/nlp/history',
+    pageLabel: 'View History',
   },
   {
     icon: <IconKeyboard size={32} />,
@@ -279,7 +299,7 @@ export default function TourGuide() {
                     width: i === step ? 20 : 8,
                     height: 8,
                     borderRadius: 4,
-                    background: i === step ? current.color : '#dee2e6',
+                    background: i === step ? current.color : GRAY_BORDER,
                     cursor: 'pointer',
                     transition: 'all 200ms ease',
                   }}

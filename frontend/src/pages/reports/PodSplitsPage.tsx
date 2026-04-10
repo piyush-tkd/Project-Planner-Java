@@ -8,7 +8,7 @@ import { useTableSort } from '../../hooks/useTableSort';
 import SortableHeader from '../../components/common/SortableHeader';
 import SummaryCard from '../../components/charts/SummaryCard';
 import { formatRole } from '../../types';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -129,10 +129,10 @@ export default function PodSplitsPage() {
  </Group>
 
  <SimpleGrid cols={{ base: 2, sm: 4 }} className="stagger-grid">
- <SummaryCard title="Permanent Splits" value={stats.permanentCount} icon={<IconArrowsShuffle size={20} color="#339af0" />} />
- <SummaryCard title="Temporary Loans" value={stats.temporaryCount} icon={<IconArrowsShuffle size={20} color="#fd7e14" />} />
- <SummaryCard title="People Affected" value={stats.peopleAffected} icon={<IconUsers size={20} color="#fa5252" />} />
- <SummaryCard title="PODs Receiving" value={stats.podsReceiving} icon={<IconHexagons size={20} color="#40c057" />} />
+ <SummaryCard title="Permanent Splits" value={stats.permanentCount} icon={<IconArrowsShuffle size={20} color={COLOR_BLUE_LIGHT} />} />
+ <SummaryCard title="Temporary Loans" value={stats.temporaryCount} icon={<IconArrowsShuffle size={20} color={COLOR_ORANGE} />} />
+ <SummaryCard title="People Affected" value={stats.peopleAffected} icon={<IconUsers size={20} color={COLOR_ERROR} />} />
+ <SummaryCard title="PODs Receiving" value={stats.podsReceiving} icon={<IconHexagons size={20} color={COLOR_SUCCESS} />} />
  </SimpleGrid>
 
  <Group gap="sm" align="flex-end" wrap="wrap">

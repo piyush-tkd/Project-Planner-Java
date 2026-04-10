@@ -1,9 +1,7 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.service.SupportStalenessService;
 import com.portfolioplanner.service.WeeklyDigestService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,38 +11,26 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Admin-only endpoints to trigger notification emails on demand.
- *
- * POST /api/digest/send            — weekly portfolio digest (requires ADMIN)
- * POST /api/digest/send-staleness  — stale support-ticket alert (requires ADMIN)
+ * API endpoints for weekly digest email management.
+ * Admin-only access to manually trigger digest sends.
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/digest")
 @RequiredArgsConstructor
 public class DigestController {
 
-    private final WeeklyDigestService      weeklyDigestService;
-    private final SupportStalenessService  supportStalenessService;
-
-    @PostMapping("/send")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> sendDigest() {
-        log.info("DigestController: manual digest triggered by admin");
-        weeklyDigestService.sendDigest();
-        return ResponseEntity.ok(Map.of("status", "digest sent"));
-    }
+    private final WeeklyDigestService weeklyDigestService;
 
     /**
-     * Immediately checks all enabled support boards for stale tickets
-     * and sends the staleness-alert email.  No-ops if SMTP is disabled,
-     * no boards are configured, or no stale tickets exist.
+     * Manually trigger the weekly digest send (admin only).
+     * Sends portfolio insights digest to all active users.
+     *
+     * @return Response with status message
      */
-    @PostMapping("/send-staleness")
+    @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> sendStalenessAlert() {
-        log.info("DigestController: manual staleness alert triggered by admin");
-        supportStalenessService.sendStalenessAlert();
-        return ResponseEntity.ok(Map.of("status", "staleness alert sent"));
+    public ResponseEntity<Map<String, String>> triggerDigest() {
+        weeklyDigestService.sendWeeklyDigest();
+        return ResponseEntity.ok(Map.of("status", "sent"));
     }
 }

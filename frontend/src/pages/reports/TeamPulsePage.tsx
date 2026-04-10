@@ -15,7 +15,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_AMBER, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, GRAY_100, TEXT_DIM } from '../../brandTokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface TrendPoint { week: string; label: string; avg: number | null; count: number }
@@ -26,12 +26,12 @@ interface PulseEntry { id: number; resourceId: number; resourceName: string; wee
 
 // ── Score → colour mapping ────────────────────────────────────────────────────
 function scoreColor(score: number | null | undefined): string {
-  if (score == null) return '#e9ecef';
+  if (score == null) return GRAY_100;
   if (score >= 4.5) return '#2DC3D2';
-  if (score >= 3.5) return '#40c057';
-  if (score >= 2.5) return '#fab005';
-  if (score >= 1.5) return '#fd7e14';
-  return '#fa5252';
+  if (score >= 3.5) return COLOR_SUCCESS;
+  if (score >= 2.5) return COLOR_AMBER;
+  if (score >= 1.5) return COLOR_ORANGE;
+  return COLOR_ERROR;
 }
 
 function ScoreCell({ score }: { score: number | null }) {
@@ -279,13 +279,13 @@ export default function TeamPulsePage() {
             <table style={{ borderCollapse: 'collapse', width: '100%', fontFamily: FONT_FAMILY }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 11, color: '#868e96', fontWeight: 600 }}>POD</th>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 11, color: TEXT_DIM, fontWeight: 600 }}>POD</th>
                   {weekLabels.map((l, i) => (
-                    <th key={i} style={{ padding: '4px 6px', fontSize: 10, color: '#868e96', textAlign: 'center', minWidth: 48 }}>
+                    <th key={i} style={{ padding: '4px 6px', fontSize: 10, color: TEXT_DIM, textAlign: 'center', minWidth: 48 }}>
                       {l}
                     </th>
                   ))}
-                  <th style={{ padding: '4px 6px', fontSize: 11, color: '#868e96', textAlign: 'center' }}>Overall</th>
+                  <th style={{ padding: '4px 6px', fontSize: 11, color: TEXT_DIM, textAlign: 'center' }}>Overall</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,11 +311,11 @@ export default function TeamPulsePage() {
         <Group gap="xs" mt="sm">
           {[
             { label: '≥4.5', color: '#2DC3D2' },
-            { label: '3.5–4.5', color: '#40c057' },
-            { label: '2.5–3.5', color: '#fab005' },
-            { label: '1.5–2.5', color: '#fd7e14' },
-            { label: '<1.5', color: '#fa5252' },
-            { label: 'No data', color: '#e9ecef' },
+            { label: '3.5–4.5', color: COLOR_SUCCESS },
+            { label: '2.5–3.5', color: COLOR_AMBER },
+            { label: '1.5–2.5', color: COLOR_ORANGE },
+            { label: '<1.5', color: COLOR_ERROR },
+            { label: 'No data', color: GRAY_100 },
           ].map(l => (
             <Group key={l.label} gap={4}>
               <div style={{ width: 12, height: 12, borderRadius: 2, background: l.color }} />
@@ -413,7 +413,7 @@ export default function TeamPulsePage() {
                 <Button
                   key={n}
                   variant={editScore === n ? 'filled' : 'outline'}
-                  color={scoreColor(n) === '#fa5252' ? 'red' : scoreColor(n) === '#fd7e14' ? 'orange' : scoreColor(n) === '#fab005' ? 'yellow' : scoreColor(n) === '#40c057' ? 'green' : 'cyan'}
+                  color={scoreColor(n) === COLOR_ERROR ? 'red' : scoreColor(n) === COLOR_ORANGE ? 'orange' : scoreColor(n) === COLOR_AMBER ? 'yellow' : scoreColor(n) === COLOR_SUCCESS ? 'green' : 'cyan'}
                   size="md"
                   style={{ minWidth: 44, fontFamily: FONT_FAMILY }}
                   onClick={() => setEditScore(n)}
@@ -482,7 +482,7 @@ export default function TeamPulsePage() {
                 <Button
                   key={n}
                   variant={form.score === n ? 'filled' : 'outline'}
-                  color={scoreColor(n) === '#fa5252' ? 'red' : scoreColor(n) === '#fd7e14' ? 'orange' : scoreColor(n) === '#fab005' ? 'yellow' : scoreColor(n) === '#40c057' ? 'green' : 'cyan'}
+                  color={scoreColor(n) === COLOR_ERROR ? 'red' : scoreColor(n) === COLOR_ORANGE ? 'orange' : scoreColor(n) === COLOR_AMBER ? 'yellow' : scoreColor(n) === COLOR_SUCCESS ? 'green' : 'cyan'}
                   size="md"
                   style={{ minWidth: 44, fontFamily: FONT_FAMILY }}
                   onClick={() => setForm(f => ({ ...f, score: n }))}

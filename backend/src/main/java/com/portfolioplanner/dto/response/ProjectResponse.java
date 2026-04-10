@@ -3,6 +3,7 @@ package com.portfolioplanner.dto.response;
 import com.portfolioplanner.domain.model.enums.Priority;
 import com.portfolioplanner.domain.model.enums.SourceType;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -30,6 +31,9 @@ public record ProjectResponse(
         Long jiraBoardId,
         OffsetDateTime jiraLastSyncedAt,
         boolean jiraSyncError,
-        boolean archived
+        boolean archived,
+        // ── Budget tracking ───────────────────────────────────────────────────
+        BigDecimal estimatedBudget,
+        BigDecimal actualCost
 ) {
 }

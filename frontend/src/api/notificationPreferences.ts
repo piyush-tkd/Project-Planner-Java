@@ -7,18 +7,20 @@ import apiClient from './client';
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface NotificationPreference {
-  id:                  number;
-  username:            string;
-  onStatusChange:      boolean;
-  onRiskAdded:         boolean;
-  onCommentMention:    boolean;
-  onSprintStart:       boolean;
-  onAutomationFired:   boolean;
-  onTargetDatePassed:  boolean;
-  emailEnabled:        boolean;
-  emailDigest:         'NONE' | 'DAILY' | 'WEEKLY';
-  quietStartHour:      number | null;
-  quietEndHour:        number | null;
+  id:                    number;
+  username:              string;
+  onStatusChange:        boolean;
+  onRiskAdded:           boolean;
+  onCommentMention:      boolean;
+  onSprintStart:         boolean;
+  onAutomationFired:     boolean;
+  onTargetDatePassed:    boolean;
+  onApprovalPending:     boolean;   // receive email when a new approval request is submitted (admins)
+  onApprovalDecision:    boolean;   // receive email when your own approval request is decided
+  emailEnabled:          boolean;
+  emailDigest:           'NONE' | 'DAILY' | 'WEEKLY';
+  quietStartHour:        number | null;
+  quietEndHour:          number | null;
 }
 
 const QK = ['notification-preferences'] as const;

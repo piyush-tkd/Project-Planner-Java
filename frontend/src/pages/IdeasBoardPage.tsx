@@ -14,6 +14,7 @@ import {
   TextInput,
   Textarea,
   Select,
+  Skeleton,
   Loader,
   Center,
   ActionIcon,
@@ -21,15 +22,17 @@ import {
   Image,
   Paper,
   Tooltip,
+  Alert,
 } from '@mantine/core';
 import {
   IconThumbUp, IconPlus, IconEdit, IconTrash, IconDots,
-  IconUpload, IconX, IconFileTypePdf, IconPaperclip,
+  IconUpload, IconX, IconFileTypePdf, IconPaperclip, IconAlertTriangle,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY } from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 interface IdeaCard {
   id: string;
@@ -142,7 +145,7 @@ export default function IdeasBoardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch ideas
-  const { data: ideas = [], isLoading } = useQuery({
+  const { data: ideas = [], isLoading, isError } = useQuery({
     queryKey: ['ideas'],
     queryFn: async () => {
       const res = await apiClient.get('/ideas');
@@ -306,14 +309,16 @@ export default function IdeasBoardPage() {
     IN_PROGRESS: 'In Progress',
   };
 
-  const IdeaCardComponent = ({ idea }: { idea: IdeaCard }) => (
+  const IdeaCardComponent = ({ idea }: { idea: IdeaCard }) => {
+    const isDark = useDarkMode();
+    return (
     <Card
       padding="md"
       radius="md"
       withBorder
       style={{
         borderColor: 'rgba(12, 35, 64, 0.1)',
-        background: 'white',
+        background: isDark ? '#1e1e1e' : 'white',
         boxShadow: '0 1px 4px rgba(12, 35, 64, 0.06)',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
@@ -394,13 +399,19 @@ export default function IdeasBoardPage() {
       </Group>
     </Card>
   );
+  };
 
   if (isLoading) {
-    return <Center p="xl"><Loader /></Center>;
+    return <Stack gap="xs" p="md">{[...Array(6)].map((_, i) => <Skeleton key={i} height={120} radius="sm" />)}</Stack>;
   }
 
   return (
     <Stack gap="lg" p="md">
+      {isError && (
+        <Alert icon={<IconAlertTriangle size={16} />} color="red" radius="md">
+          Failed to load ideas. Please try again or refresh the page.
+        </Alert>
+      )}
       {/* Header */}
       <Group justify="space-between" align="flex-start">
         <div>
@@ -411,7 +422,7 @@ export default function IdeasBoardPage() {
           color={AQUA}
           leftSection={<IconPlus size={18} />}
           onClick={openCreateModal}
-          styles={{ root: { backgroundColor: AQUA, color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+          styles={{ root: { backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontFamily: FONT_FAMILY, fontWeight: 600 } }}
         >
           Submit Idea
         </Button>
@@ -537,7 +548,7 @@ export default function IdeasBoardPage() {
             <Button
               onClick={handleSubmit}
               loading={createMutation.isPending || updateMutation.isPending}
-              style={{ background: AQUA, color: DEEP_BLUE }}
+              style={{ background: AQUA_HEX, color: DEEP_BLUE_HEX }}
             >
               {editingId ? 'Update' : 'Submit'}
             </Button>

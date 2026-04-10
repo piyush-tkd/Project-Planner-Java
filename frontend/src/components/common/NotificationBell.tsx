@@ -7,11 +7,12 @@ import { IconBell, IconBellOff, IconExternalLink, IconCheck } from '@tabler/icon
 import { useAlertCounts } from '../../hooks/useAlertCounts';
 import { SupportTicket } from '../../api/jira';
 import { useJiraStatus } from '../../api/jira';
+import { COLOR_ERROR_DEEP, COLOR_ERROR_LIGHT } from '../../brandTokens';
 
 const DISMISSED_KEY = 'pp_dismissed_alerts';
 
 const PRIORITY_COLOR: Record<string, string> = {
-  Blocker: '#c92a2a',
+  Blocker: COLOR_ERROR_DEEP,
   Critical: '#e03131',
   Highest:  '#f03e3e',
 };
@@ -95,7 +96,7 @@ export default function NotificationBell() {
             variant="subtle"
             size="lg"
             onClick={() => setOpen(o => !o)}
-            style={{ color: count > 0 ? '#ff6b6b' : 'rgba(255,255,255,0.75)' }}
+            style={{ color: count > 0 ? COLOR_ERROR_LIGHT : 'rgba(255,255,255,0.75)' }}
           >
             {count > 0 ? <IconBell size={19} /> : <IconBellOff size={19} />}
           </ActionIcon>

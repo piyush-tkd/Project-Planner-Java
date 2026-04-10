@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
- Title, Stack, Group, Button, Table, Badge, Modal, TextInput, Select, ActionIcon, Text,
- Textarea, Alert, Drawer, ScrollArea, Anchor, Loader, Center, Box, SimpleGrid,
+ Stack, Group, Button, Table, Badge, Modal, TextInput, Select, ActionIcon, Text,
+ Textarea, Alert, Drawer, ScrollArea, Anchor, Loader, Center, Box, SimpleGrid, Skeleton,
  SegmentedControl, Tooltip, ThemeIcon, Autocomplete,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -11,31 +11,33 @@ import {
  IconPlus, IconEdit, IconTrash, IconRocket, IconInfoCircle, IconExternalLink,
  IconAlertTriangle, IconChevronDown, IconChevronUp, IconCheck, IconPackage,
 } from '@tabler/icons-react';
+import { PPPageLayout } from '../components/pp';
 import { useReleases, useCreateRelease, useUpdateRelease, useDeleteRelease } from '../api/releases';
 import { useSearchReleaseVersion, useJiraStatus, useAllFixVersions, type ReleaseMetrics, type IssueRow } from '../api/jira';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import type { ReleaseCalendarRequest, ReleaseCalendarResponse } from '../types/project';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { Title } from '@mantine/core';
 
 // ── Issue-card colours ────────────────────────────────────────────────────────
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
  'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
  'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
 };
 const STATUS_CAT_COLOR: Record<string, string> = {
- 'To Do': '#94A3B8', 'In Progress': '#F59E0B', 'Done': '#22C55E',
+ 'To Do': TEXT_SUBTLE, 'In Progress': COLOR_WARNING, 'Done': COLOR_GREEN,
 };
 
 function issueTypeStyle(t: string) {
- return ISSUE_TYPE_COLORS[t] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[t] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
 // ── Per-POD issue card ────────────────────────────────────────────────────────
@@ -68,11 +70,11 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  }
 
  return (
- <Box mb="sm" style={{ border: isDark ? '1px solid #373A40' : '1px solid #e9ecef', borderRadius: 8, overflow: 'hidden' }}>
+ <Box mb="sm" style={{ border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', borderRadius: 8, overflow: 'hidden' }}>
  {/* Header */}
  <Box
  onClick={() => setExpanded(e => !e)}
- style={{ background: isDark ? '#2d2d2d' : DEEP_BLUE, padding: '10px 14px', cursor: 'pointer' }}
+ style={{ background: isDark ? 'rgba(255,255,255,0.08)' : DEEP_BLUE, padding: '10px 14px', cursor: 'pointer' }}
  >
  <Group justify="space-between" wrap="nowrap">
  <Group gap="xs" wrap="nowrap">
@@ -98,7 +100,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  {/* Stats + issues */}
  {expanded && (
  <>
- <SimpleGrid cols={4} p="xs" style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#fafafa' }}>
+ <SimpleGrid cols={4} p="xs" style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
  {[
  { label: 'Total', value: metrics.totalIssues },
  { label: 'SP', value: metrics.totalSP > 0 ? `${metrics.doneSP}/${metrics.totalSP}` : '—' },
@@ -112,7 +114,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  ))}
  </SimpleGrid>
 
- <Box px="xs" py={6} style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#fafafa' }}>
+ <Box px="xs" py={6} style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
  <SegmentedControl
  size="xs"
  value={filter}
@@ -143,7 +145,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table.Tbody>
  {visible.map((issue: IssueRow) => {
  const ts = issueTypeStyle(issue.issueType);
- const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? '#94A3B8';
+ const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? TEXT_SUBTLE;
  const done = issue.statusCategory === 'Done';
  return (
  <Table.Tr key={issue.key} style={{ opacity: done ? 0.75 : 1 }}>
@@ -152,7 +154,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Anchor href={`${jiraBaseUrl}/browse/${issue.key}`} target="_blank" fw={600} size="xs">
  {issue.key}
  </Anchor>
- <IconExternalLink size={10} color="#94A3B8" />
+ <IconExternalLink size={10} color={TEXT_SUBTLE} />
  </Group>
  </Table.Td>
  <Table.Td>
@@ -163,7 +165,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table.Td style={{ maxWidth: 380 }}>
  <Tooltip label={issue.summary} disabled={issue.summary.length < 70} withArrow multiline w={360}>
  <Text size="xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>
- {done && <IconCheck size={10} style={{ marginRight: 3, color: '#22C55E', display: 'inline', verticalAlign: 'middle' }} />}
+ {done && <IconCheck size={10} style={{ marginRight: 3, color: COLOR_GREEN, display: 'inline', verticalAlign: 'middle' }} />}
  {issue.summary}
  </Text>
  </Tooltip>
@@ -284,12 +286,7 @@ function ReleaseIssuesDrawer({
 
  <ScrollArea style={{ flex: 1 }} type="auto">
  {(isLoading || isFetching) && (
- <Center py="xl">
- <Stack align="center" gap="xs">
- <Loader size="sm" />
- <Text size="xs" c="dimmed">Loading Jira issues for "{effectiveVersion}"…</Text>
- </Stack>
- </Center>
+ <Stack gap="xs" py="sm">{[1,2,3,4,5].map(i => <Skeleton key={i} height={44} radius="sm" />)}</Stack>
  )}
 
  {!isLoading && !isFetching && data.length === 0 && effectiveVersion && (
@@ -463,12 +460,13 @@ export default function ReleaseCalendarPage() {
  <>
  <ReleaseIssuesDrawer release={drawerRelease} onClose={() => setDrawerRelease(null)} />
 
- <Stack className="page-enter stagger-children">
- <Group justify="space-between" className="slide-in-left">
- <Group gap="sm">
- <IconRocket size={28} />
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Release Calendar</Title>
- </Group>
+ <PPPageLayout
+   title="Release Calendar"
+   subtitle="Plan and track software releases with Jira version mapping"
+   animate
+ >
+ <Stack gap="xl">
+ <Group justify="space-between" align="center">
  <Button leftSection={<IconPlus size={16} />} onClick={openAdd}>Add Release</Button>
  </Group>
 
@@ -508,6 +506,7 @@ export default function ReleaseCalendarPage() {
  {!isLoading && allReleases.length === 0 && (
  <Text ta="center" c="dimmed" py="md">No releases defined</Text>
  )}
+ </Stack>
 
  <Modal opened={modal} onClose={() => setModal(false)} title={editingId ? 'Edit Release' : 'Add Release'} size="md">
  <Stack>
@@ -523,7 +522,7 @@ export default function ReleaseCalendarPage() {
  </Button>
  </Stack>
  </Modal>
- </Stack>
+ </PPPageLayout>
  </>
  );
 }

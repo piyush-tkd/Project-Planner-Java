@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
  Box, Title, Text, Group, Stack, Badge, Button, Paper,
- Progress, Loader, Alert, ThemeIcon, Divider, SimpleGrid,
+ Progress, Loader, Alert, ThemeIcon, Divider, SimpleGrid, Skeleton,
  ActionIcon, Tooltip, Modal, ScrollArea, Table, TextInput,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
  IconChartBar, IconArrowLeft, IconExternalLink,
@@ -17,22 +19,22 @@ import {
  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useJiraPods, useJiraStatus, usePodVelocity, useSprintIssues, SprintIssueRow } from '../api/jira';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
-const AMBER = '#F59E0B';
-const GREEN = '#22C55E';
-const RED = '#EF4444';
-const GRAY = '#94A3B8';
+const AMBER = COLOR_WARNING;
+const GREEN = COLOR_GREEN;
+const RED = COLOR_ERROR_STRONG;
+const GRAY = TEXT_SUBTLE;
 
 const TYPE_COLORS = [
- '#7C3AED', DEEP_BLUE, AQUA, '#DB2777', '#D97706',
- '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
+ COLOR_VIOLET, DEEP_BLUE, AQUA, '#DB2777', COLOR_AMBER_DARK,
+ COLOR_EMERALD, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, '#0891B2', '#65A30D',
 ];
 
 const STATUS_CAT_BG: Record<string, string> = {
- 'In Progress': '#FEF3C7',
- 'To Do': '#F1F5F9',
- 'Done': '#DCFCE7',
+ 'In Progress': SURFACE_AMBER,
+ 'To Do': SURFACE_LIGHT,
+ 'Done': SURFACE_SUCCESS_LIGHT,
 };
 const STATUS_CAT_COLOR: Record<string, string> = {
  'In Progress': AMBER,
@@ -41,20 +43,20 @@ const STATUS_CAT_COLOR: Record<string, string> = {
 };
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
- 'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
- 'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
- 'Incident': { bg: '#FEE2E2', text: '#B91C1C' },
- 'Change Request': { bg: '#F3E8FF', text: '#9333EA' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
+ 'Improvement': { bg: '#D1FBEF', text: '#0D9488' },
+ 'New Feature': { bg: SURFACE_BLUE, text: COLOR_BLUE_STRONG },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
+ 'Incident': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Change Request': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
 };
 function issueTypeStyle(typeName: string) {
- return ISSUE_TYPE_COLORS[typeName] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[typeName] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 function fmtHours(h: number) {
  if (h === 0) return '—';
@@ -92,7 +94,7 @@ function SprintIssueModal({
  radius="md"
  >
  {loading ? (
- <Stack align="center" py="xl"><Loader size="sm" /><Text size="sm" c="dimmed">Loading sprint issues…</Text></Stack>
+ <Stack gap="xs" py="sm">{[1,2,3,4,5,6].map(i => <Skeleton key={i} height={44} radius="sm" />)}</Stack>
  ) : (
  <>
  <TextInput
@@ -151,7 +153,7 @@ function SprintIssueModal({
  <Badge
  size="sm" variant="light"
  style={{
- backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? '#F1F5F9',
+ backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? SURFACE_LIGHT,
  color: STATUS_CAT_COLOR[issue.statusCategory] ?? GRAY,
  border: `1px solid ${STATUS_CAT_COLOR[issue.statusCategory] ?? GRAY}44`,
  }}
@@ -203,6 +205,7 @@ function fmt(iso: string | null) {
 }
 
 export default function JiraPodDetailPage() {
+ const isDark = useDarkMode();
  const { id } = useParams<{ id: string }>();
  const navigate = useNavigate();
 
@@ -287,7 +290,8 @@ export default function JiraPodDetailPage() {
  : 0;
 
  return (
- <Box p="md" maw={1200} className="page-enter stagger-children">
+ <PPPageLayout title={pod?.podDisplayName ?? 'POD Detail'} subtitle="Sprint velocity, issue breakdown and team metrics" animate>
+ <Box maw={1200} className="page-enter stagger-children">
  {/* Sprint Issues Modal */}
  <SprintIssueModal
  opened={modalOpen}
@@ -298,31 +302,15 @@ export default function JiraPodDetailPage() {
  loading={loadingIssues}
  />
 
- {/* Back + header */}
- <Group mb="md" justify="space-between" className="slide-in-left">
- <Group gap="sm">
+ {/* Back button */}
+ <Group mb="md" justify="flex-start" className="slide-in-left">
  <Button
  variant="subtle" size="sm"
  leftSection={<IconArrowLeft size={14} />}
  onClick={() => navigate('/jira-pods')}
  >
- POD Dashboard
+ Back to POD Dashboard
  </Button>
- <Text c="dimmed" size="sm">/</Text>
- <ThemeIcon size={32} radius="sm" style={{ backgroundColor: DEEP_BLUE }}>
- <IconTicket size={17} color="white" />
- </ThemeIcon>
- <div>
- <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
- {pod.podDisplayName}
- </Title>
- <Group gap={4}>
- {pod.boardKeys.map(k => (
- <Badge key={k} size="xs" variant="outline" color="gray">{k}</Badge>
- ))}
- </Group>
- </div>
- </Group>
  <Group gap="xs">
  <Button
  size="xs" variant="light"
@@ -353,7 +341,7 @@ export default function JiraPodDetailPage() {
  {/* Sprint summary bar */}
  {sprint && (
  <Paper withBorder p="md" mb="lg" radius="md"
- style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
+ style={{ background: isDark ? `rgba(255,255,255,0.04)` : `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
  <Group justify="space-between" mb="sm">
  <div>
  <Text size="xs" fw={600} tt="uppercase" c="dimmed">Active Sprint</Text>
@@ -407,7 +395,7 @@ export default function JiraPodDetailPage() {
  onClick: () => openModal('Issues with Hours Logged', i => i.hoursLogged > 0),
  },
  {
- label: 'Cycle Time', value: sprint.avgCycleTimeDays > 0 ? `${sprint.avgCycleTimeDays.toFixed(1)} d` : '—', color: '#7C3AED',
+ label: 'Cycle Time', value: sprint.avgCycleTimeDays > 0 ? `${sprint.avgCycleTimeDays.toFixed(1)} d` : '—', color: COLOR_VIOLET,
  onClick: undefined,
  },
  {
@@ -458,17 +446,17 @@ export default function JiraPodDetailPage() {
  Sprint Velocity
  </Text>
  {loadingVelocity ? (
- <Stack align="center" py="md"><Loader size="xs" /></Stack>
+ <Skeleton height={220} radius="sm" />
  ) : velocityData.length > 0 ? (
  <ResponsiveContainer width="100%" height={220}>
  <BarChart data={velocityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="sprint" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 10 }} />
  <RTooltip formatter={(v: number, n: string) => [`${v} SP`, n]} contentStyle={{ fontSize: 11 }} />
  <Legend wrapperStyle={{ fontSize: 11 }} />
- <Bar dataKey="Committed" fill={GRAY} radius={[2, 2, 0, 0]} />
- <Bar dataKey="Completed" fill={AQUA} radius={[2, 2, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Committed" fill={GRAY} radius={[2, 2, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Completed" fill={AQUA_HEX} radius={[2, 2, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  ) : (
@@ -484,7 +472,7 @@ export default function JiraPodDetailPage() {
  </Text>
  <ResponsiveContainer width="100%" height={260}>
  <PieChart>
- <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="42%"
+ <Pie animationDuration={600} data={typeData} dataKey="value" nameKey="name" cx="50%" cy="42%"
  outerRadius={80} label={({ name, value }) => `${name}: ${value}`}
  labelLine fontSize={10}>
  {typeData.map((_, i) => <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />)}
@@ -503,11 +491,11 @@ export default function JiraPodDetailPage() {
  </Text>
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={statusData} margin={{ top: 4, right: 8, left: -20, bottom: 24 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" />
  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
  <RTooltip contentStyle={{ fontSize: 11 }} />
- <Bar dataKey="value" fill={DEEP_BLUE} radius={[3, 3, 0, 0]}>
+ <Bar animationDuration={600} dataKey="value" fill={DEEP_BLUE_HEX} radius={[3, 3, 0, 0]}>
  {statusData.map((_, i) => (
  <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
  ))}
@@ -525,11 +513,11 @@ export default function JiraPodDetailPage() {
  </Text>
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={priorityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
  <RTooltip contentStyle={{ fontSize: 11 }} />
- <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+ <Bar animationDuration={600} dataKey="value" radius={[3, 3, 0, 0]}>
  {priorityData.map((entry, i) => {
  const color = entry.name === 'Highest' || entry.name === 'High' ? RED
  : entry.name === 'Medium' ? AMBER
@@ -615,5 +603,6 @@ export default function JiraPodDetailPage() {
  </Group>
  )}
  </Box>
+ </PPPageLayout>
  );
 }

@@ -13,6 +13,8 @@ import {
 import { useHolidays, useSaveHoliday, useUpdateHoliday, useDeleteHoliday, HolidayResponse } from '../../api/holidays';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { InlineTextCell, InlineDateCell, InlineSelectCell } from '../../components/common/InlineCell';
+import { useInlineEdit } from '../../hooks/useInlineEdit';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -59,6 +61,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
   const saveMut    = useSaveHoliday();
   const updateMut  = useUpdateHoliday();
   const deleteMut  = useDeleteHoliday();
+  const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
 
   // Group by location → month
   const grouped = useMemo(() => {
@@ -125,6 +128,74 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
   function handleDelete(id: number) {
     deleteMut.mutate(id, {
       onSuccess: () => notifications.show({ message: 'Holiday removed', color: 'orange' }),
+    });
+  }
+
+  async function handleInlineEditName(id: number, newName: string) {
+    const holiday = holidays.find(h => h.id === id);
+    if (!holiday) return;
+
+    const iso = holiday.holidayDate;
+    await new Promise<void>((resolve, reject) => {
+      updateMut.mutate(
+        { id, name: newName.trim(), holidayDate: iso, location: holiday.location },
+        {
+          onSuccess: () => {
+            notifications.show({ message: 'Holiday name updated', color: 'green' });
+            stopEdit();
+            resolve();
+          },
+          onError: (e: any) => {
+            notifications.show({ message: e?.response?.data?.message ?? 'Failed to update', color: 'red' });
+            reject(e);
+          },
+        }
+      );
+    });
+  }
+
+  async function handleInlineEditDate(id: number, newDate: string | null) {
+    const holiday = holidays.find(h => h.id === id);
+    if (!holiday || !newDate) return;
+
+    await new Promise<void>((resolve, reject) => {
+      updateMut.mutate(
+        { id, name: holiday.name, holidayDate: newDate, location: holiday.location },
+        {
+          onSuccess: () => {
+            notifications.show({ message: 'Holiday date updated', color: 'green' });
+            stopEdit();
+            resolve();
+          },
+          onError: (e: any) => {
+            notifications.show({ message: e?.response?.data?.message ?? 'Failed to update', color: 'red' });
+            reject(e);
+          },
+        }
+      );
+    });
+  }
+
+  async function handleInlineEditLocation(id: number, newLocation: string) {
+    const holiday = holidays.find(h => h.id === id);
+    if (!holiday) return;
+
+    const iso = holiday.holidayDate;
+    await new Promise<void>((resolve, reject) => {
+      updateMut.mutate(
+        { id, name: holiday.name, holidayDate: iso, location: newLocation },
+        {
+          onSuccess: () => {
+            notifications.show({ message: 'Holiday location updated', color: 'green' });
+            stopEdit();
+            resolve();
+          },
+          onError: (e: any) => {
+            notifications.show({ message: e?.response?.data?.message ?? 'Failed to update', color: 'red' });
+            reject(e);
+          },
+        }
+      );
     });
   }
 
@@ -232,35 +303,45 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
                 {rows.map(h => (
                   <Table.Tr key={h.id}>
                     <Table.Td w={100}>
-                      <Text size="sm" fw={600}>
-                        {new Date(h.holidayDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </Text>
-                      <Text size="xs" c="dimmed">{DOW_SHORT[h.dayOfWeek] ?? h.dayOfWeek}</Text>
+                      {/* Date column - inline editable */}
+                      <InlineDateCell
+                        value={h.holidayDate}
+                        onSave={(newDate) => handleInlineEditDate(h.id, newDate)}
+                        isEditing={isEditing(h.id, 'date')}
+                        onStartEdit={() => startEdit(h.id, 'date')}
+                        onCancel={stopEdit}
+                        placeholder="Select date…"
+                      />
+                      <Text size="xs" c="dimmed" mt={4}>{DOW_SHORT[h.dayOfWeek] ?? h.dayOfWeek}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{h.name}</Text>
+                      {/* Name column - inline editable */}
+                      <InlineTextCell
+                        value={h.name}
+                        onSave={(newName) => handleInlineEditName(h.id, newName)}
+                        isEditing={isEditing(h.id, 'name')}
+                        onStartEdit={() => startEdit(h.id, 'name')}
+                        onCancel={stopEdit}
+                        placeholder="Holiday name…"
+                      />
                     </Table.Td>
                     <Table.Td w={120}>
-                      <Badge
-                        size="sm"
-                        color={LOCATION_COLOR[h.location] ?? 'gray'}
-                        variant="light"
-                      >
-                        {LOCATION_LABEL[h.location] ?? h.location}
-                      </Badge>
+                      {/* Location column - inline editable */}
+                      <InlineSelectCell
+                        value={h.location}
+                        options={[
+                          { value: 'US', label: '🇺🇸 US' },
+                          { value: 'INDIA', label: '🇮🇳 India' },
+                          { value: 'ALL', label: '🌐 All Locations' },
+                        ]}
+                        onSave={(newLocation) => handleInlineEditLocation(h.id, newLocation)}
+                        isEditing={isEditing(h.id, 'location')}
+                        onStartEdit={() => startEdit(h.id, 'location')}
+                        onCancel={stopEdit}
+                      />
                     </Table.Td>
                     <Table.Td w={80}>
                       <Group gap={4} justify="flex-end">
-                        <Tooltip label="Edit">
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color="blue"
-                            onClick={() => openEdit(h)}
-                          >
-                            <IconEdit size={14} />
-                          </ActionIcon>
-                        </Tooltip>
                         <Tooltip label="Delete">
                           <ActionIcon
                             size="sm"

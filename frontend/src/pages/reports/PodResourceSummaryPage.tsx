@@ -7,7 +7,7 @@ import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS } from '../../brandTokens';
 
 const ROLES = ['DEVELOPER', 'QA', 'BSA', 'TECH_LEAD'];
 const ROLE_COLORS: Record<string, string> = {
@@ -19,8 +19,8 @@ const ROLE_COLORS: Record<string, string> = {
 
 function getFteCellStyle(effectiveFte: number, homeFte: number, dark = false) {
  const diff = Math.round((effectiveFte - homeFte) * 100) / 100;
- if (diff > 0) return { backgroundColor: dark ? 'rgba(64, 192, 87, 0.15)' : '#d3f9d8' };
- if (diff < 0) return { backgroundColor: dark ? 'rgba(250, 82, 82, 0.15)' : '#ffe3e3' };
+ if (diff > 0) return { backgroundColor: dark ? 'rgba(64, 192, 87, 0.15)' : SURFACE_SUCCESS };
+ if (diff < 0) return { backgroundColor: dark ? 'rgba(250, 82, 82, 0.15)' : SURFACE_ERROR };
  return {};
 }
 
@@ -32,7 +32,7 @@ export default function PodResourceSummaryPage() {
  const { data, isLoading, error } = usePodResourceSummary();
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const dark = useDarkMode();
- const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+ const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
  const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
  const pods = useMemo(() => data ?? [], [data]);

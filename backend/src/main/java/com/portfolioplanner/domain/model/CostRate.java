@@ -3,21 +3,16 @@ package com.portfolioplanner.domain.model;
 import com.portfolioplanner.domain.model.enums.Location;
 import com.portfolioplanner.domain.model.enums.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
 
 /**
- * Hourly cost rate per role per location.
- * Imported from the "Cost Rates" sheet.
- * Used for project cost estimation: estimatedCost = demandHours × rate.
+ * Hourly cost rate for a given Role × Location combination.
+ * Table: cost_rate (V5).
  */
 @Entity
-@Table(name = "cost_rate",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"role", "location"}))
-@Data
+@Table(name = "cost_rate")
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CostRate {
@@ -27,14 +22,13 @@ public class CostRate {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private Location location;
 
-    /** Hourly rate in USD */
     @Column(name = "hourly_rate", nullable = false, precision = 10, scale = 2)
     private BigDecimal hourlyRate;
 }

@@ -10,10 +10,11 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import {
-  Title, Text, Stack, Group, Button, Paper, Badge, Table, Select,
+  Text, Stack, Group, Button, Paper, Badge, Table, Select,
   Textarea, Tabs, Alert, Progress, ThemeIcon, Divider, Tooltip,
   ActionIcon, ScrollArea, FileButton, Code, Skeleton, SimpleGrid,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import { notifications } from '@mantine/notifications';
 import {
   IconUpload, IconCheck, IconX, IconAlertCircle, IconFileSpreadsheet,
@@ -23,7 +24,7 @@ import {
 import Papa from 'papaparse';
 import { useMutation } from '@tanstack/react-query';
 import apiClient from '../api/client';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, DEEP_BLUE, FONT_FAMILY, GRAY_100 } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function DownloadTemplateButton({ type }: { type: ImportType }) {
 export default function BulkImportPage() {
   const isDark = useDarkMode();
   const cardBg     = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
+  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : GRAY_100;
 
   const [importType, setImportType] = useState<ImportType>('projects');
   const [step, setStep]             = useState<'input' | 'map' | 'preview' | 'done'>('input');
@@ -224,24 +225,16 @@ export default function BulkImportPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <Stack gap="lg" className="page-enter">
-
-      {/* ── Header ── */}
-      <Group justify="space-between">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-            Bulk Import
-          </Title>
-          <Text size="sm" c="dimmed" mt={4}>
-            Import projects or resources in bulk from CSV files.
-          </Text>
-        </div>
-        {step !== 'input' && (
+    <PPPageLayout title="Bulk Import" subtitle="Import projects and resources from CSV or Excel" animate
+      actions={
+        step !== 'input' ? (
           <Button size="sm" variant="light" leftSection={<IconRefresh size={14} />} onClick={reset}>
             Start over
           </Button>
-        )}
-      </Group>
+        ) : null
+      }
+    >
+      <Stack gap="lg" className="page-enter">
 
       {/* ── Import type selector ── */}
       <Tabs
@@ -522,6 +515,7 @@ export default function BulkImportPage() {
         </Stack>
       )}
 
-    </Stack>
+      </Stack>
+    </PPPageLayout>
   );
 }

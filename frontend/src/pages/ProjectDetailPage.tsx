@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
- Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider, Tabs, SimpleGrid, Progress, RingProgress, Center, Paper, Loader,
+ Title, Text, Stack, Group, Button, Card, Table, Modal, Select, NumberInput, TextInput, Textarea, ActionIcon, Badge, Tooltip, Divider, Tabs, SimpleGrid, Progress, RingProgress, Center, Paper, Skeleton, Alert,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
@@ -11,6 +11,9 @@ import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import CustomFieldsRenderer, { type FieldDefinition } from '../components/common/CustomFieldsRenderer';
 import { useProject, useProjects, useUpdateProject, useDeleteProject, useProjectPodPlannings, useUpdatePodPlannings, useCopyProject } from '../api/projects';
+import { useProjectHealth, RAG_MANTINE, RAG_LABEL } from '../api/projectHealth';
+import { HealthScoreRing } from '../components/common/HealthBadge';
+import { useProjectApprovals, describeProposedChange } from '../api/projectApprovals';
 import { usePhaseSchedules, useUpdatePhaseSchedules, useSchedulingRules, useUpdateSchedulingRules } from '../api/scheduling';
 import { usePods } from '../api/pods';
 import { useEffortPatterns } from '../api/refData';
@@ -29,7 +32,7 @@ import ProjectCommentSection from '../components/projects/ProjectCommentSection'
 import ProjectApprovalSection from '../components/projects/ProjectApprovalSection';
 import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, BORDER_SOFT, COLOR_ERROR_STRONG, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, GRAY_400} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
@@ -118,6 +121,9 @@ export default function ProjectDetailPage() {
  const navigate = useNavigate();
  const { data: project, isLoading } = useProject(projectId);
  const { data: allProjects } = useProjects();
+ const { data: projectHealth } = useProjectHealth(projectId);
+ const { data: projectApprovals = [] } = useProjectApprovals(projectId);
+ const pendingApproval = projectApprovals.find(a => a.status === 'PENDING') ?? null;
  const { data: plannings, isLoading: planningsLoading } = useProjectPodPlannings(projectId);
  const { data: pods } = usePods();
  const { data: releases } = useReleases();
@@ -135,6 +141,7 @@ export default function ProjectDetailPage() {
  const [timelinePhases, setTimelinePhases] = useState<PhaseBar[]>([]);
  const [showTimeline, setShowTimeline] = useState(false);
  const [localRules, setLocalRules] = useState<SchedulingRulesResponse | null>(null);
+ const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
  // Sync phase data from server
  useMemo(() => {
@@ -300,6 +307,7 @@ export default function ProjectDetailPage() {
  name: '', priority: Priority.P2, owner: '', startMonth: 1, durationMonths: 3,
  defaultPattern: 'Flat', status: ProjectStatus.ACTIVE, notes: null,
  startDate: null, targetDate: null, client: null,
+ estimatedBudget: null, actualCost: null,
  });
  const [nameError, setNameError] = useState<string>('');
 
@@ -375,6 +383,8 @@ export default function ProjectDetailPage() {
  startDate: project.startDate ?? null,
  targetDate: project.targetDate ?? null,
  client: project.client ?? null,
+ estimatedBudget: project.estimatedBudget ?? null,
+ actualCost: project.actualCost ?? null,
  });
  setEditModal(true);
  };
@@ -391,16 +401,49 @@ export default function ProjectDetailPage() {
  },
  onError: (error: any) => {
  if (error.response?.status === 409) {
- setNameError('A project with this name already exists');
+   const reason = error.response?.data?.message ?? error.response?.data ?? '';
+   if (String(reason).includes('APPROVAL_REQUIRED')) {
+     // Change was blocked — approval request auto-created
+     const budgetChanged = (editForm.estimatedBudget ?? 0) !== (project?.estimatedBudget ?? 0)
+                        || (editForm.actualCost ?? 0) !== (project?.actualCost ?? 0);
+     const approvalMsg = budgetChanged
+       ? 'Your budget change has been submitted for approval. A reviewer must approve it before it takes effect. Check the Approval tab for status.'
+       : 'Your change has been submitted for approval. A reviewer must approve it before it takes effect. Check the Approval tab for status.';
+     setEditModal(false);
+     setNameError('');
+     notifications.show({
+       title: 'Approval required',
+       message: approvalMsg,
+       color: 'yellow',
+       autoClose: 8000,
+     });
+   } else if (String(reason).includes('PENDING_APPROVAL_EXISTS')) {
+     notifications.show({
+       title: 'Pending approval exists',
+       message: 'This project already has a pending approval request. Withdraw it first, or wait for the reviewer.',
+       color: 'orange',
+     });
+   } else {
+     setNameError('A project with this name already exists');
+   }
  } else {
- notifications.show({ title: 'Error', message: error.message || 'Failed to update project', color: 'red' });
+   notifications.show({ title: 'Error', message: error.message || 'Failed to update project', color: 'red' });
  }
  },
  });
  };
 
  const handleDeleteProject = () => {
- deleteProject.mutate(projectId, { onSuccess: () => navigate('/projects') });
+   setDeleteConfirmOpen(true);
+ };
+
+ const confirmDelete = () => {
+   deleteProject.mutate(projectId, {
+     onSuccess: () => {
+       setDeleteConfirmOpen(false);
+       navigate('/projects');
+     },
+   });
  };
 
  // ── Project detail tab state ─────────────────────────────────────────────
@@ -443,6 +486,38 @@ export default function ProjectDetailPage() {
  return (
  <Stack className="page-enter stagger-children">
  <NlpBreadcrumb />
+
+ {/* ── Pending approval banner ────────────────────────────────────── */}
+ {pendingApproval && (
+   <Alert
+     color="yellow"
+     variant="light"
+     radius="md"
+     icon={<IconAlertTriangle size={16} />}
+     title="Awaiting approval"
+   >
+     <Group justify="space-between" wrap="wrap" gap="xs">
+       <Text size="sm">
+         {describeProposedChange(pendingApproval.proposedChange)
+           ? <>A <strong>{describeProposedChange(pendingApproval.proposedChange)}</strong> is pending review and has not taken effect yet.</>
+           : <>This project has a pending approval request that must be reviewed before changes take effect.</>
+         }
+       </Text>
+       <Button
+         size="xs"
+         variant="light"
+         color="yellow"
+         onClick={() => {
+           const el = document.querySelector('[data-tab="approval"]');
+           if (el) (el as HTMLElement).click();
+         }}
+       >
+         View Approval tab
+       </Button>
+     </Group>
+   </Alert>
+ )}
+
  <Group className="detail-header">
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>{project.name}</Title>
  <PriorityBadge priority={project.priority} />
@@ -494,7 +569,10 @@ export default function ProjectDetailPage() {
      <Tabs.Tab value="health" leftSection={<IconHeartRateMonitor size={14} />}>Health Score</Tabs.Tab>
      <Tabs.Tab value="status-updates" leftSection={<IconMessageReport size={14} />}>Status Updates</Tabs.Tab>
      <Tabs.Tab value="discussion"    leftSection={<IconMessageCircle size={14} />}>Discussion</Tabs.Tab>
-     <Tabs.Tab value="approval"      leftSection={<IconTarget size={14} />}>Approval</Tabs.Tab>
+     <Tabs.Tab value="approval" data-tab="approval" leftSection={<IconTarget size={14} />}>
+       Approval
+       {pendingApproval && <Badge size="xs" color="yellow" variant="filled" ml={6}>1</Badge>}
+     </Tabs.Tab>
    </Tabs.List>
 
    {/* ── OVERVIEW TAB ─── */}
@@ -538,6 +616,87 @@ export default function ProjectDetailPage() {
    </Group>
  )}
  </Card>
+
+ {/* ── Budget Summary Card ── */}
+ {(project.estimatedBudget != null || project.actualCost != null) && (() => {
+   const estimated = project.estimatedBudget ?? 0;
+   const actual    = project.actualCost    ?? 0;
+   const pct       = estimated > 0 ? Math.round((actual / estimated) * 100) : null;
+   const overBudget = pct != null && pct > 100;
+   return (
+     <Card withBorder padding="md">
+       <Text fw={600} mb="sm">Budget</Text>
+       <Group grow mb={pct != null ? 'xs' : 0}>
+         <div>
+           <Text size="sm" c="dimmed">Estimated Budget</Text>
+           <Text fw={500}>${estimated.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+         </div>
+         <div>
+           <Text size="sm" c="dimmed">Actual Cost</Text>
+           <Text fw={500} c={overBudget ? 'red' : undefined}>
+             ${actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+           </Text>
+         </div>
+         {pct != null && (
+           <div>
+             <Text size="sm" c="dimmed">% Spent</Text>
+             <Text fw={500} c={overBudget ? 'red' : pct >= 80 ? 'orange' : 'green'}>{pct}%</Text>
+           </div>
+         )}
+       </Group>
+       {pct != null && (
+         <Progress
+           value={Math.min(pct, 100)}
+           color={overBudget ? 'red' : pct >= 80 ? 'orange' : 'teal'}
+           size="sm"
+           radius="xl"
+         />
+       )}
+       {overBudget && (
+         <Text size="xs" c="red" mt={4}>⚠ Over budget by ${(actual - estimated).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+       )}
+     </Card>
+   );
+ })()}
+
+ {/* ── Health Scorecard Card ── */}
+ {projectHealth && projectHealth.ragStatus !== 'GREY' && (
+   <Card withBorder padding="md">
+     <Group justify="space-between" align="center" mb="sm">
+       <Text fw={600}>Health Scorecard</Text>
+       <Badge variant="light" color={RAG_MANTINE[projectHealth.ragStatus]} size="sm">
+         {RAG_LABEL[projectHealth.ragStatus]} · {projectHealth.overallScore ?? '—'}
+       </Badge>
+     </Group>
+     <Group align="center" gap="lg" wrap="nowrap">
+       <HealthScoreRing health={projectHealth} size={80} />
+       <Stack gap={6} style={{ flex: 1 }}>
+         {[
+           { label: 'Schedule', score: projectHealth.scheduleScore, detail: projectHealth.scheduleLabel },
+           { label: 'Budget',   score: projectHealth.budgetScore,   detail: projectHealth.budgetLabel },
+           { label: 'Risk',     score: projectHealth.riskScore,     detail: projectHealth.riskLabel },
+         ].map(({ label, score, detail }) => {
+           const pct = score ?? 50;
+           const color = pct >= 70 ? 'teal' : pct >= 40 ? 'orange' : 'red';
+           return (
+             <div key={label}>
+               <Group justify="space-between" mb={2}>
+                 <Text size="xs" fw={500}>{label}</Text>
+                 <Text size="xs" c="dimmed">{detail ?? 'N/A'}</Text>
+               </Group>
+               <Progress value={pct} color={score == null ? 'gray' : color} size="xs" radius="xl" />
+             </div>
+           );
+         })}
+       </Stack>
+     </Group>
+     {(projectHealth.criticalRisks > 0 || projectHealth.highRisks > 0) && (
+       <Text size="xs" c="red" mt="xs">
+         ⚠ {projectHealth.criticalRisks > 0 ? `${projectHealth.criticalRisks} critical` : ''}{projectHealth.criticalRisks > 0 && projectHealth.highRisks > 0 ? ', ' : ''}{projectHealth.highRisks > 0 ? `${projectHealth.highRisks} high` : ''} risk{(projectHealth.criticalRisks + projectHealth.highRisks) !== 1 ? 's' : ''} need attention
+       </Text>
+     )}
+   </Card>
+ )}
 
  <Group justify="space-between">
  <Title order={3}>POD Assignments</Title>
@@ -721,7 +880,7 @@ export default function ProjectDetailPage() {
        {[
          { label: 'Budget', value: '—', sub: 'Not configured', icon: <IconCurrencyDollar size={20} />, color: AQUA },
          { label: 'Actuals (YTD)', value: '—', sub: 'Connect Jira worklog', icon: <IconChartBar size={20} />, color: '#6366f1' },
-         { label: 'Variance', value: '—', sub: 'Budget vs actuals', icon: <IconTrendingUp size={20} />, color: '#f59e0b' },
+         { label: 'Variance', value: '—', sub: 'Budget vs actuals', icon: <IconTrendingUp size={20} />, color: COLOR_WARNING },
        ].map(stat => (
          <Paper key={stat.label} withBorder p="md" radius="md" style={{ background: isDark ? 'var(--mantine-color-dark-6)' : 'linear-gradient(135deg, #fff 0%, #f8faff 100%)' }}>
            <Group gap="sm" mb={8}>
@@ -866,20 +1025,20 @@ export default function ProjectDetailPage() {
    <Tabs.Panel value="health" pt="md">
      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="lg">
        {[
-         { label: 'Schedule', score: 82, color: '#10b981', icon: <IconCheck size={18} /> },
+         { label: 'Schedule', score: 82, color: COLOR_TEAL, icon: <IconCheck size={18} /> },
          { label: 'Budget', score: 0, color: '#6b7280', icon: <IconCurrencyDollar size={18} /> },
-         { label: 'Scope Risk', score: 65, color: '#f59e0b', icon: <IconAlertTriangle size={18} /> },
-         { label: 'Team Health', score: 91, color: '#10b981', icon: <IconUsers size={18} /> },
+         { label: 'Scope Risk', score: 65, color: COLOR_WARNING, icon: <IconAlertTriangle size={18} /> },
+         { label: 'Team Health', score: 91, color: COLOR_TEAL, icon: <IconUsers size={18} /> },
        ].map(item => (
          <Paper key={item.label} withBorder p="md" radius="md" style={{ textAlign: 'center' }}>
            <RingProgress
              size={90}
              roundCaps
              thickness={8}
-             sections={item.score > 0 ? [{ value: item.score, color: item.color }] : [{ value: 100, color: '#e5e7eb' }]}
+             sections={item.score > 0 ? [{ value: item.score, color: item.color }] : [{ value: 100, color: BORDER_SOFT }]}
              label={
                <Center>
-                 <span style={{ color: item.score > 0 ? item.color : '#9ca3af', fontSize: 14, fontWeight: 700 }}>
+                 <span style={{ color: item.score > 0 ? item.color : GRAY_400, fontSize: 14, fontWeight: 700 }}>
                    {item.score > 0 ? `${item.score}` : '—'}
                  </span>
                </Center>
@@ -905,10 +1064,10 @@ export default function ProjectDetailPage() {
          { label: 'RACI matrix populated', status: 'warn', icon: <IconAlertTriangle size={14} /> },
        ].map(signal => (
          <Group key={signal.label} gap="sm" mb={6}>
-           <span style={{ color: signal.status === 'pass' ? '#10b981' : signal.status === 'fail' ? '#ef4444' : '#f59e0b' }}>
+           <span style={{ color: signal.status === 'pass' ? COLOR_TEAL : signal.status === 'fail' ? COLOR_ERROR_STRONG : COLOR_WARNING }}>
              {signal.icon}
            </span>
-           <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: signal.status === 'fail' ? '#ef4444' : DEEP_BLUE }}>
+           <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: signal.status === 'fail' ? COLOR_ERROR_STRONG : DEEP_BLUE }}>
              {signal.label}
            </Text>
            <Badge size="xs" variant="light" color={signal.status === 'pass' ? 'green' : signal.status === 'fail' ? 'red' : 'yellow'} ml="auto">
@@ -959,6 +1118,32 @@ export default function ProjectDetailPage() {
  <DateInput label="Launch Date" value={editForm.targetDate ? new Date(editForm.targetDate + 'T00:00:00') : null} onChange={d => setEditForm({ ...editForm, targetDate: d ? d.toISOString().slice(0, 10) : null })} clearable valueFormat="MMM DD, YYYY" />
  </Group>
  <Select label="Default Pattern" data={(effortPatterns ?? []).map(p => ({ value: p.name, label: p.name }))} value={editForm.defaultPattern} onChange={v => setEditForm({ ...editForm, defaultPattern: v ?? 'Flat' })} />
+ <Group grow>
+   <NumberInput
+     label="Estimated Budget"
+     description="Total planned spend ($)"
+     placeholder="0.00"
+     value={editForm.estimatedBudget ?? ''}
+     onChange={v => setEditForm({ ...editForm, estimatedBudget: v === '' ? null : Number(v) })}
+     min={0}
+     decimalScale={2}
+     allowDecimal
+     prefix="$"
+     hideControls
+   />
+   <NumberInput
+     label="Actual Cost"
+     description="Cost incurred to date ($)"
+     placeholder="0.00"
+     value={editForm.actualCost ?? ''}
+     onChange={v => setEditForm({ ...editForm, actualCost: v === '' ? null : Number(v) })}
+     min={0}
+     decimalScale={2}
+     allowDecimal
+     prefix="$"
+     hideControls
+   />
+ </Group>
  <Textarea label="Notes" value={editForm.notes ?? ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value || null })} />
  <Button onClick={handleEditProject} loading={updateProject.isPending}>Save Changes</Button>
  </Stack>
@@ -994,6 +1179,45 @@ export default function ProjectDetailPage() {
    opened={pushJiraOpen}
    onClose={() => setPushJiraOpen(false)}
  />
+
+ {/* ── Delete Confirmation Modal ───────────────────────────────────── */}
+ <Modal
+   opened={deleteConfirmOpen}
+   onClose={() => setDeleteConfirmOpen(false)}
+   title={
+     <Group gap="xs">
+       <IconTrash size={18} color="#ef4444" />
+       <Text fw={700} c="red">Delete Project</Text>
+     </Group>
+   }
+   size="sm"
+   centered
+   radius="md"
+   overlayProps={{ blur: 2, backgroundOpacity: 0.4 }}
+ >
+   <Stack gap="md">
+     <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>
+       <Text size="sm" fw={600}>This action cannot be undone.</Text>
+       <Text size="sm" c="dimmed" mt={4}>
+         Deleting <strong>{project?.name}</strong> will permanently remove it and all
+         associated data (POD plans, phase schedules, comments, approvals).
+       </Text>
+     </Alert>
+     <Group justify="flex-end" gap="sm">
+       <Button variant="subtle" color="gray" onClick={() => setDeleteConfirmOpen(false)}>
+         Cancel
+       </Button>
+       <Button
+         color="red"
+         leftSection={<IconTrash size={14} />}
+         onClick={confirmDelete}
+         loading={deleteProject.isPending}
+       >
+         Yes, delete permanently
+       </Button>
+     </Group>
+   </Stack>
+ </Modal>
  </Stack>
  );
 }
@@ -1110,7 +1334,7 @@ function StatusUpdatesTab({ projectId }: { projectId: number }) {
         </Button>
       </Group>
 
-      {isLoading ? <Center h={100}><Loader /></Center>
+      {isLoading ? <Stack gap="xs">{[...Array(3)].map((_, i) => <Skeleton key={i} height={32} radius="sm" />)}</Stack>
         : updates.length === 0
           ? <Center h={100}><Text c="dimmed" size="sm">No updates yet. Post the first one!</Text></Center>
           : updates.map(u => (

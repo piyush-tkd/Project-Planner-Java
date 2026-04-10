@@ -12,8 +12,34 @@ export interface ProjectApproval {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
   requestNote?: string;
   reviewComment?: string;
+  /** Encodes the change pending review, e.g. "STATUS:PLANNING→ACTIVE" */
+  proposedChange?: string;
   requestedAt: string;
   reviewedAt?: string;
+}
+
+/**
+ * Parse a proposedChange string into a human-readable label.
+ * "STATUS:PLANNING→ACTIVE" → "Status: PLANNING → ACTIVE"
+ */
+export function describeProposedChange(proposedChange?: string): string | null {
+  if (!proposedChange) return null;
+  if (proposedChange.startsWith('STATUS:')) {
+    const body = proposedChange.slice('STATUS:'.length);
+    const [from, to] = body.split('→');
+    return `Status: ${from} → ${to}`;
+  }
+  if (proposedChange.startsWith('TIMELINE:')) {
+    const body = proposedChange.slice('TIMELINE:'.length);
+    const [from, to] = body.split('→');
+    return `Timeline extended: month ${from} → ${to}`;
+  }
+  if (proposedChange.startsWith('BUDGET:')) {
+    const body = proposedChange.slice('BUDGET:'.length);
+    const [from, to] = body.split('→');
+    return `Budget increase: $${from} → $${to}`;
+  }
+  return proposedChange;
 }
 
 export function useProjectApprovals(projectId: number) {
@@ -34,7 +60,20 @@ export function usePendingApprovals() {
       const r = await apiClient.get('/approvals/pending');
       return r.data;
     },
-    staleTime: 30_000,
+    staleTime: 0,           // always fetch fresh when the queue page mounts
+    refetchInterval: 60_000, // poll every 60 s so new submissions appear automatically
+  });
+}
+
+export function useAllApprovals() {
+  return useQuery<ProjectApproval[]>({
+    queryKey: ['approvals-history'],
+    queryFn: async () => {
+      const r = await apiClient.get('/approvals/history');
+      return r.data;
+    },
+    staleTime: 0,
+    refetchInterval: 60_000,
   });
 }
 
@@ -57,7 +96,10 @@ export function useReviewApproval() {
       apiClient.put(`/approvals/${id}/review`, { action, reviewComment }).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals-pending'] });
+      qc.invalidateQueries({ queryKey: ['approvals-history'] });
       qc.invalidateQueries({ queryKey: ['project-approvals'] });
+      // Auto-apply may have changed a project's status — invalidate project cache
+      qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }

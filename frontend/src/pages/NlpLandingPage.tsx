@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useId } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
  Container, Title, Text, TextInput, Paper, Group, Stack, Badge,
  ActionIcon, Loader, Kbd, Transition, Box, ThemeIcon, SimpleGrid,
  Tooltip, useComputedColorScheme, Anchor, rem,
- Button, Autocomplete, Textarea,
+ Button, Autocomplete, Textarea, Alert, Collapse, Drawer, ScrollArea,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
@@ -19,8 +20,10 @@ import {
  IconRocket, IconSnowflake, IconLock, IconPercentage, IconCheck,
  IconX, IconNotes, IconAlertCircle, IconExternalLink, IconChevronRight,
  IconHistory, IconMoodEmpty, IconArrowUpRight, IconThumbUp, IconThumbDown,
+ IconBug, IconChevronDown, IconInfoCircle, IconPinFilled,
+ IconPin, IconMessageCircle, IconTrash, IconMicrophone,
 } from '@tabler/icons-react';
-import { useNlpQuery, useNlpCatalog, useNlpCatalogWarmup, useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse, streamNlpQuery, useNlpInsights, NlpInsightCard, directToolCall } from '../api/nlp';
+import { useNlpQuery, useNlpCatalog, useNlpCatalogWarmup, useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse, streamNlpQuery, useNlpInsights, NlpInsightCard, directToolCall, useNlpHealth, useNlpSuggest, useNlpConversations, useDeleteNlpConversation, useToggleNlpPin } from '../api/nlp';
 import { useAuth } from '../auth/AuthContext';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY, BORDER_DEFAULT, BORDER_SUBTLE, TYPE_SCALE, SHADOW } from '../brandTokens';
 
@@ -191,6 +194,7 @@ function getSmartGreeting(displayName: string | null): { title: string; subtitle
 
 export default function NlpLandingPage() {
  const navigate = useNavigate();
+ const location = useLocation();
  const { displayLabel } = useAuth();
  const inputRef = useRef<HTMLInputElement>(null);
  const computedColorScheme = useComputedColorScheme('light');
@@ -206,6 +210,41 @@ export default function NlpLandingPage() {
  const [recentQueries, setRecentQueries] = useState<string[]>([]);
  const [focusedListIdx, setFocusedListIdx] = useState<number>(-1);
  const [inputFocused, setInputFocused] = useState(false);
+
+ // Voice input state
+ const [isListening, setIsListening] = useState(false);
+ const recognitionRef = useRef<any>(null);
+ // Stable ref so startVoiceInput can call handleSubmit without listing it as a dep
+ const handleSubmitRef = useRef<((q?: string) => void) | null>(null);
+
+ const startVoiceInput = useCallback(() => {
+   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+   if (!SpeechRecognition) {
+     notifications.show({ title: 'Not supported', message: 'Voice input is not supported in this browser.', color: 'orange' });
+     return;
+   }
+   if (isListening) {
+     recognitionRef.current?.stop();
+     setIsListening(false);
+     return;
+   }
+   const recognition = new SpeechRecognition();
+   recognition.lang = 'en-US';
+   recognition.interimResults = false;
+   recognition.maxAlternatives = 1;
+   recognitionRef.current = recognition;
+
+   recognition.onstart = () => setIsListening(true);
+   recognition.onend = () => setIsListening(false);
+   recognition.onerror = () => setIsListening(false);
+   recognition.onresult = (event: any) => {
+     const transcript = event.results[0][0].transcript;
+     setQuery(transcript);
+     setShowResult(false);
+     setTimeout(() => handleSubmitRef.current?.(transcript), 100);
+   };
+   recognition.start();
+ }, [isListening]);
 
  // Session memory: track last few Q&A pairs for follow-up context
  const sessionMemoryRef = useRef<Array<{ q: string; a: string; intent: string }>>([]);
@@ -256,8 +295,42 @@ export default function NlpLandingPage() {
  // Proactive insight cards
  const { data: insightCards } = useNlpInsights();
 
+ // NLP engine health — used to show a degraded-mode banner when LLM is unavailable
+ const { data: nlpHealth } = useNlpHealth();
+ const isNlpDegraded = nlpHealth != null && nlpHealth.tier !== 'FULL';
+ const nlpTierLabel = nlpHealth?.tier === 'DB_ONLY'
+   ? 'Rule-based only (Ollama offline)'
+   : nlpHealth?.tier === 'REGEX_ONLY'
+   ? 'Regex-only (Ollama + pgvector offline)'
+   : null;
+
+ // Debug mode — enabled via localStorage flag (developer use only)
+ const nlpDebugMode = typeof window !== 'undefined' && localStorage.getItem('nlp_debug') === '1';
+
+ // Conversation history sidebar
+ const [historyOpen, setHistoryOpen] = useState(false);
+ const { data: conversations } = useNlpConversations();
+ const togglePin = useToggleNlpPin();
+ const deleteConv = useDeleteNlpConversation();
+
  // Pre-warm the backend catalog cache when user visits this page
  useNlpCatalogWarmup();
+
+ // Restore conversation context when resuming from history
+ useEffect(() => {
+   const state = location.state as any;
+   if (state?.resumeContext) {
+     try {
+       const contextArray = JSON.parse(state.resumeContext);
+       if (Array.isArray(contextArray)) {
+         sessionMemoryRef.current = contextArray;
+       }
+     } catch (e) {
+       // If parsing fails, just proceed with empty context
+       console.warn('Failed to parse resume context:', e);
+     }
+   }
+ }, []);
 
  // Build autocomplete suggestions from catalog data
  const autocompleteData = useMemo(() => {
@@ -276,6 +349,22 @@ export default function NlpLandingPage() {
  'Show hiring forecast', 'Show project timeline');
  return items;
  }, [catalog]);
+
+ // Server-side autocomplete suggestions (debounced, fires at 300ms after the last keystroke)
+ const { data: nlpSuggestData } = useNlpSuggest(debouncedQuery);
+
+ // Server-suggested items always pass through the filter (already matched on the server)
+ const serverSuggestSet = useMemo(
+   () => new Set<string>(nlpSuggestData ?? []),
+   [nlpSuggestData]
+ );
+
+ // Merge: server suggestions first (curated example phrases), then catalog shortcuts
+ const mergedAutocompleteData = useMemo(() => {
+   const server = nlpSuggestData ?? [];
+   const catalog = autocompleteData.filter(item => !serverSuggestSet.has(item));
+   return [...server, ...catalog];
+ }, [nlpSuggestData, autocompleteData, serverSuggestSet]);
 
  // Auto-focus search input
  useEffect(() => { inputRef.current?.focus(); }, []);
@@ -356,6 +445,8 @@ export default function NlpLandingPage() {
  }, sessionContext);
  sseAbortRef.current = abort;
  }, [query, nlpQuery, navigate, addToRecent, SSE_PHASE_MAP, buildSessionContext, addToSessionMemory]);
+ // Keep ref in sync so startVoiceInput can call it without a stale closure
+ handleSubmitRef.current = handleSubmit;
 
  const handleKeyDown = (e: React.KeyboardEvent) => {
  if (e.key === 'Enter') handleSubmit();
@@ -445,37 +536,34 @@ export default function NlpLandingPage() {
  };
 
  return (
- <Container size="md" py="xl">
+ <PPPageLayout title="Ask AI" subtitle="Natural language queries across your portfolio data" animate>
+ <Container size="md" pt={8} pb={32} style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}>
  {/* ── Hero section with floating orbs ── */}
- <div className="nlp-hero" style={{ marginBottom: 24, position: 'relative' }}>
- {/* Floating decorative orbs */}
+ <div className="nlp-hero" style={{ marginBottom: 16, position: 'relative' }}>
+ {/* Floating decorative orbs — hidden on small screens to reduce clutter */}
  <div className="nlp-orb nlp-orb-1" />
  <div className="nlp-orb nlp-orb-2" />
  <div className="nlp-orb nlp-orb-3" />
 
- <Stack align="center" gap="xs" style={{ position: 'relative', zIndex: 1 }}>
- <div style={{
- position: 'relative',
- marginBottom: 8,
- }}>
+ <Stack align="center" gap={6} style={{ position: 'relative', zIndex: 1 }}>
+ <div style={{ position: 'relative', marginBottom: 4 }}>
  <ThemeIcon
- size={64}
+ size={48}
  radius="xl"
  variant="gradient"
  gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
  style={{
- boxShadow: `0 0 40px ${AQUA}30, 0 0 80px ${AQUA}10`,
+ boxShadow: `0 0 24px ${AQUA}30`,
  animation: 'float 4s ease-in-out infinite',
  }}
  >
- <IconBrain size={34} />
+ <IconBrain size={28} />
  </ThemeIcon>
- {/* Animated ring around the icon */}
  <div style={{
  position: 'absolute',
- inset: -6,
+ inset: -5,
  borderRadius: '50%',
- border: `2px solid ${AQUA}30`,
+ border: `1.5px solid ${AQUA}25`,
  animation: 'pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
  }} />
  </div>
@@ -484,60 +572,79 @@ export default function NlpLandingPage() {
  ta="center"
  style={{
  fontFamily: FONT_FAMILY,
- fontSize: 32,
+ fontSize: 'clamp(20px, 4vw, 28px)',
  fontWeight: 700,
  lineHeight: 1.2,
- color: isDark ? '#fff' : DEEP_BLUE,
+ color: isDark ? '#ffffff' : DEEP_BLUE,
  letterSpacing: '-0.02em',
+ padding: '0 8px',
  }}
  >
  {greeting.title}
  </Title>
- <Text c="dimmed" ta="center" size="md" maw={480} style={{ lineHeight: 1.5 }}>
+ <Text ta="center" size="sm" maw={440} style={{
+ lineHeight: 1.5,
+ padding: '0 12px',
+ color: isDark ? '#9ca3af' : '#6D7B8C',
+ fontSize: 13,
+ }}>
  {greeting.subtitle}
  </Text>
  </Stack>
  </div>
 
+ {/* ── Degraded-mode banner — shown when LLM is offline ── */}
+ {isNlpDegraded && nlpTierLabel && (
+   <Alert
+     icon={<IconInfoCircle size={16} />}
+     color="yellow"
+     radius="lg"
+     mb="sm"
+     style={{ fontFamily: FONT_FAMILY }}
+     title="AI running in limited mode"
+   >
+     {nlpTierLabel}. Complex queries may not be answered — use quick actions for best results.
+   </Alert>
+ )}
+
  {/* ── Proactive insight cards ── */}
  {insightCards && insightCards.length > 0 && !showResult && !isLoading && (
- <SimpleGrid cols={{ base: 1, xs: 2, sm: Math.min(insightCards.length, 4) }} spacing="sm" mt={-4} mb="md">
+ <SimpleGrid cols={{ base: 1, xs: 2, sm: Math.min(insightCards.length, 4) }} spacing={8} mt={0} mb={12}>
  {insightCards.map((card) => {
  const iconMap: Record<string, React.ReactNode> = {
- 'clock': <IconClock size={16} />,
- 'player-play': <IconPlayerPlay size={16} />,
- 'snowflake': <IconSnowflake size={16} />,
- 'rocket': <IconRocket size={16} />,
- 'alert-triangle': <IconAlertTriangle size={16} />,
- 'status-change': <IconStatusChange size={16} />,
- 'briefcase': <IconBriefcase size={16} />,
- 'users': <IconUsers size={16} />,
- 'chart-bar': <IconChartBar size={16} />,
- 'calendar-event': <IconCalendarEvent size={16} />,
+ 'clock': <IconClock size={14} />,
+ 'player-play': <IconPlayerPlay size={14} />,
+ 'snowflake': <IconSnowflake size={14} />,
+ 'rocket': <IconRocket size={14} />,
+ 'alert-triangle': <IconAlertTriangle size={14} />,
+ 'status-change': <IconStatusChange size={14} />,
+ 'briefcase': <IconBriefcase size={14} />,
+ 'users': <IconUsers size={14} />,
+ 'chart-bar': <IconChartBar size={14} />,
+ 'calendar-event': <IconCalendarEvent size={14} />,
  };
  const cardNum = card.title.match(/\d+/)?.[0];
  return (
  <Tooltip key={card.id} label={`Click to ask: "${card.query}"`} position="bottom" withArrow openDelay={400} multiline maw={280}>
  <Paper
- p="sm"
- radius="lg"
+ px={12}
+ py={10}
+ radius="md"
  withBorder
  className="nlp-insight-card"
  style={{
  cursor: 'pointer',
- transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
- borderColor: isDark ? 'rgba(45, 204, 211, 0.15)' : `var(--mantine-color-${card.color}-2)`,
+ transition: 'all 0.2s ease',
+ borderColor: isDark ? 'rgba(45,204,211,0.15)' : 'rgba(12,35,64,0.10)',
  borderLeft: `3px solid ${AQUA}`,
- minHeight: 96,
  display: 'flex',
  flexDirection: 'column',
- justifyContent: 'space-between',
  position: 'relative',
  overflow: 'hidden',
  background: isDark
- ? `linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))`
- : `linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.5))`,
- backdropFilter: 'blur(8px)',
+ ? 'rgba(45,204,211,0.03)'
+ : '#ffffff',
+ boxShadow: isDark ? 'none' : '0 1px 4px rgba(12,35,64,0.06)',
  }}
  onClick={async () => {
  setQuery(card.query);
@@ -562,34 +669,27 @@ export default function NlpLandingPage() {
  }
  }}
  >
- <Group gap={8} wrap="nowrap" align="flex-start" style={{ position: 'relative', zIndex: 1 }}>
- <ThemeIcon size={28} radius="md" variant="light" color={card.color} className="nlp-insight-icon">
- {iconMap[card.icon] || <IconBulb size={16} />}
+ <Group gap={8} wrap="nowrap" align="center" style={{ position: 'relative', zIndex: 1 }}>
+ <ThemeIcon size={24} radius="sm" variant="light" color={card.color} style={{ flexShrink: 0 }}>
+ {iconMap[card.icon] || <IconBulb size={14} />}
  </ThemeIcon>
  <Box style={{ flex: 1, minWidth: 0 }}>
- <Group gap={4} wrap="nowrap" justify="space-between">
- <Text size="xs" fw={600} lineClamp={1} style={{ color: isDark ? undefined : DEEP_BLUE }}>
+ <Group gap={4} wrap="nowrap" justify="space-between" align="center">
+ <Text size="xs" fw={600} lineClamp={1} style={{ color: isDark ? '#e9ecef' : DEEP_BLUE, fontSize: 12 }}>
  {card.title}
  </Text>
- {cardNum && <Badge size="xs" variant="light" color={card.color} className="nlp-count-badge" style={{ minWidth: 'fit-content', flexShrink: 0, padding: '0 6px' }}>{cardNum}</Badge>}
+ {cardNum && (
+ <Badge size="xs" variant="filled" color={card.color} style={{ minWidth: 20, padding: '0 5px', flexShrink: 0, fontSize: 10 }}>
+ {cardNum}
+ </Badge>
+ )}
  </Group>
- <Text size="xs" c="dimmed" lineClamp={2} lh={1.3} mt={2}>
+ <Text size="xs" c="dimmed" lineClamp={1} lh={1.3} mt={1} style={{ fontSize: 11, color: isDark ? '#6b7280' : '#6D7B8C' }}>
  {card.description}
  </Text>
  </Box>
+ <IconChevronRight size={14} style={{ flexShrink: 0, color: AQUA, opacity: 0.6 }} />
  </Group>
- <Box style={{
- position: 'absolute',
- right: 8,
- top: '50%',
- transform: 'translateY(-50%)',
- opacity: 0,
- transition: 'opacity 0.25s ease',
- zIndex: 0,
- color: AQUA,
- }} className="nlp-insight-arrow">
- <IconArrowRight size={18} />
- </Box>
  </Paper>
  </Tooltip>
  );
@@ -597,17 +697,45 @@ export default function NlpLandingPage() {
  </SimpleGrid>
  )}
 
+ {/* ── History shortcut button ── */}
+ {conversations && conversations.length > 0 && (
+ <Group justify="flex-end" mb={6}>
+ <Button
+ variant="subtle"
+ size="xs"
+ leftSection={<IconHistory size={12} />}
+ rightSection={
+   <Badge size="xs" circle color="teal" variant="filled" style={{ minWidth: 16, fontSize: 9, padding: 0 }}>
+     {conversations.length}
+   </Badge>
+ }
+ onClick={() => navigate('/nlp/history')}
+ style={{
+   fontFamily: FONT_FAMILY,
+   fontWeight: 500,
+   fontSize: 12,
+   color: isDark ? '#9ca3af' : '#6D7B8C',
+   padding: '4px 8px',
+   height: 'auto',
+ }}
+ >
+ Conversation history
+ </Button>
+ </Group>
+ )}
+
  {/* ── Search input ── */}
  <Paper
- shadow="md"
- radius="lg"
+ radius="xl"
  p={4}
- mb="lg"
+ mb={16}
  className="nlp-search-container"
  style={{
- border: `2px solid ${isDark ? '#2C2C2C' : BORDER_DEFAULT}`,
- transition: 'all 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
- boxShadow: inputFocused ? `0 0 0 1px ${AQUA}, 0 0 24px ${AQUA}20` : SHADOW.md,
+ border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.12)' : inputFocused ? `${AQUA}50` : 'rgba(0,0,0,0.10)'}`,
+ boxShadow: inputFocused
+   ? `0 0 0 3px ${AQUA}20, 0 4px 16px rgba(45,204,211,0.08)`
+   : isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 2px 8px rgba(0,0,0,0.06)',
+ background: isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
  }}
  >
  <Autocomplete
@@ -619,7 +747,7 @@ export default function NlpLandingPage() {
  onChange={(val) => { setQuery(val); setShowResult(false); }}
  onKeyDown={handleKeyDown}
  onOptionSubmit={(val) => { setQuery(val); setTimeout(() => handleSubmit(val), 50); }}
- data={autocompleteData}
+ data={mergedAutocompleteData}
  maxDropdownHeight={280}
  limit={8}
  filter={({ options, search }: { options: any[]; search: string }) => {
@@ -627,7 +755,11 @@ export default function NlpLandingPage() {
  const q = search.toLowerCase();
  return options.filter((o: any) => {
  const label = typeof o === 'string' ? o : (o?.label ?? o?.value ?? '');
- return String(label).toLowerCase().includes(q);
+ const lbl = String(label);
+ // Server-suggested items already matched on the backend — always show them
+ if (serverSuggestSet.has(lbl)) return true;
+ // Catalog entity shortcuts — substring match
+ return lbl.toLowerCase().includes(q);
  });
  }}
  // Only show dropdown when focused, has 2+ chars, and not showing result
@@ -641,6 +773,23 @@ export default function NlpLandingPage() {
  }
  rightSection={
  <Group gap={4} wrap="nowrap" pr={4}>
+ {/* Mic button — shown when no query is typed */}
+ {!query.trim() && (
+ <ActionIcon
+ variant={isListening ? 'filled' : 'subtle'}
+ radius="xl"
+ size="sm"
+ onClick={startVoiceInput}
+ aria-label={isListening ? 'Stop listening' : 'Voice input'}
+ style={{
+ color: isListening ? '#fff' : DEEP_BLUE_TINTS[40],
+ backgroundColor: isListening ? AQUA : undefined,
+ animation: isListening ? 'nlp-pulse 1.2s ease-in-out infinite' : undefined,
+ }}
+ >
+ <IconMicrophone size={15} />
+ </ActionIcon>
+ )}
  {query.trim() && (
  <ActionIcon
  variant="subtle"
@@ -669,7 +818,7 @@ export default function NlpLandingPage() {
  )}
  </Group>
  }
- rightSectionWidth={88}
+ rightSectionWidth={96}
  styles={{
  input: {
  border: 'none',
@@ -717,7 +866,7 @@ export default function NlpLandingPage() {
  {LOADING_STEPS[currentStep].icon}
  </ThemeIcon>
  <Stack gap={2} style={{ flex: 1 }}>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+ <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#e9ecef' : DEEP_BLUE }}>
  {LOADING_STEPS[currentStep].text}
  </Text>
  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -802,39 +951,42 @@ export default function NlpLandingPage() {
  {/* ── Quick actions ── */}
  {!showResult && (
  <Box>
- <div className="section-header-modern">
- <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+ <Text size="xs" fw={700} tt="uppercase" mb={8} style={{
+ letterSpacing: '0.08em',
+ fontFamily: FONT_FAMILY,
+ color: isDark ? '#6b7280' : '#6D7B8C',
+ }}>
  Quick Actions
  </Text>
- </div>
- <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="sm" mt="sm">
+ <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing={8}>
  {QUICK_ACTIONS.map((action) => (
  <Tooltip key={action.label} label={action.query.endsWith(' ') ? `Type & complete: "${action.query.trim()}…"` : `Ask: "${action.query}"`} position="bottom" withArrow openDelay={400} multiline maw={260}>
  <Paper
- p="sm"
- radius="lg"
+ px={10}
+ py={9}
+ radius="md"
  withBorder
  className="quick-action-btn"
  style={{
  cursor: 'pointer',
- background: isDark
- ? 'linear-gradient(135deg, rgba(45, 204, 211, 0.04), rgba(12, 35, 64, 0.2))'
- : 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.6))',
- borderColor: isDark ? 'rgba(45, 204, 211, 0.1)' : 'rgba(12, 35, 64, 0.08)',
+ background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(12,35,64,0.10)',
+ boxShadow: isDark ? 'none' : '0 1px 3px rgba(12,35,64,0.06)',
+ transition: 'all 0.15s ease',
  }}
  onClick={() => handleQuickAction(action.query)}
  >
- <Group gap="xs" wrap="nowrap">
+ <Group gap={8} wrap="nowrap" align="center">
  <ThemeIcon
- size={32}
- variant="gradient"
- gradient={{ from: AQUA, to: DEEP_BLUE, deg: 135 }}
- radius="lg"
- style={{ boxShadow: `0 2px 8px ${AQUA}20` }}
+ size={26}
+ variant="light"
+ color="teal"
+ radius="sm"
+ style={{ flexShrink: 0 }}
  >
  {action.icon}
  </ThemeIcon>
- <Text size="xs" fw={600} lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" fw={500} lineClamp={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#e9ecef' : DEEP_BLUE, fontSize: 12 }}>
  {action.label}
  </Text>
  </Group>
@@ -919,53 +1071,18 @@ export default function NlpLandingPage() {
  0%, 100% { box-shadow: 0 0 24px ${AQUA}20, inset 0 0 16px ${AQUA}10; }
  50% { box-shadow: 0 0 32px ${AQUA}30, inset 0 0 20px ${AQUA}15; }
  }
- /* Insight card enhancements — light mode */
- [data-mantine-color-scheme="light"] .nlp-insight-card {
- background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%);
- }
- [data-mantine-color-scheme="light"] .nlp-insight-card:hover {
- transform: translateY(-4px);
- box-shadow: ${SHADOW.md}, 0 0 20px ${AQUA}15;
- background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
- border-left-color: ${DEEP_BLUE} !important;
- }
- /* Insight card enhancements — dark mode */
- [data-mantine-color-scheme="dark"] .nlp-insight-card {
- background: linear-gradient(135deg, rgba(45, 204, 211, 0.06) 0%, rgba(12, 35, 64, 0.25) 100%);
- }
- [data-mantine-color-scheme="dark"] .nlp-insight-card:hover {
- transform: translateY(-4px);
- box-shadow: 0 4px 20px rgba(45, 204, 211, 0.15), 0 0 24px rgba(45, 204, 211, 0.08);
- background: linear-gradient(135deg, rgba(45, 204, 211, 0.10) 0%, rgba(12, 35, 64, 0.35) 100%);
- border-left-color: ${AQUA} !important;
- }
- .nlp-insight-icon {
- animation: nlp-icon-shimmer 2s ease-in-out infinite;
- }
- .nlp-insight-card:hover .nlp-insight-icon {
- animation: nlp-icon-pulse 0.4s ease-out;
- }
- @keyframes nlp-icon-shimmer {
- 0%, 100% { opacity: 1; }
- 50% { opacity: 0.7; }
- }
- @keyframes nlp-icon-pulse {
- 0% { transform: scale(1); }
- 50% { transform: scale(1.15); }
- 100% { transform: scale(1); }
- }
- .nlp-insight-card:hover .nlp-insight-arrow {
- opacity: 1;
- animation: nlp-arrow-bounce 0.6s ease-out;
- }
- @keyframes nlp-arrow-bounce {
- 0% { transform: translateY(-50%) translateX(12px); opacity: 0; }
- 50% { transform: translateY(-50%) translateX(-2px); }
- 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
- }
- .nlp-count-badge {
- animation: nlp-count-up 400ms ease-out;
- }
+ /* Insight card hover */
+         .nlp-insight-card:hover {
+           transform: translateY(-2px);
+           box-shadow: 0 4px 12px rgba(45,204,211,0.12) !important;
+           border-left-color: ${AQUA} !important;
+         }
+         [data-mantine-color-scheme="light"] .nlp-insight-card:hover {
+           background: #fafffe !important;
+         }
+         [data-mantine-color-scheme="dark"] .nlp-insight-card:hover {
+           background: rgba(45,204,211,0.06) !important;
+         }
  /* Search container glow */
  .nlp-search-container {
  backdrop-filter: blur(8px);
@@ -1132,6 +1249,101 @@ export default function NlpLandingPage() {
  }
  `}</style>
  </Container>
+
+ {/* ── Conversation History Drawer ── */}
+ <Drawer
+ opened={historyOpen}
+ onClose={() => setHistoryOpen(false)}
+ title={
+ <Group gap="xs">
+ <IconHistory size={16} color={AQUA} />
+ <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Conversation History</Text>
+ </Group>
+ }
+ position="right"
+ size={380}
+ styles={{
+ header: { borderBottom: `1px solid ${BORDER_DEFAULT}` },
+ title: { fontFamily: FONT_FAMILY },
+ }}
+ >
+ <Stack gap="xs" py="xs">
+ {/* View all link */}
+ <Group justify="flex-end" mb={4}>
+ <Anchor
+ size="xs"
+ c={AQUA}
+ href="/nlp/history"
+ style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+ >
+ View all <IconExternalLink size={12} />
+ </Anchor>
+ </Group>
+
+ {!conversations || conversations.length === 0 ? (
+ <Box ta="center" py="xl">
+ <Text c="dimmed" size="sm">No conversations yet.</Text>
+ </Box>
+ ) : (
+ <ScrollArea.Autosize mah="calc(100vh - 120px)">
+ <Stack gap="xs">
+ {[...(conversations ?? [])].sort((a, b) => {
+ if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+ return new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime();
+ }).map(conv => (
+ <Paper
+ key={conv.id}
+ p="sm"
+ radius="md"
+ withBorder
+ style={{ cursor: 'pointer' }}
+ onClick={() => {
+ setQuery(conv.title);
+ setHistoryOpen(false);
+ setTimeout(() => inputRef.current?.focus(), 100);
+ }}
+ >
+ <Group gap="sm" wrap="nowrap">
+ <ThemeIcon size={28} radius="sm" variant="light" style={{ backgroundColor: AQUA_TINTS[10], color: AQUA, flexShrink: 0 }}>
+ <IconMessageCircle size={14} />
+ </ThemeIcon>
+ <Box style={{ flex: 1, minWidth: 0 }}>
+ <Text size="xs" fw={600} lineClamp={1} style={{ fontFamily: FONT_FAMILY }}>{conv.title || 'Untitled'}</Text>
+ <Group gap={4}>
+ <Text size="xs" c="dimmed">
+ {conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleDateString() : '—'}
+ </Text>
+ <Badge size="xs" variant="light" color="gray" radius="sm">{conv.messageCount} msg</Badge>
+ {conv.pinned && <IconPinFilled size={10} color={AQUA} />}
+ </Group>
+ </Box>
+ <Group gap={2} onClick={e => e.stopPropagation()}>
+ <ActionIcon
+ size="xs"
+ variant="subtle"
+ color={conv.pinned ? 'teal' : 'gray'}
+ onClick={() => togglePin.mutate(conv.id)}
+ >
+ {conv.pinned ? <IconPinFilled size={11} /> : <IconPin size={11} />}
+ </ActionIcon>
+ <ActionIcon
+ size="xs"
+ variant="subtle"
+ color="red"
+ onClick={() => deleteConv.mutate(conv.id)}
+ >
+ <IconTrash size={11} />
+ </ActionIcon>
+ </Group>
+ </Group>
+ </Paper>
+ ))}
+ </Stack>
+ </ScrollArea.Autosize>
+ )}
+ </Stack>
+ </Drawer>
+ </PPPageLayout>
  );
 }
 
@@ -1155,6 +1367,8 @@ function NlpResultCard({
  const confPct = Math.round(result.confidence * 100);
  const entityType = result.response.data?._type ? String(result.response.data._type) : null;
  const entitySig = entityType ? ENTITY_SIGNATURES[entityType] : null;
+ const [debugOpen, setDebugOpen] = useState(false);
+ const debugMode = typeof window !== 'undefined' && localStorage.getItem('nlp_debug') === '1';
 
  return (
  <Stack gap={0}>
@@ -1183,16 +1397,12 @@ function NlpResultCard({
  <Text size="sm" fw={600} lh={1.4} style={{ fontFamily: FONT_FAMILY, color: isDark ? undefined : DEEP_BLUE }}>
  {(() => {
  const msg = result.response.message ?? 'No response';
- const d = result.response.data;
- // Check if the card body will actually have meaningful content to show
- const meaningfulKeys = d ? Object.keys(d).filter(k =>
- !k.startsWith('_') && !k.startsWith('#') &&
- d[k] !== null && d[k] !== undefined && typeof d[k] !== 'object'
- ) : [];
- const hasNumbered = d ? Object.keys(d).some(k => /^#\d+$/.test(k)) : false;
- const bodyWillBeEmpty = !d || (meaningfulKeys.length === 0 && !hasNumbered);
- // Override misleading promises when the card body is actually empty
- if (bodyWillBeEmpty && /^(I can help|I'll |Let me |Sure|Here|Absolutely|Of course|No problem|Got it|Looking)/i.test(msg)) {
+ // Use shape field to determine if structured data will be rendered — no fragile key-counting
+ const hasStructuredData = result.response.data != null &&
+ result.response.shape != null &&
+ result.response.shape !== 'ERROR';
+ // Override misleading LLM promises when no structured data will be shown
+ if (!hasStructuredData && /^(I can help|I'll |Let me |Sure|Here|Absolutely|Of course|No problem|Got it|Looking)/i.test(msg)) {
  return 'Hmm, I searched but couldn\'t find a match for that.';
  }
  return msg;
@@ -1240,6 +1450,73 @@ function NlpResultCard({
  <Box px="md" py="sm">
  <CardBody result={result} onNavigate={onNavigate} onNavigateWithToast={onNavigateWithToast} onFormPrefill={onFormPrefill} isDark={isDark} />
  </Box>
+
+ {/* ── Debug trace panel — dev mode only (localStorage nlp_debug=1) ── */}
+ {debugMode && result.debug && (
+   <Box
+     px="md"
+     py={6}
+     style={{
+       borderTop: `1px solid ${isDark ? 'var(--mantine-color-dark-4)' : 'var(--mantine-color-yellow-2)'}`,
+       background: isDark ? 'rgba(255,200,0,0.04)' : 'rgba(255,250,220,0.6)',
+     }}
+   >
+     <Group
+       gap={6}
+       style={{ cursor: 'pointer', userSelect: 'none' }}
+       onClick={() => setDebugOpen(o => !o)}
+     >
+       <ThemeIcon size={18} color="yellow" variant="light" radius="sm">
+         <IconBug size={11} />
+       </ThemeIcon>
+       <Text size="xs" fw={600} c="yellow.7" style={{ fontFamily: FONT_FAMILY }}>
+         Debug Trace
+       </Text>
+       <Badge size="xs" color="yellow" variant="light" style={{ fontFamily: FONT_FAMILY }}>
+         {String(result.debug.resolvedBy ?? result.resolvedBy)}
+       </Badge>
+       <Badge size="xs" color={result.confidence >= 0.9 ? 'green' : 'orange'} variant="light" style={{ fontFamily: FONT_FAMILY }}>
+         {confPct}% conf
+       </Badge>
+       {result.debug.totalLatencyMs != null && (
+         <Badge size="xs" color="gray" variant="light" style={{ fontFamily: FONT_FAMILY }}>
+           {String(result.debug.totalLatencyMs)}ms
+         </Badge>
+       )}
+       <IconChevronDown
+         size={12}
+         style={{
+           marginLeft: 'auto',
+           transform: debugOpen ? 'rotate(180deg)' : 'none',
+           transition: 'transform 150ms ease',
+           color: 'var(--mantine-color-yellow-6)',
+         }}
+       />
+     </Group>
+     <Collapse in={debugOpen}>
+       <Box mt={6} style={{ fontFamily: 'monospace', fontSize: 11 }}>
+         {Array.isArray(result.debug.tierTrace) && (result.debug.tierTrace as Array<Record<string, unknown>>).map((tier, i) => (
+           <Group key={i} gap={6} py={2} style={{ borderBottom: '1px solid var(--mantine-color-default-border)', flexWrap: 'wrap' }}>
+             <Badge size="xs" color={tier.resolved ? 'green' : tier.skipped ? 'gray' : 'orange'} variant="filled" style={{ fontFamily: 'monospace', fontSize: 10 }}>
+               {String(tier.tier)}
+             </Badge>
+             {!tier.skipped && (
+               <>
+                 <Text size="xs" c="dimmed">intent: <b>{String(tier.intent ?? '—')}</b></Text>
+                 <Text size="xs" c="dimmed">conf: <b>{typeof tier.confidence === 'number' ? Math.round(tier.confidence * 100) + '%' : '—'}</b></Text>
+                 <Text size="xs" c="dimmed">latency: <b>{String(tier.latencyMs ?? '—')}ms</b></Text>
+               </>
+             )}
+             {Boolean(tier.skipped) && <Text size="xs" c="dimmed">skipped — {String(tier.reason ?? '')}</Text>}
+           </Group>
+         ))}
+         {result.debug.thresholdUsed != null && (
+           <Text size="xs" c="dimmed" mt={4}>threshold: {String(result.debug.thresholdUsed)} | shape: {result.response.shape ?? '—'} | intent: {result.intent}</Text>
+         )}
+       </Box>
+     </Collapse>
+   </Box>
+ )}
 
  {/* ── Feedback row ── */}
  {result.queryLogId != null && (
@@ -1576,6 +1853,23 @@ function CardBody({
  <DrillDownButton route={result.response.drillDown} onNavigate={onNavigate} label="View details" />
  )}
  </Stack>
+ );
+ }
+
+ // ── Shape-based top-level routing (takes priority over _type) ──
+ const shape = result.response.shape ?? String(d._shape ?? '');
+ if (shape === 'COMPARISON') {
+ return (
+ <ComparisonCard
+ nameA={String(d.nameA ?? 'A')}
+ nameB={String(d.nameB ?? 'B')}
+ entityType={String(d.entityType ?? 'item')}
+ left={d.left as Record<string, unknown> ?? {}}
+ right={d.right as Record<string, unknown> ?? {}}
+ isDark={isDark}
+ onNavigate={onNavigate}
+ drillDown={result.response.drillDown}
+ />
  );
  }
 
@@ -2355,6 +2649,12 @@ function BadgeListSection({ label, items, color }: { label: string; items: strin
 // ── Summary row (key-value pairs, excluding _ keys and specific keys) ──
 
 function SummaryRow({ data, excludeKeys }: { data: Record<string, unknown>; excludeKeys: string[] }) {
+ const colorScheme = useComputedColorScheme('light');
+ const dark = colorScheme === 'dark';
+ const keyColor  = dark ? '#9ca3af' : DEEP_BLUE_TINTS[60];
+ const valColor  = dark ? '#e9ecef' : DEEP_BLUE;
+ const altRowBg  = dark ? 'rgba(255,255,255,0.025)' : 'rgba(12,35,64,0.018)';
+
  const entries = Object.entries(data)
  .filter(([k]) => !k.startsWith('_') && !k.startsWith('#') && !excludeKeys.includes(k))
  .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
@@ -2362,11 +2662,35 @@ function SummaryRow({ data, excludeKeys }: { data: Record<string, unknown>; excl
  return (
  <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
  {entries.map(([key, val], idx) => (
- <Group key={key} gap="xs" justify="space-between" px="sm" py={6}
- style={{ borderBottom: idx < entries.length - 1 ? '1px solid var(--mantine-color-default-border)' : undefined }}
+ <Group
+   key={key}
+   gap="sm"
+   justify="space-between"
+   wrap="nowrap"
+   px="sm"
+   py={8}
+   style={{
+     borderBottom: idx < entries.length - 1 ? `1px solid ${dark ? 'rgba(255,255,255,0.08)' : BORDER_DEFAULT}` : undefined,
+     background: idx % 2 === 1 ? altRowBg : undefined,
+     alignItems: 'flex-start',
+   }}
  >
- <Text size="xs" c="dimmed" fw={600} style={{ fontFamily: FONT_FAMILY }}>{key}</Text>
- <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{String(val)}</Text>
+   <Text
+     size="xs"
+     fw={700}
+     tt="uppercase"
+     style={{ fontFamily: FONT_FAMILY, color: keyColor, letterSpacing: '0.04em', flexShrink: 0, paddingTop: 1 }}
+   >
+     {key}
+   </Text>
+   <Text
+     size="sm"
+     fw={500}
+     ta="right"
+     style={{ fontFamily: FONT_FAMILY, color: valColor, maxWidth: '65%', wordBreak: 'break-word' }}
+   >
+     {String(val)}
+   </Text>
  </Group>
  ))}
  </Paper>
@@ -2542,6 +2866,96 @@ function NotesBox({ text }: { text: string }) {
  </div>
  </Group>
  </Paper>
+ );
+}
+
+// ── Comparison Card (new format: CompositeToolExecutor result) ───────────────
+
+/**
+ * Renders a side-by-side comparison card for two entities (pods, projects, resources).
+ * Used when `response.shape === 'COMPARISON'` — produced by CompositeToolExecutor.
+ * Data format: { nameA, nameB, entityType, left: {...}, right: {...} }
+ */
+function ComparisonCard({
+ nameA, nameB, entityType, left, right, isDark, onNavigate, drillDown,
+}: {
+ nameA: string; nameB: string; entityType: string;
+ left: Record<string, unknown>; right: Record<string, unknown>;
+ isDark: boolean; onNavigate: (route: string) => void; drillDown?: string | null;
+}) {
+ const hasError = left.error || right.error;
+ const borderColor = isDark ? '#2C2C2C' : '#E9ECEF';
+
+ // Collect shared keys (union of both, excluding internals + 'items')
+ const allKeys = Array.from(new Set([
+ ...Object.keys(left),
+ ...Object.keys(right),
+ ])).filter(k => !k.startsWith('_') && k !== 'items' && k !== 'error' && k !== 'count_line');
+
+ return (
+ <Stack gap="sm">
+ {/* Header row */}
+ <Group justify="center" gap="md">
+ <Badge variant="filled" size="md" style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>{nameA}</Badge>
+ <Text size="sm" c="dimmed" fw={700} style={{ fontFamily: FONT_FAMILY }}>vs</Text>
+ <Badge variant="filled" size="md" style={{ backgroundColor: AQUA, fontFamily: FONT_FAMILY }}>{nameB}</Badge>
+ </Group>
+
+ {hasError ? (
+ <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ {String(left.error || right.error)}
+ </Text>
+ ) : (
+ <Paper p={0} radius="md" withBorder style={{ overflow: 'hidden' }}>
+ <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+ <thead>
+ <tr style={{ backgroundColor: isDark ? '#1A1B1E' : DEEP_BLUE }}>
+ <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: FONT_FAMILY, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+ {entityType}
+ </th>
+ <th style={{ textAlign: 'center', padding: '8px 12px' }}>
+ <Badge size="xs" variant="filled" style={{ backgroundColor: DEEP_BLUE }}>{nameA}</Badge>
+ </th>
+ <th style={{ textAlign: 'center', padding: '8px 12px' }}>
+ <Badge size="xs" variant="filled" style={{ backgroundColor: AQUA }}>{nameB}</Badge>
+ </th>
+ </tr>
+ </thead>
+ <tbody>
+ {allKeys.map((key) => (
+ <tr key={key} style={{ borderTop: `1px solid ${borderColor}` }}>
+ <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, fontFamily: FONT_FAMILY, textTransform: 'capitalize' }}>
+ {key.replace(/_/g, ' ')}
+ </td>
+ <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>
+ {left[key] != null ? String(left[key]) : '—'}
+ </td>
+ <td style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', fontFamily: FONT_FAMILY }}>
+ {right[key] != null ? String(right[key]) : '—'}
+ </td>
+ </tr>
+ ))}
+ {/* Items (member lists etc) shown as a bullet diff */}
+ {(left.items != null || right.items != null) && (
+ <tr style={{ borderTop: `1px solid ${borderColor}` }}>
+ <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, fontFamily: FONT_FAMILY }}>Members</td>
+ <td style={{ padding: '8px 12px', fontSize: 12, fontFamily: FONT_FAMILY, verticalAlign: 'top' }}>
+ {(left.items as string[] ?? []).map(m => <div key={m}>• {m}</div>)}
+ </td>
+ <td style={{ padding: '8px 12px', fontSize: 12, fontFamily: FONT_FAMILY, verticalAlign: 'top' }}>
+ {(right.items as string[] ?? []).map(m => <div key={m}>• {m}</div>)}
+ </td>
+ </tr>
+ )}
+ </tbody>
+ </table>
+ </Paper>
+ )}
+
+ {drillDown && (
+ <DrillDownButton route={drillDown} onNavigate={onNavigate} label="View full details" />
+ )}
+ </Stack>
  );
 }
 

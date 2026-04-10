@@ -92,7 +92,21 @@ public class JiraPodService {
         List<String> boardKeys = pod.getBoards().stream()
                 .map(JiraPodBoard::getJiraProjectKey).collect(Collectors.toList());
 
-        List<JiraSyncedIssue> issues = issueRepo.findActiveSprintIssuesByProjectKeys(boardKeys);
+        // Use join table — same fix as buildPodMetrics to avoid stale sprintState over-counting
+        List<JiraSyncedSprint> activeSprints = sprintRepo.findByProjectKeyInAndState(boardKeys, "active");
+        Set<String> activeKeySet = new LinkedHashSet<>();
+        for (JiraSyncedSprint s : activeSprints) {
+            List<JiraSprintIssue> links = sprintIssueRepo.findBySprintJiraId(s.getSprintJiraId());
+            if (links.isEmpty()) {
+                issueRepo.findBySprintId(s.getSprintJiraId()).forEach(i -> activeKeySet.add(i.getIssueKey()));
+            } else {
+                links.forEach(l -> activeKeySet.add(l.getIssueKey()));
+            }
+        }
+        List<JiraSyncedIssue> issues = activeKeySet.isEmpty() ? List.of()
+                : issueRepo.findByIssueKeyIn(new ArrayList<>(activeKeySet)).stream()
+                           .filter(i -> boardKeys.contains(i.getProjectKey()))
+                           .collect(Collectors.toList());
 
         return issues.stream()
                 .filter(i -> !Boolean.TRUE.equals(i.getSubtask()))
@@ -171,8 +185,25 @@ public class JiraPodService {
             }
         }
 
-        // Get all active-sprint issues from DB
-        List<JiraSyncedIssue> sprintIssues = issueRepo.findActiveSprintIssuesByProjectKeys(boardKeys);
+        // Get active-sprint issues via join table (same approach as SprintBacklogController).
+        // IMPORTANT: We do NOT use findActiveSprintIssuesByProjectKeys(sprintState='active')
+        // because that field is a sync-time snapshot — old closed-sprint issues remain
+        // tagged 'active' forever, causing massive over-counting (e.g. 129 instead of 61).
+        Set<String> activeIssueKeySet = new LinkedHashSet<>();
+        for (JiraSyncedSprint activeSprint : activeSprints) {
+            List<JiraSprintIssue> links = sprintIssueRepo.findBySprintJiraId(activeSprint.getSprintJiraId());
+            if (links.isEmpty()) {
+                // Fallback: join table not populated yet — use sprintId on issue
+                issueRepo.findBySprintId(activeSprint.getSprintJiraId())
+                         .forEach(i -> activeIssueKeySet.add(i.getIssueKey()));
+            } else {
+                links.forEach(l -> activeIssueKeySet.add(l.getIssueKey()));
+            }
+        }
+        List<JiraSyncedIssue> sprintIssues = activeIssueKeySet.isEmpty() ? List.of()
+                : issueRepo.findByIssueKeyIn(new ArrayList<>(activeIssueKeySet)).stream()
+                          .filter(i -> boardKeys.contains(i.getProjectKey()))
+                          .collect(Collectors.toList());
         List<String> issueKeys = sprintIssues.stream()
                 .map(JiraSyncedIssue::getIssueKey).collect(Collectors.toList());
 
@@ -205,9 +236,8 @@ public class JiraPodService {
             boolean isSubTask = Boolean.TRUE.equals(issue.getSubtask());
             issueTypeBreakdown.merge(typeName, 1, Integer::sum);
 
-            // Story points — only Story issues count toward SP (mirrors Jira board stats)
-            boolean countsForSP = !isSubTask && "Story".equalsIgnoreCase(typeName);
-            double issueSP = (countsForSP && issue.getStoryPoints() != null) ? issue.getStoryPoints() : 0;
+            // Story points — all non-subtask issue types can carry SP (Bugs, Tasks, Stories, etc.)
+            double issueSP = (!isSubTask && issue.getStoryPoints() != null) ? issue.getStoryPoints() : 0;
             totalSP += issueSP;
             if ("done".equals(statusKey)) doneSP += issueSP;
 

@@ -21,15 +21,16 @@
     "ag-grid-community": "^32.3.0",
     "ag-grid-react": "^32.3.0",
     "axios": "^1.7.9",
+    "cmdk": "^1.0.4",
     "dayjs": "^1.11.20",
+    "framer-motion": "^11.15.0",
     "html-to-image": "^1.11.13",
     "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "cmdk": "^1.0.4",
-    "framer-motion": "^11.15.0",
-    "recharts": "^2.14.0"
+    "recharts": "^2.14.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -45,5 +46,8 @@
     "typescript": "~5.6.2",
     "vite": "^6.0.0",
     "vitest": "^2.1.8"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "*"
   }
 }

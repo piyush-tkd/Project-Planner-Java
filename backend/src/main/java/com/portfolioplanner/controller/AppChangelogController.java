@@ -4,6 +4,7 @@ import com.portfolioplanner.domain.model.AppChangelog;
 import com.portfolioplanner.domain.repository.AppChangelogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -51,6 +52,7 @@ public class AppChangelogController {
     }
 
     /** Create a new changelog entry (admin). */
+    @PreAuthorize("hasRole('ADMIN')")   // S2.3
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(@RequestBody ChangelogRequest req) {
         AppChangelog entry = AppChangelog.builder()
@@ -64,6 +66,7 @@ public class AppChangelogController {
     }
 
     /** Update an existing entry (admin). */
+    @PreAuthorize("hasRole('ADMIN')")   // S2.3
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> update(
             @PathVariable Long id,
@@ -80,6 +83,7 @@ public class AppChangelogController {
     }
 
     /** Delete an entry (admin). */
+    @PreAuthorize("hasRole('ADMIN')")   // S2.3
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);

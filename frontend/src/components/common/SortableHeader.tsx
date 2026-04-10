@@ -1,6 +1,7 @@
 import { Table, Group, UnstyledButton } from '@mantine/core';
 import { IconChevronUp, IconChevronDown, IconSelector } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
+import { COLOR_BLUE_DARK, GRAY_300 } from '../../brandTokens';
 
 interface SortableHeaderProps {
   sortKey: string;
@@ -19,7 +20,7 @@ export default function SortableHeader({ sortKey, currentKey, dir, onSort, child
     <Table.Th style={{ ...style, cursor: 'pointer', userSelect: 'none' }} onClick={() => onSort(sortKey)}>
       <UnstyledButton style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 'bold', fontSize: 'inherit' }}>
         {children}
-        <Icon size={14} color={active ? '#228be6' : '#adb5bd'} />
+        <Icon size={14} color={active ? COLOR_BLUE_DARK : GRAY_300} />
       </UnstyledButton>
     </Table.Th>
   );

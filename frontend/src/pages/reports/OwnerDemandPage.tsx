@@ -22,7 +22,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_300, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
  planningId: number;
@@ -45,8 +45,8 @@ interface ProjectPodMatrixResponse {
 
 const getColorForCount = (count: number) => {
  if (count === 0) return '#f1f3f5';
- if (count <= 2) return '#d3f9d8';
- if (count <= 4) return '#fff3bf';
+ if (count <= 2) return SURFACE_SUCCESS;
+ if (count <= 4) return SURFACE_WARNING;
  if (count <= 6) return '#ffe066';
  return '#ffa94d';
 };
@@ -64,6 +64,9 @@ export default function OwnerDemandPage() {
  const { data: projectPodMatrix, isLoading, error } = useProjectPodMatrix();
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const [selectedOwners, setSelectedOwners] = useState<string[]>([]);
+ const tableHeaderBg = dark ? '#1f2937' : DEEP_BLUE;
+ const tableHeaderColor = dark ? '#e5e7eb' : 'white';
+ const currentMonthBg = dark ? 'rgba(45,204,211,0.25)' : AQUA;
  const [modalOpen, setModalOpen] = useState(false);
  const [selectedCell, setSelectedCell] = useState<{
  owner: string;
@@ -149,7 +152,7 @@ export default function OwnerDemandPage() {
  const tableRows = filteredOwners.map((owner) => (
  <Table.Tr key={owner}>
  <Table.Td
- style={{ fontWeight: 600, minWidth: '150px', backgroundColor: '#f8f9fa', cursor: 'pointer' }}
+ style={{ fontWeight: 600, minWidth: '150px', backgroundColor: SURFACE_SUBTLE, cursor: 'pointer' }}
  onClick={() => { setSelectedOwnerDetail(owner); setOwnerDetailOpen(true); }}
  >
  <Text size="sm" fw={600} c="blue" td="underline" style={{ textDecorationStyle: 'dotted' }}>
@@ -181,7 +184,7 @@ export default function OwnerDemandPage() {
  fw={700}
  size="lg"
  style={{
- color: isCurrentMonth ? 'white' : count === 0 ? '#adb5bd' : '#212529',
+ color: isCurrentMonth ? 'white' : count === 0 ? GRAY_300 : dark ? '#1a1a1a' : '#212529',
  }}
  >
  {count}
@@ -312,7 +315,7 @@ export default function OwnerDemandPage() {
  <Table>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white', minWidth: '150px' }}>
+ <Table.Th style={{ backgroundColor: tableHeaderBg, color: tableHeaderColor, minWidth: '150px' }}>
  Owner
  </Table.Th>
  {Array.from({ length: 12 }, (_, i) => i + 1).map((monthIdx) => {
@@ -321,8 +324,8 @@ export default function OwnerDemandPage() {
  <Table.Th
  key={monthIdx}
  style={{
- backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
- color: 'white',
+ backgroundColor: isCurrentMonth ? currentMonthBg : tableHeaderBg,
+ color: tableHeaderColor,
  textAlign: 'center',
  minWidth: '70px',
  }}

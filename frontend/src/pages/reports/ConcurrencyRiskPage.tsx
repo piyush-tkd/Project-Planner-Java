@@ -7,7 +7,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours } from '../../utils/formatting';
 import { getConcurrencyColorByLevel } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE} from '../../brandTokens';
 import SummaryCard from '../../components/charts/SummaryCard';
 import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -15,14 +15,14 @@ import PageError from '../../components/common/PageError';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 
-const POD_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+const POD_COLORS = [COLOR_BLUE, COLOR_VIOLET_ALT, COLOR_TEAL, COLOR_WARNING, COLOR_ERROR_STRONG, '#06b6d4', '#ec4899', '#14b8a6', COLOR_ORANGE_ALT, '#6366f1'];
 
 export default function ConcurrencyRiskPage() {
  const { data, isLoading, error } = useConcurrencyRisk();
  const { data: gapData, isLoading: gapLoading } = useCapacityGap('hours');
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const dark = useDarkMode();
- const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+ const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
  const months = Array.from({ length: 12 }, (_, i) => i + 1);
  const [selectedPods, setSelectedPods] = useState<string[]>([]);
 
@@ -82,9 +82,9 @@ export default function ConcurrencyRiskPage() {
  </Group>
 
  <SimpleGrid cols={{ base: 1, sm: 3 }} className="stagger-grid">
- <SummaryCard title="High Risk POD-Months" value={stats.overloaded} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red" />
- <SummaryCard title="Medium Risk POD-Months" value={stats.tight} icon={<IconFlame size={20} color="#fd7e14" />} color="orange" />
- <SummaryCard title="Peak Concurrent Projects" value={stats.peakConcurrent} icon={<IconTrendingUp size={20} color="#339af0" />} />
+ <SummaryCard title="High Risk POD-Months" value={stats.overloaded} icon={<IconAlertTriangle size={20} color={COLOR_ERROR} />} color="red" />
+ <SummaryCard title="Medium Risk POD-Months" value={stats.tight} icon={<IconFlame size={20} color={COLOR_ORANGE} />} color="orange" />
+ <SummaryCard title="Peak Concurrent Projects" value={stats.peakConcurrent} icon={<IconTrendingUp size={20} color={COLOR_BLUE_LIGHT} />} />
  </SimpleGrid>
 
  <Group gap="md">
@@ -163,7 +163,7 @@ export default function ConcurrencyRiskPage() {
  <RTooltip formatter={(value: number) => formatHours(value)} />
  <Legend wrapperStyle={{ fontSize: 10 }} />
  {pods.map((pod, i) => (
- <Bar key={pod} dataKey={pod} stackId="s" fill={POD_COLORS[i % POD_COLORS.length] + 'cc'} />
+ <Bar animationDuration={600} key={pod} dataKey={pod} stackId="s" fill={POD_COLORS[i % POD_COLORS.length] + 'cc'} />
  ))}
  </BarChart>
  </ResponsiveContainer>

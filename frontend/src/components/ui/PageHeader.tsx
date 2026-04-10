@@ -1,6 +1,6 @@
 import React from 'react';
 import { Title, Text, Group, Stack } from '@mantine/core';
-import { DEEP_BLUE, FONT_FAMILY, TEXT_SECONDARY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, GRAY_200, GRAY_400, TEXT_SECONDARY} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface PageHeaderProps {
@@ -20,7 +20,7 @@ export default function PageHeader({ title, subtitle, actions }: PageHeaderProps
           style={{
             fontFamily: FONT_FAMILY,
             fontWeight: 700,
-            color: dark ? '#e0e0e0' : DEEP_BLUE,
+            color: dark ? GRAY_200 : DEEP_BLUE,
           }}
         >
           {title}
@@ -28,7 +28,7 @@ export default function PageHeader({ title, subtitle, actions }: PageHeaderProps
         {subtitle && (
           <Text
             size="sm"
-            style={{ color: dark ? '#9ca3af' : TEXT_SECONDARY }}
+            style={{ color: dark ? GRAY_400 : TEXT_SECONDARY }}
           >
             {subtitle}
           </Text>

@@ -7,8 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
 
 import java.util.Map;
 
@@ -20,7 +18,9 @@ import java.util.Map;
  * without a server restart.  If SMTP is disabled the call is a no-op (logged
  * at INFO level).
  *
- * <p>Templates live in {@code src/main/resources/templates/email/}.
+ * <p>Templates live in {@code src/main/resources/templates/email/} but may be
+ * overridden by admin-configured content stored in {@code email_template_override}
+ * (resolved by {@link EmailTemplateService}).
  *
  * <h3>Usage</h3>
  * <pre>{@code
@@ -37,8 +37,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final SmtpConfigService smtpConfigService;
-    private final TemplateEngine    templateEngine;
+    private final SmtpConfigService      smtpConfigService;
+    private final EmailTemplateService   emailTemplateService;
 
     /**
      * Renders {@code templateName} with {@code context} variables and sends
@@ -77,12 +77,8 @@ public class EmailService {
                           JavaMailSenderImpl sender) {
         log.info("EmailService: sending '{}' to {} via template '{}'", subject, to, templateName);
         try {
-            // Render the Thymeleaf template
-            Context thymeleafCtx = new Context();
-            if (context != null) {
-                context.forEach(thymeleafCtx::setVariable);
-            }
-            String html = templateEngine.process("email/" + templateName, thymeleafCtx);
+            // Render via EmailTemplateService (DB override first, Thymeleaf fallback)
+            String html = emailTemplateService.renderHtml(templateName, context);
 
             // Build and send the MIME message
             MimeMessage message = sender.createMimeMessage();

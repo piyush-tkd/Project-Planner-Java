@@ -4,12 +4,15 @@ import {
   Progress, RingProgress, Center, Loader, ThemeIcon, Divider,
   Paper, ActionIcon, Tooltip,
 } from '@mantine/core';
+import { useDarkMode } from '../../hooks/useDarkMode';
+import { PPPageLayout } from '../../components/pp';
 import {
   IconBriefcase, IconUsers, IconTargetArrow, IconAlertTriangle,
   IconRocket, IconRefresh, IconTrendingUp, IconTrendingDown,
   IconCircleCheck, IconShieldCheck, IconFlame, IconDownload,
 } from '@tabler/icons-react';
 import { downloadCsv } from '../../utils/csv';
+import { exportToPdf } from '../../utils/pdf';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer,
@@ -17,7 +20,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA_HEX, AQUA, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ExecData {
@@ -67,6 +70,7 @@ function KpiCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ExecSummaryPage() {
+  const isDark = useDarkMode();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data, isLoading, isFetching, error } = useQuery<ExecData>({
@@ -114,17 +118,11 @@ export default function ExecSummaryPage() {
     : '';
 
   return (
-    <Stack gap="lg" style={{ fontFamily: FONT_FAMILY }}>
-      {/* ── Header ── */}
-      <Group justify="space-between" align="center">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
-            Executive Summary
-          </Title>
-          <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Portfolio-wide health snapshot across all modules
-          </Text>
-        </div>
+    <PPPageLayout
+      title="Executive Summary"
+      subtitle="Portfolio-wide health snapshot across all modules"
+      animate
+      actions={
         <Group gap="xs">
           {generatedLabel && (
             <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -132,9 +130,20 @@ export default function ExecSummaryPage() {
             </Text>
           )}
           <Button
+            variant="light"
+            color="red"
+            leftSection={<IconDownload size={14} />}
+            size="sm"
+            className="pp-no-print"
+            onClick={() => exportToPdf('Executive Summary')}
+          >
+            Export PDF
+          </Button>
+          <Button
             variant="default"
             leftSection={<IconDownload size={14} />}
             size="sm"
+            className="pp-no-print"
             onClick={() =>
               downloadCsv('executive-summary', [
                 { metric: 'Total Projects',       value: portfolio.total },
@@ -169,7 +178,9 @@ export default function ExecSummaryPage() {
             </ActionIcon>
           </Tooltip>
         </Group>
-      </Group>
+      }
+    >
+      <Stack gap="lg" style={{ fontFamily: FONT_FAMILY }}>
 
       {/* ── Top KPI bar ── */}
       <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="sm">
@@ -302,14 +313,14 @@ export default function ExecSummaryPage() {
           <Title order={5} mb="sm" style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
             Risk Overview
           </Title>
-          <SimpleGrid cols={2} spacing="xs">
-            <Paper withBorder p="sm" radius="sm" style={{ textAlign: 'center', background: risks.critical > 0 ? 'rgba(250,82,82,0.07)' : undefined }}>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+            <Paper withBorder p="sm" radius="sm" style={{ textAlign: 'center', background: risks.critical > 0 ? (isDark ? 'rgba(250,82,82,0.12)' : 'rgba(250,82,82,0.07)') : undefined }}>
               <Text size="xl" fw={700} c={risks.critical > 0 ? 'red' : 'teal'} style={{ fontFamily: FONT_FAMILY }}>
                 {risks.critical}
               </Text>
               <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Critical</Text>
             </Paper>
-            <Paper withBorder p="sm" radius="sm" style={{ textAlign: 'center', background: risks.high > 2 ? 'rgba(255,146,43,0.07)' : undefined }}>
+            <Paper withBorder p="sm" radius="sm" style={{ textAlign: 'center', background: risks.high > 2 ? (isDark ? 'rgba(255,146,43,0.12)' : 'rgba(255,146,43,0.07)') : undefined }}>
               <Text size="xl" fw={700} c={risks.high > 2 ? 'orange' : 'teal'} style={{ fontFamily: FONT_FAMILY }}>
                 {risks.high}
               </Text>
@@ -358,8 +369,8 @@ export default function ExecSummaryPage() {
                   formatter={(v: number) => [`${v} pts`, 'Velocity']}
                 />
                 <Line
-                  type="monotone" dataKey="points" stroke="#2DC3D2"
-                  strokeWidth={2} dot={{ r: 4, fill: '#2DC3D2' }}
+                  type="monotone" dataKey="points" stroke={AQUA_HEX}
+                  strokeWidth={2} dot={{ r: 4, fill: AQUA }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
@@ -419,6 +430,7 @@ export default function ExecSummaryPage() {
           Data aggregated live from all modules — refresh to update
         </Text>
       </Group>
-    </Stack>
+      </Stack>
+    </PPPageLayout>
   );
 }

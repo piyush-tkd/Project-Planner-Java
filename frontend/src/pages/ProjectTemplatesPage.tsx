@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  Box, Title, Text, Group, Badge, Button, Card, SimpleGrid,
+  Box, Text, Group, Badge, Button, Card, SimpleGrid,
   TextInput, ActionIcon, Modal, Stack, Divider, Tabs,
   Paper, ScrollArea, Select, NumberInput, Textarea,
   ThemeIcon,
@@ -13,7 +13,9 @@ import {
   IconDownload, IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS } from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
+import { AQUA, COLOR_BLUE, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 interface Template {
   id: number;
@@ -38,10 +40,10 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Engineering': '#3b82f6',
-  'Analytics':   '#8b5cf6',
-  'Launch':      '#10b981',
-  'Standard':    '#f59e0b',
+  'Engineering': COLOR_BLUE,
+  'Analytics':   COLOR_VIOLET_ALT,
+  'Launch':      COLOR_TEAL,
+  'Standard':    COLOR_WARNING,
 };
 
 const INITIAL_TEMPLATES: Template[] = [
@@ -156,6 +158,7 @@ const INITIAL_TEMPLATES: Template[] = [
 ];
 
 export default function ProjectTemplatesPage() {
+  const isDark = useDarkMode();
   const [templates, setTemplates] = useState<Template[]>(INITIAL_TEMPLATES);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -195,7 +198,7 @@ export default function ProjectTemplatesPage() {
   }
 
   function TemplateCard({ template }: { template: Template }) {
-    const color = CATEGORY_COLORS[template.category] || '#64748b';
+    const color = CATEGORY_COLORS[template.category] || TEXT_GRAY;
     const icon = CATEGORY_ICONS[template.category] || <IconBriefcase size={20} />;
     return (
       <Card
@@ -230,7 +233,7 @@ export default function ProjectTemplatesPage() {
         <Group gap={6} mb="sm" wrap="wrap">
           {template.tags.slice(0, 3).map(tag => (
             <Badge key={tag} size="xs" variant="light" color="gray"
-              style={{ fontSize: 10, border: '1px solid #e2e8f0' }}>
+              style={{ fontSize: 10, border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #e2e8f0' }}>
               {tag}
             </Badge>
           ))}
@@ -256,17 +259,13 @@ export default function ProjectTemplatesPage() {
   }
 
   return (
-    <Box className="page-enter" style={{ paddingBottom: 32 }}>
+    <PPPageLayout
+      title="Project Templates"
+      subtitle="Reusable project blueprints and starter configurations"
+      animate
+    >
       {/* Header */}
-      <Group justify="space-between" mb="lg">
-        <Box>
-          <Title order={1} style={{ color: DEEP_BLUE, fontWeight: 800 }}>
-            Project Templates
-          </Title>
-          <Text c="dimmed" size="sm" mt={2}>
-            Reusable blueprints to kick-start new projects with pre-defined phases and effort patterns
-          </Text>
-        </Box>
+      <Group justify="flex-end" mb="lg">
         <Button
           leftSection={<IconPlus size={15} />}
           style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}
@@ -284,7 +283,7 @@ export default function ProjectTemplatesPage() {
           { label: 'Categories', value: categories.length },
         ].map(stat => (
           <Card key={stat.label} className="kpi-card-modern" withBorder radius="lg" p="md">
-            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>
+            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }}>
               {stat.label}
             </Text>
             <Text size="xl" fw={800} mt={4} style={{ color: DEEP_BLUE, fontSize: typeof stat.value === 'number' ? 28 : 18 }}>
@@ -321,8 +320,8 @@ export default function ProjectTemplatesPage() {
       {starred.length > 0 && (
         <Box mb="xl">
           <Group gap="sm" mb="md">
-            <IconStarFilled size={16} color="#f59e0b" />
-            <Text fw={700} size="sm" tt="uppercase" style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>
+            <IconStarFilled size={16} color={COLOR_WARNING} />
+            <Text fw={700} size="sm" tt="uppercase" style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }}>
               Starred Templates
             </Text>
           </Group>
@@ -334,7 +333,7 @@ export default function ProjectTemplatesPage() {
 
       {/* All templates */}
       <Box>
-        <Text fw={700} size="sm" tt="uppercase" style={{ letterSpacing: '0.6px', color: '#94a3b8' }} mb="md">
+        <Text fw={700} size="sm" tt="uppercase" style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }} mb="md">
           All Templates ({all.length})
         </Text>
         <SimpleGrid cols={3} spacing="md">
@@ -378,7 +377,7 @@ export default function ProjectTemplatesPage() {
                       Phase {i + 1}: {phase.name}
                     </Text>
                     <Badge size="sm" variant="light" color="teal"
-                      style={{ border: '1px solid #2DCCD344' }}>
+                      style={{ border: `1px solid ${isDark ? 'rgba(45,204,211,0.4)' : 'rgba(45,204,211,0.26)'}` }}>
                       {phase.duration}
                     </Badge>
                   </Group>
@@ -407,6 +406,6 @@ export default function ProjectTemplatesPage() {
           </Stack>
         )}
       </Modal>
-    </Box>
+    </PPPageLayout>
   );
 }

@@ -1,7 +1,194 @@
 /* ══════════════════════════════════════════════════════════════════════
-   Global Style Enhancements — Baylor Genetics Brand (v02.0 — Modern)
-   Deep Blue: #0C2340  |  Aqua: #2DCCD3  |  Font: DIN Next LT Pro / Arial
+   Global Style Enhancements — Portfolio Planner (DL-1 token layer)
+   Deep Blue: #0C2340  |  Aqua: #2DCCD3  |  Font: Inter / system-ui
    ══════════════════════════════════════════════════════════════════════ */
+
+/* ── PP Design Language CSS custom properties (light-mode defaults) ──── */
+/* :root = light mode. Dark mode is an explicit override via data attribute. */
+:root {
+  --pp-page-bg:          #f4f6f9;
+  --pp-sidebar-bg:       #ffffff;
+  --pp-surface:          #ffffff;
+  --pp-surface-elevated: #f8f9fa;
+  --pp-border:           #e2e6ea;
+  --pp-border-hover:     #c8cdd4;
+  --pp-text:             #0C2340;
+  --pp-text-secondary:   #4a5568;
+  --pp-text-muted:       #718096;
+  /* S3.3 — primary brand token */
+  --pp-primary:          #0C2340;   /* Deep Blue — light mode */
+  --pp-primary-hover:    #1a3a5c;
+  --pp-accent:           #1FA8AE;
+  --pp-accent-hover:     #1D8A8F;
+  --pp-accent-pressed:   #177275;
+  --pp-active:           #2E7D32;
+  --pp-risk:             #E65100;
+  --pp-blocked:          #C62828;
+  --pp-completed:        #1565C0;
+  --pp-discovery:        #6200EA;
+  /* Shimmer animation colors */
+  --pp-shimmer-from:     #e9ecef;
+  --pp-shimmer-mid:      #dee2e6;
+}
+
+/* ── Light-mode explicit (redundant but explicit for clarity) ─────────── */
+[data-mantine-color-scheme="light"] {
+  --pp-page-bg:          #f4f6f9;
+  --pp-sidebar-bg:       #ffffff;
+  --pp-surface:          #ffffff;
+  --pp-surface-elevated: #f8f9fa;
+  --pp-border:           #e2e6ea;
+  --pp-border-hover:     #c8cdd4;
+  --pp-text:             #0C2340;
+  --pp-text-secondary:   #4a5568;
+  --pp-text-muted:       #718096;
+  --pp-primary:          #0C2340;
+  --pp-primary-hover:    #1a3a5c;
+  --pp-accent:           #1FA8AE;
+  --pp-accent-hover:     #1D8A8F;
+  --pp-accent-pressed:   #177275;
+  --pp-active:           #2E7D32;
+  --pp-risk:             #E65100;
+  --pp-blocked:          #C62828;
+  --pp-completed:        #1565C0;
+  --pp-discovery:        #6200EA;
+  --pp-shimmer-from:     #e9ecef;
+  --pp-shimmer-mid:      #dee2e6;
+}
+
+/* ── Dark-mode overrides ──────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] {
+  --pp-page-bg:          #0a0a0f;
+  --pp-sidebar-bg:       #0f1117;
+  --pp-surface:          #1a1d27;
+  --pp-surface-elevated: #242836;
+  --pp-border:           #2e3346;
+  --pp-border-hover:     #3d4260;
+  --pp-text:             #e2e4eb;
+  --pp-text-secondary:   #b0b3c1;
+  --pp-text-muted:       #8b8fa3;
+  /* S3.3 — primary brand token (readable on dark bg) */
+  --pp-primary:          #7dd3fc;   /* sky-300 — dark mode */
+  --pp-primary-hover:    #38bdf8;   /* sky-400 */
+  --pp-accent:           #2DCCD3;
+  --pp-accent-hover:     #24A8AE;
+  --pp-accent-pressed:   #1D8A8F;
+  --pp-active:           #2E7D32;
+  --pp-risk:             #FF8F00;
+  --pp-blocked:          #D32F2F;
+  --pp-completed:        #1565C0;
+  --pp-discovery:        #7C4DFF;
+  /* Shimmer animation colors */
+  --pp-shimmer-from:     #1a1d27;
+  --pp-shimmer-mid:      #242836;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DL-2 — Global Reset & Transitions
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Body baseline */
+body {
+  background: var(--pp-page-bg, #0a0a0f);
+}
+
+/* Global transition baseline — every interactive element gets smooth transitions */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, opacity, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Disable transitions on initial page load to prevent colour flash */
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+  transition: none !important;
+}
+
+/* DL-15: Respect user preference — disable all animations */
+.no-animations *,
+.no-animations *::before,
+.no-animations *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* DL-15: Table density classes */
+[data-density="compact"] .mantine-Table-tr > td,
+[data-density="compact"] .mantine-Table-tr > th {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+[data-density="spacious"] .mantine-Table-tr > td,
+[data-density="spacious"] .mantine-Table-tr > th {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* ── Custom scrollbar (dark theme) ──────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e3346;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3d4260;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2e3346 transparent;
+}
+
+[data-mantine-color-scheme="light"] ::-webkit-scrollbar-thumb {
+  background: #c8cdd4;
+}
+[data-mantine-color-scheme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #a0a8b2;
+}
+[data-mantine-color-scheme="light"] * {
+  scrollbar-color: #c8cdd4 transparent;
+}
+
+/* ── Text selection ──────────────────────────────────────────────────── */
+::selection {
+  background: rgba(45, 204, 211, 0.30);
+  color: #e2e4eb;
+}
+[data-mantine-color-scheme="light"] ::selection {
+  background: rgba(31, 168, 174, 0.20);
+  color: #0C2340;
+}
+
+/* ── Command palette entry animation (DL-8) ─────────────────────────── */
+@keyframes ppCmdEnter {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Anchor reset ────────────────────────────────────────────────────── */
+a {
+  color: #2DCCD3;
+  text-decoration: none;
+}
+a:hover {
+  color: #24A8AE;
+}
 
 /* ── Table improvements ─────────────────────────────────────────────── */
 .mantine-Table-thead th {
@@ -11,9 +198,13 @@
   background: var(--mantine-color-body);
   backdrop-filter: blur(8px);
   font-weight: 700;
-  color: #0C2340;
+  color: var(--pp-text-muted, #8b8fa3);
   letter-spacing: 0.01em;
-  border-bottom: 1px solid #0C2340 !important;
+  border-bottom: 1px solid var(--pp-border, #2e3346) !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-thead th {
+  color: #0C2340;
+  border-bottom-color: rgba(12,35,64,0.2) !important;
 }
 
 .mantine-Table-tr[data-striped="odd"]:nth-of-type(odd),
@@ -35,18 +226,31 @@
 }
 
 /* ── Focus-visible outlines ─────────────────────────────────────────── */
+/* Remove default focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :focus-visible {
   outline: 2px solid #2DCCD3;
   outline-offset: 2px;
   border-radius: 4px;
+  box-shadow: 0 0 0 4px rgba(45, 204, 211, 0.15);
+  transition: outline-color 150ms ease, box-shadow 150ms ease;
 }
 
 .mantine-Button-root:focus-visible,
 .mantine-ActionIcon-root:focus-visible,
-.mantine-UnstyledButton-root:focus-visible {
+.mantine-UnstyledButton-root:focus-visible,
+.mantine-NavLink-root:focus-visible,
+.mantine-TextInput-input:focus-visible,
+.mantine-Select-input:focus-visible,
+.mantine-Textarea-input:focus-visible,
+.mantine-NumberInput-input:focus-visible {
   outline: 2px solid #2DCCD3;
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(45, 204, 211, 0.15);
+  transition: outline-color 150ms ease, box-shadow 150ms ease;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -838,6 +1042,13 @@
   animation: breathing 6s ease-in-out infinite;
 }
 
+/* ── Hide orbs on small screens to reduce visual noise ────────────── */
+@media (max-width: 576px) {
+  .nlp-orb {
+    display: none;
+  }
+}
+
 /* ── NLP Insight cards ─────────────────────────────────────────────── */
 
 .nlp-insight-card {
@@ -862,12 +1073,11 @@
 /* ── NLP Search container ──────────────────────────────────────────── */
 
 .nlp-search-container {
-  backdrop-filter: blur(12px);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transition: box-shadow 180ms ease, border-color 180ms ease !important;
 }
 
 .nlp-search-container:hover {
-  box-shadow: 0 8px 32px rgba(45, 204, 211, 0.12), 0 0 0 1px rgba(45, 204, 211, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(45, 204, 211, 0.10) !important;
 }
 
 /* ── Quick action buttons ──────────────────────────────────────────── */
@@ -898,6 +1108,20 @@
   transform: translateY(-2px) !important;
   box-shadow: 0 8px 24px rgba(45, 204, 211, 0.12) !important;
   border-color: rgba(45, 204, 211, 0.3) !important;
+}
+
+/* ── Mobile: disable hover transforms (touch devices) ──────────────── */
+@media (hover: none) {
+  .quick-action-btn:hover,
+  .nlp-insight-card:hover {
+    transform: none !important;
+  }
+}
+
+/* ── NLP result card data tables: horizontal scroll on mobile ───────── */
+.nlp-result-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1319,9 +1543,17 @@
 
 /* ── Print ─────────────────────────────────────────────────────────── */
 @media print {
+  /* ── Hide all UI chrome ── */
   .mantine-AppShell-navbar,
   .mantine-AppShell-header,
-  .mantine-ActionIcon-root {
+  .mantine-ActionIcon-root,
+  .mantine-Button-root,
+  .mantine-Select-root,
+  .mantine-TextInput-root,
+  .mantine-Modal-root,
+  .mantine-Modal-overlay,
+  .mantine-Notifications-root,
+  .pp-no-print {
     display: none !important;
   }
 
@@ -1330,10 +1562,11 @@
     margin: 0 !important;
   }
 
+  /* ── Remove decorative shadows / borders ── */
   .mantine-Card-root,
   .mantine-Paper-root {
     box-shadow: none !important;
-    border: none !important;
+    border: 1px solid #e0e0e0 !important;
   }
 
   body, html {
@@ -1341,6 +1574,7 @@
     color: black !important;
   }
 
+  /* ── Prevent orphaned table rows / chart splits ── */
   .mantine-Table-root,
   [class*="recharts"],
   .mantine-Card-root,
@@ -1360,6 +1594,18 @@
 
   img {
     max-width: 100% !important;
+  }
+
+  /* ── Print header watermark ── */
+  body.pp-pdf-printing::before {
+    content: "Portfolio Planner  |  Exported " attr(data-print-date);
+    display: block;
+    text-align: right;
+    font-size: 9px;
+    color: #999;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 16px;
   }
 }
 
@@ -1432,10 +1678,11 @@
   background-color: transparent;
 }
 
-/* ── Badges: Add thin border for polish ── */
+/* ── Badges: consistent pill shape + thin border ── */
 .mantine-Badge-root {
   border: 1px solid currentColor;
   border-opacity: 0.3;
+  border-radius: 20px !important;  /* force uniform pill shape — overrides radius="sm" etc. */
 }
 
 /* ── Page headings: Wrike-style — Inter font, tight letter-spacing ── */
@@ -1643,3 +1890,1294 @@ h4.mantine-Title-root { font-weight: 600 !important; }
 [data-mantine-color-scheme="dark"] [style*="borderColor: #e9ecef"] {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Phase 5 (v19.4)
+   Breakpoints: xs < 576px, sm < 768px, md < 992px
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Prevent horizontal overflow on all pages ── */
+@media (max-width: 768px) {
+  .mantine-AppShell-main {
+    padding: var(--mantine-spacing-sm) !important;
+    overflow-x: hidden;
+  }
+
+  /* Tables become horizontally scrollable rather than overflowing the viewport */
+  .mantine-Table-root {
+    min-width: 600px;
+  }
+  .mantine-ScrollArea-root,
+  .mantine-Paper-root {
+    overflow-x: auto;
+  }
+
+  /* Stack page headers vertically on small screens */
+  .mantine-Group-root[data-justify="space-between"] {
+    flex-wrap: wrap;
+    gap: var(--mantine-spacing-sm);
+  }
+
+  /* SimpleGrid: force single column on tiny screens */
+  .mantine-SimpleGrid-root {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+  }
+
+  /* Make KPI cards full-width on xs */
+  @media (max-width: 480px) {
+    .mantine-SimpleGrid-root {
+      grid-template-columns: 1fr 1fr !important;
+    }
+  }
+
+  /* Gantt / Timeline charts: allow scroll */
+  [class*="gantt"],
+  [class*="timeline"],
+  [class*="recharts-wrapper"] {
+    overflow-x: auto !important;
+  }
+
+  /* Modal: full width on small screens */
+  .mantine-Modal-content {
+    width: calc(100vw - 32px) !important;
+    max-width: 100% !important;
+    margin: 16px !important;
+  }
+
+  /* Title sizes — reduce on mobile */
+  .mantine-Title-root[data-order="1"] {
+    font-size: 1.5rem !important;
+  }
+  .mantine-Title-root[data-order="2"] {
+    font-size: 1.2rem !important;
+  }
+
+  /* Button group wrapping — prevent overflow */
+  .mantine-Group-root {
+    flex-wrap: wrap;
+  }
+
+  /* Hide secondary table columns on small screens — add class pp-col-hide-mobile */
+  .pp-col-hide-mobile {
+    display: none !important;
+  }
+
+  /* Tab lists scroll horizontally */
+  .mantine-Tabs-list {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mantine-Tabs-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Sidebar collapsed by default on mobile — handled by AppShell burger,
+     but ensure no layout bleed */
+  .mantine-AppShell-navbar {
+    z-index: 200;
+  }
+}
+
+/* ── Touch / tap improvements ── */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets */
+  .mantine-Button-root {
+    min-height: 44px;
+  }
+  .mantine-ActionIcon-root {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .mantine-NavLink-root {
+    padding: 10px var(--mantine-spacing-sm) !important;
+  }
+
+  /* Disable hover transforms on touch devices */
+  .mantine-Card-root:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ── Tablet adjustments (768px – 1024px) ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .mantine-AppShell-main {
+    padding: var(--mantine-spacing-md) !important;
+  }
+
+  /* Two-column grids collapse to 2 on tablet */
+  .mantine-SimpleGrid-root[style*="cols: 4"],
+  .mantine-SimpleGrid-root[style*="cols: 6"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DL-16 — Visual Audit Fixes
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Consistent interactive state: empty state containers */
+.pp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--pp-text-muted, #8b8fa3);
+}
+.pp-empty-state svg {
+  color: var(--pp-border, #2e3346);
+  margin-bottom: 16px;
+}
+.pp-empty-state h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pp-text, #e2e4eb);
+  margin: 0 0 8px;
+}
+.pp-empty-state p {
+  font-size: 13px;
+  color: var(--pp-text-muted, #8b8fa3);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* Consistent hover state for interactive table rows with PP styling */
+[data-mantine-color-scheme="dark"] .pp-row-interactive:hover {
+  background: rgba(45, 204, 211, 0.05) !important;
+  border-left: 3px solid #2DCCD3 !important;
+}
+
+/* Consistent badge for status chips */
+.pp-status-chip {
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+}
+
+/* Typography: monotone secondary labels */
+.pp-label-xs {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pp-text-muted, #8b8fa3);
+}
+
+/* Consistent divider in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Divider-root {
+  border-color: var(--pp-border, #2e3346) !important;
+}
+
+/* Input consistent dark styling */
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input {
+  background: var(--pp-surface, #1a1d27) !important;
+  border-color: var(--pp-border, #2e3346) !important;
+  color: var(--pp-text, #e2e4eb) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input:focus {
+  border-color: var(--pp-accent, #2DCCD3) !important;
+}
+
+/* Dropdown menus in dark mode */
+[data-mantine-color-scheme="dark"] .mantine-Select-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Combobox-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
+  background: var(--pp-surface-elevated, #242836) !important;
+  border-color: var(--pp-border, #2e3346) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Menu-item:hover,
+[data-mantine-color-scheme="dark"] .mantine-Select-option[data-combobox-selected],
+[data-mantine-color-scheme="dark"] .mantine-Combobox-option:hover {
+  background: rgba(45, 204, 211, 0.08) !important;
+}
+
+/* Modal dark styling */
+[data-mantine-color-scheme="dark"] .mantine-Modal-content {
+  background: var(--pp-surface, #1a1d27) !important;
+  border: 1px solid var(--pp-border, #2e3346);
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-header {
+  background: var(--pp-surface, #1a1d27) !important;
+  border-bottom: 1px solid var(--pp-border, #2e3346);
+}
+
+/* Tooltip dark styling */
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background: var(--pp-surface-elevated, #242836) !important;
+  border: 1px solid var(--pp-border, #2e3346) !important;
+  color: var(--pp-text, #e2e4eb) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE — Comprehensive overrides
+   All rules scoped to [data-mantine-color-scheme="light"]
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Anchor / link colour in light mode ─────────────────────────────── */
+[data-mantine-color-scheme="light"] a {
+  color: #1FA8AE;
+}
+[data-mantine-color-scheme="light"] a:hover {
+  color: #177275;
+}
+
+/* ── AppShell navbar — use white sidebar in light mode ─────────────── */
+[data-mantine-color-scheme="light"] .mantine-AppShell-navbar {
+  background: #ffffff;
+  border-right: 1px solid #e2e6ea;
+}
+
+/* ── Text colour — Mantine Text root should use dark ink, not white ── */
+[data-mantine-color-scheme="light"] .mantine-Text-root {
+  color: inherit;
+}
+
+/* ── Page title colour in light mode ────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Title-root {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] h1,
+[data-mantine-color-scheme="light"] h2,
+[data-mantine-color-scheme="light"] h3,
+[data-mantine-color-scheme="light"] h4 {
+  color: #0C2340 !important;
+}
+
+/* ── Card and Paper ─────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Card-root {
+  background: #ffffff;
+  border: 1px solid #e2e6ea;
+}
+[data-mantine-color-scheme="light"] .mantine-Card-root:hover {
+  box-shadow: 0 4px 16px rgba(12, 35, 64, 0.10), 0 1px 4px rgba(12, 35, 64, 0.06);
+  border-color: #c8cdd4;
+}
+[data-mantine-color-scheme="light"] .mantine-Paper-root[data-with-border] {
+  border-color: #e2e6ea;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Input-input {
+  background: #ffffff;
+  border-color: #ced4da;
+  color: #0C2340;
+}
+[data-mantine-color-scheme="light"] .mantine-Input-input::placeholder {
+  color: #9aa0ab;
+}
+[data-mantine-color-scheme="light"] .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="light"] .mantine-Select-input:focus,
+[data-mantine-color-scheme="light"] .mantine-NumberInput-input:focus,
+[data-mantine-color-scheme="light"] .mantine-Textarea-input:focus {
+  border-color: #1FA8AE !important;
+}
+
+/* ── NavLink ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-NavLink-root[data-active] {
+  background: linear-gradient(90deg, rgba(31, 168, 174, 0.12), rgba(31, 168, 174, 0.04)) !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-NavLink-root:hover {
+  background: rgba(12, 35, 64, 0.05) !important;
+}
+
+/* ── Dimmed text ────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] [data-mantine-color="dimmed"],
+[data-mantine-color-scheme="light"] .mantine-Text-root[data-c="dimmed"] {
+  color: #718096 !important;
+}
+
+/* ── Segmented control ──────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-SegmentedControl-root {
+  background: #e9ecef;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Tooltip-tooltip {
+  background: #0C2340 !important;
+  border: 1px solid rgba(12, 35, 64, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* ── Dropdown menus ─────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Select-dropdown,
+[data-mantine-color-scheme="light"] .mantine-Combobox-dropdown,
+[data-mantine-color-scheme="light"] .mantine-Menu-dropdown {
+  background: #ffffff !important;
+  border-color: #e2e6ea !important;
+  box-shadow: 0 4px 16px rgba(12, 35, 64, 0.12) !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Menu-item:hover,
+[data-mantine-color-scheme="light"] .mantine-Select-option[data-combobox-selected],
+[data-mantine-color-scheme="light"] .mantine-Combobox-option:hover {
+  background: rgba(31, 168, 174, 0.08) !important;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Modal-content {
+  background: #ffffff !important;
+  border: 1px solid #e2e6ea;
+}
+[data-mantine-color-scheme="light"] .mantine-Modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e6ea;
+}
+
+/* ── Divider ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Divider-root {
+  border-color: #e2e6ea;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Table-thead {
+  background: #f8f9fa;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-th {
+  color: #4a5568 !important;
+  border-bottom-color: #e2e6ea !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-td {
+  border-bottom-color: #e9ecef !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-tr[data-hover]:hover {
+  background-color: rgba(31, 168, 174, 0.06) !important;
+}
+
+/* ── Accordion ──────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Accordion-control {
+  color: #0C2340;
+}
+
+/* ── Progress bar ───────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Progress-root {
+  background: #e9ecef;
+}
+
+/* ── ThemeIcon ──────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-ThemeIcon-root[data-variant="light"] {
+  border: 1px solid rgba(12, 35, 64, 0.08);
+}
+
+/* ── Recharts in light mode ─────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .recharts-wrapper,
+[data-mantine-color-scheme="light"] .recharts-surface {
+  background: transparent !important;
+}
+[data-mantine-color-scheme="light"] .recharts-cartesian-grid line {
+  stroke: rgba(12, 35, 64, 0.08) !important;
+}
+[data-mantine-color-scheme="light"] .recharts-text,
+[data-mantine-color-scheme="light"] .recharts-cartesian-axis-tick-value {
+  fill: #718096 !important;
+}
+[data-mantine-color-scheme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #ffffff !important;
+  border: 1px solid #e2e6ea !important;
+  color: #0C2340 !important;
+}
+
+/* ── Notification in light mode ─────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Notification-root {
+  background: #ffffff !important;
+  border-color: #e2e6ea !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Notification-title {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Notification-description {
+  color: #4a5568 !important;
+}
+
+/* ── Badge ──────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Badge-root {
+  border: 1px solid rgba(12, 35, 64, 0.1);
+}
+
+/* ── Focus ring ─────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] :focus-visible {
+  outline-color: #1FA8AE;
+}
+
+/* ── Hardcoded DEEP_BLUE text is fine in light mode (dark on light bg) */
+/* Remove the dark-mode override so #0C2340 text stays as-is in light  */
+[data-mantine-color-scheme="light"] [style*="color: rgb(12, 35, 64)"],
+[data-mantine-color-scheme="light"] [style*="color:#0C2340"],
+[data-mantine-color-scheme="light"] [style*="color: #0C2340"] {
+  color: #0C2340 !important;
+}
+
+/* ── White background divs — keep as-is in light mode ───────────────── */
+[data-mantine-color-scheme="light"] div[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="light"] div[style*="background: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="light"] div[style*="background-color: white"],
+[data-mantine-color-scheme="light"] div[style*="background: white"],
+[data-mantine-color-scheme="light"] .mantine-Card-root[style*="background-color: rgb(255, 255, 255)"],
+[data-mantine-color-scheme="light"] .mantine-Paper-root[style*="background-color: rgb(255, 255, 255)"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+/* ── Mantine color-0 shades — light mode keeps native Mantine pastels ─ */
+[data-mantine-color-scheme="light"] {
+  --mantine-color-teal-0: #E6FCF5;
+  --mantine-color-blue-0: #E7F5FF;
+  --mantine-color-green-0: #EBFBEE;
+  --mantine-color-yellow-0: #FFF9DB;
+  --mantine-color-red-0: #FFF5F5;
+  --mantine-color-orange-0: #FFF4E6;
+  --mantine-color-grape-0: #F8F0FC;
+  --mantine-color-violet-0: #F3F0FF;
+  --mantine-color-indigo-0: #EDF2FF;
+  --mantine-color-cyan-0: #E3FAFC;
+  --mantine-color-pink-0: #FFF0F6;
+  --mantine-color-gray-0: #F8F9FA;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE — Button / ActionIcon contrast fix (v21.1)
+   Problem: variant="light" uses color-0 background (~#E6FCF5) which is almost
+   invisible against our --pp-page-bg (#f4f6f9). Fix: solid opaque backgrounds.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* All variant="light" buttons in light mode — solid visible background */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"] {
+  background-color: #d8f5f6 !important;
+  border: 1px solid #9de0e3 !important;
+  color: #0a7a7f !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"]:hover {
+  background-color: #bceef0 !important;
+  border-color: #6ecdd1 !important;
+}
+
+/* Teal-specific overrides */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="teal"],
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="cyan"] {
+  background-color: #c3fae8 !important;
+  border: 1px solid #63e6be !important;
+  color: #087f5b !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="teal"]:hover,
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="cyan"]:hover {
+  background-color: #96f2d7 !important;
+}
+
+/* Blue */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="blue"],
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="indigo"] {
+  background-color: #d0ebff !important;
+  border: 1px solid #74c0fc !important;
+  color: #1864ab !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="blue"]:hover,
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="indigo"]:hover {
+  background-color: #a5d8ff !important;
+}
+
+/* Red */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="red"] {
+  background-color: #ffe3e3 !important;
+  border: 1px solid #ffa8a8 !important;
+  color: #c92a2a !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="red"]:hover {
+  background-color: #ffc9c9 !important;
+}
+
+/* Orange / yellow */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="orange"],
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="yellow"] {
+  background-color: #fff3bf !important;
+  border: 1px solid #ffd43b !important;
+  color: #e67700 !important;
+}
+
+/* Green */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="green"] {
+  background-color: #d3f9d8 !important;
+  border: 1px solid #8ce99a !important;
+  color: #2b8a3e !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="green"]:hover {
+  background-color: #b2f2bb !important;
+}
+
+/* Grape / violet */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="grape"],
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="violet"] {
+  background-color: #f3d9fa !important;
+  border: 1px solid #da77f2 !important;
+  color: #862e9c !important;
+}
+
+/* Gray */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"][data-color="gray"] {
+  background-color: #e9ecef !important;
+  border: 1px solid #ced4da !important;
+  color: #495057 !important;
+}
+
+/* ── ActionIcon variant="light" — same solid-background treatment ──────── */
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"] {
+  background-color: #d8f5f6 !important;
+  border: 1px solid #9de0e3 !important;
+  color: #0a7a7f !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"]:hover {
+  background-color: #bceef0 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="teal"],
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="cyan"] {
+  background-color: #c3fae8 !important;
+  border: 1px solid #63e6be !important;
+  color: #087f5b !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="blue"] {
+  background-color: #d0ebff !important;
+  border: 1px solid #74c0fc !important;
+  color: #1864ab !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="red"] {
+  background-color: #ffe3e3 !important;
+  border: 1px solid #ffa8a8 !important;
+  color: #c92a2a !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="green"] {
+  background-color: rgba(64, 192, 87, 0.12) !important;
+  border: 1px solid rgba(64, 192, 87, 0.25) !important;
+  color: #2f9e44 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="orange"] {
+  background-color: rgba(253, 126, 20, 0.10) !important;
+  border: 1px solid rgba(253, 126, 20, 0.22) !important;
+  color: #d9480f !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="orange"],
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="yellow"] {
+  background-color: #fff3bf !important;
+  border: 1px solid #ffd43b !important;
+  color: #e67700 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="green"] {
+  background-color: #d3f9d8 !important;
+  border: 1px solid #8ce99a !important;
+  color: #2b8a3e !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="grape"],
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="violet"] {
+  background-color: #f3d9fa !important;
+  border: 1px solid #da77f2 !important;
+  color: #862e9c !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="light"][data-color="gray"] {
+  background-color: #e9ecef !important;
+  border: 1px solid #ced4da !important;
+  color: #495057 !important;
+}
+
+/* ── ActionIcon variant="subtle" — teal icons must be dark enough ────── */
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"] {
+  color: #4a5568;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"][data-color="teal"],
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"][data-color="cyan"] {
+  color: #0ca678 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"][data-color="blue"] {
+  color: #1971c2 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"][data-color="red"] {
+  color: #c92a2a !important;
+}
+[data-mantine-color-scheme="light"] .mantine-ActionIcon-root[data-variant="subtle"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Button variant="subtle" — text must contrast against light bg ────── */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"] {
+  color: #4a5568;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"][data-color="teal"],
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"][data-color="cyan"] {
+  color: #0ca678 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"][data-color="blue"] {
+  color: #1971c2 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"][data-color="red"] {
+  color: #c92a2a !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"]:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ── Button icons inherit the button's text color ────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="light"] .mantine-Button-section,
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="subtle"] .mantine-Button-section {
+  color: inherit !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LOGIN PAGE — Force light appearance regardless of color scheme
+   The login form panel sits on a white background; dark-mode CSS
+   overrides (which use !important) would make text invisible.
+   These rules come after the dark-mode block so they win on equal
+   specificity.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Headings */
+.login-form-panel .mantine-Title-root,
+.login-form-panel h1,
+.login-form-panel h2,
+.login-form-panel h3,
+.login-form-panel h4 {
+  color: #0C2340 !important;
+}
+
+/* Body text */
+.login-form-panel .mantine-Text-root {
+  color: #6D7B8C !important;
+}
+
+/* Input fields */
+.login-form-panel .mantine-Input-input {
+  background: #ffffff !important;
+  color: #0C2340 !important;
+  border-color: #E7E9EC !important;
+}
+.login-form-panel .mantine-Input-input::placeholder {
+  color: rgba(12, 35, 64, 0.35) !important;
+}
+
+/* Input labels (inline style color overrides from dark-mode selectors) */
+.login-form-panel [style*="color: rgb(12, 35, 64)"],
+.login-form-panel [style*="color:#0C2340"],
+.login-form-panel [style*="color: #0C2340"] {
+  color: #0C2340 !important;
+}
+
+/* Password reveal icon & other icons inside inputs */
+.login-form-panel .mantine-Input-section {
+  color: #0C2340 !important;
+}
+
+/* Divider label */
+.login-form-panel .mantine-Divider-label {
+  color: #9EA7B3 !important;
+}
+
+/* Forgot password link — keep brand teal */
+.login-form-panel a {
+  color: #2DCCD3 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SPRINT 2 — S2-08/S2-09: Dark + Light Mode Complete Hardening
+   Zero invisible text guarantee across all Mantine components.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── S2-02: Table row height standardisation (44px default) ─────────── */
+.mantine-Table-tr > td {
+  height: 44px;
+  vertical-align: middle;
+}
+.mantine-Table-tr > th {
+  height: 40px;
+  vertical-align: middle;
+}
+[data-density="compact"] .mantine-Table-tr > td { height: 32px !important; }
+[data-density="spacious"] .mantine-Table-tr > td { height: 56px !important; }
+
+/* ── S2-03: Card padding standardisation ────────────────────────────── */
+.pp-card { padding: 24px; border-radius: 12px; }
+.pp-card--compact { padding: 16px; border-radius: 8px; }
+.pp-card--large   { padding: 32px; border-radius: 16px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DARK MODE — Mantine component overrides
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Modals ─────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Modal-content {
+  background: var(--mantine-color-dark-6) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-header {
+  background: var(--mantine-color-dark-6) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-title {
+  color: #e9ecef !important;
+  font-weight: 700 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-close {
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-close:hover {
+  color: #e9ecef !important;
+  background: rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Modal-body {
+  color: #e9ecef !important;
+}
+
+/* ── Drawers ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Drawer-content {
+  background: var(--mantine-color-dark-7) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Drawer-header {
+  background: var(--mantine-color-dark-7) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Drawer-title {
+  color: #e9ecef !important;
+  font-weight: 700 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Drawer-close {
+  color: #9ca3af !important;
+}
+
+/* ── Select / MultiSelect / Combobox dropdowns ──────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input,
+[data-mantine-color-scheme="dark"] .mantine-Combobox-search {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Select-input::placeholder,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input::placeholder {
+  color: rgba(255,255,255,0.35) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Combobox-dropdown {
+  background: var(--mantine-color-dark-6) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Combobox-option {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Combobox-option:hover,
+[data-mantine-color-scheme="dark"] .mantine-Combobox-option[data-combobox-selected] {
+  background: rgba(45,204,211,0.12) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Combobox-option[data-combobox-active] {
+  background: rgba(45,204,211,0.20) !important;
+  color: #2DCCD3 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Combobox-empty {
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Select-section svg,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-section svg {
+  color: #9ca3af !important;
+}
+
+/* ── DatePicker / DateInput ─────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-DatePickerInput-input,
+[data-mantine-color-scheme="dark"] .mantine-DateInput-input {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-DatePicker-calendarHeader,
+[data-mantine-color-scheme="dark"] .mantine-DatePicker-month {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-DatePicker-day {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-DatePicker-day[data-selected] {
+  background: #2DCCD3 !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-DatePicker-day:hover:not([data-selected]) {
+  background: rgba(45,204,211,0.12) !important;
+}
+
+/* ── NumberInput / TextInput / Textarea ─────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input,
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input,
+[data-mantine-color-scheme="dark"] .mantine-PasswordInput-input {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input::placeholder {
+  color: rgba(255,255,255,0.35) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-section,
+[data-mantine-color-scheme="dark"] .mantine-TextInput-section,
+[data-mantine-color-scheme="dark"] .mantine-Input-section {
+  color: #9ca3af !important;
+}
+
+/* ── Labels (all inputs) ────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-InputWrapper-label,
+[data-mantine-color-scheme="dark"] .mantine-Select-label,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-label,
+[data-mantine-color-scheme="dark"] .mantine-TextInput-label,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-label,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-label,
+[data-mantine-color-scheme="dark"] .mantine-DateInput-label,
+[data-mantine-color-scheme="dark"] .mantine-DatePickerInput-label {
+  color: #9ca3af !important;
+}
+
+/* ── Mantine Tabs ───────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Tabs-list {
+  border-bottom-color: rgba(255,255,255,0.10) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Tabs-tab {
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Tabs-tab:hover {
+  background: rgba(45,204,211,0.08) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Tabs-tab[data-active] {
+  color: #2DCCD3 !important;
+  border-bottom-color: #2DCCD3 !important;
+}
+
+/* ── Mantine Tabs — light mode ──────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Tabs-tab {
+  color: #6D7B8C !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Tabs-tab:hover {
+  background: #EAFAFB !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Tabs-tab[data-active] {
+  color: #0C2340 !important;
+  border-bottom-color: #2DCCD3 !important;
+}
+/* View-switcher pill tabs MUST show white text on deep-navy active pill.
+   This rule is more specific (4 selectors) so it beats the 3-selector rule above. */
+[data-mantine-color-scheme="light"] .view-switcher-tabs .mantine-Tabs-tab[data-active] {
+  background: #0C2340 !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+[data-mantine-color-scheme="light"] .view-switcher-tabs .mantine-Tabs-tab[data-active] svg,
+[data-mantine-color-scheme="light"] .view-switcher-tabs .mantine-Tabs-tab[data-active] .mantine-Tabs-tabSection {
+  color: #fff !important;
+}
+
+/* ── Mantine Menu ───────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
+  background: var(--mantine-color-dark-6) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Menu-item {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Menu-item:hover {
+  background: rgba(45,204,211,0.10) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Menu-label {
+  color: #6b7280 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Menu-divider {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* ── Popover ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Popover-dropdown {
+  background: var(--mantine-color-dark-6) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+  color: #e9ecef !important;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background: var(--mantine-color-dark-4) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Tooltip-tooltip {
+  background: #0C2340 !important;
+  color: #ffffff !important;
+}
+
+/* ── Notification ───────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Notification-root {
+  background: var(--mantine-color-dark-6) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Notification-title {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Notification-description {
+  color: #9ca3af !important;
+}
+
+/* ── Alert ──────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Alert-root {
+  border-color: rgba(255,255,255,0.12) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Alert-title {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Alert-message {
+  color: #9ca3af !important;
+}
+
+/* ── Badge ──────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Badge-root[data-variant="light"] {
+  color: inherit !important;
+}
+
+/* ── Accordion ──────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Accordion-item {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Accordion-control {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Accordion-control:hover {
+  background: rgba(255,255,255,0.04) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Accordion-panel {
+  color: #9ca3af !important;
+}
+
+/* ── Progress / Slider ──────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Progress-root {
+  background: rgba(255,255,255,0.10) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Slider-track {
+  background: rgba(255,255,255,0.10) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Slider-label {
+  background: var(--mantine-color-dark-4) !important;
+  color: #e9ecef !important;
+}
+
+/* ── Checkbox / Radio / Switch ──────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Checkbox-label,
+[data-mantine-color-scheme="dark"] .mantine-Radio-label,
+[data-mantine-color-scheme="dark"] .mantine-Switch-label {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Checkbox-description,
+[data-mantine-color-scheme="dark"] .mantine-Radio-description,
+[data-mantine-color-scheme="dark"] .mantine-Switch-description {
+  color: #9ca3af !important;
+}
+
+/* ── Table dark mode ────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Table-root thead tr th {
+  background: rgba(255,255,255,0.04) !important;
+  color: rgba(255,255,255,0.70) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Table-root tbody tr td {
+  color: #e9ecef !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Table-root tbody tr:hover td {
+  background: rgba(45,204,211,0.07) !important;
+}
+
+/* ── Table light mode ───────────────────────────────────────────────── */
+[data-mantine-color-scheme="light"] .mantine-Table-root thead tr th {
+  background: #E7E9EC !important;
+  color: #6D7B8C !important;
+  border-bottom: 1px solid #CED3D9 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-root tbody tr td {
+  color: #0C2340 !important;
+  border-bottom: 1px solid #E7E9EC !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Table-root tbody tr:hover td {
+  background: #EAFAFB !important;
+}
+
+/* ── Pagination ─────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Pagination-control {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.10) !important;
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Pagination-control:hover {
+  background: rgba(45,204,211,0.12) !important;
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Pagination-control[data-active] {
+  background: #2DCCD3 !important;
+  border-color: #2DCCD3 !important;
+  color: #0C2340 !important;
+}
+
+/* ── SegmentedControl ───────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-root {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-label {
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-label:hover {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-indicator {
+  background: rgba(45,204,211,0.18) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-SegmentedControl-root [data-active] .mantine-SegmentedControl-label {
+  color: #2DCCD3 !important;
+}
+
+/* ── Chip ───────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Chip-label {
+  color: #9ca3af !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  background: rgba(255,255,255,0.04) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Chip-label[data-checked] {
+  background: rgba(45,204,211,0.18) !important;
+  border-color: #2DCCD3 !important;
+  color: #2DCCD3 !important;
+}
+
+/* ── ActionIcon ─────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-ActionIcon-root[data-variant="subtle"]:not([data-disabled]) {
+  color: #9ca3af !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-ActionIcon-root[data-variant="subtle"]:hover:not([data-disabled]) {
+  background: rgba(255,255,255,0.08) !important;
+  color: #e9ecef !important;
+}
+
+/* ── Divider ────────────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Divider-root {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Divider-label {
+  color: #6b7280 !important;
+}
+
+/* ── Paper (generic container) ──────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Paper-root {
+  background: var(--mantine-color-dark-6) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: #e9ecef !important;
+}
+
+/* ── Title / Text — force visibility ────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Title-root {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Text-root[data-variant="dimmed"],
+[data-mantine-color-scheme="dark"] [data-mantine-color="dimmed"] {
+  color: #9ca3af !important;
+}
+
+/* ── Loading overlay ────────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-LoadingOverlay-overlay {
+  background: rgba(26,27,30,0.80) !important;
+}
+
+/* ── ScrollArea scrollbar ───────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-ScrollArea-scrollbar {
+  background: rgba(255,255,255,0.05) !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-ScrollArea-thumb {
+  background: rgba(255,255,255,0.20) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE — Override any dark defaults that leak through
+   ══════════════════════════════════════════════════════════════════════ */
+
+[data-mantine-color-scheme="light"] .mantine-Select-input,
+[data-mantine-color-scheme="light"] .mantine-MultiSelect-input,
+[data-mantine-color-scheme="light"] .mantine-TextInput-input,
+[data-mantine-color-scheme="light"] .mantine-NumberInput-input,
+[data-mantine-color-scheme="light"] .mantine-Textarea-input {
+  background: #ffffff !important;
+  border-color: #E7E9EC !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Select-input::placeholder,
+[data-mantine-color-scheme="light"] .mantine-TextInput-input::placeholder,
+[data-mantine-color-scheme="light"] .mantine-Textarea-input::placeholder {
+  color: rgba(12,35,64,0.35) !important;
+}
+[data-mantine-color-scheme="light"] .mantine-InputWrapper-label {
+  color: #6D7B8C !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Combobox-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #E7E9EC !important;
+  box-shadow: 0 8px 24px rgba(12,35,64,0.10) !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Combobox-option {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Combobox-option:hover,
+[data-mantine-color-scheme="light"] .mantine-Combobox-option[data-combobox-selected] {
+  background: #EAFAFB !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Combobox-option[data-combobox-active] {
+  background: #D5F5F6 !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Menu-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #E7E9EC !important;
+  box-shadow: 0 8px 24px rgba(12,35,64,0.10) !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Menu-item {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Menu-item:hover {
+  background: #EAFAFB !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Pagination-control[data-active] {
+  background: #2DCCD3 !important;
+  border-color: #2DCCD3 !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Paper-root {
+  background: #ffffff !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Title-root {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Modal-content {
+  background: #ffffff !important;
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #E7E9EC !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Modal-title {
+  color: #0C2340 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SPRINT 2 — S2-06: Button readability — ALL variants, BOTH modes
+   DO NOT add "color: inherit" to button labels — it breaks Mantine's
+   auto-contrast computation. Instead patch per variant + color below.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── FILLED buttons: always white text (Mantine default) ──────────── */
+/* Teal/Aqua filled CTA — DEEP_BLUE text since bg is light */
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="filled"][data-color="teal"] .mantine-Button-label,
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="filled"][data-color="cyan"] .mantine-Button-label {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="filled"][data-color="teal"] .mantine-Button-section svg,
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="filled"][data-color="cyan"] .mantine-Button-section svg {
+  color: #0C2340 !important;
+}
+/* Aqua filled (theme primaryColor) — explicit label + icon dark text */
+.mantine-Button-root[data-variant="filled"][data-color="aqua"] .mantine-Button-label {
+  color: #0C2340 !important;
+}
+.mantine-Button-root[data-variant="filled"][data-color="aqua"] .mantine-Button-section,
+.mantine-Button-root[data-variant="filled"][data-color="aqua"] .mantine-Button-section svg {
+  color: #0C2340 !important;
+}
+/* Inline style teal CTA */
+.mantine-Button-root[style*="background: #2DCCD3"] .mantine-Button-label,
+.mantine-Button-root[style*="background:#2DCCD3"] .mantine-Button-label,
+.mantine-Button-root[style*="background: rgb(45, 204, 211)"] .mantine-Button-label {
+  color: #0C2340 !important;
+}
+
+/* ── LIGHT variant buttons — guarantee text never disappears ──────── */
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"] .mantine-Button-label {
+  /* Mantine v7 dark mode light-variant text can be too dim — boost it */
+  opacity: 1 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="teal"] .mantine-Button-label,
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="cyan"] .mantine-Button-label {
+  color: #2DCCD3 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="blue"] .mantine-Button-label {
+  color: #74c0fc !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="red"] .mantine-Button-label {
+  color: #ff8787 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="orange"] .mantine-Button-label {
+  color: #ffa94d !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="grape"],
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="violet"] {
+  color: #da77f2 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="green"] .mantine-Button-label {
+  color: #69db7c !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="light"][data-color="gray"] .mantine-Button-label {
+  color: #adb5bd !important;
+}
+
+/* ── SUBTLE variant buttons ───────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"] .mantine-Button-label {
+  opacity: 1 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"][data-color="teal"] .mantine-Button-label,
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"][data-color="cyan"] .mantine-Button-label {
+  color: #2DCCD3 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"][data-color="blue"] .mantine-Button-label {
+  color: #74c0fc !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"][data-color="red"] .mantine-Button-label {
+  color: #ff8787 !important;
+}
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="subtle"]:not([data-color]) .mantine-Button-label {
+  color: #e9ecef !important;
+}
+
+/* ── DEFAULT (outline-like) variant ──────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="default"] .mantine-Button-label {
+  color: #e9ecef !important;
+}
+[data-mantine-color-scheme="light"] .mantine-Button-root[data-variant="default"] .mantine-Button-label {
+  color: #0C2340 !important;
+}
+
+/* ── OUTLINE variant ─────────────────────────────────────────────── */
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-variant="outline"]:not([data-color]) .mantine-Button-label {
+  color: #e9ecef !important;
+}
+
+/* ── Button icons always match label ─────────────────────────────── */
+.mantine-Button-root .mantine-Button-section {
+  display: flex;
+  align-items: center;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SPRINT 2 — END S2-08/S2-09
+   ══════════════════════════════════════════════════════════════════════ */

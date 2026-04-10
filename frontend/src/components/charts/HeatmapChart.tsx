@@ -1,5 +1,6 @@
 import { Table, Text } from '@mantine/core';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { GRAY_300, SURFACE_SUBTLE } from '../../brandTokens';
 
 interface HeatmapRow {
   label: string;
@@ -15,7 +16,7 @@ interface HeatmapChartProps {
 
 export default function HeatmapChart({ rows, monthLabels, colorFn, currentMonthIndex }: HeatmapChartProps) {
   const dark = useDarkMode();
-  const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
@@ -33,7 +34,7 @@ export default function HeatmapChart({ rows, monthLabels, colorFn, currentMonthI
                     textAlign: 'center',
                     fontSize: 12,
                     minWidth: 70,
-                    ...(isPast ? { color: '#adb5bd', backgroundColor: pastBg } : {}),
+                    ...(isPast ? { color: GRAY_300, backgroundColor: pastBg } : {}),
                   }}
                 >
                   {monthLabels[m] ?? `M${m}`}

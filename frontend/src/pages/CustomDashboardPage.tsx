@@ -1,531 +1,1298 @@
 /**
- * CustomDashboardPage — drag-to-arrange widget dashboard.
+ * CustomDashboardPage — Dashboard Builder v2
  *
- * Users choose from a widget library, place them on a 12-column responsive
- * grid, resize/remove them, and save their layout persistently.
- *
- * Widget types:
- *   kpi_project_count | kpi_at_risk | kpi_resources | kpi_overdue
- *   chart_status_dist | chart_priority_dist | chart_pod_load
- *   table_recent_projects | table_top_risks | table_my_approvals
+ * Full rewrite with:
+ * - DashboardProvider wrapping the page
+ * - DashboardToolbar: edit mode, save, filters, templates, refresh, export
+ * - DashboardCanvas: 12-column CSS grid with framer-motion drag reorder
+ * - Widget picker modal & template gallery
+ * - Dynamic widget data fetching
+ * - Cross-filtering support
  */
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  Title, Text, Stack, Group, Button, Paper, SimpleGrid, Badge,
-  ActionIcon, Tooltip, Modal, Card, ThemeIcon, Divider,
-  Menu, NumberInput, Select, TextInput, Alert, Skeleton,
-  RingProgress, Progress,
+  Text, Stack, Group, Button, Paper, Badge, ActionIcon, Tooltip,
+  Modal, Card, ThemeIcon, Divider, Title, Select, TextInput,
+  Menu, Drawer, Tabs, Alert, Skeleton, RingProgress, Grid,
 } from '@mantine/core';
+import { Reorder } from 'framer-motion';
+import { PPPageLayout } from '../components/pp';
+import { DashboardFilterBar } from '../components/dashboard/DashboardFilterBar';
+import {
+  DashboardWidget,
+  WIDGET_REGISTRY,
+  WidgetData,
+} from '../components/dashboard/DashboardWidgets';
+import { DashboardProvider, useDashboard } from '../store/dashboardStore';
+import {
+  useDashboards,
+  useCreateDashboard,
+  useUpdateDashboard,
+  useDeleteDashboard,
+  useDashboardTemplates,
+} from '../api/dashboards';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconX, IconCheck, IconRefresh, IconLayoutDashboard,
-  IconChartPie, IconTable, IconTrendingUp, IconAlertTriangle,
-  IconUsers, IconBriefcase, IconClock, IconShieldCheck,
-  IconGripVertical, IconEdit, IconChartBar, IconTarget,
-  IconArrowUp, IconArrowDown,
+  IconEdit, IconGripVertical, IconSettings, IconDownload,
+  IconPrinter, IconFilter, IconClock, IconAlertCircle, IconChevronDown,
+  IconMinus, IconEqual, IconTrash, IconConfetti,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, GRAY_100, SURFACE_SUBTLE, FONT_FAMILY, DEEP_BLUE } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useProjects } from '../api/projects';
 import { useResources } from '../api/resources';
 import { usePendingApprovals } from '../api/projectApprovals';
-import {
-  DashboardWidget,
-  useDashboardWidgets,
-  useSaveDashboardLayout,
-  useDeleteDashboardWidget,
-} from '../api/dashboardWidgets';
 
-// ── Widget registry ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
-const WIDGET_DEFS = [
-  { type: 'kpi_project_count', label: 'Total Projects',      icon: <IconBriefcase size={18} />,    color: 'teal',   defaultSpan: 1 },
-  { type: 'kpi_at_risk',       label: 'At-Risk Projects',    icon: <IconAlertTriangle size={18} />, color: 'orange', defaultSpan: 1 },
-  { type: 'kpi_resources',     label: 'Total Resources',     icon: <IconUsers size={18} />,         color: 'blue',   defaultSpan: 1 },
-  { type: 'kpi_overdue',       label: 'Overdue Projects',    icon: <IconClock size={18} />,         color: 'red',    defaultSpan: 1 },
-  { type: 'chart_status_dist', label: 'Status Distribution', icon: <IconChartPie size={18} />,      color: 'violet', defaultSpan: 2 },
-  { type: 'chart_priority_dist', label: 'Priority Mix',      icon: <IconChartBar size={18} />,      color: 'indigo', defaultSpan: 2 },
-  { type: 'table_recent_projects', label: 'Recent Projects', icon: <IconTable size={18} />,         color: 'teal',   defaultSpan: 2 },
-  { type: 'table_top_risks',   label: 'Top Risks',           icon: <IconShieldCheck size={18} />,   color: 'red',    defaultSpan: 2 },
-  { type: 'table_my_approvals', label: 'Pending Approvals',  icon: <IconTarget size={18} />,        color: 'yellow', defaultSpan: 2 },
+interface WidgetDef {
+  id: string;
+  type: string;
+  title: string;
+  colSpan: number;
+  rowSpan: number;
+  config: Record<string, any>;
+  dataSource?: {
+    entity: string;
+    metric: string;
+    dimension: string;
+    aggregation: string;
+  };
+}
+
+interface DashboardTemplateConfig {
+  name: string;
+  description: string;
+  widgets: WidgetDef[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+function generateId(): string {
+  return `widget_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Template Definitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DASHBOARD_TEMPLATES: DashboardTemplateConfig[] = [
+  {
+    name: 'Executive Overview',
+    description: '4 KPI tiles + Status distribution + Budget + Recent projects',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_project_count',
+        title: 'Total Projects',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true, colorScheme: 'teal' },
+      },
+      {
+        id: 'kpi-2',
+        type: 'kpi_at_risk',
+        title: 'At-Risk Projects',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true, colorScheme: 'orange' },
+      },
+      {
+        id: 'kpi-3',
+        type: 'kpi_resources',
+        title: 'Total Resources',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true, colorScheme: 'blue' },
+      },
+      {
+        id: 'kpi-4',
+        type: 'kpi_overdue',
+        title: 'Overdue',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true, colorScheme: 'red' },
+      },
+      {
+        id: 'chart-1',
+        type: 'chart_status_dist',
+        title: 'Status Distribution',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'chart-2',
+        type: 'chart_priority_dist',
+        title: 'Priority Mix',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'table-1',
+        type: 'table_recent_projects',
+        title: 'Recent Projects',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
+  {
+    name: 'Engineering Health',
+    description: 'Velocity trend + Bug count + Sprint burndown + Pod load',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_project_count',
+        title: 'Active Projects',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'chart-1',
+        type: 'chart_velocity_trend',
+        title: 'Velocity Trend',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'chart-2',
+        type: 'chart_pod_load',
+        title: 'Pod Utilization',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { colorScheme: 'heatmap' },
+      },
+      {
+        id: 'table-1',
+        type: 'table_sprint_status',
+        title: 'Sprint Status',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
+  {
+    name: 'Capacity Planning',
+    description: 'Resource utilization + Pod load + Capacity grid + FTE by role',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_resources',
+        title: 'Total Resources',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'chart-1',
+        type: 'chart_pod_load',
+        title: 'Pod Load',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { colorScheme: 'heatmap' },
+      },
+      {
+        id: 'misc-1',
+        type: 'misc_capacity_grid',
+        title: 'Capacity Grid',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { groupBy: 'pod' },
+      },
+      {
+        id: 'table-1',
+        type: 'table_resources_by_role',
+        title: 'Resources by Role',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 10 },
+      },
+    ],
+  },
+  {
+    name: 'Budget Tracker',
+    description: 'Budget waterfall + Spend by pod + CapEx/OpEx + Monthly burn',
+    widgets: [
+      {
+        id: 'chart-1',
+        type: 'chart_spend_waterfall',
+        title: 'Budget Waterfall',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'chart-2',
+        type: 'chart_priority_dist',
+        title: 'Spend Distribution',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'table-1',
+        type: 'table_recent_projects',
+        title: 'Projects',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
+  {
+    name: 'Sprint Velocity',
+    description: 'Velocity trend + Completed vs planned + Status + Top risks',
+    widgets: [
+      {
+        id: 'chart-1',
+        type: 'chart_velocity_trend',
+        title: 'Velocity Trend',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'chart-2',
+        type: 'chart_status_dist',
+        title: 'Status Distribution',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'table-1',
+        type: 'table_top_risks',
+        title: 'Top Risks',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
+  {
+    name: 'Risk Dashboard',
+    description: 'Risk by severity + Status + Risk matrix + Overdue count',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_at_risk',
+        title: 'At-Risk Projects',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'kpi-2',
+        type: 'kpi_overdue',
+        title: 'Overdue',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'misc-1',
+        type: 'misc_risk_matrix',
+        title: 'Risk Matrix',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'table-1',
+        type: 'table_top_risks',
+        title: 'Top Risks',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
+  {
+    name: 'Resource Overview',
+    description: 'Resources count + By role + By location + Skills + Utilization',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_resources',
+        title: 'Total Resources',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'chart-1',
+        type: 'chart_pod_load',
+        title: 'Resources by Pod',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { colorScheme: 'heatmap' },
+      },
+      {
+        id: 'table-1',
+        type: 'table_resources_by_role',
+        title: 'By Role',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { rowsPerPage: 10 },
+      },
+      {
+        id: 'misc-1',
+        type: 'misc_capacity_grid',
+        title: 'Capacity',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { groupBy: 'pod' },
+      },
+    ],
+  },
+  {
+    name: 'Portfolio Status',
+    description: 'All projects status + Health score + Overdue + Pending approvals',
+    widgets: [
+      {
+        id: 'kpi-1',
+        type: 'kpi_project_count',
+        title: 'Total Projects',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'kpi-2',
+        type: 'kpi_at_risk',
+        title: 'At-Risk',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'kpi-3',
+        type: 'kpi_overdue',
+        title: 'Overdue',
+        colSpan: 3,
+        rowSpan: 1,
+        config: { showTrend: true },
+      },
+      {
+        id: 'chart-1',
+        type: 'chart_status_dist',
+        title: 'Status',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'chart-2',
+        type: 'chart_priority_dist',
+        title: 'Priority',
+        colSpan: 6,
+        rowSpan: 2,
+        config: { showLegend: true },
+      },
+      {
+        id: 'table-1',
+        type: 'table_recent_projects',
+        title: 'Recent Projects',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+      {
+        id: 'table-2',
+        type: 'table_my_approvals',
+        title: 'Pending Approvals',
+        colSpan: 12,
+        rowSpan: 2,
+        config: { rowsPerPage: 5 },
+      },
+    ],
+  },
 ];
 
-// ── Widget renderers ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget Data Hook
+// ─────────────────────────────────────────────────────────────────────────────
 
-function KpiWidget({ type, isDark, projects, resources }: {
-  type: string; isDark: boolean;
-  projects: any[]; resources: any[];
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function useWidgetData(widgetDef: WidgetDef, projects: any[], resources: any[], pendingApprovals: any[]): any {
   const today = new Date();
-  const metrics = useMemo(() => {
-    const total    = projects.length;
-    const atRisk   = projects.filter(p => ['AT_RISK', 'ON_HOLD'].includes(p.status)).length;
-    const overdue  = projects.filter(p => p.targetDate && new Date(p.targetDate) < today && p.status !== 'COMPLETED').length;
-    const resCount = resources.length;
-    return { total, atRisk, overdue, resCount };
-  }, [projects, resources]);
 
-  const cfg: Record<string, { value: number; label: string; color: string; icon: React.ReactNode; trend?: string }> = {
-    kpi_project_count: { value: metrics.total,    label: 'Total Projects',   color: 'teal',   icon: <IconBriefcase size={22} /> },
-    kpi_at_risk:       { value: metrics.atRisk,   label: 'At Risk',          color: 'orange', icon: <IconAlertTriangle size={22} />, trend: metrics.atRisk > 3 ? '⚠ High' : 'OK' },
-    kpi_resources:     { value: metrics.resCount, label: 'Resources',        color: 'blue',   icon: <IconUsers size={22} /> },
-    kpi_overdue:       { value: metrics.overdue,  label: 'Overdue',          color: 'red',    icon: <IconClock size={22} />, trend: metrics.overdue > 0 ? '⚠' : '✓' },
-  };
-  const c = cfg[type];
-  if (!c) return null;
+  return useMemo(() => {
+    const type = widgetDef.type;
 
-  return (
-    <Group gap="md" align="center">
-      <ThemeIcon size={44} radius="md" variant="light" color={c.color}>
-        {c.icon}
-      </ThemeIcon>
-      <div>
-        <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ fontFamily: FONT_FAMILY, letterSpacing: '0.04em' }}>
-          {c.label}
-        </Text>
-        <Group gap={6} align="baseline">
-          <Text size="xl" fw={800} style={{ fontFamily: FONT_FAMILY, fontSize: 32, lineHeight: 1, color: isDark ? '#fff' : DEEP_BLUE }}>
-            {c.value}
-          </Text>
-          {c.trend && (
-            <Text size="xs" c={c.color} fw={600}>{c.trend}</Text>
-          )}
-        </Group>
-      </div>
-    </Group>
-  );
-}
+    // KPI widgets
+    if (type === 'kpi_project_count') {
+      return {
+        value: projects.length,
+        label: 'Total Projects',
+        icon: <IconLayoutDashboard size={22} />,
+      };
+    }
+    if (type === 'kpi_at_risk') {
+      const count = projects.filter(p => ['AT_RISK', 'ON_HOLD'].includes(p.status)).length;
+      return {
+        value: count,
+        label: 'At Risk',
+        icon: <IconAlertCircle size={22} />,
+        trend: count > 3 ? '⚠ High' : 'OK',
+      };
+    }
+    if (type === 'kpi_resources') {
+      return {
+        value: resources.length,
+        label: 'Resources',
+        icon: <IconLayoutDashboard size={22} />,
+      };
+    }
+    if (type === 'kpi_overdue') {
+      const count = projects.filter(p => p.targetDate && new Date(p.targetDate) < today && p.status !== 'COMPLETED').length;
+      return {
+        value: count,
+        label: 'Overdue',
+        icon: <IconClock size={22} />,
+        trend: count > 0 ? '⚠' : '✓',
+      };
+    }
 
-function ChartWidget({ type, isDark, projects }: { type: string; isDark: boolean; projects: any[] }) {
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
-
-  if (type === 'chart_status_dist') {
-    const counts = useMemo(() => {
+    // Chart widgets - status distribution
+    if (type === 'chart_status_dist') {
       const map: Record<string, number> = {};
       projects.forEach(p => { map[p.status] = (map[p.status] || 0) + 1; });
-      return Object.entries(map).sort((a, b) => b[1] - a[1]);
-    }, [projects]);
+      const total = projects.length || 1;
+      const rows = Object.entries(map).map(([status, count]) => ({
+        label: status.replace(/_/g, ' '),
+        value: count,
+        percent: (count / total) * 100,
+        color: status === 'ACTIVE' ? 'teal' : status === 'AT_RISK' ? 'orange' : status === 'COMPLETED' ? 'green' : 'gray',
+      }));
+      return { rows };
+    }
 
-    const total = projects.length || 1;
-    const COLOR_MAP: Record<string, string> = {
-      ACTIVE: 'teal', NOT_STARTED: 'gray', IN_DISCOVERY: 'blue',
-      ON_HOLD: 'yellow', AT_RISK: 'orange', COMPLETED: 'green', CANCELLED: 'red',
-    };
-    return (
-      <Stack gap="xs" mt="xs">
-        {counts.slice(0, 6).map(([status, count]) => (
-          <div key={status}>
-            <Group justify="space-between" mb={3}>
-              <Text size="xs" fw={500} style={{ fontFamily: FONT_FAMILY }}>{status.replace(/_/g, ' ')}</Text>
-              <Text size="xs" c="dimmed">{count}</Text>
-            </Group>
-            <Progress value={(count / total) * 100} color={COLOR_MAP[status] || 'gray'} size="sm" radius="xl" />
-          </div>
-        ))}
-      </Stack>
-    );
-  }
-
-  if (type === 'chart_priority_dist') {
-    const PRIORITY = ['P0', 'P1', 'P2', 'P3'];
-    const PCOLOR: Record<string, string> = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'gray' };
-    const counts = useMemo(() => {
+    // Chart widgets - priority distribution
+    if (type === 'chart_priority_dist') {
+      const PRIORITY = ['P0', 'P1', 'P2', 'P3'];
+      const PCOLOR: Record<string, string> = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'gray' };
       const map: Record<string, number> = {};
       projects.forEach(p => { const pri = p.priority || 'P2'; map[pri] = (map[pri] || 0) + 1; });
-      return PRIORITY.map(p => [p, map[p] || 0] as [string, number]);
-    }, [projects]);
-    const total = projects.length || 1;
-    return (
-      <Stack gap="xs" mt="xs">
-        {counts.map(([p, count]) => (
-          <div key={p}>
-            <Group justify="space-between" mb={3}>
-              <Badge size="xs" color={PCOLOR[p]} variant="light">{p}</Badge>
-              <Text size="xs" c="dimmed">{count} ({Math.round((count / total) * 100)}%)</Text>
-            </Group>
-            <Progress value={(count / total) * 100} color={PCOLOR[p]} size="sm" radius="xl" />
-          </div>
-        ))}
-      </Stack>
-    );
-  }
+      const total = projects.length || 1;
+      const rows = PRIORITY.map(p => ({
+        label: p,
+        value: map[p] || 0,
+        percent: ((map[p] || 0) / total) * 100,
+        color: PCOLOR[p],
+      }));
+      return { rows };
+    }
 
-  return null;
+    // Chart widgets - pod load
+    if (type === 'chart_pod_load') {
+      const rows = [
+        { label: 'Pod A', value: 75, percent: 75, color: 'teal' },
+        { label: 'Pod B', value: 60, percent: 60, color: 'blue' },
+        { label: 'Pod C', value: 90, percent: 90, color: 'orange' },
+      ];
+      return { rows };
+    }
+
+    // Table widgets - recent projects
+    if (type === 'table_recent_projects') {
+      const recent = [...projects]
+        .sort((a, b) => {
+          const da = a.createdAt || a.startDate || '';
+          const db = b.createdAt || b.startDate || '';
+          return db.localeCompare(da);
+        })
+        .slice(0, 5);
+      return {
+        rows: recent.map(p => ({
+          name: p.name,
+          status: p.status?.replace(/_/g, ' '),
+          statusColor: p.status === 'ACTIVE' ? 'teal' : p.status === 'AT_RISK' ? 'orange' : p.status === 'COMPLETED' ? 'green' : 'gray',
+        })),
+      };
+    }
+
+    // Table widgets - top risks
+    if (type === 'table_top_risks') {
+      const risks = projects.filter(p => ['AT_RISK', 'ON_HOLD'].includes(p.status)).slice(0, 5);
+      return {
+        rows: risks.map(p => ({
+          name: p.name,
+          status: p.status?.replace(/_/g, ' '),
+          statusColor: 'orange',
+        })),
+      };
+    }
+
+    // Table widgets - pending approvals
+    if (type === 'table_my_approvals') {
+      return {
+        rows: pendingApprovals.slice(0, 5).map(a => ({
+          name: `Project #${a.projectId}`,
+          status: 'Pending',
+          statusColor: 'yellow',
+        })),
+      };
+    }
+
+    // Table widgets - resources by role
+    if (type === 'table_resources_by_role') {
+      return {
+        rows: resources.slice(0, 10).map(r => ({
+          name: r.name,
+          role: r.role || 'Unassigned',
+          status: 'Active',
+          statusColor: 'teal',
+        })),
+      };
+    }
+
+    // Table widgets - sprint status
+    if (type === 'table_sprint_status') {
+      return {
+        rows: [
+          { name: 'Sprint 1', status: 'Active', statusColor: 'teal' },
+          { name: 'Sprint 2', status: 'Planned', statusColor: 'blue' },
+          { name: 'Sprint 3', status: 'Completed', statusColor: 'green' },
+        ],
+      };
+    }
+
+    // Chart widgets - velocity trend
+    if (type === 'chart_velocity_trend') {
+      return { rows: [{ label: 'Velocity', value: 42, percent: 85 }] };
+    }
+
+    // Chart widgets - spend waterfall
+    if (type === 'chart_spend_waterfall') {
+      return { rows: [{ label: 'Budget', value: 100000, percent: 100 }] };
+    }
+
+    // Misc widgets - risk matrix
+    if (type === 'misc_risk_matrix') {
+      return { rows: [{ label: 'High Risk', value: 5, percent: 50 }] };
+    }
+
+    // Misc widgets - capacity grid
+    if (type === 'misc_capacity_grid') {
+      return { rows: [{ label: 'Capacity', value: 80, percent: 80 }] };
+    }
+
+    return {};
+  }, [widgetDef, projects, resources, pendingApprovals, today]);
 }
 
-function TableWidget({ type, isDark, projects, pendingApprovals }: {
-  type: string; isDark: boolean; projects: any[]; pendingApprovals: any[];
-}) {
-  const rowBg = isDark ? 'var(--mantine-color-dark-6)' : '#f8f9fa';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
-
-  if (type === 'table_recent_projects') {
-    const recent = useMemo(() =>
-      [...projects].sort((a, b) => {
-        const da = a.createdAt || a.startDate || '';
-        const db = b.createdAt || b.startDate || '';
-        return db.localeCompare(da);
-      }).slice(0, 5), [projects]);
-
-    return (
-      <Stack gap={4} mt="xs">
-        {recent.map(p => (
-          <Paper key={p.id} p="xs" radius="sm"
-            style={{ background: rowBg, border: `1px solid ${borderColor}` }}>
-            <Group justify="space-between" wrap="nowrap">
-              <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }} lineClamp={1}>{p.name}</Text>
-              <Badge size="xs" variant="light" color={
-                p.status === 'ACTIVE' ? 'teal' : p.status === 'AT_RISK' ? 'orange' :
-                p.status === 'COMPLETED' ? 'green' : 'gray'
-              }>{p.status?.replace(/_/g, ' ')}</Badge>
-            </Group>
-          </Paper>
-        ))}
-        {recent.length === 0 && <Text size="xs" c="dimmed">No projects</Text>}
-      </Stack>
-    );
-  }
-
-  if (type === 'table_top_risks') {
-    const risks = useMemo(() =>
-      projects.filter(p => ['AT_RISK', 'ON_HOLD'].includes(p.status)).slice(0, 5), [projects]);
-    return (
-      <Stack gap={4} mt="xs">
-        {risks.map(p => (
-          <Paper key={p.id} p="xs" radius="sm"
-            style={{ background: rowBg, border: `1px solid ${borderColor}` }}>
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap="xs" wrap="nowrap">
-                <IconAlertTriangle size={13} color="#f97316" />
-                <Text size="xs" fw={600} lineClamp={1} style={{ fontFamily: FONT_FAMILY }}>{p.name}</Text>
-              </Group>
-              <Badge size="xs" color="orange" variant="light">{p.status?.replace(/_/g, ' ')}</Badge>
-            </Group>
-          </Paper>
-        ))}
-        {risks.length === 0 && <Text size="xs" c="dimmed" ta="center" mt="sm">No at-risk projects 🎉</Text>}
-      </Stack>
-    );
-  }
-
-  if (type === 'table_my_approvals') {
-    return (
-      <Stack gap={4} mt="xs">
-        {pendingApprovals.slice(0, 5).map(a => (
-          <Paper key={a.id} p="xs" radius="sm"
-            style={{ background: rowBg, border: `1px solid ${borderColor}` }}>
-            <Group justify="space-between">
-              <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>Project #{a.projectId}</Text>
-              <Badge size="xs" color="yellow" variant="light">Pending</Badge>
-            </Group>
-            <Text size="xs" c="dimmed" mt={2}>by {a.requestedBy}</Text>
-          </Paper>
-        ))}
-        {pendingApprovals.length === 0 && <Text size="xs" c="dimmed" ta="center" mt="sm">No pending approvals ✓</Text>}
-      </Stack>
-    );
-  }
-
-  return null;
-}
-
-// ── Single widget card ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget Card
+// ─────────────────────────────────────────────────────────────────────────────
 
 function WidgetCard({
-  widget, isDark, onRemove, onMoveUp, onMoveDown,
-  projects, resources, pendingApprovals,
+  def,
+  isDark,
+  onDelete,
+  onConfigure,
+  isEditMode,
+  projects,
+  resources,
+  pendingApprovals,
+  onDataPointClick,
 }: {
-  widget: DashboardWidget;
+  def: WidgetDef;
   isDark: boolean;
-  onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  onDelete: () => void;
+  onConfigure: () => void;
+  isEditMode: boolean;
   projects: any[];
   resources: any[];
   pendingApprovals: any[];
+  onDataPointClick?: (label: string, value: string | number, idx: number) => void;
 }) {
-  const def = WIDGET_DEFS.find(d => d.type === widget.widgetType);
-  const isKpi = widget.widgetType.startsWith('kpi_');
-  const isChart = widget.widgetType.startsWith('chart_');
+  const { isCrossFiltered } = useDashboard();
+  const faded = isCrossFiltered(def.id);
+  const data = useWidgetData(def, projects, resources, pendingApprovals);
+  const registryEntry = WIDGET_REGISTRY.find(w => w.type === def.type);
 
   return (
     <Paper
       withBorder
       radius="md"
       p="md"
-      h="100%"
       style={{
         background: isDark ? 'var(--mantine-color-dark-7)' : '#fff',
-        borderColor: isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef',
-        position: 'relative',
-        minHeight: isKpi ? 100 : 200,
+        borderColor: isDark ? 'var(--mantine-color-dark-4)' : GRAY_100,
+        opacity: faded ? 0.3 : 1,
+        transition: 'opacity 0.2s',
+        gridColumn: `span ${def.colSpan}`,
+        gridRow: `span ${def.rowSpan}`,
+        minHeight: 160,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      {/* Header */}
-      <Group justify="space-between" mb={isKpi ? 'xs' : 'sm'}>
+      <Group justify="space-between" mb="xs">
         <Group gap="xs">
-          <ThemeIcon size={22} radius="sm" variant="light" color={def?.color || 'teal'}>
-            {def?.icon}
+          {isEditMode && (
+            <IconGripVertical size={16} style={{ cursor: 'grab' }} />
+          )}
+          <ThemeIcon size={22} radius="sm" variant="light" color={registryEntry?.icon ? 'teal' : 'gray'}>
+            {registryEntry?.icon}
           </ThemeIcon>
           <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>
-            {widget.title || def?.label}
+            {def.title}
           </Text>
         </Group>
-        <Group gap={4}>
-          <Tooltip label="Move up" position="top">
-            <ActionIcon size="xs" variant="subtle" color="gray" onClick={onMoveUp}>
-              <IconArrowUp size={12} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Move down" position="top">
-            <ActionIcon size="xs" variant="subtle" color="gray" onClick={onMoveDown}>
-              <IconArrowDown size={12} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Remove widget" position="top">
-            <ActionIcon size="xs" variant="subtle" color="red" onClick={onRemove}>
-              <IconX size={12} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
+        {isEditMode && (
+          <Group gap={4}>
+            <Tooltip label="Configure">
+              <ActionIcon size="xs" variant="subtle" color="blue" onClick={onConfigure}>
+                <IconSettings size={12} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Delete">
+              <ActionIcon size="xs" variant="subtle" color="red" onClick={onDelete}>
+                <IconX size={12} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        )}
       </Group>
-
-      {/* Content */}
-      {isKpi && (
-        <KpiWidget type={widget.widgetType} isDark={isDark} projects={projects} resources={resources} />
-      )}
-      {isChart && (
-        <ChartWidget type={widget.widgetType} isDark={isDark} projects={projects} />
-      )}
-      {widget.widgetType.startsWith('table_') && (
-        <TableWidget
-          type={widget.widgetType} isDark={isDark}
-          projects={projects} pendingApprovals={pendingApprovals}
+      <div style={{ flex: 1 }}>
+        <DashboardWidget
+          widgetType={def.type}
+          title={def.title}
+          isDark={isDark}
+          data={{ labels: [], values: [], ...data } as WidgetData}
+          config={def.config}
+          onDataPointClick={onDataPointClick}
         />
-      )}
+      </div>
     </Paper>
   );
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget Config Drawer
+// ─────────────────────────────────────────────────────────────────────────────
 
-export default function CustomDashboardPage() {
-  const isDark = useDarkMode();
-  const { data: savedWidgets = [], isLoading } = useDashboardWidgets();
-  const { data: projects   = [] } = useProjects();
-  const { data: resources  = [] } = useResources();
-  const { data: pendingApprovals = [] } = usePendingApprovals();
-  const saveLayout  = useSaveDashboardLayout();
+function WidgetConfigDrawer({
+  opened,
+  onClose,
+  widget,
+  onUpdate,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  widget: WidgetDef | null;
+  onUpdate: (updated: WidgetDef) => void;
+}) {
+  const [title, setTitle] = useState(widget?.title || '');
+  const [colSpan, setColSpan] = useState(widget?.colSpan || 6);
+  const [rowSpan, setRowSpan] = useState(widget?.rowSpan || 2);
 
-  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
-  const [dirty, setDirty]     = useState(false);
-
-  // Sync from server on first load
-  useMemo(() => {
-    if (savedWidgets.length > 0 && widgets.length === 0) {
-      setWidgets(savedWidgets);
+  useEffect(() => {
+    if (widget) {
+      setTitle(widget.title);
+      setColSpan(widget.colSpan);
+      setRowSpan(widget.rowSpan);
     }
-  }, [savedWidgets]);
+  }, [widget]);
 
-  // If no saved layout, show default
-  const displayWidgets = dirty ? widgets : (savedWidgets.length > 0 ? savedWidgets : [
-    { widgetType: 'kpi_project_count', gridCol: 0, gridRow: 0, colSpan: 1, rowSpan: 1 },
-    { widgetType: 'kpi_at_risk',       gridCol: 1, gridRow: 0, colSpan: 1, rowSpan: 1 },
-    { widgetType: 'kpi_resources',     gridCol: 2, gridRow: 0, colSpan: 1, rowSpan: 1 },
-    { widgetType: 'kpi_overdue',       gridCol: 3, gridRow: 0, colSpan: 1, rowSpan: 1 },
-    { widgetType: 'chart_status_dist', gridCol: 0, gridRow: 1, colSpan: 2, rowSpan: 1 },
-    { widgetType: 'table_recent_projects', gridCol: 2, gridRow: 1, colSpan: 2, rowSpan: 1 },
-  ] as DashboardWidget[]);
-
-  const activeWidgets = dirty ? widgets : displayWidgets;
-
-  function addWidget(type: string) {
-    const def = WIDGET_DEFS.find(d => d.type === type)!;
-    const newW: DashboardWidget = {
-      widgetType: type,
-      gridCol: 0,
-      gridRow: activeWidgets.length,
-      colSpan: def.defaultSpan,
-      rowSpan: 1,
-    };
-    const next = [...activeWidgets, newW];
-    setWidgets(next);
-    setDirty(true);
-    setAddOpen(false);
-  }
-
-  function removeWidget(idx: number) {
-    const next = activeWidgets.filter((_, i) => i !== idx);
-    setWidgets(next);
-    setDirty(true);
-  }
-
-  function moveWidget(idx: number, dir: -1 | 1) {
-    const next = [...activeWidgets];
-    const target = idx + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[idx], next[target]] = [next[target], next[idx]];
-    setWidgets(next);
-    setDirty(true);
-  }
-
-  async function handleSave() {
-    try {
-      await saveLayout.mutateAsync(activeWidgets);
-      setDirty(false);
-      notifications.show({ title: 'Layout saved', message: 'Your dashboard layout has been saved.', color: 'teal', icon: <IconCheck size={16} /> });
-    } catch {
-      notifications.show({ title: 'Save failed', message: 'Could not save layout. Please try again.', color: 'red' });
+  const handleSave = () => {
+    if (widget) {
+      onUpdate({
+        ...widget,
+        title,
+        colSpan,
+        rowSpan,
+      });
+      onClose();
     }
-  }
-
-  const kpiWidgets = activeWidgets.filter(w => w.widgetType.startsWith('kpi_'));
-  const otherWidgets = activeWidgets.filter(w => !w.widgetType.startsWith('kpi_'));
+  };
 
   return (
-    <Stack gap="lg" className="page-enter">
-      {/* Header */}
-      <Group justify="space-between" align="flex-start">
+    <Drawer opened={opened} onClose={onClose} title="Configure Widget" position="right">
+      <Stack gap="md">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-            My Dashboard
-          </Title>
-          <Text size="sm" c="dimmed" mt={4}>
-            Personalized view — add, remove, and reorder widgets to fit your workflow.
-          </Text>
+          <Text size="sm" fw={600} mb="xs">Title</Text>
+          <TextInput value={title} onChange={(e) => setTitle(e.currentTarget.value)} placeholder="Widget title" />
         </div>
+        <div>
+          <Text size="sm" fw={600} mb="xs">Width (columns: 1-12)</Text>
+          <Group gap="sm" align="flex-end">
+            <Button size="xs" onClick={() => setColSpan(Math.max(1, colSpan - 1))}>
+              <IconMinus size={14} />
+            </Button>
+            <Text fw={600} style={{ minWidth: 30, textAlign: 'center' }}>{colSpan}</Text>
+            <Button size="xs" onClick={() => setColSpan(Math.min(12, colSpan + 1))}>
+              <IconPlus size={14} />
+            </Button>
+          </Group>
+        </div>
+        <div>
+          <Text size="sm" fw={600} mb="xs">Height (rows: 1-6)</Text>
+          <Group gap="sm" align="flex-end">
+            <Button size="xs" onClick={() => setRowSpan(Math.max(1, rowSpan - 1))}>
+              <IconMinus size={14} />
+            </Button>
+            <Text fw={600} style={{ minWidth: 30, textAlign: 'center' }}>{rowSpan}</Text>
+            <Button size="xs" onClick={() => setRowSpan(Math.min(6, rowSpan + 1))}>
+              <IconPlus size={14} />
+            </Button>
+          </Group>
+        </div>
+        <Button color="teal" onClick={handleSave} fullWidth>
+          Save Changes
+        </Button>
+      </Stack>
+    </Drawer>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard Toolbar
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DashboardToolbar({
+  dashboardName,
+  onDashboardNameChange,
+  isEditMode,
+  onToggleEditMode,
+  isDark,
+  onAddWidget,
+  onShowTemplates,
+  onRefresh,
+  onSave,
+  isSaving,
+  lastRefreshed,
+  activeFilterCount,
+  onShowFilters,
+}: {
+  dashboardName: string;
+  onDashboardNameChange: (name: string) => void;
+  isEditMode: boolean;
+  onToggleEditMode: () => void;
+  isDark: boolean;
+  onAddWidget: () => void;
+  onShowTemplates: () => void;
+  onRefresh: () => void;
+  onSave: () => void;
+  isSaving: boolean;
+  lastRefreshed: Date | null;
+  activeFilterCount: number;
+  onShowFilters: () => void;
+}) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(dashboardName);
+
+  const handleSaveName = () => {
+    if (tempName.trim()) {
+      onDashboardNameChange(tempName);
+      setIsEditingName(false);
+    }
+  };
+
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      style={{ background: isDark ? 'var(--mantine-color-dark-7)' : '#fff' }}
+    >
+      <Group justify="space-between">
+        <Group>
+          {isEditingName ? (
+            <Group gap="xs">
+              <TextInput
+                value={tempName}
+                onChange={(e) => setTempName(e.currentTarget.value)}
+                placeholder="Dashboard name"
+                style={{ width: 200 }}
+              />
+              <Button size="xs" color="teal" onClick={handleSaveName}>
+                <IconCheck size={14} />
+              </Button>
+            </Group>
+          ) : (
+            <Group gap="xs">
+              <Title order={3} style={{ fontFamily: FONT_FAMILY, margin: 0 }}>
+                {dashboardName}
+              </Title>
+              <ActionIcon size="xs" variant="subtle" onClick={() => setIsEditingName(true)}>
+                <IconEdit size={12} />
+              </ActionIcon>
+            </Group>
+          )}
+        </Group>
         <Group gap="xs">
-          {dirty && (
-            <Button variant="subtle" size="sm" onClick={() => { setWidgets(savedWidgets); setDirty(false); }}>
-              Discard
+          <Button
+            variant={isEditMode ? 'filled' : 'light'}
+            size="sm"
+            onClick={onToggleEditMode}
+          >
+            {isEditMode ? 'Done Editing' : 'Edit Layout'}
+          </Button>
+          {isEditMode && (
+            <Button leftSection={<IconPlus size={14} />} size="sm" onClick={onAddWidget}>
+              Add Widget
             </Button>
           )}
-          <Button leftSection={<IconPlus size={15} />} variant="default" size="sm" onClick={() => setAddOpen(true)}>
-            Add widget
+          <Button
+            variant="light"
+            size="sm"
+            onClick={onShowTemplates}
+            rightSection={<IconConfetti size={14} />}
+          >
+            Templates
           </Button>
           <Button
-            leftSection={<IconCheck size={15} />}
-            color="teal" size="sm"
-            onClick={handleSave}
-            loading={saveLayout.isPending}
-            disabled={!dirty}
+            variant="light"
+            size="sm"
+            onClick={onShowFilters}
+            rightSection={
+              activeFilterCount > 0 && (
+                <Badge size="xs" color="blue">{activeFilterCount}</Badge>
+              )
+            }
           >
-            Save layout
+            Filters
           </Button>
+          <Button
+            variant="light"
+            size="sm"
+            onClick={onRefresh}
+            leftSection={<IconRefresh size={14} />}
+          >
+            Refresh
+          </Button>
+          {lastRefreshed && (
+            <Text size="xs" c="dimmed">
+              Updated {new Date(lastRefreshed).toLocaleTimeString()}
+            </Text>
+          )}
+          <Button
+            color="teal"
+            size="sm"
+            onClick={onSave}
+            loading={isSaving}
+            leftSection={<IconCheck size={14} />}
+          >
+            Save
+          </Button>
+          <Menu>
+            <Menu.Target>
+              <ActionIcon size="sm" variant="light">
+                <IconDownload size={14} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<IconDownload size={14} />} onClick={() => window.print()}>
+                Export PNG
+              </Menu.Item>
+              <Menu.Item leftSection={<IconPrinter size={14} />} onClick={() => window.print()}>
+                Print / PDF
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </Group>
+    </Paper>
+  );
+}
 
-      {isLoading && (
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-          {[1,2,3,4].map(i => <Skeleton key={i} height={100} radius="md" />)}
-        </SimpleGrid>
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard Canvas
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DashboardCanvas({
+  widgets,
+  onWidgetsReorder,
+  isEditMode,
+  onDeleteWidget,
+  onConfigureWidget,
+  isDark,
+  projects,
+  resources,
+  pendingApprovals,
+}: {
+  widgets: WidgetDef[];
+  onWidgetsReorder: (newOrder: WidgetDef[]) => void;
+  isEditMode: boolean;
+  onDeleteWidget: (id: string) => void;
+  onConfigureWidget: (widget: WidgetDef) => void;
+  isDark: boolean;
+  projects: any[];
+  resources: any[];
+  pendingApprovals: any[];
+}) {
+  if (widgets.length === 0) {
+    return (
+      <Paper
+        withBorder
+        radius="lg"
+        p="xl"
+        style={{
+          textAlign: 'center',
+          background: isDark ? 'var(--mantine-color-dark-7)' : SURFACE_SUBTLE,
+        }}
+      >
+        <IconLayoutDashboard size={48} color={AQUA} style={{ marginBottom: 12 }} />
+        <Title order={4} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+          Your dashboard is empty
+        </Title>
+        <Text size="sm" c="dimmed">
+          Add widgets to get started.
+        </Text>
+      </Paper>
+    );
+  }
+
+  const canvasContent = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(12, 1fr)',
+        gap: 16,
+      }}
+    >
+      {isEditMode ? (
+        <Reorder.Group axis="y" values={widgets} onReorder={onWidgetsReorder}>
+          {widgets.map((w) => (
+            <Reorder.Item key={w.id} value={w}>
+              <WidgetCard
+                def={w}
+                isDark={isDark}
+                onDelete={() => onDeleteWidget(w.id)}
+                onConfigure={() => onConfigureWidget(w)}
+                isEditMode={isEditMode}
+                projects={projects}
+                resources={resources}
+                pendingApprovals={pendingApprovals}
+              />
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
+      ) : (
+        widgets.map((w) => (
+          <WidgetCard
+            key={w.id}
+            def={w}
+            isDark={isDark}
+            onDelete={() => onDeleteWidget(w.id)}
+            onConfigure={() => onConfigureWidget(w)}
+            isEditMode={isEditMode}
+            projects={projects}
+            resources={resources}
+            pendingApprovals={pendingApprovals}
+          />
+        ))
       )}
+    </div>
+  );
 
-      {!isLoading && (
-        <>
-          {/* KPI row */}
-          {kpiWidgets.length > 0 && (
-            <SimpleGrid cols={{ base: 2, sm: Math.min(kpiWidgets.length, 4) }} spacing="md">
-              {kpiWidgets.map((w, i) => (
-                <WidgetCard
-                  key={i}
-                  widget={w}
-                  isDark={isDark}
-                  onRemove={() => removeWidget(activeWidgets.indexOf(w))}
-                  onMoveUp={() => moveWidget(activeWidgets.indexOf(w), -1)}
-                  onMoveDown={() => moveWidget(activeWidgets.indexOf(w), 1)}
-                  projects={projects}
-                  resources={resources}
-                  pendingApprovals={pendingApprovals}
-                />
-              ))}
-            </SimpleGrid>
-          )}
+  return canvasContent;
+}
 
-          {/* Other widgets — 2-column grid */}
-          {otherWidgets.length > 0 && (
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-              {otherWidgets.map((w, i) => (
-                <WidgetCard
-                  key={i}
-                  widget={w}
-                  isDark={isDark}
-                  onRemove={() => removeWidget(activeWidgets.indexOf(w))}
-                  onMoveUp={() => moveWidget(activeWidgets.indexOf(w), -1)}
-                  onMoveDown={() => moveWidget(activeWidgets.indexOf(w), 1)}
-                  projects={projects}
-                  resources={resources}
-                  pendingApprovals={pendingApprovals}
-                />
-              ))}
-            </SimpleGrid>
-          )}
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget Picker Modal
+// ─────────────────────────────────────────────────────────────────────────────
 
-          {activeWidgets.length === 0 && (
-            <Paper withBorder radius="lg" p="xl" style={{ textAlign: 'center', background: isDark ? 'var(--mantine-color-dark-7)' : '#f8f9fa' }}>
-              <IconLayoutDashboard size={48} color={AQUA} style={{ marginBottom: 12 }} />
-              <Title order={4} mb={4} style={{ fontFamily: FONT_FAMILY }}>Your dashboard is empty</Title>
-              <Text size="sm" c="dimmed" mb="md">Click "Add widget" to start building your personalized view.</Text>
-              <Button leftSection={<IconPlus size={15} />} color="teal" onClick={() => setAddOpen(true)}>
-                Add first widget
-              </Button>
-            </Paper>
-          )}
-        </>
-      )}
+function WidgetPickerModal({
+  opened,
+  onClose,
+  onSelect,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onSelect: (type: string) => void;
+}) {
+  const [category, setCategory] = useState<'all' | 'kpi' | 'chart' | 'table' | 'misc'>('all');
 
-      {/* Add widget modal */}
-      <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Add widget" size="lg">
-        <SimpleGrid cols={3} spacing="sm">
-          {WIDGET_DEFS.map(def => (
+  const filtered =
+    category === 'all'
+      ? WIDGET_REGISTRY
+      : WIDGET_REGISTRY.filter((w) => w.category === category);
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Add Widget" size="xl">
+      <Tabs value={category} onChange={(v) => setCategory(v as any)}>
+        <Tabs.List>
+          <Tabs.Tab value="all">All</Tabs.Tab>
+          <Tabs.Tab value="kpi">KPIs</Tabs.Tab>
+          <Tabs.Tab value="chart">Charts</Tabs.Tab>
+          <Tabs.Tab value="table">Tables</Tabs.Tab>
+          <Tabs.Tab value="misc">Misc</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+      <Grid mt="md" gutter="md">
+        {filtered.map((widget) => (
+          <Grid.Col key={widget.type} span={{ base: 12, sm: 6, md: 4 }}>
             <Card
-              key={def.type}
               withBorder
               radius="md"
               p="sm"
               style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-              onClick={() => addWidget(def.type)}
+              onClick={() => {
+                onSelect(widget.type);
+                onClose();
+              }}
             >
               <Group gap="xs" wrap="nowrap">
-                <ThemeIcon size={28} radius="sm" variant="light" color={def.color}>
-                  {def.icon}
+                <ThemeIcon size={28} radius="sm" variant="light" color="teal">
+                  {widget.icon}
                 </ThemeIcon>
-                <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>
-                  {def.label}
-                </Text>
+                <div style={{ flex: 1 }}>
+                  <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>
+                    {widget.label}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {widget.description}
+                  </Text>
+                </div>
               </Group>
             </Card>
-          ))}
-        </SimpleGrid>
-      </Modal>
+          </Grid.Col>
+        ))}
+      </Grid>
+    </Modal>
+  );
+}
 
-      {/* Dirty banner */}
-      {dirty && (
-        <Paper
-          withBorder radius="md" p="sm"
-          style={{
-            background: isDark ? 'var(--mantine-color-dark-6)' : '#fffbe6',
-            borderColor: isDark ? 'var(--mantine-color-yellow-8)' : '#ffe066',
-            position: 'sticky', bottom: 16,
-          }}
-        >
-          <Group justify="space-between">
-            <Text size="sm" fw={500} c={isDark ? 'yellow' : 'orange.8'}>
-              Layout has unsaved changes
-            </Text>
-            <Group gap="xs">
-              <Button size="xs" variant="subtle" color="gray" onClick={() => { setWidgets(savedWidgets); setDirty(false); }}>
-                Discard
+// ─────────────────────────────────────────────────────────────────────────────
+// Template Gallery Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TemplateGalleryModal({
+  opened,
+  onClose,
+  onSelect,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onSelect: (widgets: WidgetDef[]) => void;
+}) {
+  return (
+    <Modal opened={opened} onClose={onClose} title="Dashboard Templates" size="xl">
+      <Grid gutter="md">
+        {DASHBOARD_TEMPLATES.map((template, idx) => (
+          <Grid.Col key={idx} span={{ base: 12, sm: 6 }}>
+            <Card withBorder radius="md" p="md" style={{ cursor: 'pointer' }}>
+              <Card.Section>
+                <Group justify="space-between" p="sm">
+                  <div>
+                    <Text fw={600} size="sm">
+                      {template.name}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {template.description}
+                    </Text>
+                  </div>
+                </Group>
+              </Card.Section>
+              <Button
+                variant="light"
+                size="sm"
+                fullWidth
+                mt="md"
+                onClick={() => {
+                  onSelect(template.widgets);
+                  onClose();
+                }}
+              >
+                Use Template
               </Button>
-              <Button size="xs" color="teal" leftSection={<IconCheck size={13} />}
-                onClick={handleSave} loading={saveLayout.isPending}>
-                Save now
-              </Button>
-            </Group>
-          </Group>
-        </Paper>
-      )}
-    </Stack>
+            </Card>
+          </Grid.Col>
+        ))}
+      </Grid>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Page (wrapped with DashboardProvider)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CustomDashboardPageInner() {
+  const isDark = useDarkMode();
+  const {
+    isEditMode,
+    setEditMode,
+    activeDashboardId,
+    setActiveDashboardId,
+    globalFilters,
+    refreshCounter,
+    triggerRefresh,
+  } = useDashboard();
+
+  const { data: projects = [] } = useProjects();
+  const { data: resources = [] } = useResources();
+  const { data: pendingApprovals = [] } = usePendingApprovals();
+  const { data: dashboards = [] } = useDashboards();
+  const updateDashboard = useUpdateDashboard();
+
+  const [widgets, setWidgets] = useState<WidgetDef[]>([]);
+  const [dashboardName, setDashboardName] = useState('My Dashboard');
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [filterBarVisible, setFilterBarVisible] = useState(false);
+  const [configWidget, setConfigWidget] = useState<WidgetDef | null>(null);
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  // Load dashboard on mount
+  useEffect(() => {
+    if (!activeDashboardId && dashboards.length > 0) {
+      const defaultDash = dashboards.find((d) => d.isDefault) || dashboards[0];
+      if (defaultDash) {
+        setActiveDashboardId(defaultDash.id || 0);
+        setDashboardName(defaultDash.name);
+        try {
+          const parsed = JSON.parse(defaultDash.config);
+          setWidgets(parsed.widgets || []);
+        } catch {
+          // fallback to default widgets
+        }
+      }
+    }
+  }, [dashboards, activeDashboardId, setActiveDashboardId]);
+
+  const handleAddWidget = (type: string) => {
+    const registry = WIDGET_REGISTRY.find((w) => w.type === type);
+    if (registry) {
+      const newWidget: WidgetDef = {
+        id: generateId(),
+        type,
+        title: registry.label,
+        colSpan: registry.defaultSize.w,
+        rowSpan: registry.defaultSize.h,
+        config: {},
+      };
+      setWidgets([...widgets, newWidget]);
+    }
+  };
+
+  const handleDeleteWidget = (id: string) => {
+    setWidgets(widgets.filter((w) => w.id !== id));
+  };
+
+  const handleConfigureWidget = (widget: WidgetDef) => {
+    setConfigWidget(widget);
+    setConfigDrawerOpen(true);
+  };
+
+  const handleUpdateWidget = (updated: WidgetDef) => {
+    setWidgets(widgets.map((w) => (w.id === updated.id ? updated : w)));
+  };
+
+  const handleSave = async () => {
+    try {
+      const config = JSON.stringify({ widgets, layout: [] });
+      await updateDashboard.mutateAsync({
+        id: activeDashboardId || 0,
+        data: {
+          name: dashboardName,
+          config,
+        },
+      });
+      notifications.show({
+        title: 'Dashboard saved',
+        message: 'Your dashboard layout has been saved.',
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+    } catch {
+      notifications.show({
+        title: 'Save failed',
+        message: 'Could not save dashboard. Please try again.',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleRefresh = () => {
+    triggerRefresh();
+    setLastRefreshed(new Date());
+  };
+
+  const handleApplyTemplate = (templateWidgets: WidgetDef[]) => {
+    setWidgets(templateWidgets);
+  };
+
+  const activeFilterCount = Object.values(globalFilters).filter((v) => {
+    if (Array.isArray(v)) return v.length > 0;
+    if (v instanceof Date) return v !== null;
+    return v !== undefined && v !== null && v !== '';
+  }).length;
+
+  return (
+    <PPPageLayout title="Dashboard Builder" subtitle="Build and customize your dashboard" animate>
+      <Stack gap="lg" className="page-enter">
+        {/* Toolbar */}
+        <DashboardToolbar
+          dashboardName={dashboardName}
+          onDashboardNameChange={setDashboardName}
+          isEditMode={isEditMode}
+          onToggleEditMode={() => setEditMode(!isEditMode)}
+          isDark={isDark}
+          onAddWidget={() => setAddWidgetOpen(true)}
+          onShowTemplates={() => setTemplatesOpen(true)}
+          onRefresh={handleRefresh}
+          onSave={handleSave}
+          isSaving={updateDashboard.isPending}
+          lastRefreshed={lastRefreshed}
+          activeFilterCount={activeFilterCount}
+          onShowFilters={() => setFilterBarVisible(!filterBarVisible)}
+        />
+
+        {/* Filter Bar */}
+        <DashboardFilterBar isVisible={filterBarVisible} onToggle={() => setFilterBarVisible(!filterBarVisible)} />
+
+        {/* Canvas */}
+        <DashboardCanvas
+          widgets={widgets}
+          onWidgetsReorder={setWidgets}
+          isEditMode={isEditMode}
+          onDeleteWidget={handleDeleteWidget}
+          onConfigureWidget={handleConfigureWidget}
+          isDark={isDark}
+          projects={projects}
+          resources={resources}
+          pendingApprovals={pendingApprovals}
+        />
+
+        {/* Modals */}
+        <WidgetPickerModal opened={addWidgetOpen} onClose={() => setAddWidgetOpen(false)} onSelect={handleAddWidget} />
+        <TemplateGalleryModal opened={templatesOpen} onClose={() => setTemplatesOpen(false)} onSelect={handleApplyTemplate} />
+        <WidgetConfigDrawer
+          opened={configDrawerOpen}
+          onClose={() => setConfigDrawerOpen(false)}
+          widget={configWidget}
+          onUpdate={handleUpdateWidget}
+        />
+      </Stack>
+    </PPPageLayout>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Export
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function CustomDashboardPage() {
+  return (
+    <DashboardProvider>
+      <CustomDashboardPageInner />
+    </DashboardProvider>
   );
 }

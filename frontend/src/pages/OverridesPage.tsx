@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import {
- Title, Stack, Table, Button, Group, Modal, Select, NumberInput, TextInput, Text, ActionIcon,
+ Stack, Table, Button, Group, Modal, Select, NumberInput, TextInput, Text, ActionIcon,
  Badge, Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconEdit, IconTrash, IconAlertTriangle } from '@tabler/icons-react';
+import { PPPageLayout } from '../components/pp';
 import { useOverrides, useCreateOverride, useUpdateOverride, useDeleteOverride } from '../api/overrides';
-import type { OverrideRequest } from '../api/overrides';
+import type { OverrideRequest, OverrideResponse } from '../api/overrides';
 import { useResources } from '../api/resources';
 import { usePods } from '../api/pods';
 import CsvToolbar from '../components/common/CsvToolbar';
@@ -16,8 +17,13 @@ import { useTableSort } from '../hooks/useTableSort';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatResourceName } from '../utils/formatting';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useInlineEdit } from '../hooks/useInlineEdit';
+import {
+  InlineSelectCell,
+  InlineNumberCell,
+  InlineTextCell,
+} from '../components/common/InlineCell';
 
 const emptyForm: OverrideRequest = {
  resourceId: 0,
@@ -37,6 +43,7 @@ export default function OverridesPage() {
  const createMutation = useCreateOverride();
  const updateMutation = useUpdateOverride();
  const deleteMutation = useDeleteOverride();
+ const { startEdit, stopEdit, isEditing } = useInlineEdit();
 
  const [modalOpen, setModalOpen] = useState(false);
  const [editId, setEditId] = useState<number | null>(null);
@@ -44,6 +51,10 @@ export default function OverridesPage() {
 
  const resourceOptions = (resources ?? []).map(r => ({ value: String(r.id), label: r.name }));
  const podOptions = (pods ?? []).map(p => ({ value: String(p.id), label: p.name }));
+ const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+   value: String(i + 1),
+   label: monthLabels[i + 1] ?? `Month ${i + 1}`,
+ }));
 
  /* ── FTE lookup and total allocation per resource ── */
  const fteMap = useMemo(() => {
@@ -108,14 +119,45 @@ export default function OverridesPage() {
  });
  };
 
+ const handleInlineUpdate = async (id: number, field: string, value: any) => {
+   const override = overrides?.find(o => o.id === id);
+   if (!override) return;
+
+   const updated: OverrideRequest = {
+     resourceId: field === 'resourceId' ? value : override.resourceId,
+     toPodId: field === 'toPodId' ? value : override.toPodId,
+     startMonth: field === 'startMonth' ? value : override.startMonth,
+     endMonth: field === 'endMonth' ? value : override.endMonth,
+     allocationPct: field === 'allocationPct' ? value : override.allocationPct,
+     notes: field === 'notes' ? value : override.notes,
+   };
+
+   return new Promise<void>((resolve, reject) => {
+     updateMutation.mutate({ id, data: updated }, {
+       onSuccess: () => {
+         stopEdit();
+         notifications.show({ title: 'Updated', message: `${field} updated`, color: 'green' });
+         resolve();
+       },
+       onError: () => {
+         notifications.show({ title: 'Error', message: `Failed to update ${field}`, color: 'red' });
+         reject(new Error('Update failed'));
+       },
+     });
+   });
+ };
+
  const { sorted: sortedOverrides, sortKey, sortDir, onSort } = useTableSort(overrides ?? []);
 
  if (isLoading) return <LoadingSpinner variant="table" message="Loading overrides..." />;
 
  return (
- <Stack className="page-enter stagger-children">
- <Group justify="space-between" className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Temporary Overrides</Title>
+ <PPPageLayout
+   title="Overrides"
+   subtitle="Temporary resource allocation overrides across PODs"
+   animate
+ >
+ <Group justify="space-between">
  <Group gap="sm">
  <CsvToolbar
  data={overrides ?? []}
@@ -151,7 +193,7 @@ export default function OverridesPage() {
  <SortableHeader sortKey="endMonth" currentKey={sortKey} dir={sortDir} onSort={onSort}>End Month</SortableHeader>
  <SortableHeader sortKey="allocationPct" currentKey={sortKey} dir={sortDir} onSort={onSort}>Allocation %</SortableHeader>
  <Table.Th>Resource FTE</Table.Th>
- <Table.Th>Notes</Table.Th>
+ <Table.Th>Reason</Table.Th>
  <Table.Th>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
@@ -166,25 +208,77 @@ export default function OverridesPage() {
  <Table.Tr key={o.id}>
  <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
  <Table.Td>
- <Group gap={6} wrap="nowrap">
- {formatResourceName(o.resourceName)}
- {isOverAlloc && (
- <Tooltip label={`Total overrides (${totalAlloc}%) exceed ${fteAsPct}% FTE capacity`}>
- <IconAlertTriangle size={16} color="orange" />
- </Tooltip>
- )}
- </Group>
+   <InlineSelectCell
+     value={String(o.resourceId)}
+     options={resourceOptions}
+     onSave={async (v) => handleInlineUpdate(o.id, 'resourceId', Number(v))}
+     isEditing={isEditing(o.id, 'resourceId')}
+     onStartEdit={() => startEdit(o.id, 'resourceId')}
+     onCancel={() => stopEdit()}
+     placeholder="Select resource"
+   />
  </Table.Td>
- <Table.Td>{o.toPodName}</Table.Td>
- <Table.Td>{monthLabels[o.startMonth] ?? `M${o.startMonth}`}</Table.Td>
- <Table.Td>{monthLabels[o.endMonth] ?? `M${o.endMonth}`}</Table.Td>
- <Table.Td>{o.allocationPct}%</Table.Td>
+ <Table.Td>
+   <InlineSelectCell
+     value={String(o.toPodId)}
+     options={podOptions}
+     onSave={async (v) => handleInlineUpdate(o.id, 'toPodId', Number(v))}
+     isEditing={isEditing(o.id, 'toPodId')}
+     onStartEdit={() => startEdit(o.id, 'toPodId')}
+     onCancel={() => stopEdit()}
+     placeholder="Select pod"
+   />
+ </Table.Td>
+ <Table.Td>
+   <InlineSelectCell
+     value={String(o.startMonth)}
+     options={monthOptions}
+     onSave={async (v) => handleInlineUpdate(o.id, 'startMonth', Number(v))}
+     isEditing={isEditing(o.id, 'startMonth')}
+     onStartEdit={() => startEdit(o.id, 'startMonth')}
+     onCancel={() => stopEdit()}
+     placeholder="Start month"
+   />
+ </Table.Td>
+ <Table.Td>
+   <InlineSelectCell
+     value={String(o.endMonth)}
+     options={monthOptions.filter(m => Number(m.value) >= o.startMonth)}
+     onSave={async (v) => handleInlineUpdate(o.id, 'endMonth', Number(v))}
+     isEditing={isEditing(o.id, 'endMonth')}
+     onStartEdit={() => startEdit(o.id, 'endMonth')}
+     onCancel={() => stopEdit()}
+     placeholder="End month"
+   />
+ </Table.Td>
+ <Table.Td>
+   <InlineNumberCell
+     value={o.allocationPct}
+     min={0}
+     max={100}
+     suffix="%"
+     onSave={async (v) => handleInlineUpdate(o.id, 'allocationPct', v)}
+     isEditing={isEditing(o.id, 'allocationPct')}
+     onStartEdit={() => startEdit(o.id, 'allocationPct')}
+     onCancel={() => stopEdit()}
+   />
+ </Table.Td>
  <Table.Td>
  <Badge variant="light" color={isPartTime ? 'orange' : 'green'} size="sm">
  {isPartTime ? `${fteAsPct}%` : '100%'}
  </Badge>
  </Table.Td>
- <Table.Td>{o.notes ?? '-'}</Table.Td>
+ <Table.Td>
+   <InlineTextCell
+     value={o.notes ?? ''}
+     onSave={async (v) => handleInlineUpdate(o.id, 'notes', v || null)}
+     isEditing={isEditing(o.id, 'notes')}
+     onStartEdit={() => startEdit(o.id, 'notes')}
+     onCancel={() => stopEdit()}
+     placeholder="Add reason…"
+     maxWidth={200}
+   />
+ </Table.Td>
  <Table.Td>
  <Group gap={4}>
  <ActionIcon variant="subtle" onClick={() => openEdit(o)}><IconEdit size={16} /></ActionIcon>
@@ -240,12 +334,12 @@ export default function OverridesPage() {
  : undefined
  }
  />
- <TextInput label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
+ <TextInput label="Reason" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
  <Button onClick={handleSubmit} loading={createMutation.isPending || updateMutation.isPending}>
  {editId ? 'Update' : 'Create'}
  </Button>
  </Stack>
  </Modal>
- </Stack>
+ </PPPageLayout>
  );
 }

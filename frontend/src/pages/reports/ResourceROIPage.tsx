@@ -12,7 +12,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useResources, useCostRates, useUpdateActualRate } from '../../api/resources';
 import { ResourceResponse } from '../../types/resource';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DARK_BG, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -348,7 +348,7 @@ export default function ResourceROIPage() {
 
  <div>
  <Text fw={600} size="sm" mb="xs">ROI Formula</Text>
- <Paper withBorder p="md" radius="md" style={{ background: dark ? '#1a1b1e' : '#F8FAFB', fontFamily: 'monospace' }}>
+ <Paper withBorder p="md" radius="md" style={{ background: dark ? 'rgba(255,255,255,0.04)' : '#F8FAFB', fontFamily: 'monospace' }}>
  <Stack gap={6}>
  <Text size="sm"><strong>Actual Cost</strong> = Hours Logged (Jira) × Effective Hourly Rate</Text>
  <Text size="sm"><strong>Planned Cost</strong> = Planned Hours (Capacity Plan) × Effective Hourly Rate</Text>

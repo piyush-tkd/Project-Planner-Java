@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { notifications } from '@mantine/notifications';
 import {
  Title, Text, Button, Table, Badge, ActionIcon, Modal, TextInput,
  Select, Switch, Group, Stack, Tabs, Paper, SimpleGrid, Checkbox,
@@ -14,6 +15,7 @@ import apiClient from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { FONT_FAMILY } from '../../brandTokens';
 import { useRoles, useCreateRole, useDeleteRole, rolesToSelectOptions, type RoleDefinition } from '../../api/roles';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,6 +67,8 @@ const PAGE_KEYS = [
  { key: 'capacity_forecast', label: 'Capacity Forecast',   group: 'People' },
  { key: 'skills_matrix',     label: 'Skills Matrix',       group: 'People' },
  { key: 'team_pulse',        label: 'Team Pulse',          group: 'People' },
+ { key: 'demand_forecast',   label: 'Demand Forecast',    group: 'People' },
+ { key: 'skills_matrix_new', label: 'Skills Matrix (New)', group: 'People' },
  // ── Planning  (renamed from Calendar)
  { key: 'calendar_hub',      label: 'Strategic Calendar',  group: 'Planning' },
  { key: 'sprint_planner',    label: 'Sprint Planner',      group: 'Planning' },
@@ -116,6 +120,7 @@ const PAGE_KEYS = [
  { key: 'bulk_import',          label: 'Bulk Import',             group: 'Tools' },
  { key: 'timeline_simulator',   label: 'Timeline Simulator',      group: 'Tools' },
  { key: 'scenario_simulator',   label: 'Scenario Simulator',      group: 'Tools' },
+ { key: 'scenario_planning',    label: 'Scenario Planning',       group: 'Tools' },
  { key: 'smart_notifications',  label: 'Smart Notifications',     group: 'Tools' },
  { key: 'jira_portfolio_sync',  label: 'Jira Portfolio Sync',     group: 'Tools' },
  // ── Admin  (renamed from Workspace)
@@ -129,6 +134,8 @@ const PAGE_KEYS = [
  { key: 'smart_mapping_admin',       label: 'Smart Mapping',            group: 'Admin' },
  { key: 'changelog_admin',           label: 'Changelog Admin',          group: 'Admin' },
  { key: 'notification_preferences',  label: 'Notification Preferences', group: 'Admin' },
+ { key: 'email_templates',           label: 'Email Templates',          group: 'Admin' },
+ { key: 'webhook_settings',          label: 'Webhooks',                 group: 'Admin' },
  { key: 'smtp_settings',             label: 'SMTP Email Settings',      group: 'Admin' },
  { key: 'notification_schedule',     label: 'Notification Schedule',    group: 'Admin' },
  { key: 'azure_devops_settings',     label: 'Azure DevOps Settings',    group: 'Admin' },
@@ -183,6 +190,7 @@ const fetchPerms = (role: string) =>
 export default function UserManagementPage({ embedded = false }: { embedded?: boolean } = {}) {
  const qc = useQueryClient();
  const { username: currentUsername, refreshMe } = useAuth();
+ const isDark = useDarkMode();
 
  // ── Users tab state
  const [userModal, setUserModal] = useState<'create' | 'edit' | null>(null);
@@ -254,14 +262,14 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  function openEdit(u: UserRecord) { setEditTarget(u); setUserModal('edit'); }
 
  function handlePermToggle(pageKey: string, newVal: boolean) {
- savePerms.mutate({ role: permRole, permsData: { [pageKey]: newVal } });
+ savePerms.mutate({ role: permRole, permsData: { [pageKey]: newVal } }, { onSuccess: () => notifications.show({ title: 'Permissions saved', message: 'Role permissions updated.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Save failed', message: (e as Error).message || 'Could not save permissions.', color: 'red' }) });
  }
 
  function handleGroupToggle(group: string, newVal: boolean) {
  const groupKeys = PAGE_KEYS.filter(p => p.group === group);
  const permsData: PermMap = {};
  groupKeys.forEach(({ key }) => { permsData[key] = newVal; });
- savePerms.mutate({ role: permRole, permsData });
+ savePerms.mutate({ role: permRole, permsData }, { onSuccess: () => notifications.show({ title: 'Permissions saved', message: 'Role permissions updated.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Save failed', message: (e as Error).message || 'Could not save permissions.', color: 'red' }) });
  }
 
  function getGroupState(group: string): 'all' | 'none' | 'some' {
@@ -495,7 +503,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  const allowed = perms?.[key] ?? false;
  return (
  <Paper key={key} withBorder radius="sm" p="sm"
-   style={grp === "Legacy" ? { opacity: 0.55, background: "rgba(0,0,0,0.02)" } : undefined}>
+   style={grp === "Legacy" ? { opacity: 0.55, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" } : undefined}>
  <Group justify="space-between">
  <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
  {label}
@@ -531,9 +539,9 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  onClose={() => setUserModal(null)}
  onSubmit={(payload) => {
  if (userModal === 'create') {
- createUser.mutate(payload as CreateUserPayload);
+ createUser.mutate(payload as CreateUserPayload, { onSuccess: () => notifications.show({ title: 'User created', message: 'New user account created.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Create failed', message: (e as Error).message || 'Could not create user.', color: 'red' }) });
  } else if (editTarget) {
- updateUser.mutate({ id: editTarget.id, payload });
+ updateUser.mutate({ id: editTarget.id, payload }, { onSuccess: () => notifications.show({ title: 'User updated', message: 'User details saved.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Update failed', message: (e as Error).message || 'Could not update user.', color: 'red' }) });
  }
  }}
  loading={createUser.isPending || updateUser.isPending}
@@ -563,7 +571,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Button
  color="red"
  loading={deleteUser.isPending}
- onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id)}
+ onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id, { onSuccess: () => notifications.show({ title: 'User deleted', message: 'The user account has been removed.', color: 'orange' }), onError: (e: unknown) => notifications.show({ title: 'Delete failed', message: (e as Error).message || 'Could not delete user.', color: 'red' }) })}
  >
  Delete
  </Button>
@@ -574,7 +582,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <CreateRoleModal
  opened={roleModal}
  onClose={() => setRoleModal(false)}
- onSubmit={(payload) => createRole.mutate(payload, { onSuccess: () => setRoleModal(false) })}
+ onSubmit={(payload) => createRole.mutate(payload, { onSuccess: () => { notifications.show({ title: 'Role created', message: 'New role added.', color: 'teal' }); setRoleModal(false); }, onError: (e: unknown) => notifications.show({ title: 'Create failed', message: (e as Error).message || 'Could not create role.', color: 'red' }) })}
  loading={createRole.isPending}
  error={(createRole.error as Error | null)?.message ?? null}
  />
@@ -600,7 +608,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Button
  color="red"
  loading={deleteRole.isPending}
- onClick={() => deleteRoleTarget && deleteRole.mutate(deleteRoleTarget.name, { onSuccess: () => setDeleteRoleTarget(null) })}
+ onClick={() => deleteRoleTarget && deleteRole.mutate(deleteRoleTarget.name, { onSuccess: () => { notifications.show({ title: 'Role deleted', message: 'The role has been removed.', color: 'orange' }); setDeleteRoleTarget(null); }, onError: (e: unknown) => notifications.show({ title: 'Delete failed', message: (e as Error).message || 'Could not delete role.', color: 'red' }) })}
  >
  Delete
  </Button>

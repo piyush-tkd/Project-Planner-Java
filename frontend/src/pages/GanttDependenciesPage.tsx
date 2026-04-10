@@ -2,14 +2,16 @@ import { useState, useMemo } from 'react';
 import {
   Box, Title, Text, Group, Badge, Button, Paper, Card,
   Select, Tooltip, Stack, SimpleGrid, Divider,
-  ScrollArea, SegmentedControl, Progress, Center, Loader,
+  ScrollArea, SegmentedControl, Progress, Center, Skeleton,
 } from '@mantine/core';
 import {
   IconGitBranch, IconArrowRight, IconAlertTriangle,
   IconCircleCheck, IconFilter, IconDownload, IconUsers,
   IconCode, IconTestPipe,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA } from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
+import SavedViews from '../components/common/SavedViews';
+import { AQUA_HEX, AQUA, BORDER_STRONG, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN_STRONG, COLOR_ORANGE_DEEP, COLOR_VIOLET, DEEP_BLUE, GRAY_100, SURFACE_AMBER, SURFACE_BLUE, SURFACE_FAINT, SURFACE_LIGHT, SURFACE_RED_FAINT, SURFACE_SUCCESS_LIGHT, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useProjects } from '../api/projects';
 import { useProjectPodMatrix } from '../api/projects';
@@ -143,23 +145,23 @@ function checkCapacity(
 
 const POD_HEX: Record<string, string> = {
   'Accessioning':       '#0891b2',  // cyan-600
-  'Enterprise Systems': '#7c3aed',  // violet-700
+  'Enterprise Systems': COLOR_VIOLET,  // violet-700
   'Integrations':       '#b45309',  // amber-700
   'LIS/Reporting':      '#1d4ed8',  // blue-700
-  'Portal V1':          '#059669',  // emerald-600
+  'Portal V1':          COLOR_EMERALD,  // emerald-600
   'Portal V2':          '#be185d',  // pink-700
 };
-const getPodColor = (pod: string) => POD_HEX[pod] ?? '#64748b';
+const getPodColor = (pod: string) => POD_HEX[pod] ?? TEXT_GRAY;
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  'ACTIVE':        { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' },
-  'NOT STARTED':   { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
-  'IN DISCOVERY':  { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
-  'ON HOLD':       { bg: '#fef3c7', color: '#b45309', border: '#fde68a' },
-  'COMPLETED':     { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
+  'ACTIVE':        { bg: SURFACE_SUCCESS_LIGHT, color: '#15803d', border: '#bbf7d0' },
+  'NOT STARTED':   { bg: SURFACE_FAINT, color: TEXT_GRAY, border: BORDER_STRONG },
+  'IN DISCOVERY':  { bg: SURFACE_BLUE, color: '#1d4ed8', border: '#bfdbfe' },
+  'ON HOLD':       { bg: SURFACE_AMBER, color: '#b45309', border: '#fde68a' },
+  'COMPLETED':     { bg: SURFACE_SUCCESS_LIGHT, color: '#15803d', border: '#86efac' },
 };
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#dc2626', P1: '#ea580c', P2: '#2563eb', P3: '#16a34a',
+  P0: COLOR_ERROR_DARK, P1: COLOR_ORANGE_DEEP, P2: COLOR_BLUE_STRONG, P3: COLOR_GREEN_STRONG,
 };
 
 // ── Gantt geometry ────────────────────────────────────────────────────────────
@@ -204,9 +206,9 @@ function CapBar({ label, icon, used, total, needed, conflict, isDark }: {
           : <Badge size="xs" color="green" variant="light">OK</Badge>
         }
       </Group>
-      <Box style={{ position: 'relative', height: 8, borderRadius: 4, background: isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef', overflow: 'hidden' }}>
+      <Box style={{ position: 'relative', height: 8, borderRadius: 4, background: isDark ? 'var(--mantine-color-dark-4)' : GRAY_100, overflow: 'hidden' }}>
         <Box style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctUsed}%`, background: isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1', borderRadius: 4 }} />
-        <Box style={{ position: 'absolute', left: `${pctUsed}%`, top: 0, height: '100%', width: `${pctNeeded}%`, background: conflict ? '#ef4444' : AQUA, borderRadius: 4 }} />
+        <Box style={{ position: 'absolute', left: `${pctUsed}%`, top: 0, height: '100%', width: `${pctNeeded}%`, background: conflict ? COLOR_ERROR_STRONG : AQUA, borderRadius: 4 }} />
       </Box>
     </Box>
   );
@@ -217,7 +219,15 @@ function CapBar({ label, icon, used, total, needed, conflict, isDark }: {
 export default function GanttDependenciesPage() {
   const isDark = useDarkMode();
   const [filterPod, setFilterPod] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [view, setView] = useState('gantt');
+  const [savedViewId, setSavedViewId] = useState<string | null>(null);
+
+  const currentFilters = { filterPod, filterStatus };
+  const applyView = (filters: Record<string, string | null>) => {
+    if ('filterPod'    in filters) setFilterPod(filters.filterPod);
+    if ('filterStatus' in filters) setFilterStatus(filters.filterStatus);
+  };
 
   // ── Live data ──────────────────────────────────────────────────────────────
   const { data: rawProjects = [], isLoading: projLoading }   = useProjects();
@@ -244,9 +254,54 @@ export default function GanttDependenciesPage() {
 
   const isLoading = projLoading || matrixLoading || resLoading;
 
-  const filtered = useMemo(() =>
-    filterPod ? ganttProjects.filter(p => p.pod === filterPod) : ganttProjects,
-    [filterPod, ganttProjects]);
+  const filtered = useMemo(() => {
+    let list = ganttProjects;
+    if (filterPod)    list = list.filter(p => p.pod === filterPod);
+    if (filterStatus) list = list.filter(p => p.status === filterStatus);
+    return list;
+  }, [filterPod, filterStatus, ganttProjects]);
+
+  // ── Critical path (longest path through dep graph) ────────────────────────
+  const criticalPathIds = useMemo<Set<number>>(() => {
+    // Build adjacency: blocker -> downstream IDs
+    const downstream = new Map<number, number[]>();
+    for (const p of ganttProjects) {
+      p.resourceDeps.forEach(({ pod: depPod }) => {
+        const blocker = [...ganttProjects]
+          .filter(b => b.pod === depPod && b.id !== p.id)
+          .sort((a, b) => (b.startWeek + b.durationWeeks) - (a.startWeek + a.durationWeeks))[0];
+        if (!blocker) return;
+        if (!downstream.has(blocker.id)) downstream.set(blocker.id, []);
+        downstream.get(blocker.id)!.push(p.id);
+      });
+    }
+    // Forward pass: compute earliest finish for each project
+    const ef = new Map<number, number>();
+    for (const p of ganttProjects) ef.set(p.id, p.startWeek + p.durationWeeks);
+
+    // Find the maximum total end week considering dependencies
+    const longestEnd = Math.max(...Array.from(ef.values()), 0);
+
+    // Mark critical path: projects whose EF equals the global latest end,
+    // or any project with EF within 1 week of the critical chain end
+    const critSet = new Set<number>();
+    // Walk backward: find projects that lie on the longest end-to-end chain
+    const endProjects = ganttProjects.filter(p => ef.get(p.id) === longestEnd);
+    const walk = (id: number) => {
+      critSet.add(id);
+      // Find which blocker leads to this project
+      const proj = ganttProjects.find(p => p.id === id);
+      if (!proj) return;
+      proj.resourceDeps.forEach(({ pod: depPod }) => {
+        const blocker = [...ganttProjects]
+          .filter(b => b.pod === depPod && b.id !== id)
+          .sort((a, b) => (b.startWeek + b.durationWeeks) - (a.startWeek + a.durationWeeks))[0];
+        if (blocker) walk(blocker.id);
+      });
+    };
+    endProjects.forEach(p => walk(p.id));
+    return critSet;
+  }, [ganttProjects]);
 
   const capacityMap = useMemo(() => {
     const map = new Map<string, CapacityResult>();
@@ -297,7 +352,7 @@ export default function GanttDependenciesPage() {
         paths.push({
           key: `${blocker.id}->${project.id}(${depPod})`,
           d: depPath(fromX, fromY, toX, toY),
-          color: isConflict ? '#ef4444' : AQUA,
+          color: isConflict ? COLOR_ERROR_STRONG : AQUA,
           isConflict,
         });
       });
@@ -309,20 +364,15 @@ export default function GanttDependenciesPage() {
   const totalQa   = Object.values(podCapacities).reduce((s, c) => s + c.qa,   0);
 
   if (isLoading) return (
-    <Center style={{ height: 320 }}><Loader color="teal" /></Center>
+    <Skeleton height={320} radius="sm" />
   );
 
   return (
+    <PPPageLayout title="Gantt & Dependencies" subtitle="Critical path visualisation and cross-team resource dependencies" animate>
     <Box className="page-enter" style={{ paddingBottom: 32 }}>
 
-      {/* Header */}
-      <Group justify="space-between" mb="lg">
-        <Box>
-          <Title order={1} style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE, fontWeight: 800 }}>Gantt &amp; Dependencies</Title>
-          <Text c="dimmed" size="sm" mt={2}>
-            Capacity-aware timeline — arrows only flag conflicts when a POD genuinely can't spare the headcount
-          </Text>
-        </Box>
+      {/* Toolbar */}
+      <Group justify="flex-end" mb="lg">
         <Button leftSection={<IconDownload size={15} />} variant="outline" color="teal" size="sm">Export</Button>
       </Group>
 
@@ -330,12 +380,12 @@ export default function GanttDependenciesPage() {
       <SimpleGrid cols={4} spacing="md" mb="lg">
         {[
           { label: 'Total Projects',        value: ganttProjects.length,                                           color: DEEP_BLUE },
-          { label: 'With POD Dependencies', value: ganttProjects.filter(p => p.resourceDeps.length > 0).length, color: '#2563eb' },
-          { label: 'Capacity Conflicts',    value: conflicts.length,                                           color: conflicts.length > 0 ? '#dc2626' : '#15803d' },
-          { label: 'Eng Headcount',         value: `${totalDevs}d · ${totalQa}q`,                            color: '#7c3aed' },
+          { label: 'With POD Dependencies', value: ganttProjects.filter(p => p.resourceDeps.length > 0).length, color: COLOR_BLUE_STRONG },
+          { label: 'Capacity Conflicts',    value: conflicts.length,                                           color: conflicts.length > 0 ? COLOR_ERROR_DARK : '#15803d' },
+          { label: 'Eng Headcount',         value: `${totalDevs}d · ${totalQa}q`,                            color: COLOR_VIOLET },
         ].map(s => (
           <Card key={s.label} className="kpi-card-modern" withBorder radius="lg" p="md">
-            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>{s.label}</Text>
+            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }}>{s.label}</Text>
             <Text fw={800} mt={4} style={{ color: s.color, fontSize: typeof s.value === 'string' ? 20 : 28 }}>{s.value}</Text>
           </Card>
         ))}
@@ -343,9 +393,9 @@ export default function GanttDependenciesPage() {
 
       {/* Conflict banner */}
       {conflicts.length > 0 && (
-        <Paper withBorder radius="md" p="md" mb="lg" style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fff5f5', borderColor: isDark ? 'rgba(239,68,68,0.35)' : '#fecdd3' }}>
+        <Paper withBorder radius="md" p="md" mb="lg" style={{ background: isDark ? 'rgba(239,68,68,0.1)' : SURFACE_RED_FAINT, borderColor: isDark ? 'rgba(239,68,68,0.35)' : '#fecdd3' }}>
           <Group gap="xs" mb="xs">
-            <IconAlertTriangle size={15} color="#dc2626" />
+            <IconAlertTriangle size={15} color={COLOR_ERROR_DARK} />
             <Text size="sm" fw={700} c="red">{conflicts.length} capacity conflict{conflicts.length !== 1 ? 's' : ''}</Text>
           </Group>
           <Stack gap={3}>
@@ -362,12 +412,25 @@ export default function GanttDependenciesPage() {
 
       {/* Controls */}
       <Paper withBorder radius="md" p="sm" mb="lg">
-        <Group justify="space-between">
-          <Select placeholder="All PODs" data={livePods} value={filterPod} onChange={setFilterPod}
-            clearable size="sm" leftSection={<IconFilter size={14} />} style={{ width: 210 }} />
+        <Group justify="space-between" wrap="wrap" gap="sm">
+          <Group gap="sm">
+            <Select placeholder="All PODs" data={livePods} value={filterPod} onChange={setFilterPod}
+              clearable size="sm" leftSection={<IconFilter size={14} />} style={{ width: 180 }} />
+            <Select placeholder="All statuses"
+              data={['ACTIVE','NOT STARTED','IN DISCOVERY','ON HOLD']}
+              value={filterStatus} onChange={setFilterStatus}
+              clearable size="sm" style={{ width: 160 }} />
+            <SavedViews
+              pageKey="gantt_dependencies"
+              currentFilters={currentFilters}
+              onApply={applyView}
+              activeViewId={savedViewId}
+              onActiveViewChange={setSavedViewId}
+            />
+          </Group>
           <SegmentedControl size="sm" value={view} onChange={setView}
             data={[{ label: 'Gantt Chart', value: 'gantt' }, { label: 'Capacity Detail', value: 'list' }, { label: 'POD Headcount', value: 'pods' }]}
-            style={{ background: isDark ? 'var(--mantine-color-dark-6)' : '#f1f5f9' }}
+            style={{ background: isDark ? 'var(--mantine-color-dark-6)' : SURFACE_LIGHT }}
           />
         </Group>
       </Paper>
@@ -426,13 +489,13 @@ export default function GanttDependenciesPage() {
                         borderRight: '1px solid var(--mantine-color-default-border)',
                         display: 'flex', alignItems: 'center',
                         padding: '0 14px 0 12px', gap: 8,
-                        borderLeft: `3px solid ${hasConflict ? '#ef4444' : podColor}`,
+                        borderLeft: `3px solid ${hasConflict ? COLOR_ERROR_STRONG : podColor}`,
                       }}>
                         {hasDeps && (
                           <Tooltip label={depSummary} withArrow multiline w={260} position="right">
                             <Box style={{ flexShrink: 0, cursor: 'default', lineHeight: 1 }}>
                               {hasConflict
-                                ? <IconAlertTriangle size={13} color="#ef4444" />
+                                ? <IconAlertTriangle size={13} color={COLOR_ERROR_STRONG} />
                                 : <IconGitBranch     size={13} color={AQUA} />
                               }
                             </Box>
@@ -464,31 +527,38 @@ export default function GanttDependenciesPage() {
                             height: '100%',
                           }} />
                         ))}
-                        <Tooltip
-                          label={[
-                            `${project.name}`,
+                        {(() => {
+                          const isCritical = criticalPathIds.has(project.id);
+                          const barColor = isCritical ? '#f59f00' : podColor;
+                          const barBorder = isCritical ? '2px solid #e67700' : undefined;
+                          const tooltipLines = [
+                            `${project.name}${isCritical ? '  ★ Critical Path' : ''}`,
                             `Wk ${project.startWeek} → ${project.startWeek + project.durationWeeks}  ·  ${project.status}`,
                             `Own team: ${project.ownUse.devs} devs, ${project.ownUse.qa} QA`,
-                          ].join('\n')}
-                          withArrow multiline
-                        >
-                          <Box style={{
-                            position: 'absolute',
-                            left:  project.startWeek * WEEK_WIDTH + 3,
-                            width: project.durationWeeks * WEEK_WIDTH - 6,
-                            top: '50%', transform: 'translateY(-50%)',
-                            height: 30, borderRadius: 6,
-                            background: podColor,
-                            opacity: project.status === 'NOT STARTED' ? 0.42 : 0.82,
-                            display: 'flex', alignItems: 'center',
-                            padding: '0 10px', overflow: 'hidden',
-                            cursor: 'default', zIndex: 2,
-                          }}>
-                            <Text size="11px" fw={600} style={{ color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.01em' }}>
-                              {project.name}
-                            </Text>
-                          </Box>
-                        </Tooltip>
+                          ].join('\n');
+                          return (
+                            <Tooltip label={tooltipLines} withArrow multiline>
+                              <Box style={{
+                                position: 'absolute',
+                                left:  project.startWeek * WEEK_WIDTH + 3,
+                                width: project.durationWeeks * WEEK_WIDTH - 6,
+                                top: '50%', transform: 'translateY(-50%)',
+                                height: isCritical ? 34 : 30, borderRadius: 6,
+                                background: barColor,
+                                border: barBorder,
+                                boxShadow: isCritical ? '0 0 8px rgba(245,159,0,0.55)' : undefined,
+                                opacity: project.status === 'NOT STARTED' ? 0.42 : 0.88,
+                                display: 'flex', alignItems: 'center',
+                                padding: '0 10px', overflow: 'hidden',
+                                cursor: 'default', zIndex: isCritical ? 4 : 2,
+                              }}>
+                                <Text size="11px" fw={600} style={{ color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.01em' }}>
+                                  {isCritical && '★ '}{project.name}
+                                </Text>
+                              </Box>
+                            </Tooltip>
+                          );
+                        })()}
                       </Box>
                     </Box>
                   );
@@ -502,10 +572,10 @@ export default function GanttDependenciesPage() {
                 }}>
                   <defs>
                     <marker id="arr-ok"       markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                      <polygon points="0 1, 7 4, 0 7" fill={AQUA} />
+                      <polygon points="0 1, 7 4, 0 7" fill={AQUA_HEX} />
                     </marker>
                     <marker id="arr-conflict" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                      <polygon points="0 1, 7 4, 0 7" fill="#ef4444" />
+                      <polygon points="0 1, 7 4, 0 7" fill={COLOR_ERROR_STRONG} />
                     </marker>
                   </defs>
                   {dependencyPaths.map(({ key, d, color, isConflict }) => (
@@ -515,6 +585,12 @@ export default function GanttDependenciesPage() {
                       opacity={0.75}
                     />
                   ))}
+                  {/* Today marker — vertical red dashed line at week 0 */}
+                  <line
+                    x1={0} y1={0} x2={0} y2={filtered.length * ROW_HEIGHT}
+                    stroke="#ef4444" strokeWidth={2} strokeDasharray="5 4" opacity={0.85}
+                  />
+                  <text x={4} y={14} fill="#ef4444" fontSize={10} fontWeight={700} opacity={0.9}>Today</text>
                 </svg>
               </Box>
             </Box>
@@ -538,10 +614,19 @@ export default function GanttDependenciesPage() {
                 <Text size="11px" c="dimmed">capacity OK</Text>
               </Group>
               <Group gap={5}>
-                <Box style={{ width: 20, height: 1.5, background: '#ef4444', borderStyle: 'dashed' }} />
+                <Box style={{ width: 20, height: 1.5, background: COLOR_ERROR_STRONG, borderStyle: 'dashed' }} />
                 <Text size="11px" c="dimmed">conflict</Text>
               </Group>
-              <Text size="11px" c="dimmed">Bar opacity = NOT STARTED projects are dimmed</Text>
+              <Divider orientation="vertical" />
+              <Group gap={5}>
+                <Box style={{ width: 14, height: 14, borderRadius: 3, background: '#f59f00', boxShadow: '0 0 6px rgba(245,159,0,0.5)', flexShrink: 0 }} />
+                <Text size="11px" c="dimmed">★ critical path</Text>
+              </Group>
+              <Group gap={5}>
+                <Box style={{ width: 2, height: 14, background: '#ef4444', flexShrink: 0 }} />
+                <Text size="11px" c="dimmed">today</Text>
+              </Group>
+              <Text size="11px" c="dimmed">Dimmed bars = NOT STARTED</Text>
             </Group>
           </Box>
         </Paper>
@@ -556,7 +641,7 @@ export default function GanttDependenciesPage() {
             const hasConflict = projectHasConflict(project);
             return (
               <Paper key={project.id} withBorder radius="md" p="lg"
-                style={{ borderLeft: `4px solid ${hasConflict ? '#ef4444' : podColor}` }}>
+                style={{ borderLeft: `4px solid ${hasConflict ? COLOR_ERROR_STRONG : podColor}` }}>
                 <Group justify="space-between" mb="md">
                   <Box>
                     <Group gap="sm">
@@ -578,7 +663,7 @@ export default function GanttDependenciesPage() {
                 </Group>
 
                 {project.resourceDeps.length === 0 ? (
-                  <Group gap={6}><IconCircleCheck size={14} color="#16a34a" /><Text size="xs" c="dimmed">No cross-POD resource dependencies</Text></Group>
+                  <Group gap={6}><IconCircleCheck size={14} color={COLOR_GREEN_STRONG} /><Text size="xs" c="dimmed">No cross-POD resource dependencies</Text></Group>
                 ) : (
                   <Stack gap="md">
                     {project.resourceDeps.map(rd => {
@@ -588,7 +673,7 @@ export default function GanttDependenciesPage() {
                       const allocQa   = c.podTotalQa   - c.minAvailQa;
                       return (
                         <Paper key={rd.pod} withBorder p="md" radius="sm"
-                          style={{ background: isDark ? (c.conflict ? 'rgba(239,68,68,0.09)' : 'rgba(0,200,183,0.07)') : (c.conflict ? '#fff5f5' : '#f8fffe'), borderColor: isDark ? (c.conflict ? 'rgba(239,68,68,0.35)' : 'rgba(0,200,183,0.35)') : (c.conflict ? '#fecdd3' : '#cef0f1') }}>
+                          style={{ background: isDark ? (c.conflict ? 'rgba(239,68,68,0.09)' : 'rgba(0,200,183,0.07)') : (c.conflict ? SURFACE_RED_FAINT : '#f8fffe'), borderColor: isDark ? (c.conflict ? 'rgba(239,68,68,0.35)' : 'rgba(0,200,183,0.35)') : (c.conflict ? '#fecdd3' : '#cef0f1') }}>
                           <Group gap="sm" mb="md">
                             <IconUsers size={14} color={depColor} />
                             <Text size="sm" fw={700} style={{ color: depColor }}>{rd.pod} POD</Text>
@@ -596,12 +681,12 @@ export default function GanttDependenciesPage() {
                             <Text size="xs" c="dimmed" style={{ marginLeft: 'auto' }}>during wk {project.startWeek}–{project.startWeek + project.durationWeeks}</Text>
                           </Group>
                           <Stack gap={10}>
-                            <CapBar label="Developers"    icon={<IconCode     size={11} color="#94a3b8" />} used={allocDevs} total={c.podTotalDevs} needed={rd.needs.devs} conflict={c.shortfallDevs > 0} isDark={isDark} />
-                            <CapBar label="QA Engineers"  icon={<IconTestPipe size={11} color="#94a3b8" />} used={allocQa}   total={c.podTotalQa}   needed={rd.needs.qa}   conflict={c.shortfallQa   > 0} isDark={isDark} />
+                            <CapBar label="Developers"    icon={<IconCode     size={11} color={TEXT_SUBTLE} />} used={allocDevs} total={c.podTotalDevs} needed={rd.needs.devs} conflict={c.shortfallDevs > 0} isDark={isDark} />
+                            <CapBar label="QA Engineers"  icon={<IconTestPipe size={11} color={TEXT_SUBTLE} />} used={allocQa}   total={c.podTotalQa}   needed={rd.needs.qa}   conflict={c.shortfallQa   > 0} isDark={isDark} />
                           </Stack>
                           {c.conflict && (
                             <Text size="xs" c="red" mt="sm" fw={500}>
-                              ⚠ At peak overlap, {rd.pod} has {c.minAvailDevs}d / {c.minAvailQa}q free — this project needs {rd.needs.devs}d / {rd.needs.qa}q. Consider shifting start week or rebalancing the {rd.pod} backlog.
+                              ⚠ At peak overlap, {rd.pod} has {c.minAvailDevs} Dev / {c.minAvailQa} QA free — this project needs {rd.needs.devs} Dev / {rd.needs.qa} QA. Consider shifting start week or rebalancing the {rd.pod} backlog.
                             </Text>
                           )}
                         </Paper>
@@ -634,19 +719,19 @@ export default function GanttDependenciesPage() {
                 <Group justify="space-between" mb="md">
                   <Group gap={8}><IconUsers size={15} color={podColor} /><Text fw={700} size="sm" style={{ color: isDark ? 'var(--mantine-color-gray-2)' : DEEP_BLUE }}>{pod}</Text></Group>
                   <Badge size="sm" style={{ background: `${podColor}12`, color: podColor, border: `1px solid ${podColor}30` }}>
-                    {cap.devs}d · {cap.qa}q{cap.ux ? ` · ${cap.ux}ux` : ''}
+                    {cap.devs} Dev · {cap.qa} QA{cap.ux ? ` · ${cap.ux} UX` : ''}
                   </Badge>
                 </Group>
                 <Stack gap={8} mb="md">
                   {[
-                    { label: 'Devs', icon: <IconCode size={11} color="#94a3b8" />, peak: peakDevs, total: cap.devs },
-                    { label: 'QA',   icon: <IconTestPipe size={11} color="#94a3b8" />, peak: peakQa,   total: cap.qa   },
+                    { label: 'Devs', icon: <IconCode size={11} color={TEXT_SUBTLE} />, peak: peakDevs, total: cap.devs },
+                    { label: 'QA',   icon: <IconTestPipe size={11} color={TEXT_SUBTLE} />, peak: peakQa,   total: cap.qa   },
                   ].map(row => (
                     <Box key={row.label}>
                       <Group gap={4} mb={3}>
                         {row.icon}
                         <Text size="10px" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>{row.label}</Text>
-                        <Text size="10px" c="dimmed" style={{ marginLeft: 'auto' }}>peak {row.peak}/{row.total}</Text>
+                        <Text size="10px" c="dimmed" style={{ marginLeft: 'auto' }}>peak {row.peak} of {row.total}</Text>
                       </Group>
                       <Progress value={Math.min(100, (row.peak / row.total) * 100)}
                         color={row.peak > row.total ? 'red' : row.peak >= row.total * 0.85 ? 'orange' : 'teal'}
@@ -660,7 +745,7 @@ export default function GanttDependenciesPage() {
                   <Group key={p.id} gap={6} mb={3}>
                     <Box style={{ width: 6, height: 6, borderRadius: '50%', background: podColor, flexShrink: 0, marginTop: 2 }} />
                     <Text size="xs" style={{ color: isDark ? 'var(--mantine-color-gray-3)' : DEEP_BLUE, flex: 1 }}>{p.name}</Text>
-                    <Text size="10px" c="dimmed">{p.ownUse.devs}d/{p.ownUse.qa}q</Text>
+                    <Text size="10px" c="dimmed">{p.ownUse.devs} Dev · {p.ownUse.qa} QA</Text>
                   </Group>
                 ))}
                 {inbound.length > 0 && (
@@ -672,9 +757,9 @@ export default function GanttDependenciesPage() {
                       const c  = capacityMap.get(`${p.id}::${pod}`);
                       return (
                         <Group key={p.id} gap={6} mb={3}>
-                          <Box style={{ width: 6, height: 6, borderRadius: '50%', background: c?.conflict ? '#ef4444' : AQUA, flexShrink: 0, marginTop: 2 }} />
+                          <Box style={{ width: 6, height: 6, borderRadius: '50%', background: c?.conflict ? COLOR_ERROR_STRONG : AQUA, flexShrink: 0, marginTop: 2 }} />
                           <Text size="xs" style={{ color: isDark ? 'var(--mantine-color-gray-3)' : DEEP_BLUE, flex: 1 }}>{p.name}</Text>
-                          <Text size="10px" c="dimmed">{rd.needs.devs}d/{rd.needs.qa}q {c?.conflict ? '⚠' : '✓'}</Text>
+                          <Text size="10px" c="dimmed">{rd.needs.devs} Dev · {rd.needs.qa} QA {c?.conflict ? '⚠' : '✓'}</Text>
                         </Group>
                       );
                     })}
@@ -686,5 +771,6 @@ export default function GanttDependenciesPage() {
         </SimpleGrid>
       )}
     </Box>
+    </PPPageLayout>
   );
 }

@@ -18,6 +18,8 @@ import { DEEP_BLUE, FONT_FAMILY, SHADOW } from '../../brandTokens';
 
 interface ChartCardProps {
   title: string;
+  /** Optional subtitle shown below the title */
+  subtitle?: string;
   children: React.ReactNode;
   /** Extra content rendered to the right of the title */
   headerRight?: React.ReactNode;
@@ -25,6 +27,9 @@ interface ChartCardProps {
   minHeight?: number;
   withBorder?: boolean;
   padding?: string;
+  /** Grid column span (ignored — layout is handled by parent) */
+  colspan?: number;
+  icon?: React.ReactNode;
 }
 
 // ── Snapshot helper ────────────────────────────────────────────────────────────
@@ -124,11 +129,17 @@ function captureChartSnapshot(container: HTMLDivElement | null, title: string) {
 
 export default function ChartCard({
   title,
+  subtitle,
   children,
   headerRight,
   minHeight = 240,
   withBorder = true,
   padding = 'md',
+  // colspan and icon are accepted but used by parent layout
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  colspan: _colspan,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  icon: _icon,
 }: ChartCardProps) {
   const [zoomed, { open: openZoom, close: closeZoom }] = useDisclosure(false);
   // Two separate refs — one for the inline card, one for the modal
@@ -179,9 +190,16 @@ export default function ChartCard({
         }}
       >
         <Group justify="space-between" mb="sm" wrap="nowrap" align="flex-start">
-          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
-            {title}
-          </Text>
+          <div>
+            <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+              {title}
+            </Text>
+            {subtitle && (
+              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                {subtitle}
+              </Text>
+            )}
+          </div>
           {headerButtons}
         </Group>
         <Box ref={inlineRef} style={{ minHeight }}>

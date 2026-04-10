@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Title, Text, Stack, Group, Badge, Button, Table, Modal, TextInput,
-  Select, Switch, ActionIcon, Tooltip, Loader, Center, Textarea, NumberInput,
+  Select, Switch, ActionIcon, Tooltip, Skeleton, Center, Textarea, NumberInput,
 } from '@mantine/core';
 import { IconPlus, IconEdit, IconTrash, IconEye, IconEyeOff, IconGripVertical } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,10 +9,20 @@ import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import type { FieldDefinition } from '../../components/common/CustomFieldsRenderer';
+import {
+  InlineTextCell, InlineSelectCell, InlineSwitchCell,
+} from '../../components/common/InlineCell';
+import { useInlineEdit } from '../../hooks/useInlineEdit';
 
 const TYPE_COLOR: Record<string, string> = {
   text: 'blue', number: 'teal', date: 'violet', select: 'orange',
 };
+const TYPE_OPTIONS = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'date', label: 'Date' },
+  { value: 'select', label: 'Select (dropdown)' },
+];
 const BLANK = { fieldName: '', fieldLabel: '', fieldType: 'text', optionsJson: '', required: false, sortOrder: 0 };
 
 export default function CustomFieldsAdminPage() {
@@ -20,6 +30,7 @@ export default function CustomFieldsAdminPage() {
   const [modal,   setModal]   = useState(false);
   const [editing, setEditing] = useState<FieldDefinition | null>(null);
   const [form,    setForm]    = useState(BLANK);
+  const { isEditing, startEdit, stopEdit } = useInlineEdit();
 
   const { data: defs = [], isLoading } = useQuery<FieldDefinition[]>({
     queryKey: ['custom-field-defs-all'],
@@ -81,6 +92,63 @@ export default function CustomFieldsAdminPage() {
     },
   });
 
+  // Inline edit mutations for individual fields
+  const updateFieldLabelMutation = useMutation({
+    mutationFn: async ({ id, fieldLabel }: { id: number; fieldLabel: string }) => {
+      await apiClient.put(`/custom-fields/definitions/${id}`, { fieldLabel });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['custom-field-defs-all'] });
+      qc.invalidateQueries({ queryKey: ['custom-field-defs'] });
+    },
+    onError: (e: any) => notifications.show({
+      message: e?.response?.data?.error ?? 'Failed to update field',
+      color: 'red',
+    }),
+  });
+
+  const updateFieldTypeMutation = useMutation({
+    mutationFn: async ({ id, fieldType }: { id: number; fieldType: string }) => {
+      await apiClient.put(`/custom-fields/definitions/${id}`, { fieldType });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['custom-field-defs-all'] });
+      qc.invalidateQueries({ queryKey: ['custom-field-defs'] });
+    },
+    onError: (e: any) => notifications.show({
+      message: e?.response?.data?.error ?? 'Failed to update field',
+      color: 'red',
+    }),
+  });
+
+  const updateRequiredMutation = useMutation({
+    mutationFn: async ({ id, required }: { id: number; required: boolean }) => {
+      await apiClient.put(`/custom-fields/definitions/${id}`, { required });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['custom-field-defs-all'] });
+      qc.invalidateQueries({ queryKey: ['custom-field-defs'] });
+    },
+    onError: (e: any) => notifications.show({
+      message: e?.response?.data?.error ?? 'Failed to update field',
+      color: 'red',
+    }),
+  });
+
+  const updateOptionsJsonMutation = useMutation({
+    mutationFn: async ({ id, optionsJson }: { id: number; optionsJson: string | null }) => {
+      await apiClient.put(`/custom-fields/definitions/${id}`, { optionsJson });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['custom-field-defs-all'] });
+      qc.invalidateQueries({ queryKey: ['custom-field-defs'] });
+    },
+    onError: (e: any) => notifications.show({
+      message: e?.response?.data?.error ?? 'Failed to update field',
+      color: 'red',
+    }),
+  });
+
   return (
     <Stack gap="lg" style={{ fontFamily: FONT_FAMILY }}>
       <Group justify="space-between">
@@ -94,7 +162,7 @@ export default function CustomFieldsAdminPage() {
       </Group>
 
       {isLoading ? (
-        <Center h={200}><Loader /></Center>
+        <Stack gap="xs">{[...Array(4)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
       ) : defs.length === 0 ? (
         <Center h={200}>
           <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -109,6 +177,8 @@ export default function CustomFieldsAdminPage() {
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Field Name</Table.Th>
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Label</Table.Th>
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Type</Table.Th>
+              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Default Value</Table.Th>
+              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Options</Table.Th>
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Required</Table.Th>
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
               <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
@@ -119,9 +189,71 @@ export default function CustomFieldsAdminPage() {
               <Table.Tr key={d.id} style={{ opacity: d.active ? 1 : 0.5 }}>
                 <Table.Td c="dimmed">{d.sortOrder}</Table.Td>
                 <Table.Td><code style={{ fontFamily: 'monospace', fontSize: 11 }}>{d.fieldName}</code></Table.Td>
-                <Table.Td fw={500}>{d.fieldLabel}</Table.Td>
-                <Table.Td><Badge color={TYPE_COLOR[d.fieldType] ?? 'gray'} size="xs">{d.fieldType}</Badge></Table.Td>
-                <Table.Td>{d.required ? <Badge color="red" size="xs">Required</Badge> : <Text c="dimmed" size="xs">Optional</Text>}</Table.Td>
+                <Table.Td>
+                  <InlineTextCell
+                    value={d.fieldLabel}
+                    isEditing={isEditing(d.id, 'fieldLabel')}
+                    onStartEdit={() => startEdit(d.id, 'fieldLabel')}
+                    onCancel={() => stopEdit()}
+                    onSave={async (newLabel) => {
+                      await updateFieldLabelMutation.mutateAsync({ id: d.id, fieldLabel: newLabel });
+                      stopEdit();
+                    }}
+                    placeholder="Enter label…"
+                  />
+                </Table.Td>
+                <Table.Td>
+                  <InlineSelectCell
+                    value={d.fieldType}
+                    options={TYPE_OPTIONS}
+                    isEditing={isEditing(d.id, 'fieldType')}
+                    onStartEdit={() => startEdit(d.id, 'fieldType')}
+                    onCancel={() => stopEdit()}
+                    onSave={async (newType) => {
+                      await updateFieldTypeMutation.mutateAsync({ id: d.id, fieldType: newType });
+                      stopEdit();
+                    }}
+                  />
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c="dimmed">—</Text>
+                </Table.Td>
+                <Table.Td>
+                  {d.fieldType === 'select' ? (
+                    <InlineTextCell
+                      value={
+                        (() => {
+                          try {
+                            return d.optionsJson ? JSON.parse(d.optionsJson).join(', ') : '';
+                          } catch { return d.optionsJson ?? ''; }
+                        })()
+                      }
+                      isEditing={isEditing(d.id, 'optionsJson')}
+                      onStartEdit={() => startEdit(d.id, 'optionsJson')}
+                      onCancel={() => stopEdit()}
+                      onSave={async (newOptions) => {
+                        const lines = newOptions.split(',').map(l => l.trim()).filter(Boolean);
+                        await updateOptionsJsonMutation.mutateAsync({
+                          id: d.id,
+                          optionsJson: lines.length > 0 ? JSON.stringify(lines) : null,
+                        });
+                        stopEdit();
+                      }}
+                      placeholder="comma-separated…"
+                      maxWidth={200}
+                    />
+                  ) : (
+                    <Text size="sm" c="dimmed">—</Text>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <InlineSwitchCell
+                    value={d.required}
+                    onSave={async (newRequired) => {
+                      await updateRequiredMutation.mutateAsync({ id: d.id, required: newRequired });
+                    }}
+                  />
+                </Table.Td>
                 <Table.Td>
                   <Badge color={d.active ? 'teal' : 'gray'} variant="light" size="xs">
                     {d.active ? 'Active' : 'Inactive'}
@@ -129,9 +261,6 @@ export default function CustomFieldsAdminPage() {
                 </Table.Td>
                 <Table.Td>
                   <Group gap={4}>
-                    <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openEdit(d)}>
-                      <IconEdit size={14} />
-                    </ActionIcon>
                     <Tooltip label={d.active ? 'Deactivate' : 'Activate'}>
                       <ActionIcon variant="subtle" color={d.active ? 'orange' : 'teal'} size="sm"
                         onClick={() => toggleActive.mutate(d)}>

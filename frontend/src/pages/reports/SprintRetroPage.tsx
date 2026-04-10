@@ -7,6 +7,9 @@ import {
   Group,
   Badge,
   Button,
+  ActionIcon,
+  Tooltip,
+  Modal,
   SimpleGrid,
   Progress,
   Loader,
@@ -28,6 +31,7 @@ import {
   IconPlayerPlay,
   IconClockHour4,
   IconBolt,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -75,6 +79,9 @@ function VelocityBadge({ delta }: { delta: number | null }) {
 export default function SprintRetroPage() {
   const qc = useQueryClient();
   const [filterProject, setFilterProject] = useState<string | null>(null);
+  const [showAllPending, setShowAllPending] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [generatingId, setGeneratingId] = useState<number | null>(null);
 
   const { data: summaries = [], isLoading: loadingSummaries } = useQuery<RetroSummary[]>({
     queryKey: ['retro-summaries', filterProject],
@@ -84,23 +91,43 @@ export default function SprintRetroPage() {
   });
 
   const { data: sprintList = [], isLoading: loadingSprints } = useQuery<SprintItem[]>({
-    queryKey: ['retro-sprints'],
-    queryFn: () => apiClient.get('/retro/sprints').then(r => r.data),
+    queryKey: ['retro-sprints', filterProject],
+    queryFn: () => apiClient.get('/retro/sprints', {
+      params: {
+        limit: 300,
+        ...(filterProject ? { projectKey: filterProject } : {}),
+      },
+    }).then(r => r.data),
   });
 
   const generateMutation = useMutation({
     mutationFn: (sprintJiraId: number) =>
       apiClient.post(`/retro/generate/${sprintJiraId}`).then(r => r.data),
+    onMutate: (sprintJiraId: number) => { setGeneratingId(sprintJiraId); },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['retro-summaries'] });
       qc.invalidateQueries({ queryKey: ['retro-sprints'] });
       notifications.show({ color: 'green', message: 'Retro summary generated!' });
     },
     onError: () => notifications.show({ color: 'red', message: 'Failed to generate retro' }),
+    onSettled: () => { setGeneratingId(null); },
   });
 
-  const projectKeys = [...new Set(sprintList.map(s => s.projectKey).filter(Boolean))];
-  const pendingSprints = sprintList.filter(s => !s.hasRetro);
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/retro/summaries/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['retro-summaries'] });
+      qc.invalidateQueries({ queryKey: ['retro-sprints'] });
+      setDeleteConfirm(null);
+      notifications.show({ color: 'gray', message: 'Retro deleted.' });
+    },
+    onError: () => notifications.show({ color: 'red', message: 'Failed to delete retro' }),
+  });
+
+  const projectKeys = [...new Set(sprintList.map(s => s.projectKey).filter(Boolean))].sort();
+  const pendingSprints = sprintList.filter(s =>
+    !s.hasRetro && (!filterProject || s.projectKey === filterProject)
+  );
 
   if (loadingSummaries || loadingSprints) {
     return <Center py={120}><Loader size="lg" /></Center>;
@@ -122,9 +149,10 @@ export default function SprintRetroPage() {
           placeholder="All projects"
           data={projectKeys.map(k => ({ value: k, label: k }))}
           value={filterProject}
-          onChange={setFilterProject}
+          onChange={(v) => { setFilterProject(v); setShowAllPending(false); }}
           clearable
-          w={160}
+          w={180}
+          searchable
         />
       </Group>
 
@@ -132,7 +160,7 @@ export default function SprintRetroPage() {
       {pendingSprints.length > 0 && (
         <Alert color="blue" icon={<IconListCheck />} title={`${pendingSprints.length} sprint(s) without a retro`}>
           <Stack gap="xs" mt="xs">
-            {pendingSprints.slice(0, 5).map(s => (
+            {(showAllPending ? pendingSprints : pendingSprints.slice(0, 5)).map(s => (
               <Group key={s.sprintJiraId} justify="space-between">
                 <Text size="sm">{s.sprintName} {s.projectKey ? `(${s.projectKey})` : ''}</Text>
                 <Button
@@ -140,7 +168,8 @@ export default function SprintRetroPage() {
                   variant="light"
                   color="blue"
                   leftSection={<IconPlayerPlay size={12} />}
-                  loading={generateMutation.isPending}
+                  loading={generatingId === s.sprintJiraId}
+                  disabled={generateMutation.isPending && generatingId !== s.sprintJiraId}
                   onClick={() => generateMutation.mutate(s.sprintJiraId)}
                 >
                   Generate
@@ -148,7 +177,17 @@ export default function SprintRetroPage() {
               </Group>
             ))}
             {pendingSprints.length > 5 && (
-              <Text size="xs" c="dimmed">… and {pendingSprints.length - 5} more</Text>
+              <Button
+                variant="subtle"
+                size="xs"
+                color="blue"
+                onClick={() => setShowAllPending(v => !v)}
+                style={{ alignSelf: 'flex-start', padding: '0 4px' }}
+              >
+                {showAllPending
+                  ? '▲ Show fewer'
+                  : `▼ Show all ${pendingSprints.length} sprints`}
+              </Button>
             )}
           </Stack>
         </Alert>
@@ -295,12 +334,23 @@ export default function SprintRetroPage() {
                     </div>
                   )}
 
-                  <Group justify="flex-end">
+                  <Group justify="space-between">
+                    <Tooltip label="Delete this retro" withArrow>
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="red"
+                        onClick={() => setDeleteConfirm({ id: r.id, name: r.sprintName })}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Tooltip>
                     <Button
                       size="xs"
                       variant="light"
                       leftSection={<IconPlayerPlay size={12} />}
-                      loading={generateMutation.isPending}
+                      loading={generatingId === r.sprintJiraId}
+                      disabled={generateMutation.isPending && generatingId !== r.sprintJiraId}
                       onClick={() => generateMutation.mutate(r.sprintJiraId)}
                     >
                       Re-generate
@@ -312,6 +362,34 @@ export default function SprintRetroPage() {
           ))}
         </Accordion>
       )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal
+        opened={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        title="Delete Retro Summary"
+        size="sm"
+        centered
+      >
+        <Text size="sm" mb="md">
+          Are you sure you want to delete the retro for{' '}
+          <strong>{deleteConfirm?.name}</strong>? This cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap="xs">
+          <Button variant="subtle" size="xs" onClick={() => setDeleteConfirm(null)}>
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            size="xs"
+            loading={deleteMutation.isPending}
+            leftSection={<IconTrash size={14} />}
+            onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm.id)}
+          >
+            Delete
+          </Button>
+        </Group>
+      </Modal>
     </Stack>
   );
 }

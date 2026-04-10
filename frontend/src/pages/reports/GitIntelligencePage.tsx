@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useAdoStatus, useAdoSummary, useAdoPrs, useAdoCommits, useAdoBranches,
 } from '../../api/azureDevOps';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_AMBER, COLOR_BLUE, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_SUCCESS, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, TEXT_DIM, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -29,17 +29,17 @@ function fmtHours(h: number): string {
 }
 
 const REVIEW_VOTE_LABEL: Record<number, { label: string; color: string }> = {
-  10:  { label: 'Approved',   color: '#40c057' },
+  10:  { label: 'Approved',   color: COLOR_SUCCESS },
   5:   { label: 'Approved*',  color: '#82c91e' },
-  0:   { label: 'Pending',    color: '#868e96' },
-  [-5]:{ label: 'Waiting',    color: '#fab005' },
-  [-10]:{ label: 'Rejected',  color: '#fa5252' },
+  0:   { label: 'Pending',    color: TEXT_DIM },
+  [-5]:{ label: 'Waiting',    color: COLOR_AMBER },
+  [-10]:{ label: 'Rejected',  color: COLOR_ERROR },
 };
 
 // A set of muted colors for author series in the commit bar chart
 const AUTHOR_COLORS = [
-  AQUA, '#8b5cf6', '#f59e0b', '#3b82f6', '#10b981',
-  '#ef4444', '#ec4899', '#64748b', '#0ea5e9', '#a16207',
+  AQUA, COLOR_VIOLET_ALT, COLOR_WARNING, COLOR_BLUE, COLOR_TEAL,
+  COLOR_ERROR_STRONG, '#ec4899', TEXT_GRAY, '#0ea5e9', '#a16207',
 ];
 
 // ── Not-configured placeholder ─────────────────────────────────────────────────
@@ -81,7 +81,7 @@ function KpiCard({
     <Card withBorder radius="lg" p="md">
       <Group justify="space-between" mb={6}>
         <Text size="xs" tt="uppercase" fw={700}
-          style={{ color: '#94a3b8', letterSpacing: '0.6px', fontFamily: FONT_FAMILY }}>
+          style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', fontFamily: FONT_FAMILY }}>
           {label}
         </Text>
         <ThemeIcon variant="light" color={color} size={32} radius="md">{icon}</ThemeIcon>
@@ -288,10 +288,10 @@ export default function GitIntelligencePage() {
                   <ScrollArea style={{ maxHeight: 520 }}>
                     {prs.slice(0, 100).map((pr, i) => {
                       const cycleColor =
-                        pr.cycleTimeHours == null ? '#94a3b8'
-                        : pr.cycleTimeHours < 24  ? '#40c057'
-                        : pr.cycleTimeHours < 72  ? '#fab005'
-                        : '#fa5252';
+                        pr.cycleTimeHours == null ? TEXT_SUBTLE
+                        : pr.cycleTimeHours < 24  ? COLOR_SUCCESS
+                        : pr.cycleTimeHours < 72  ? COLOR_AMBER
+                        : COLOR_ERROR;
                       return (
                         <Box key={pr.id} style={{
                           display: 'flex', alignItems: 'center',

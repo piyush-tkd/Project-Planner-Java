@@ -35,6 +35,7 @@ import {
 import { useProjects } from '../../api/projects';
 import { useResources } from '../../api/resources';
 import { usePods } from '../../api/pods';
+import { AQUA, DARK_SIDEBAR, SIDEBAR_INACTIVE} from '../../brandTokens';
 
 interface SearchResult {
   id: string;
@@ -371,10 +372,20 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
       onClose={onClose}
       withCloseButton={false}
       padding={0}
-      size="lg"
-      radius="md"
+      size={560}
+      radius="lg"
+      // DL-8: position slightly above centre (20vh from top)
       styles={{
-        content: { overflow: 'hidden' },
+        root: { alignItems: 'flex-start', paddingTop: '20vh' },
+        content: {
+          overflow: 'hidden',
+          background: DARK_SIDEBAR,
+          border: '1px solid #2e3346',
+          borderRadius: 12,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.50)',
+          animation: 'ppCmdEnter 200ms cubic-bezier(0.4,0,0.2,1)',
+        },
+        overlay: { backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.60)' },
         body: { padding: 0 },
       }}
     >
@@ -390,13 +401,16 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
         variant="unstyled"
         styles={{
           input: {
-            borderBottom: '1px solid var(--mantine-color-default-border)',
-            borderRadius: '8px 8px 0 0',
+            background: 'transparent',
+            borderBottom: '1px solid #2e3346',
+            borderRadius: '12px 12px 0 0',
             paddingLeft: 48,
             paddingRight: 60,
-            fontSize: 15,
+            fontSize: 16,
+            color: '#e2e4eb',
+            '&::placeholder': { color: '#5a5e70' },
           },
-          section: { paddingLeft: 16 },
+          section: { paddingLeft: 16, color: SIDEBAR_INACTIVE },
         }}
       />
 
@@ -418,8 +432,9 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
                       {CATEGORY_ICONS[group.category]}
                     </span>
                   )}
-                  <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                    style={{ letterSpacing: '0.06em', fontSize: 10 }}>
+                  {/* DL-8 group header: 11px, 600, uppercase, muted, ls 0.5px */}
+                  <Text size="xs" fw={600} tt="uppercase"
+                    style={{ letterSpacing: '0.5px', fontSize: 11, color: '#5a5e70' }}>
                     {group.category}
                   </Text>
                   {group.category === 'Recent' && (
@@ -441,10 +456,12 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
                         width: '100%',
                         padding: '8px 12px',
                         borderRadius: 6,
+                        // DL-8: dark-theme result rows
                         backgroundColor: isSelected
-                          ? (isSpecialCategory ? 'var(--mantine-color-teal-0)' : 'var(--mantine-color-blue-0)')
+                          ? 'rgba(45,204,211,0.12)'
                           : 'transparent',
-                        transition: 'background 0.1s',
+                        borderLeft: isSelected ? '2px solid #2DCCD3' : '2px solid transparent',
+                        transition: 'background 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms',
                       }}
                     >
                       <Group justify="space-between" wrap="nowrap">
@@ -472,7 +489,7 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
                             <Badge size="xs" variant="light" color="teal" ml="auto">action</Badge>
                           )}
                         </Group>
-                        {isSelected && <IconArrowRight size={14} color="var(--mantine-color-blue-6)" />}
+                        {isSelected && <IconArrowRight size={14} color={AQUA} />}
                       </Group>
                     </UnstyledButton>
                   );

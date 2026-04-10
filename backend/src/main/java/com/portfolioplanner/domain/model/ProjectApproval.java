@@ -24,7 +24,7 @@ public class ProjectApproval {
     @Column(name = "reviewed_by")
     private String reviewedBy;
 
-    @Column(nullable = false, columnDefinition = "approval_status")
+    @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ApprovalStatus status = ApprovalStatus.PENDING;
 
@@ -39,6 +39,13 @@ public class ProjectApproval {
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
+
+    /**
+     * Encodes the change that triggered this approval, e.g. "STATUS:PLANNING→ACTIVE".
+     * When the reviewer approves, the system auto-applies this change.
+     */
+    @Column(name = "proposed_change", columnDefinition = "TEXT")
+    private String proposedChange;
 
     public enum ApprovalStatus { PENDING, APPROVED, REJECTED, WITHDRAWN }
 }

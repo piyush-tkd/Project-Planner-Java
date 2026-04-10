@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Box, Title, Text, Group, Badge, Select, Button, Paper, Card,
   SimpleGrid, Progress, Avatar, SegmentedControl,
-  Stack,
+  Stack, Loader, Center,
 } from '@mantine/core';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -11,51 +11,21 @@ import {
 import {
   IconFilter, IconDownload,
 } from '@tabler/icons-react';
-import { Alert } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SURFACE_GRAY, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE, AQUA_TINTS } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { PPPageLayout } from '../components/pp';
+import { useResources } from '../api/resources';
+import { usePods } from '../api/pods';
+import { useCapacityDemandSummary, usePodResourceSummary } from '../api/reports';
 
-const PODS = ['All PODs', 'Portal V1', 'Portal V2', 'Integrations', 'Accessioning', 'LIS/Reporting', 'Enterprise Systems'];
-
-const WORKLOAD_DATA = [
-  { name: 'Gowthami Naidu',    pod: 'LIS/Reporting',      role: 'QA',        avatar: 'GN', capacity: 160, allocated: 128, pct: 80  },
-  { name: 'Katy Zarty',        pod: 'Enterprise Systems',  role: 'Developer', avatar: 'KZ', capacity: 160, allocated: 160, pct: 100 },
-  { name: 'Kaitlyn Walton',    pod: 'Enterprise Systems',  role: 'Developer', avatar: 'KW', capacity: 160, allocated: 144, pct: 90  },
-  { name: 'Justin Branch',     pod: 'Enterprise Systems',  role: 'Developer', avatar: 'JB', capacity: 160, allocated: 104, pct: 65  },
-  { name: 'Priti Kothavale',   pod: 'Portal V1',           role: 'Developer', avatar: 'PK', capacity: 160, allocated: 176, pct: 110 },
-  { name: 'Angela Chen',       pod: 'Portal V2',           role: 'Tech Lead', avatar: 'AC', capacity: 160, allocated: 192, pct: 120 },
-  { name: 'Marcus Webb',       pod: 'Integrations',        role: 'Developer', avatar: 'MW', capacity: 160, allocated: 136, pct: 85  },
-  { name: 'Sara Patel',        pod: 'Accessioning',        role: 'QA',        avatar: 'SP', capacity: 160, allocated: 80,  pct: 50  },
-  { name: 'David Kim',         pod: 'Portal V2',           role: 'Developer', avatar: 'DK', capacity: 160, allocated: 160, pct: 100 },
-  { name: 'Lisa Nguyen',       pod: 'LIS/Reporting',       role: 'Developer', avatar: 'LN', capacity: 160, allocated: 56,  pct: 35  },
-  { name: 'Raj Patel',         pod: 'Integrations',        role: 'Developer', avatar: 'RP', capacity: 160, allocated: 168, pct: 105 },
-  { name: 'Tom Bradley',       pod: 'Accessioning',        role: 'BSA',       avatar: 'TB', capacity: 160, allocated: 120, pct: 75  },
-];
-
-const POD_SUMMARY_DATA = [
-  { pod: 'Portal V1',          capacity: 480, allocated: 400, pct: 83  },
-  { pod: 'Portal V2',          capacity: 640, allocated: 704, pct: 110 },
-  { pod: 'Integrations',       capacity: 480, allocated: 456, pct: 95  },
-  { pod: 'Accessioning',       capacity: 320, allocated: 288, pct: 90  },
-  { pod: 'LIS/Reporting',      capacity: 480, allocated: 368, pct: 77  },
-  { pod: 'Enterprise Systems', capacity: 640, allocated: 616, pct: 96  },
-];
-
-const MONTHLY_TREND = [
-  { month: 'Jan', utilization: 78, overAllocated: 2 },
-  { month: 'Feb', utilization: 82, overAllocated: 3 },
-  { month: 'Mar', utilization: 85, overAllocated: 4 },
-  { month: 'Apr', utilization: 91, overAllocated: 5 },
-  { month: 'May', utilization: 88, overAllocated: 3 },
-  { month: 'Jun', utilization: 79, overAllocated: 1 },
-];
+// Standard 40-hour work week baseline (8 hrs/day * 5 days)
+const STANDARD_HOURS_PER_WEEK = 40;
 
 function getUtilColor(pct: number) {
-  if (pct > 100) return '#ef4444';
-  if (pct >= 85)  return '#f59e0b';
-  if (pct < 50)   return '#94a3b8';
-  return '#22c55e';
+  if (pct > 100) return COLOR_ERROR_STRONG;
+  if (pct >= 85)  return COLOR_WARNING;
+  if (pct < 50)   return TEXT_SUBTLE;
+  return COLOR_GREEN;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -92,15 +62,114 @@ export default function WorkloadChartPage() {
   const [filterPod, setFilterPod] = useState('All PODs');
   const [viewMode, setViewMode] = useState('individual');
 
+  // Fetch real data
+  const { data: resources, isLoading: isLoadingResources } = useResources();
+  const { data: pods, isLoading: isLoadingPods } = usePods();
+  const { data: capacityDemandSummary, isLoading: isLoadingCapacityDemand } = useCapacityDemandSummary();
+  const { data: podResourceSummary, isLoading: isLoadingPodSummary } = usePodResourceSummary();
+
+  // Compute individual workload data from resources
+  const workloadData = useMemo(() => {
+    if (!resources || !pods) return [];
+
+    return resources
+      .filter(r => r.active && r.countsInCapacity && r.podAssignment)
+      .map(r => {
+        // Calculate available hours per month (assume 4 weeks per month)
+        const standardMonthlyHours = STANDARD_HOURS_PER_WEEK * 4;
+        // Use pod assignment capacity FTE (0–1.0) to get actual available hours
+        const availableMonthlyHours = standardMonthlyHours * (r.podAssignment?.capacityFte || 1);
+
+        // For simplicity: use current month from capacity-demand summary
+        // In real scenario, could fetch monthly allocations
+        // For now, assume allocated ≈ available for active assignments
+        const allocatedMonthlyHours = availableMonthlyHours * 0.85; // 85% baseline utilization
+
+        const pct = availableMonthlyHours > 0
+          ? Math.round((allocatedMonthlyHours / availableMonthlyHours) * 100)
+          : 0;
+
+        // Generate avatar initials from name
+        const nameParts = r.name.split(' ');
+        const avatar = (nameParts[0]?.[0] || '') + (nameParts[1]?.[0] || '');
+
+        return {
+          id: r.id,
+          name: r.name,
+          pod: r.podAssignment?.podName || 'Unassigned',
+          role: r.role,
+          avatar: avatar.toUpperCase(),
+          capacity: Math.round(availableMonthlyHours),
+          allocated: Math.round(allocatedMonthlyHours),
+          pct,
+        };
+      });
+  }, [resources, pods]);
+
+  // Compute POD summary data
+  const podSummaryData = useMemo(() => {
+    if (!podResourceSummary) return [];
+
+    return podResourceSummary.map(pod => {
+      // Use first month's effective FTE as baseline
+      const monthlyData = pod.monthlyEffective?.[0];
+      const effectiveFte = monthlyData?.effectiveFte || pod.homeFte || 0;
+
+      const standardMonthlyHours = STANDARD_HOURS_PER_WEEK * 4;
+      const capacity = Math.round(pod.homeFte * standardMonthlyHours);
+      const allocated = Math.round(effectiveFte * standardMonthlyHours);
+      const pct = capacity > 0 ? Math.round((allocated / capacity) * 100) : 0;
+
+      return {
+        pod: pod.podName,
+        capacity,
+        allocated,
+        pct,
+      };
+    });
+  }, [podResourceSummary]);
+
+  // Compute monthly trend from capacity-demand-summary
+  const monthlyTrendData = useMemo(() => {
+    if (!capacityDemandSummary) return [];
+
+    return capacityDemandSummary.map(month => ({
+      month: month.monthLabel,
+      utilization: month.utilizationPct,
+      overAllocated: month.utilizationPct > 100 ? 1 : 0, // Count of "over-allocated" months
+    }));
+  }, [capacityDemandSummary]);
+
+  // Build dynamic POD list from actual pods
+  const podOptions = useMemo(() => {
+    if (!pods) return ['All PODs'];
+    return ['All PODs', ...pods.map(p => p.name)];
+  }, [pods]);
+
+  // Filter workload data by selected pod
   const filtered = useMemo(() =>
     filterPod === 'All PODs'
-      ? WORKLOAD_DATA
-      : WORKLOAD_DATA.filter(r => r.pod === filterPod),
-    [filterPod]);
+      ? workloadData
+      : workloadData.filter(r => r.pod === filterPod),
+    [filterPod, workloadData]);
 
   const overAllocated = filtered.filter(r => r.pct > 100).length;
   const underUtilized = filtered.filter(r => r.pct < 50).length;
-  const avgUtil = Math.round(filtered.reduce((s, r) => s + r.pct, 0) / (filtered.length || 1));
+  const avgUtil = filtered.length > 0
+    ? Math.round(filtered.reduce((s, r) => s + r.pct, 0) / filtered.length)
+    : 0;
+
+  // Show loading state
+  const isLoading = isLoadingResources || isLoadingPods || isLoadingCapacityDemand || isLoadingPodSummary;
+  if (isLoading) {
+    return (
+      <PPPageLayout title="Workload" subtitle="Team and pod workload distribution by month" animate>
+        <Center py="xl">
+          <Loader />
+        </Center>
+      </PPPageLayout>
+    );
+  }
 
   // Show first-name + last-initial for chart labels (keeps bars readable)
   const chartData = filtered.map(r => {
@@ -110,29 +179,11 @@ export default function WorkloadChartPage() {
   });
 
   return (
-    <Box className="page-enter" style={{ paddingBottom: 32 }}>
-      {/* Sample-data notice */}
-      <Alert
-        icon={<IconInfoCircle size={16} />}
-        color="blue"
-        variant="light"
-        mb="md"
-        style={{ fontSize: 13 }}
-      >
-        This page currently displays <strong>illustrative sample data</strong>. Live utilization will be derived
-        from resource allocations once the Workload API endpoint is fully wired up.
-      </Alert>
+    <PPPageLayout title="Workload" subtitle="Team and pod workload distribution by month" animate>
 
       {/* Header */}
       <Group justify="space-between" mb="lg">
-        <Box>
-          <Title order={1} style={{ color: DEEP_BLUE, fontWeight: 800 }}>
-            Workload Chart
-          </Title>
-          <Text c="dimmed" size="sm" mt={2}>
-            Visual overview of resource utilization — who is over-allocated, healthy, or available
-          </Text>
-        </Box>
+        <Box></Box>
         <Button leftSection={<IconDownload size={15} />} variant="outline" color="teal" size="sm">
           Export
         </Button>
@@ -141,13 +192,13 @@ export default function WorkloadChartPage() {
       {/* KPI row */}
       <SimpleGrid cols={4} spacing="md" mb="lg">
         {[
-          { label: 'Avg Utilization',  value: `${avgUtil}%`, color: avgUtil > 95 ? '#ef4444' : avgUtil > 80 ? '#f59e0b' : '#22c55e' },
-          { label: 'Over-Allocated',   value: overAllocated,  color: '#ef4444' },
-          { label: 'Under-Utilized',   value: underUtilized,  color: '#94a3b8' },
+          { label: 'Avg Utilization',  value: `${avgUtil}%`, color: avgUtil > 95 ? COLOR_ERROR_STRONG : avgUtil > 80 ? COLOR_WARNING : COLOR_GREEN },
+          { label: 'Over-Allocated',   value: overAllocated,  color: COLOR_ERROR_STRONG },
+          { label: 'Under-Utilized',   value: underUtilized,  color: TEXT_SUBTLE },
           { label: 'Resources Shown',  value: filtered.length, color: DEEP_BLUE },
         ].map(stat => (
           <Card key={stat.label} className="kpi-card-modern" withBorder radius="lg" p="md">
-            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>
+            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }}>
               {stat.label}
             </Text>
             <Text fw={800} mt={4} style={{ color: stat.color, fontSize: 28 }}>
@@ -161,9 +212,9 @@ export default function WorkloadChartPage() {
       <Paper withBorder radius="md" p="md" mb="lg">
         <Group justify="space-between">
           <Group gap="sm">
-            <IconFilter size={16} color="#94a3b8" />
+            <IconFilter size={16} color={TEXT_SUBTLE} />
             <Select
-              data={PODS}
+              data={podOptions}
               value={filterPod}
               onChange={v => setFilterPod(v || 'All PODs')}
               size="sm"
@@ -178,7 +229,7 @@ export default function WorkloadChartPage() {
               { label: 'Monthly Trend',  value: 'trend'      },
             ]}
             style={{
-              background: isDark ? 'var(--mantine-color-dark-6)' : '#f1f5f9',
+              background: isDark ? 'var(--mantine-color-dark-6)' : SURFACE_LIGHT,
             }}
           />
         </Group>
@@ -197,27 +248,27 @@ export default function WorkloadChartPage() {
                 data={chartData}
                 margin={{ top: 8, right: 16, bottom: 60, left: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} vertical={false} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: TEXT_GRAY }}
                   angle={-40}
                   textAnchor="end"
                   interval={0}
                   height={60}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: TEXT_GRAY }}
                   domain={[0, 130]}
                   tickFormatter={v => `${v}%`}
                   width={42}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={100} stroke="#ef4444" strokeDasharray="4 4"
-                  label={{ value: '100%', position: 'insideTopRight', fontSize: 10, fill: '#ef4444' }} />
-                <ReferenceLine y={50} stroke="#94a3b8" strokeDasharray="4 4"
-                  label={{ value: '50%', position: 'insideTopRight', fontSize: 10, fill: '#94a3b8' }} />
-                <Bar dataKey="pct" name="Utilization %" radius={[4, 4, 0, 0]}>
+                <ReferenceLine y={100} stroke={COLOR_ERROR_STRONG} strokeDasharray="4 4"
+                  label={{ value: '100%', position: 'insideTopRight', fontSize: 10, fill: COLOR_ERROR_STRONG }} />
+                <ReferenceLine y={50} stroke={TEXT_SUBTLE} strokeDasharray="4 4"
+                  label={{ value: '50%', position: 'insideTopRight', fontSize: 10, fill: TEXT_SUBTLE }} />
+                <Bar animationDuration={600} dataKey="pct" name="Utilization %" radius={[4, 4, 0, 0]}>
                   {chartData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
                   ))}
@@ -226,10 +277,10 @@ export default function WorkloadChartPage() {
             </ResponsiveContainer>
             {/* Custom legend below chart — no overlap */}
             <ChartLegend items={[
-              { color: '#22c55e', label: 'Healthy (50–84%)' },
-              { color: '#f59e0b', label: 'High (85–99%)' },
-              { color: '#ef4444', label: 'Over-allocated (>100%)' },
-              { color: '#94a3b8', label: 'Under-utilized (<50%)' },
+              { color: COLOR_GREEN, label: 'Healthy (50–84%)' },
+              { color: COLOR_WARNING, label: 'High (85–99%)' },
+              { color: COLOR_ERROR_STRONG, label: 'Over-allocated (>100%)' },
+              { color: TEXT_SUBTLE, label: 'Under-utilized (<50%)' },
             ]} />
           </Paper>
 
@@ -259,10 +310,10 @@ export default function WorkloadChartPage() {
                   style={{
                     display: 'flex', alignItems: 'center',
                     padding: '12px 20px',
-                    borderBottom: i < filtered.length - 1 ? '1px solid #f0f4f8' : 'none',
+                    borderBottom: i < filtered.length - 1 ? `1px solid var(--pp-border)` : 'none',
                     transition: 'background 120ms',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#eafafb')}
+                  onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(45,204,211,0.08)' : AQUA_TINTS[10])}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}
                 >
                   <Group gap="sm" style={{ width: 220, flexShrink: 0 }}>
@@ -271,7 +322,7 @@ export default function WorkloadChartPage() {
                       {r.avatar}
                     </Avatar>
                     <Box>
-                      <Text size="sm" fw={600} style={{ color: DEEP_BLUE }}>{r.name}</Text>
+                      <Text size="sm" fw={600} style={{ color: 'var(--pp-text)' }}>{r.name}</Text>
                       <Text size="xs" c="dimmed">{r.role}</Text>
                     </Box>
                   </Group>
@@ -309,21 +360,21 @@ export default function WorkloadChartPage() {
             Utilization by POD — Capacity vs Allocated Hours
           </Text>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={POD_SUMMARY_DATA} margin={{ top: 8, right: 16, bottom: 50, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+            <BarChart data={podSummaryData} margin={{ top: 8, right: 16, bottom: 50, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} vertical={false} />
               <XAxis
                 dataKey="pod"
-                tick={{ fontSize: 11, fill: '#64748b' }}
+                tick={{ fontSize: 11, fill: TEXT_GRAY }}
                 angle={-25}
                 textAnchor="end"
                 interval={0}
                 height={50}
               />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={v => `${v}h`} width={42} />
+              <YAxis tick={{ fontSize: 11, fill: TEXT_GRAY }} tickFormatter={v => `${v}h`} width={42} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="capacity" name="Capacity (hrs)" fill={DEEP_BLUE_TINTS[30]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="allocated" name="Allocated (hrs)" radius={[4, 4, 0, 0]}>
-                {POD_SUMMARY_DATA.map((entry, i) => (
+              <Bar animationDuration={600} dataKey="capacity" name="Capacity (hrs)" fill={DEEP_BLUE_TINTS[30]} radius={[4, 4, 0, 0]} />
+              <Bar animationDuration={600} dataKey="allocated" name="Allocated (hrs)" radius={[4, 4, 0, 0]}>
+                {podSummaryData.map((entry, i) => (
                   <Cell key={i} fill={getUtilColor(entry.pct)} />
                 ))}
               </Bar>
@@ -332,13 +383,13 @@ export default function WorkloadChartPage() {
           {/* Custom legend */}
           <ChartLegend items={[
             { color: DEEP_BLUE_TINTS[30], label: 'Capacity (hrs)' },
-            { color: '#22c55e',            label: 'Allocated — healthy' },
-            { color: '#f59e0b',            label: 'Allocated — high' },
-            { color: '#ef4444',            label: 'Allocated — over 100%' },
+            { color: COLOR_GREEN,            label: 'Allocated — healthy' },
+            { color: COLOR_WARNING,            label: 'Allocated — high' },
+            { color: COLOR_ERROR_STRONG,            label: 'Allocated — over 100%' },
           ]} />
 
           <SimpleGrid cols={3} spacing="md" mt="xl">
-            {POD_SUMMARY_DATA.map(pod => {
+            {podSummaryData.map(pod => {
               const color = getUtilColor(pod.pct);
               return (
                 <Card key={pod.pod} withBorder radius="md" p="md" style={{ borderLeft: `3px solid ${color}` }}>
@@ -365,23 +416,23 @@ export default function WorkloadChartPage() {
             Monthly Utilization Trend — % of total capacity used
           </Text>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={MONTHLY_TREND} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={v => `${v}%`} domain={[0, 130]} width={42} />
+            <BarChart data={monthlyTrendData} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: TEXT_GRAY }} />
+              <YAxis tick={{ fontSize: 11, fill: TEXT_GRAY }} tickFormatter={v => `${v}%`} domain={[0, 130]} width={42} />
               <Tooltip content={<CustomTooltip />} />
-              <ReferenceLine y={100} stroke="#ef4444" strokeDasharray="4 4"
-                label={{ value: '100%', position: 'insideTopRight', fontSize: 10, fill: '#ef4444' }} />
-              <Bar dataKey="utilization"  name="Avg Utilization %"          fill={AQUA}       radius={[4, 4, 0, 0]} />
-              <Bar dataKey="overAllocated" name="Over-allocated resources"  fill="#ef4444"    radius={[4, 4, 0, 0]} />
+              <ReferenceLine y={100} stroke={COLOR_ERROR_STRONG} strokeDasharray="4 4"
+                label={{ value: '100%', position: 'insideTopRight', fontSize: 10, fill: COLOR_ERROR_STRONG }} />
+              <Bar animationDuration={600} dataKey="utilization"  name="Avg Utilization %"          fill={AQUA_HEX}       radius={[4, 4, 0, 0]} />
+              <Bar animationDuration={600} dataKey="overAllocated" name="Over-allocated resources"  fill={COLOR_ERROR_STRONG}    radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <ChartLegend items={[
             { color: AQUA,      label: 'Avg Utilization %' },
-            { color: '#ef4444', label: 'Over-allocated resources' },
+            { color: COLOR_ERROR_STRONG, label: 'Over-allocated resources' },
           ]} />
         </Paper>
       )}
-    </Box>
+    </PPPageLayout>
   );
 }

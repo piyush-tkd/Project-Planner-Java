@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { COLOR_ERROR, COLOR_SUCCESS, TEXT_DIM } from '../../brandTokens';
 
 interface CapacityBarChartProps {
   data: { month: string; demand: number; capacity: number }[];
@@ -27,13 +28,13 @@ export default function CapacityBarChart({ data, unit = 'hours' }: CapacityBarCh
             angle: -90,
             position: 'insideLeft',
             offset: -5,
-            style: { fontSize: 11, fill: '#868e96' },
+            style: { fontSize: 11, fill: TEXT_DIM },
           }}
         />
         <Tooltip formatter={tooltipFormatter} />
         <Legend />
-        <Bar dataKey="demand" fill="#fa5252" name="Demand" />
-        <Bar dataKey="capacity" fill="#40c057" name="Capacity" />
+        <Bar dataKey="demand" fill={COLOR_ERROR} name="Demand" />
+        <Bar dataKey="capacity" fill={COLOR_SUCCESS} name="Capacity" />
       </BarChart>
     </ResponsiveContainer>
   );

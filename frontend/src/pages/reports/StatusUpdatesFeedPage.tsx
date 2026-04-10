@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Title, Text, Stack, Group, Badge, Card, Select, Loader, Center,
+  Title, Text, Stack, Group, Badge, Card, Select, Skeleton, Center,
   Button, Modal, Textarea, ActionIcon, Tooltip, SimpleGrid, ThemeIcon,
 } from '@mantine/core';
 import {
@@ -8,6 +8,7 @@ import {
   IconCircleCheck, IconCircleX, IconDownload,
 } from '@tabler/icons-react';
 import { downloadCsv } from '../../utils/csv';
+import { exportToPdf } from '../../utils/pdf';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from 'react-router-dom';
@@ -106,6 +107,14 @@ export default function StatusUpdatesFeedPage() {
             <IconRefresh size={16} />
           </ActionIcon>
           <Button
+            variant="light"
+            color="red"
+            leftSection={<IconDownload size={14} />}
+            onClick={() => exportToPdf('Status Updates Feed')}
+          >
+            Export PDF
+          </Button>
+          <Button
             variant="default"
             leftSection={<IconDownload size={14} />}
             onClick={() =>
@@ -182,7 +191,7 @@ export default function StatusUpdatesFeedPage() {
 
       {/* Feed */}
       {isLoading ? (
-        <Center h={200}><Loader /></Center>
+        <Stack gap="xs">{[...Array(4)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
       ) : feed.length === 0 ? (
         <Center h={200}>
           <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>

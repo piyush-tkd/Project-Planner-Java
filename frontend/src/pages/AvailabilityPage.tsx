@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import {
-  Title, Stack, Table, NumberInput, Button, Text, Group,
+  Stack, Table, NumberInput, Button, Text, Group,
   Checkbox, Menu, ActionIcon, Tooltip, Badge, Paper, Select,
   UnstyledButton, ScrollArea, SimpleGrid, RingProgress, Center,
   Divider, SegmentedControl, ThemeIcon, TextInput, Avatar,
 } from '@mantine/core';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
+import { DEEP_BLUE, FONT_FAMILY, GRAY_300, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUBTLE, COLOR_BLUE_LIGHT, COLOR_ORANGE_ALT, COLOR_ORANGE} from '../brandTokens';
 import { notifications } from '@mantine/notifications';
 import {
   IconCopy, IconChecks, IconTemplate, IconAlertTriangle,
@@ -81,7 +82,7 @@ export default function AvailabilityPage() {
   const months      = Array.from({ length: 12 }, (_, i) => i + 1);
   const resourceList = useMemo(() => availability ?? [], [availability]);
 
-  const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
   const overBg = dark ? 'rgba(255, 152, 0, 0.12)' : '#fff3e0';
 
   /* ── Helpers ───────────────────────────────── */
@@ -298,23 +299,8 @@ export default function AvailabilityPage() {
     : 100;
 
   return (
-    <Stack className="page-enter stagger-children" gap="md">
-
-      {/* ── Header ────────────────────────────────── */}
-      <Group justify="space-between" className="slide-in-left">
-        <Group gap="sm">
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
-            Availability
-          </Title>
-          <Text c="dimmed" size="sm">Hours per month · {planningYear}</Text>
-          {warningCount > 0 && (
-            <Tooltip label={`${warningCount} cell(s) exceed the resource's FTE capacity`}>
-              <Badge color="orange" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
-                {warningCount} over-allocated
-              </Badge>
-            </Tooltip>
-          )}
-        </Group>
+    <PPPageLayout title="Availability" subtitle="Monthly availability and capacity per resource" animate
+      actions={
         <Group gap="sm">
           <CsvToolbar
             data={resourceList}
@@ -338,7 +324,21 @@ export default function AvailabilityPage() {
             Save Changes
           </Button>
         </Group>
-      </Group>
+      }
+    >
+      <Stack className="page-enter stagger-children" gap="md">
+
+        {/* ── Header info row ────────────────────────────────── */}
+        <Group gap="sm" className="slide-in-left">
+          <Text c="dimmed" size="sm">Hours per month · {planningYear}</Text>
+          {warningCount > 0 && (
+            <Tooltip label={`${warningCount} cell(s) exceed the resource's FTE capacity`}>
+              <Badge color="orange" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
+                {warningCount} over-allocated
+              </Badge>
+            </Tooltip>
+          )}
+        </Group>
 
       {/* ── Summary Stats ─────────────────────────── */}
       <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="sm">
@@ -495,15 +495,15 @@ export default function AvailabilityPage() {
       {/* ── Legend ──────────────────────────────── */}
       <Group gap="lg" px={4}>
         <Group gap={6}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(99,179,237,0.2)' : '#dbeafe', border: '1px solid #93c5fd' }} />
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(99,179,237,0.2)' : SURFACE_BLUE_LIGHT, borderColor: dark ? 'rgba(99,179,237,0.6)' : COLOR_BLUE_LIGHT, border: `1px solid ${dark ? 'rgba(99,179,237,0.6)' : COLOR_BLUE_LIGHT}` }} />
           <Text size="xs" c="dimmed">🎌 Holiday deducted (blue)</Text>
         </Group>
         <Group gap={6}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(251,146,60,0.2)' : '#ffedd5', border: '1px solid #f97316' }} />
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(251,146,60,0.2)' : SURFACE_ORANGE, borderColor: dark ? 'rgba(251,146,60,0.6)' : COLOR_ORANGE_ALT, border: `1px solid ${dark ? 'rgba(251,146,60,0.6)' : COLOR_ORANGE_ALT}` }} />
           <Text size="xs" c="dimmed">🌴 Leave deducted (amber)</Text>
         </Group>
         <Group gap={6}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(255,152,0,0.12)' : '#fff3e0', border: '1px solid #fb923c' }} />
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: dark ? 'rgba(255,152,0,0.12)' : '#fff3e0', borderColor: dark ? 'rgba(255,152,0,0.5)' : COLOR_ORANGE, border: `1px solid ${dark ? 'rgba(255,152,0,0.5)' : COLOR_ORANGE}` }} />
           <Text size="xs" c="dimmed">Over-allocated (orange)</Text>
         </Group>
         <Text size="xs" c="dimmed" style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
@@ -536,7 +536,7 @@ export default function AvailabilityPage() {
                   key={m}
                   style={{
                     textAlign: 'center', fontSize: 11, minWidth: 72, cursor: 'pointer',
-                    ...(currentMonthIndex && m < currentMonthIndex ? { color: '#adb5bd', backgroundColor: pastBg } : {}),
+                    ...(currentMonthIndex && m < currentMonthIndex ? { color: GRAY_300, backgroundColor: pastBg } : {}),
                   }}
                   onClick={() => toggleSort(m)}
                 >
@@ -651,7 +651,7 @@ export default function AvailabilityPage() {
                     const isPast      = !!currentMonthIndex && m < currentMonthIndex;
                     const hasDeduct   = holidayH > 0 || leaveH > 0;
                     const leaveBg     = dark ? 'rgba(251,146,60,0.12)' : '#fff7ed';
-                    const holidayBg   = dark ? 'rgba(99,179,237,0.12)' : '#eff6ff';
+                    const holidayBg   = dark ? 'rgba(99,179,237,0.12)' : SURFACE_BLUE;
 
                     const cellBg = (() => {
                       if (isPast) return pastBg;
@@ -725,7 +725,7 @@ export default function AvailabilityPage() {
 
           {/* ── Totals footer ───────────────────── */}
           <Table.Tfoot>
-            <Table.Tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}>
+            <Table.Tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : SURFACE_LIGHT }}>
               <Table.Td colSpan={3} style={{ padding: '6px 8px' }}>
                 <Text size="xs" fw={700} c="dimmed">
                   TOTALS ({sortedList.length} resources)
@@ -745,6 +745,7 @@ export default function AvailabilityPage() {
           </Table.Tfoot>
         </Table>
       </ScrollArea>
-    </Stack>
+      </Stack>
+    </PPPageLayout>
   );
 }

@@ -10,13 +10,14 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours, formatPercent, formatGapHours, formatFte, formatGapFte } from '../../utils/formatting';
 import { getUtilizationBgColor, getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
+import { PageInsightCard } from '../../components/common/PageInsightCard';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 
-const POD_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+const POD_COLORS = [COLOR_BLUE, COLOR_VIOLET_ALT, COLOR_TEAL, COLOR_WARNING, COLOR_ERROR_STRONG, '#06b6d4', '#ec4899', '#14b8a6', COLOR_ORANGE_ALT, '#6366f1'];
 
 export default function CapacityDemandPage() {
  const [unit, setUnit] = useState<'hours' | 'fte'>('hours');
@@ -171,6 +172,7 @@ export default function CapacityDemandPage() {
 
  return (
  <Stack className="page-enter stagger-children">
+ <PageInsightCard pageKey="capacity" />
  <Group className="slide-in-left">
  <div>
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Capacity vs Demand</Title>
@@ -214,8 +216,8 @@ export default function CapacityDemandPage() {
  <YAxis fontSize={11} tickFormatter={tickFmt} />
  <Tooltip formatter={(value: number) => tooltipFmt(value)} />
  <Legend />
- <Line type="monotone" dataKey="capacity" stroke="#1e40af" strokeWidth={2.5} dot={{ r: 3.5 }} name="Capacity" />
- <Line type="monotone" dataKey="demand" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 3.5 }} name="Demand" />
+ <Line animationDuration={600} type="monotone" dataKey="capacity" stroke="#1e40af" strokeWidth={2.5} dot={{ r: 3.5 }} name="Capacity" />
+ <Line animationDuration={600} type="monotone" dataKey="demand" stroke={COLOR_VIOLET} strokeWidth={2.5} dot={{ r: 3.5 }} name="Demand" />
  </LineChart>
  </ResponsiveContainer>
  </ExportableChart>
@@ -233,7 +235,7 @@ export default function CapacityDemandPage() {
  <Tooltip formatter={(value: number) => tooltipFmt(value as number)} />
  <Legend wrapperStyle={{ fontSize: 10 }} />
  {pods.map(pod => (
- <Bar key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
+ <Bar animationDuration={600} key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
  ))}
  </BarChart>
  </ResponsiveContainer>
@@ -251,7 +253,7 @@ export default function CapacityDemandPage() {
  <Tooltip formatter={(value: number) => tooltipFmt(value as number)} />
  <Legend wrapperStyle={{ fontSize: 10 }} />
  {pods.map(pod => (
- <Bar key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
+ <Bar animationDuration={600} key={pod} dataKey={pod} stackId="s" fill={podColorMap[pod] + 'cc'} />
  ))}
  </BarChart>
  </ResponsiveContainer>
@@ -341,8 +343,8 @@ export default function CapacityDemandPage() {
  <YAxis fontSize={10} tickFormatter={tickFmt} />
  <Tooltip formatter={(value: number) => tooltipFmt(value)} />
  <Legend />
- <Bar dataKey={isFte ? 'capacityFte' : 'capacity'} fill="#1e40af" name="Capacity" />
- <Bar dataKey={isFte ? 'demandFte' : 'demand'} fill="#7c3aed" name="Demand" />
+ <Bar animationDuration={600} dataKey={isFte ? 'capacityFte' : 'capacity'} fill="#1e40af" name="Capacity" />
+ <Bar animationDuration={600} dataKey={isFte ? 'demandFte' : 'demand'} fill={COLOR_VIOLET} name="Demand" />
  </BarChart>
  </ResponsiveContainer>
  </ExportableChart>

@@ -24,7 +24,7 @@ import PageError from '../../components/common/PageError';
 import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
 import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW } from '../../brandTokens';
+import { AQUA, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_DEEP, COLOR_ERROR_STRONG, COLOR_GREEN_DARK, COLOR_GREEN_LIGHT, COLOR_ORANGE, COLOR_ORANGE_ALT, COLOR_ORANGE_DARK, COLOR_SUCCESS, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM, DEEP_BLUE_TINTS, TEXT_MUTED} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Local Types ───────────────────────────────────────────────────────────────
@@ -56,16 +56,16 @@ interface RebalanceSuggestion {
 function getSlackColors(gapHours: number, isDark = false): { bg: string; text: string } {
   if (isDark) {
     if (gapHours > 160) return { bg: 'rgba(47,158,68,0.35)', text: '#69db7c' };
-    if (gapHours > 0)   return { bg: 'rgba(64,192,87,0.12)', text: '#51cf66' };
+    if (gapHours > 0)   return { bg: 'rgba(64,192,87,0.12)', text: COLOR_GREEN_LIGHT };
     if (Math.abs(gapHours) <= 8) return { bg: 'rgba(255,255,255,0.04)', text: 'rgba(255,255,255,0.5)' };
     if (gapHours > -160) return { bg: 'rgba(230,119,0,0.20)', text: '#ffc078' };
     return { bg: 'rgba(201,42,42,0.30)', text: '#ff8787' };
   }
-  if (gapHours > 160) return { bg: '#d3f9d8', text: '#2f9e44' };
-  if (gapHours > 0)   return { bg: '#ebfbee', text: '#40c057' };
-  if (Math.abs(gapHours) <= 8) return { bg: '#f8f9fa', text: '#868e96' };
-  if (gapHours > -160) return { bg: '#fff3bf', text: '#e67700' };
-  return { bg: '#ffe3e3', text: '#c92a2a' };
+  if (gapHours > 160) return { bg: SURFACE_SUCCESS, text: COLOR_GREEN_DARK };
+  if (gapHours > 0)   return { bg: '#ebfbee', text: COLOR_SUCCESS };
+  if (Math.abs(gapHours) <= 8) return { bg: SURFACE_SUBTLE, text: TEXT_DIM };
+  if (gapHours > -160) return { bg: SURFACE_WARNING, text: COLOR_ORANGE_DARK };
+  return { bg: SURFACE_ERROR, text: COLOR_ERROR_DEEP };
 }
 
 // ── Smart Rebalancing Algorithm ───────────────────────────────────────────────
@@ -237,7 +237,7 @@ export default function UtilizationCenterPage() {
             <Stack gap={4} mt={4}>
               {missingDemandProjects.map(p => (
                 <Group key={p.id} gap={8} wrap="nowrap" align="flex-start">
-                  <IconAlertTriangle size={12} color="#f59e0b" style={{ marginTop: 3 }} />
+                  <IconAlertTriangle size={12} color={COLOR_WARNING} style={{ marginTop: 3 }} />
                   <div>
                     <Group gap={6} wrap="nowrap">
                       <Anchor
@@ -331,7 +331,7 @@ export default function UtilizationCenterPage() {
 
           <Tabs.Tab
             value="concurrency"
-            leftSection={<IconAlertTriangle size={15} color={activeTab === 'concurrency' ? '#f59e0b' : undefined} />}
+            leftSection={<IconAlertTriangle size={15} color={activeTab === 'concurrency' ? COLOR_WARNING : undefined} />}
           >
             Concurrency Risk
           </Tabs.Tab>
@@ -454,10 +454,10 @@ function UtilizationTab({
         </Box>
         <Group gap="sm" ml="auto">
           {[
-            { label: '<80%', bg: dark ? 'rgba(64,192,87,0.15)' : '#d3f9d8', text: '#40c057' },
-            { label: '80–100%', bg: dark ? 'rgba(250,176,5,0.15)' : '#fff3bf', text: '#e67700' },
+            { label: '<80%', bg: dark ? 'rgba(64,192,87,0.15)' : SURFACE_SUCCESS, text: COLOR_SUCCESS },
+            { label: '80–100%', bg: dark ? 'rgba(250,176,5,0.15)' : SURFACE_WARNING, text: COLOR_ORANGE_DARK },
             { label: '100–120%', bg: dark ? 'rgba(253,126,20,0.2)' : '#ffe8cc', text: '#e8590c' },
-            { label: '>120%', bg: dark ? 'rgba(250,82,82,0.2)' : '#ffe3e3', text: '#c92a2a' },
+            { label: '>120%', bg: dark ? 'rgba(250,82,82,0.2)' : SURFACE_ERROR, text: COLOR_ERROR_DEEP },
           ].map(item => (
             <Group key={item.label} gap={4} wrap="nowrap">
               <Box style={{ width: 14, height: 14, background: item.bg, border: `1px solid ${item.text}`, borderRadius: 3 }} />
@@ -508,10 +508,10 @@ function SlackBufferTab({
 
   const podOptions = allPodNames.map(p => ({ value: p, label: p }));
   const TH_STYLE: React.CSSProperties = {
-    background: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE,
-    color: dark ? 'rgba(255,255,255,0.9)' : '#fff',
+    background: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10],
+    color: 'var(--pp-text)',
     padding: '10px 12px', fontWeight: 600, whiteSpace: 'nowrap' as const,
-    borderBottom: dark ? '1px solid rgba(255,255,255,0.08)' : undefined,
+    borderBottom: `1px solid var(--pp-border)`,
   };
 
   return (
@@ -529,11 +529,11 @@ function SlackBufferTab({
         />
         <Group gap="xs" ml="auto">
           {[
-            { range: '>160h', bg: dark ? 'rgba(47,158,68,0.35)' : '#d3f9d8', text: dark ? '#69db7c' : '#2f9e44' },
-            { range: '0–160h', bg: dark ? 'rgba(64,192,87,0.12)' : '#ebfbee', text: dark ? '#51cf66' : '#40c057' },
-            { range: '±0', bg: dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa', text: dark ? 'rgba(255,255,255,0.4)' : '#868e96' },
-            { range: '-160–0', bg: dark ? 'rgba(230,119,0,0.20)' : '#fff3bf', text: dark ? '#ffc078' : '#e67700' },
-            { range: '<-160h', bg: dark ? 'rgba(201,42,42,0.30)' : '#ffe3e3', text: dark ? '#ff8787' : '#c92a2a' },
+            { range: '>160h', bg: dark ? 'rgba(47,158,68,0.35)' : SURFACE_SUCCESS, text: dark ? '#69db7c' : COLOR_GREEN_DARK },
+            { range: '0–160h', bg: dark ? 'rgba(64,192,87,0.12)' : '#ebfbee', text: dark ? COLOR_GREEN_LIGHT : COLOR_SUCCESS },
+            { range: '±0', bg: dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE, text: dark ? 'rgba(255,255,255,0.4)' : TEXT_DIM },
+            { range: '-160–0', bg: dark ? 'rgba(230,119,0,0.20)' : SURFACE_WARNING, text: dark ? '#ffc078' : COLOR_ORANGE_DARK },
+            { range: '<-160h', bg: dark ? 'rgba(201,42,42,0.30)' : SURFACE_ERROR, text: dark ? '#ff8787' : COLOR_ERROR_DEEP },
           ].map(item => (
             <Group key={item.range} gap={4} wrap="nowrap">
               <Box style={{ width: 14, height: 14, background: item.bg, border: `1px solid ${item.text}`, borderRadius: 3 }} />
@@ -563,23 +563,23 @@ function SlackBufferTab({
           <tbody>
             {allPodNames.map(podName => (
               <tr key={podName}>
-                <td style={{ background: dark ? 'rgba(255,255,255,0.04)' : DEEP_BLUE, color: dark ? 'rgba(255,255,255,0.9)' : '#fff',
+                <td style={{ background: dark ? 'rgba(255,255,255,0.04)' : DEEP_BLUE_TINTS[10], color: 'var(--pp-text)',
                   padding: '10px 12px', fontWeight: 600, position: 'sticky', left: 0, zIndex: 1,
-                  borderBottom: dark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                  borderBottom: `1px solid var(--pp-border)` }}>
                   {podName}
                 </td>
                 {months.map(m => {
                   const gap = filteredGaps.find(g => g.podName === podName && g.monthIndex === m);
                   if (!gap) return (
-                    <td key={m} style={{ padding: '10px 12px', textAlign: 'center', color: dark ? 'rgba(255,255,255,0.2)' : '#ccc',
-                      borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}` }}>—</td>
+                    <td key={m} style={{ padding: '10px 12px', textAlign: 'center', color: TEXT_MUTED,
+                      borderBottom: `1px solid var(--pp-border)` }}>—</td>
                   );
                   const displayHours = viewMode === 'hours' ? gap.gapHours : gap.gapFte * 160;
                   const cols = getSlackColors(displayHours, dark);
                   return (
                     <td key={m} onClick={() => { setSelectedCell(gap); setModalOpened(true); }}
                       style={{ background: cols.bg, padding: '10px 12px', textAlign: 'center', cursor: 'pointer',
-                        borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e9ecef'}`,
+                        borderBottom: `1px solid var(--pp-border)`,
                         transition: 'opacity 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
                       onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
@@ -598,7 +598,7 @@ function SlackBufferTab({
             ))}
             {/* Totals row */}
             <tr>
-              <td style={{ background: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE, color: dark ? 'rgba(255,255,255,0.9)' : '#fff',
+              <td style={{ background: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], color: 'var(--pp-text)',
                 padding: '10px 12px', fontWeight: 600, position: 'sticky', left: 0, zIndex: 1 }}>Total</td>
               {months.map(m => {
                 const t = monthTotals.get(m) ?? { hours: 0, fte: 0 };
@@ -779,13 +779,13 @@ function SmartRebalancingTab({
       {/* POD Balance Overview */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {/* Overloaded */}
-        <Card withBorder padding="lg" style={{ borderColor: dark ? '#c92a2a' : '#ffc9c9' }}>
+        <Card withBorder padding="lg" style={{ borderColor: dark ? COLOR_ERROR_DEEP : '#ffc9c9' }}>
           <Group mb="md">
             <ThemeIcon size={32} radius="xl" variant="light" color="red">
               <IconTrendingDown size={18} />
             </ThemeIcon>
             <div>
-              <Text fw={700} size="sm" style={{ color: dark ? '#ff8787' : '#c92a2a' }}>
+              <Text fw={700} size="sm" style={{ color: dark ? '#ff8787' : COLOR_ERROR_DEEP }}>
                 Overloaded PODs
               </Text>
               <Text size="xs" c="dimmed">Avg demand exceeds capacity</Text>
@@ -803,13 +803,13 @@ function SmartRebalancingTab({
         </Card>
 
         {/* Underloaded */}
-        <Card withBorder padding="lg" style={{ borderColor: dark ? '#2f9e44' : '#b2f2bb' }}>
+        <Card withBorder padding="lg" style={{ borderColor: dark ? COLOR_GREEN_DARK : '#b2f2bb' }}>
           <Group mb="md">
             <ThemeIcon size={32} radius="xl" variant="light" color="green">
               <IconTrendingUp size={18} />
             </ThemeIcon>
             <div>
-              <Text fw={700} size="sm" style={{ color: dark ? '#69db7c' : '#2f9e44' }}>
+              <Text fw={700} size="sm" style={{ color: dark ? '#69db7c' : COLOR_GREEN_DARK }}>
                 Underloaded PODs
               </Text>
               <Text size="xs" c="dimmed">Have available capacity to lend</Text>
@@ -951,7 +951,7 @@ function SuggestionCard({
 }
 
 // ── Tab 4: Concurrency Risk ───────────────────────────────────────────────────
-const POD_COLORS_CONC = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#14b8a6','#f97316','#6366f1'];
+const POD_COLORS_CONC = [COLOR_BLUE,COLOR_VIOLET_ALT,COLOR_TEAL,COLOR_WARNING,COLOR_ERROR_STRONG,'#06b6d4','#ec4899','#14b8a6',COLOR_ORANGE_ALT,'#6366f1'];
 
 function ConcurrencyRiskTab({ data, gapData, monthLabels, currentMonthIndex, dark }: {
   data: { podId: number; podName: string; monthIndex: number; activeProjectCount: number; riskLevel: string }[];
@@ -962,7 +962,7 @@ function ConcurrencyRiskTab({ data, gapData, monthLabels, currentMonthIndex, dar
 }) {
   const [selectedPods, setSelectedPods] = useState<string[]>([]);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
 
   const allPodRows = useMemo(() => {
     const podMap = new Map<string, Map<number, { count: number; riskLevel: string }>>();
@@ -1004,15 +1004,15 @@ function ConcurrencyRiskTab({ data, gapData, monthLabels, currentMonthIndex, dar
     <Stack gap="lg">
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
         <Card withBorder padding="md">
-          <Group gap="xs"><IconAlertTriangle size={18} color="#fa5252" /><Text size="sm" c="dimmed">High Risk POD-Months</Text></Group>
+          <Group gap="xs"><IconAlertTriangle size={18} color={COLOR_ERROR} /><Text size="sm" c="dimmed">High Risk POD-Months</Text></Group>
           <Text fw={700} size="xl" c="red">{stats.overloaded}</Text>
         </Card>
         <Card withBorder padding="md">
-          <Group gap="xs"><IconAlertTriangle size={18} color="#fd7e14" /><Text size="sm" c="dimmed">Medium Risk POD-Months</Text></Group>
+          <Group gap="xs"><IconAlertTriangle size={18} color={COLOR_ORANGE} /><Text size="sm" c="dimmed">Medium Risk POD-Months</Text></Group>
           <Text fw={700} size="xl" c="orange">{stats.tight}</Text>
         </Card>
         <Card withBorder padding="md">
-          <Group gap="xs"><IconTrendingUp size={18} color="#339af0" /><Text size="sm" c="dimmed">Peak Concurrent Projects</Text></Group>
+          <Group gap="xs"><IconTrendingUp size={18} color={COLOR_BLUE_LIGHT} /><Text size="sm" c="dimmed">Peak Concurrent Projects</Text></Group>
           <Text fw={700} size="xl">{stats.peakConcurrent}</Text>
         </Card>
       </SimpleGrid>
@@ -1080,7 +1080,7 @@ function ConcurrencyRiskTab({ data, gapData, monthLabels, currentMonthIndex, dar
             <RTooltip formatter={(value: number) => formatHours(value)} />
             <Legend wrapperStyle={{ fontSize: 10 }} />
             {activePods.map((pod, i) => (
-              <Bar key={pod} dataKey={pod} stackId="s" fill={POD_COLORS_CONC[i % POD_COLORS_CONC.length] + 'cc'} />
+              <Bar animationDuration={600} key={pod} dataKey={pod} stackId="s" fill={POD_COLORS_CONC[i % POD_COLORS_CONC.length] + 'cc'} />
             ))}
           </BarChart>
         </ResponsiveContainer>

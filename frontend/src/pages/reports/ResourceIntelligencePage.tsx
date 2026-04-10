@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, Box, Title, Text, Group } from '@mantine/core';
-import { IconChartPie, IconChartBar, IconCoin, IconUserSearch } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { IconChartPie, IconChartBar, IconCoin, IconUserSearch, IconRadar } from '@tabler/icons-react';
+import { AQUA, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -10,10 +10,11 @@ import ResourceAllocationPage from './ResourceAllocationPage';
 import ResourcePodMatrixPage from './ResourcePodMatrixPage';
 import ResourceROIPage from './ResourceROIPage';
 import ResourceForecastPage from './ResourceForecastPage';
+import ResourceInsightsPage from './ResourceInsightsPage';
 
 export default function ResourceIntelligencePage() {
   const dark = useDarkMode();
-  const [activeTab, setActiveTab] = useState<string | null>('allocation');
+  const [activeTab, setActiveTab] = useState<string | null>('insights');
   const { data: resources, isLoading } = useResources();
 
   if (isLoading) return <LoadingSpinner />;
@@ -72,6 +73,12 @@ export default function ResourceIntelligencePage() {
       >
         <Tabs.List>
           <Tabs.Tab
+            value="insights"
+            leftSection={<IconRadar size={15} color={activeTab === 'insights' ? AQUA : undefined} />}
+          >
+            Insights
+          </Tabs.Tab>
+          <Tabs.Tab
             value="allocation"
             leftSection={<IconChartPie size={15} color={activeTab === 'allocation' ? AQUA : undefined} />}
           >
@@ -91,11 +98,15 @@ export default function ResourceIntelligencePage() {
           </Tabs.Tab>
           <Tabs.Tab
             value="roi"
-            leftSection={<IconCoin size={15} color={activeTab === 'roi' ? '#f59e0b' : undefined} />}
+            leftSection={<IconCoin size={15} color={activeTab === 'roi' ? COLOR_WARNING : undefined} />}
           >
             ROI &amp; Rates
           </Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel value="insights">
+          <ResourceInsightsPage />
+        </Tabs.Panel>
 
         <Tabs.Panel value="allocation">
           <ResourceAllocationPage />

@@ -1,6 +1,8 @@
 package com.portfolioplanner.service.nlp;
 
+import com.portfolioplanner.domain.model.AppUser;
 import com.portfolioplanner.domain.model.NlpQueryLog;
+import com.portfolioplanner.domain.repository.AppUserRepository;
 import com.portfolioplanner.domain.repository.NlpQueryLogRepository;
 import com.portfolioplanner.dto.response.NlpCatalogResponse;
 import com.portfolioplanner.dto.response.NlpQueryResponse;
@@ -38,6 +40,10 @@ public class NlpService {
     private final NlpRoutingCatalog routingCatalog;
     private final NlpToolRegistry toolRegistry;
     private final NlpResponseBuilder responseBuilder;
+    private final NlpRateLimiter rateLimiter;
+    private final NlpSessionContextCache sessionContextCache;
+    private final FollowUpResolver followUpResolver;
+    private final AppUserRepository userRepo;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -62,6 +68,15 @@ public class NlpService {
     public NlpQueryResponse query(String queryText, Long userId) {
         long start = System.currentTimeMillis();
 
+        // ── Rate limiting: enforce per-user 10 req/min cap ───────────────────
+        if (!rateLimiter.tryAcquire(userId)) {
+            int remaining = rateLimiter.remainingRequests(userId);
+            log.warn("NLP rate limit enforced for user {} — {} requests remaining", userId, remaining);
+            return NlpQueryResponse.fallback(
+                    "You've sent too many queries in the last minute. Please wait a moment and try again. " +
+                    "(Limit: " + NlpRateLimiter.MAX_REQUESTS_PER_MINUTE + " queries/minute)");
+        }
+
         try {
             // Load entity catalog for context
             NlpCatalogResponse catalog = catalogService.getCatalog();
@@ -69,7 +84,20 @@ public class NlpService {
             // Preprocess: normalize abbreviations, synonyms, filler words, then resolve aliases
             String processedQuery = preprocessor.preprocess(queryText);
             processedQuery = aliasResolver.resolve(processedQuery);
+
+            // ── Follow-up resolution: substitute pronouns with entities from last result ──
+            processedQuery = followUpResolver.resolve(processedQuery, userId);
+
             log.debug("Query preprocessed: '{}' -> '{}'", queryText, processedQuery);
+
+            // ── RBAC: enforce tool-level access control before query execution ──
+            String userRole = resolveUserRole(userId);
+            NlpQueryResponse rbacDenied = checkToolRbac(processedQuery, userRole);
+            if (rbacDenied != null) {
+                log.warn("NLP RBAC denied tool access for user {} (role={}): '{}'",
+                        userId, userRole, queryText);
+                return rbacDenied;
+            }
 
             // ── Phase 1.6: Routing catalog — check if a known query pattern is in the catalog ──
             NlpQueryResponse routingCatalogResponse = tryRoutingCatalog(processedQuery, catalog);
@@ -92,6 +120,9 @@ public class NlpService {
             long elapsed = System.currentTimeMillis() - start;
             log.info("NLP query processed in {}ms: '{}' -> intent={} confidence={} resolvedBy={}",
                     elapsed, queryText, response.intent(), response.confidence(), response.resolvedBy());
+
+            // ── Store session context for follow-up pronoun resolution ──
+            try { storeSessionContext(userId, response); } catch (Exception ignored) {}
 
             // ── Auto-learn: embed high-confidence results (fire-and-forget) ──
             try { tryAutoLearn(queryText, response); } catch (Exception ignored) {}
@@ -243,6 +274,7 @@ public class NlpService {
 
             NlpCatalogResponse catalog = catalogService.getCatalog();
             String processedQuery = aliasResolver.resolve(preprocessor.preprocess(queryText));
+            processedQuery = followUpResolver.resolve(processedQuery, userId);
 
             // Phase 2: Routing catalog check
             sendPhase(emitter, "searching", "Checking catalog...", "Looking for known query patterns");
@@ -307,6 +339,88 @@ public class NlpService {
         } catch (Exception e) {
             log.debug("Failed to send SSE phase event: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Extract and store session context from a successful response.
+     * Used by FollowUpResolver to resolve pronouns in subsequent queries.
+     */
+    private void storeSessionContext(Long userId, NlpQueryResponse response) {
+        if (userId == null || response == null || response.response() == null) return;
+
+        // Only store context for data-bearing intents that produce entity lists
+        String intent = response.intent();
+        if (!"DATA_QUERY".equals(intent) && !"INSIGHT".equals(intent)) return;
+
+        var data = response.response().data();
+        if (data == null) return;
+
+        // Extract entity names from numbered items (#1, #2, ...)
+        java.util.List<String> entityNames = new java.util.ArrayList<>();
+        int i = 1;
+        while (data.containsKey("#" + i) && entityNames.size() < 10) {
+            String itemText = String.valueOf(data.get("#" + i));
+            // Take just the first segment before " | " as the entity name
+            String name = itemText.contains(" | ") ? itemText.split(" \\| ")[0].trim() : itemText;
+            // Strip priority brackets like "[P0]" from the end
+            name = name.replaceAll("\\s*\\[[^]]+]$", "").trim();
+            if (!name.isBlank()) entityNames.add(name);
+            i++;
+        }
+
+        int resultCount = 0;
+        if (data.containsKey("Count")) {
+            try { resultCount = Integer.parseInt(String.valueOf(data.get("Count"))); }
+            catch (NumberFormatException ignored) {}
+        }
+        if (resultCount == 0) resultCount = entityNames.size();
+
+        String toolName = null;
+        java.util.Map<String, String> params = java.util.Map.of();
+        String listType = data.containsKey("listType") ? String.valueOf(data.get("listType")) : null;
+
+        sessionContextCache.put(userId, new NlpSessionContextCache.SessionContext(
+                toolName, params, entityNames, resultCount, intent, listType,
+                java.time.Instant.now()
+        ));
+    }
+
+    // ── RBAC helpers ───────────────────────────────────────────────────────────
+
+    /**
+     * Resolve the role string for a given user ID.
+     * Returns null if userId is null or user not found (role check will pass-through).
+     */
+    private String resolveUserRole(Long userId) {
+        if (userId == null) return null;
+        try {
+            return userRepo.findById(userId).map(AppUser::getRole).orElse(null);
+        } catch (Exception e) {
+            log.debug("Could not resolve role for userId {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Pre-flight RBAC check: use the routing catalog to predict which tool would be called.
+     * If that tool is role-restricted and the user's role doesn't meet the minimum,
+     * returns an access-denied NlpQueryResponse. Otherwise returns null (proceed normally).
+     */
+    private NlpQueryResponse checkToolRbac(String processedQuery, String userRole) {
+        if (!"READ_ONLY".equalsIgnoreCase(userRole)) return null; // non-READ_ONLY: always allowed
+        try {
+            NlpRoutingCatalog.RoutingDecision decision = routingCatalog.findRoute(processedQuery);
+            if (decision != null && toolRegistry.isRestrictedTool(decision.toolName())) {
+                String friendlyName = decision.toolName().replaceFirst("^get_", "").replace('_', ' ');
+                return NlpQueryResponse.fallback(
+                        "Access denied: your READ_ONLY role does not permit viewing " + friendlyName + " data. " +
+                        "Please contact your administrator to request READ_WRITE access."
+                );
+            }
+        } catch (Exception e) {
+            log.debug("RBAC routing catalog check failed (non-critical): {}", e.getMessage());
+        }
+        return null;
     }
 
     private Long saveQueryLog(Long userId, String queryText, NlpQueryResponse response, int responseMs) {

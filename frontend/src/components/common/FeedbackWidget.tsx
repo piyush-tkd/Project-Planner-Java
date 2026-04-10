@@ -10,7 +10,8 @@ import {
   IconStar, IconStarFilled,
 } from '@tabler/icons-react';
 import { useSubmitFeedback } from '../../api/feedback';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { useDarkMode } from '../../hooks/useDarkMode';
+import { AQUA, DEEP_BLUE, FONT_FAMILY, GRAY_300, GRAY_BORDER} from '../../brandTokens';
 
 const CATEGORIES = [
   { value: 'BUG',         label: 'Bug Report' },
@@ -57,6 +58,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 export default function FeedbackWidget() {
+  const isDark = useDarkMode();
   const [opened, setOpened] = useState(false);
   const [category, setCategory] = useState<string>('BUG');
   const [rating, setRating] = useState(0);
@@ -168,21 +170,27 @@ export default function FeedbackWidget() {
             bottom: 24,
             right: 24,
             zIndex: 1000,
-            backgroundColor: DEEP_BLUE,
-            color: '#fff',
-            boxShadow: '0 4px 14px rgba(12, 35, 64, 0.4)',
+            backgroundColor: isDark ? DEEP_BLUE : AQUA,
+            color: isDark ? '#ffffff' : '#ffffff',
+            boxShadow: isDark
+              ? '0 4px 14px rgba(12, 35, 64, 0.5)'
+              : '0 4px 14px rgba(31, 168, 174, 0.45)',
             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(12, 35, 64, 0.5)';
+            e.currentTarget.style.boxShadow = isDark
+              ? '0 6px 20px rgba(12, 35, 64, 0.6)'
+              : '0 6px 20px rgba(31, 168, 174, 0.6)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = '';
-            e.currentTarget.style.boxShadow = '0 4px 14px rgba(12, 35, 64, 0.4)';
+            e.currentTarget.style.boxShadow = isDark
+              ? '0 4px 14px rgba(12, 35, 64, 0.5)'
+              : '0 4px 14px rgba(31, 168, 174, 0.45)';
           }}
         >
-          <IconMessageReport size={22} />
+          <IconMessageReport size={22} color="#ffffff" />
         </ActionIcon>
       </Tooltip>
 
@@ -269,13 +277,13 @@ export default function FeedbackWidget() {
                   cursor: 'pointer',
                   borderStyle: 'dashed',
                   borderWidth: 2,
-                  borderColor: dragOver ? AQUA : '#dee2e6',
+                  borderColor: dragOver ? AQUA : GRAY_BORDER,
                   backgroundColor: dragOver ? 'rgba(45, 204, 211, 0.05)' : undefined,
                   transition: 'all 0.2s ease',
                 }}
               >
                 <Box mb={6}>
-                  <IconUpload size={28} color={dragOver ? AQUA : '#adb5bd'} />
+                  <IconUpload size={28} color={dragOver ? AQUA : GRAY_300} />
                 </Box>
                 <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
                   Drag & drop an image here, or click to browse

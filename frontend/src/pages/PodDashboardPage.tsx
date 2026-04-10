@@ -1,10 +1,15 @@
 import { useState, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { notifications } from '@mantine/notifications';
+import apiClient from '../api/client';
 import { useNavigate } from 'react-router-dom';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Box, Title, Text, Group, Stack, Badge, Button, Grid, Paper,
- Progress, Loader, Alert, ThemeIcon, Tooltip, Collapse,
- TextInput, SegmentedControl, Divider, SimpleGrid, ActionIcon,
+ Box, Text, Group, Stack, Badge, Button, Grid, Paper,
+ Progress, Alert, ThemeIcon, Tooltip, Collapse,
+ TextInput, SegmentedControl, Divider, SimpleGrid, ActionIcon, Skeleton,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
  IconTicket, IconRefresh, IconAlertTriangle, IconCircleCheck,
@@ -12,7 +17,7 @@ import {
  IconChartBar, IconSearch, IconTrendingUp, IconList,
  IconCircleDot, IconSquareCheck, IconSettings,
  IconInfoCircle, IconExternalLink, IconUsers,
- IconArrowRight,
+ IconArrowRight, IconCloudDownload,
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -25,19 +30,20 @@ import {
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER_DARK, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SLATE_700, SURFACE_GRAY, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
-const AMBER = '#F59E0B';
-const GREEN = '#22C55E';
-const RED = '#EF4444';
-const GRAY = '#94A3B8';
+const AMBER = COLOR_WARNING;
+const GREEN = COLOR_GREEN;
+const RED = COLOR_ERROR_STRONG;
+const GRAY = TEXT_SUBTLE;
 
 const POD_COLORS = [
- DEEP_BLUE, AQUA, '#7C3AED', '#DB2777', '#D97706',
- '#059669', '#2563EB', '#DC2626', '#0891B2', '#65A30D',
+ DEEP_BLUE, AQUA, COLOR_VIOLET, '#DB2777', COLOR_AMBER_DARK,
+ COLOR_EMERALD, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, '#0891B2', '#65A30D',
 ];
 
 export default function PodDashboardPage() {
+ const isDark = useDarkMode();
  const navigate = useNavigate();
  const [search, setSearch] = useState('');
  const [view, setView] = useState<'cards' | 'table' | 'heatmap'>('cards');
@@ -52,6 +58,14 @@ export default function PodDashboardPage() {
  const handleRefresh = () => {
  clearCache.mutate(undefined, { onSettled: () => refetch() });
  };
+
+ const triggerSync = useMutation({
+ mutationFn: () => apiClient.post('/jira/sync/trigger', null, { params: { fullSync: true } }),
+ onSuccess: () => {
+  notifications.show({ color: 'teal', title: 'Sync started', message: 'Jira sync is running in the background. Refresh in ~30 seconds to see updated sprint data.' });
+ },
+ onError: () => notifications.show({ color: 'red', message: 'Failed to trigger sync' }),
+ });
 
  if (statusLoading) return <LoadingSpinner variant="cards" message="Loading Jira POD dashboard..." />;
 
@@ -106,26 +120,12 @@ export default function PodDashboardPage() {
  .map(([name, hours]) => ({ name: name.split(' ')[0], hours: Math.round(hours) }));
 
  return (
- <Box p="md" className="page-enter">
- {/* ── Header ── */}
- <Group justify="space-between" mb="lg" className="slide-in-left">
- <Group gap="sm">
- <ThemeIcon size={38} radius="md" style={{ backgroundColor: DEEP_BLUE }}>
- <IconChartBar size={22} color="white" />
- </ThemeIcon>
- <div>
- <Title order={3} style={{ fontFamily: FONT_FAMILY }}>
- POD Performance Dashboard
- </Title>
- <Text size="sm" c="dimmed">
- Live sprint health &amp; team activity
- {isConfigured
- ? ` · ${watchConfig.filter(w => w.enabled && w.boardKeys.length > 0).length} PODs`
- : ' · showing all Jira projects'}
- </Text>
- </div>
- </Group>
- <Group gap="xs">
+ <PPPageLayout
+   title="POD Dashboard"
+   subtitle="Sprint progress, velocity and issue analytics per POD"
+   animate
+ >
+ <Group justify="flex-end" mb="lg" gap="xs">
  <SegmentedControl
  size="xs" value={view}
  onChange={v => setView(v as 'cards' | 'table' | 'heatmap')}
@@ -144,6 +144,15 @@ export default function PodDashboardPage() {
  </Button>
  <Button
  size="xs" variant="light"
+ color="blue"
+ leftSection={<IconCloudDownload size={14} />}
+ loading={triggerSync.isPending}
+ onClick={() => triggerSync.mutate()}
+ >
+ Trigger Sync
+ </Button>
+ <Button
+ size="xs" variant="light"
  leftSection={<IconRefresh size={14} />}
  loading={clearCache.isPending || isLoading}
  onClick={handleRefresh}
@@ -151,12 +160,11 @@ export default function PodDashboardPage() {
  {clearCache.isPending ? 'Clearing…' : 'Refresh'}
  </Button>
  </Group>
- </Group>
 
  {/* ── Company Summary Bar ── */}
  {pods.length > 0 && (
  <Paper withBorder p="md" mb="lg" radius="md"
- style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
+ style={{ background: isDark ? `rgba(255,255,255,0.04)` : `linear-gradient(135deg, ${DEEP_BLUE}08, ${AQUA}12)` }}>
  <Group grow>
  <CompanyStat label="Active Sprints" value={String(totalActiveSprints)}
  sub={`of ${pods.length} PODs`} color={DEEP_BLUE} icon={<IconChartBar size={18} />} />
@@ -164,7 +172,7 @@ export default function PodDashboardPage() {
  sub={`${Math.round(totalDoneSP)} / ${Math.round(totalSP)} SP`}
  color={AQUA} icon={<IconTrendingUp size={18} />} />
  <CompanyStat label="Hours Logged" value={`${Math.round(totalHours).toLocaleString()} h`}
- sub="this sprint" color="#7C3AED" icon={<IconClockHour4 size={18} />} />
+ sub="this sprint" color={COLOR_VIOLET} icon={<IconClockHour4 size={18} />} />
  <CompanyStat label="Backlog Items" value={String(pods.reduce((s, p) => s + p.backlogSize, 0))}
  sub={`${pods.filter(p => p.backlogSize > 0).length} PODs with backlog`}
  color={AMBER} icon={<IconList size={18} />} />
@@ -211,9 +219,10 @@ export default function PodDashboardPage() {
  )}
 
  {isLoading && (
- <Stack align="center" py="xl">
- <Loader />
- <Text size="sm" c="dimmed">Fetching sprint data from Jira…</Text>
+ <Stack gap="sm">
+ {[...Array(6)].map((_, i) => (
+ <Skeleton key={i} height={100} radius="sm" />
+ ))}
  </Stack>
  )}
 
@@ -252,7 +261,7 @@ export default function PodDashboardPage() {
  layout="vertical"
  margin={{ top: 0, right: 50, left: 0, bottom: 0 }}
  >
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} horizontal={false} />
  <XAxis type="number" tick={{ fontSize: 11 }} />
  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
  <RTooltip
@@ -260,12 +269,12 @@ export default function PodDashboardPage() {
  formatter={(v: number, n: string) => [`${v} SP`, n]}
  />
  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
- <Bar dataKey="Done" stackId="a" fill={GREEN} radius={[0, 0, 0, 0]} />
- <Bar dataKey="Remaining" stackId="a" fill="#E2E8F0" radius={[0, 3, 3, 0]}>
+ <Bar animationDuration={600} dataKey="Done" stackId="a" fill={GREEN} radius={[0, 0, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Remaining" stackId="a" fill={BORDER_STRONG} radius={[0, 3, 3, 0]}>
  <LabelList
  dataKey="pct"
  position="right"
- style={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+ style={{ fontSize: 11, fill: TEXT_GRAY, fontWeight: 600 }}
  formatter={(v: number) => `${v}%`}
  />
  </Bar>
@@ -303,14 +312,14 @@ export default function PodDashboardPage() {
  <XAxis dataKey="name" tick={{ fontSize: 8 }} />
  <YAxis tick={{ fontSize: 8 }} allowDecimals={false} />
  <RTooltip contentStyle={{ fontSize: 10 }} />
- <Bar dataKey="value" radius={[2, 2, 0, 0]}>
+ <Bar animationDuration={600} dataKey="value" radius={[2, 2, 0, 0]}>
  {typeData.map((_, j) => (
  <Cell key={j} fill={POD_COLORS[(i + j + 1) % POD_COLORS.length]} />
  ))}
  <LabelList
  dataKey="value"
  position="top"
- style={{ fontSize: 9, fontWeight: 700, fill: '#334155' }}
+ style={{ fontSize: 9, fontWeight: 700, fill: SLATE_700 }}
  />
  </Bar>
  </BarChart>
@@ -339,12 +348,12 @@ export default function PodDashboardPage() {
  >
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={topTeam} margin={{ top: 2, right: 8, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
  <YAxis tick={{ fontSize: 10 }} />
  <RTooltip contentStyle={{ fontSize: 11 }}
  formatter={(v: number) => [`${v}h`, 'Hours']} />
- <Bar dataKey="hours" fill={AQUA} radius={[3, 3, 0, 0]}>
+ <Bar animationDuration={600} dataKey="hours" fill={AQUA_HEX} radius={[3, 3, 0, 0]}>
  {topTeam.map((_, i) => (
  <Cell key={i} fill={POD_COLORS[i % POD_COLORS.length]} />
  ))}
@@ -357,7 +366,7 @@ export default function PodDashboardPage() {
 
  </WidgetGrid>
  )}
- </Box>
+ </PPPageLayout>
  );
 }
 
@@ -467,10 +476,16 @@ function PodCard({
  <Stack gap="xs">
  <Group justify="space-between">
  <Text size="xs" fw={600} tt="uppercase" c="dimmed">Active Sprint</Text>
- <Badge size="xs"
- color={sprint.spProgressPct >= 80 ? 'teal' : sprint.spProgressPct >= 50 ? 'yellow' : 'red'}>
- {Math.round(sprint.spProgressPct)}% done
- </Badge>
+ {(() => {
+   // Use SP-based % when SP are assigned; fall back to issue-count % when no SP
+   const displayPct = sprint.totalSP > 0 ? sprint.spProgressPct : sprint.progressPct;
+   return (
+     <Badge size="xs"
+       color={displayPct >= 80 ? 'teal' : displayPct >= 50 ? 'yellow' : 'red'}>
+       {Math.round(displayPct)}% done
+     </Badge>
+   );
+ })()}
  </Group>
  <Text size="sm" fw={600} c={AQUA}>{sprint.name}</Text>
  {sprint.startDate && (
@@ -480,13 +495,22 @@ function PodCard({
  )}
  <Box>
  <Group justify="space-between" mb={4}>
- <Text size="xs" c="dimmed">Story Points</Text>
+ <Text size="xs" c="dimmed">
+ {sprint.totalSP > 0 ? 'Story Points' : 'Issues Done'}
+ </Text>
  <Text size="xs" fw={600}>
- {Math.round(sprint.doneSP)} / {Math.round(sprint.totalSP)} SP
+ {sprint.totalSP > 0
+   ? `${Math.round(sprint.doneSP)} / ${Math.round(sprint.totalSP)} SP`
+   : `${sprint.doneIssues} / ${sprint.totalIssues}`}
  </Text>
  </Group>
- <Progress value={sprint.spProgressPct} size="md" radius="xs"
- color={sprint.spProgressPct >= 80 ? 'teal' : sprint.spProgressPct >= 50 ? 'yellow' : 'orange'} />
+ {(() => {
+   const displayPct = sprint.totalSP > 0 ? sprint.spProgressPct : sprint.progressPct;
+   return (
+     <Progress value={displayPct} size="md" radius="xs"
+       color={displayPct >= 80 ? 'teal' : displayPct >= 50 ? 'yellow' : 'orange'} />
+   );
+ })()}
  </Box>
 
  {/* Issue counts — clicking opens Jira sprint board */}
@@ -559,10 +583,7 @@ function PodCard({
  <Collapse in={expanded}>
  <Box px="md" pb="md">
  {loadingVelocity ? (
- <Stack align="center" py="sm">
- <Loader size="xs" />
- <Text size="xs" c="dimmed">Loading velocity…</Text>
- </Stack>
+ <Skeleton height={110} radius="sm" mt="xs" />
  ) : velocityData.length > 0 ? (
  <>
  <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs">
@@ -570,12 +591,12 @@ function PodCard({
  </Text>
  <ResponsiveContainer width="100%" height={110}>
  <BarChart data={velocityData} margin={{ top: 0, right: 4, left: -24, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="sprint" tick={{ fontSize: 9 }} />
  <YAxis tick={{ fontSize: 9 }} />
  <RTooltip formatter={(v: number, n: string) => [`${v} SP`, n]} contentStyle={{ fontSize: 11 }} />
- <Bar dataKey="Committed" fill={GRAY} radius={[2, 2, 0, 0]} />
- <Bar dataKey="Completed" fill={color} radius={[2, 2, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Committed" fill={GRAY} radius={[2, 2, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Completed" fill={color} radius={[2, 2, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  </>
@@ -653,13 +674,14 @@ function PodTable({
  jiraBaseUrl: string;
  onRowClick: (pod: PodMetrics) => void;
 }) {
+ const isDark = useDarkMode();
  return (
  <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
  <thead>
- <tr style={{ backgroundColor: DEEP_BLUE }}>
+ <tr style={{ backgroundColor: isDark ? DEEP_BLUE : '#E7E9EC' }}>
  {['POD', 'Sprint', 'Progress', 'SP Done/Total', 'Hours', 'Issues', 'Backlog'].map(h => (
- <th key={h} style={{ color: 'white', padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600 }}>{h}</th>
+ <th key={h} style={{ color: isDark ? 'white' : DEEP_BLUE, padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600 }}>{h}</th>
  ))}
  </tr>
  </thead>
@@ -710,14 +732,23 @@ function PodTable({
  <td style={{ padding: '10px 12px', minWidth: 120 }}>
  {sprint ? (
  <Box>
- <Progress value={sprint.spProgressPct} size="sm"
- color={sprint.spProgressPct >= 80 ? 'teal' : sprint.spProgressPct >= 50 ? 'yellow' : 'orange'} />
- <Text size="xs" c="dimmed" mt={2}>{Math.round(sprint.spProgressPct)}%</Text>
+ {(() => {
+   const dp = sprint.totalSP > 0 ? sprint.spProgressPct : sprint.progressPct;
+   return (
+     <>
+       <Progress value={dp} size="sm"
+         color={dp >= 80 ? 'teal' : dp >= 50 ? 'yellow' : 'orange'} />
+       <Text size="xs" c="dimmed" mt={2}>
+         {Math.round(dp)}%{sprint.totalSP === 0 ? ' (issues)' : ''}
+       </Text>
+     </>
+   );
+ })()}
  </Box>
  ) : <Text size="sm" c="dimmed">—</Text>}
  </td>
  <td style={{ padding: '10px 12px' }}>
- {sprint ? <Text size="sm">{Math.round(sprint.doneSP)} / {Math.round(sprint.totalSP)}</Text>
+ {sprint ? <Text size="sm">{sprint.totalSP > 0 ? `${Math.round(sprint.doneSP)} / ${Math.round(sprint.totalSP)} SP` : `${sprint.doneIssues} / ${sprint.totalIssues} issues`}</Text>
  : <Text size="sm" c="dimmed">—</Text>}
  </td>
  <td style={{ padding: '10px 12px' }}>
@@ -750,9 +781,10 @@ function PodTable({
 function CompanyStat({ label, value, sub, color, icon }: {
  label: string; value: string; sub: string; color: string; icon: React.ReactNode;
 }) {
+ const isDark = useDarkMode();
  return (
  <Group gap="sm">
- <ThemeIcon size={40} radius="md" style={{ backgroundColor: `${color}18` }}>
+ <ThemeIcon size={40} radius="md" style={{ backgroundColor: isDark ? `${color}22` : `${color}18` }}>
  <span style={{ color }}>{icon}</span>
  </ThemeIcon>
  <div>
@@ -771,10 +803,11 @@ function StatPill({ icon, label, tip, color, href }: {
  color: string;
  href?: string | null;
 }) {
+ const isDark = useDarkMode();
  const content = (
  <Badge
  size="sm" variant="light" leftSection={icon}
- style={{ backgroundColor: `${color}18`, color, borderColor: `${color}30`, cursor: href ? 'pointer' : 'default' }}
+ style={{ backgroundColor: isDark ? `${color}22` : `${color}18`, color, borderColor: isDark ? `${color}44` : `${color}30`, cursor: href ? 'pointer' : 'default' }}
  >
  {label}
  </Badge>

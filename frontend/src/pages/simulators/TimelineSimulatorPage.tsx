@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { notifications } from '@mantine/notifications';
 import {
   Title, Stack, Grid, Card, Text, Button, NumberInput, Group,
   Table, ScrollArea, SegmentedControl, Tooltip, Box,
@@ -9,21 +10,23 @@ import { useSimulateTimeline } from '../../api/simulator';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { PPPageLayout } from '../../components/pp';
 import { formatHours } from '../../utils/formatting';
 import type { TimelineOverride } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { ProjectStatus } from '../../types';
+import { COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, GRAY_300, SURFACE_SUBTLE, TEXT_DIM } from '../../brandTokens';
 
 // ── Status → bar colour mapping ────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE:       '#12b886',
   AT_RISK:      '#f59f00',
-  BLOCKED:      '#fa5252',
-  ON_HOLD:      '#868e96',
-  COMPLETED:    '#228be6',
-  CANCELLED:    '#adb5bd',
+  BLOCKED:      COLOR_ERROR,
+  ON_HOLD:      TEXT_DIM,
+  COMPLETED:    COLOR_BLUE_DARK,
+  CANCELLED:    GRAY_300,
   IN_DISCOVERY: '#7950f2',
-  PAUSED:       '#fd7e14',
+  PAUSED:       COLOR_ORANGE,
 };
 
 const CELL_PX      = 52;   // px per month column
@@ -237,7 +240,7 @@ export default function TimelineSimulatorPage() {
   const { data: projects, isLoading } = useProjects();
   const { monthLabels, currentMonthIndex } = useMonthLabels();
   const dark    = useDarkMode();
-  const pastBg  = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const pastBg  = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
   const simulate = useSimulateTimeline();
 
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
@@ -268,7 +271,7 @@ export default function TimelineSimulatorPage() {
       newStartMonth:     o.start,
       newDurationMonths: o.duration,
     }));
-    simulate.mutate({ overrides: timelineOverrides });
+    simulate.mutate({ overrides: timelineOverrides }, { onError: (e: unknown) => notifications.show({ title: 'Simulation failed', message: (e as Error).message || 'Could not run timeline simulation.', color: 'red' }) });
   };
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -278,11 +281,12 @@ export default function TimelineSimulatorPage() {
   const isGantt = viewMode === 'gantt';
 
   return (
+    <PPPageLayout title="Timeline Simulator" subtitle="Simulate project timeline shifts and resource impacts" animate>
     <Stack className="page-enter stagger-children">
 
       {/* Header + view toggle */}
       <Group justify="space-between" align="center" className="slide-in-left">
-        <Title order={2}>Timeline Simulator</Title>
+        <div></div>
         <SegmentedControl
           size="xs"
           value={viewMode}
@@ -483,5 +487,6 @@ export default function TimelineSimulatorPage() {
         )}
       </Grid>
     </Stack>
+    </PPPageLayout>
   );
 }

@@ -14,12 +14,13 @@ import {
   IconCheck, IconX, IconTarget, IconClock, IconUser,
   IconHistory, IconPlus, IconAlertCircle,
 } from '@tabler/icons-react';
-import { FONT_FAMILY, AQUA } from '../../brandTokens';
+import { AQUA, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import {
   useProjectApprovals,
   useSubmitApproval,
   useWithdrawApproval,
+  describeProposedChange,
   ProjectApproval,
 } from '../../api/projectApprovals';
 
@@ -56,7 +57,7 @@ export default function ProjectApprovalSection({ projectId }: { projectId: numbe
   const history = approvals.filter(a => a.status !== 'PENDING');
 
   const cardBg      = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
+  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : GRAY_100;
 
   async function handleSubmit() {
     try {
@@ -98,10 +99,18 @@ export default function ProjectApprovalSection({ projectId }: { projectId: numbe
                 </ThemeIcon>
                 <Badge color="yellow" variant="filled" size="sm">PENDING APPROVAL</Badge>
               </Group>
+              {describeProposedChange(pending.proposedChange) && (
+                <Badge color="blue" variant="light" size="sm" mb={6}>
+                  {describeProposedChange(pending.proposedChange)}
+                </Badge>
+              )}
               <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>
-                Submitted by <strong>{pending.requestedBy}</strong> · {relTime(pending.requestedAt)}
+                {pending.requestedBy === 'system'
+                  ? <>Auto-submitted · {relTime(pending.requestedAt)}</>
+                  : <>Submitted by <strong>{pending.requestedBy}</strong> · {relTime(pending.requestedAt)}</>
+                }
               </Text>
-              {pending.requestNote && (
+              {pending.requestNote && pending.requestedBy !== 'system' && (
                 <Text size="xs" c="dimmed" mt={4} style={{ fontStyle: 'italic' }}>"{pending.requestNote}"</Text>
               )}
             </div>

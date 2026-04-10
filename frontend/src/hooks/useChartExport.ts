@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { useComputedColorScheme } from '@mantine/core';
 import { toPng } from 'html-to-image';
+import { DARK_BG } from '../brandTokens';
 
 export function useChartExport(defaultTitle = 'chart') {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -12,7 +13,7 @@ export function useChartExport(defaultTitle = 'chart') {
     setExporting(true);
     try {
       const dataUrl = await toPng(chartRef.current, {
-        backgroundColor: computedColorScheme === 'dark' ? '#1a1b1e' : '#ffffff',
+        backgroundColor: computedColorScheme === 'dark' ? DARK_BG : '#ffffff',
         pixelRatio: 2,
       });
       const a = document.createElement('a');

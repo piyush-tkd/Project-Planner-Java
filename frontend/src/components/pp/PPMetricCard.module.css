@@ -1,0 +1,111 @@
+/* ===== PPMetricCard — DL-4 ===== */
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--pp-surface, #1a1d27);
+  border: 1px solid var(--pp-border, #2e3346);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Size variants */
+.cardSm { padding: 12px 14px; }
+.cardMd { padding: 16px 18px; }
+.cardLg { padding: 20px 22px; }
+
+/* Clickable hover state */
+.cardClickable {
+  cursor: pointer;
+}
+.cardClickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border-color: var(--pp-border-hover, #3d4260);
+}
+
+/* Left accent bar */
+.accentBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Icon */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--pp-text-muted, #8b8fa3);
+}
+
+/* Main content */
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--pp-text-muted, #8b8fa3);
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Value size variants */
+.valueSm { font-size: 20px; }
+.valueMd { font-size: 28px; }
+.valueLg { font-size: 36px; }
+
+.value {
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--pp-text, #e2e4eb);
+  margin: 0;
+}
+
+.footer {
+  font-size: 12px;
+  color: var(--pp-text-muted, #8b8fa3);
+  margin: 4px 0 0;
+}
+
+/* Trend + sparkline section */
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.trendUp   { color: #4CAF50; }
+.trendDown { color: #f44336; }
+.trendFlat { color: var(--pp-text-muted, #8b8fa3); }
+
+.spark {
+  display: block;
+}

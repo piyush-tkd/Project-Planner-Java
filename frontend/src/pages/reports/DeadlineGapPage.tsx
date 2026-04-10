@@ -8,7 +8,7 @@ import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useTableSort } from '../../hooks/useTableSort';
 import { formatHours, formatProjectDate } from '../../utils/formatting';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import SortableHeader from '../../components/common/SortableHeader';
 import SummaryCard from '../../components/charts/SummaryCard';
 import PriorityBadge from '../../components/common/PriorityBadge';
@@ -138,11 +138,11 @@ export default function DeadlineGapPage() {
  </Group>
 
  <SimpleGrid cols={{ base: 1, sm: 3 }} className="stagger-grid">
- <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color="#fa5252" />} color="red"
+ <SummaryCard title="High Demand Load" value={stats.high} icon={<IconAlertTriangle size={20} color={COLOR_ERROR} />} color="red"
  onClick={() => setRiskFilter(prev => prev === 'High' ? null : 'High')} active={riskFilter === 'High'} />
- <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color="#fd7e14" />} color="orange"
+ <SummaryCard title="Medium Load" value={stats.medium} icon={<IconFlame size={20} color={COLOR_ORANGE} />} color="orange"
  onClick={() => setRiskFilter(prev => prev === 'Medium' ? null : 'Medium')} active={riskFilter === 'Medium'} />
- <SummaryCard title="Low Load" value={stats.low} icon={<IconCircleCheck size={20} color="#40c057" />} color="green"
+ <SummaryCard title="Low Load" value={stats.low} icon={<IconCircleCheck size={20} color={COLOR_SUCCESS} />} color="green"
  onClick={() => setRiskFilter(prev => prev === 'Low' ? null : 'Low')} active={riskFilter === 'Low'} />
  </SimpleGrid>
 
@@ -157,8 +157,8 @@ export default function DeadlineGapPage() {
  <YAxis fontSize={10} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
  <Tooltip formatter={(value: number) => formatHours(value)} />
  <Legend wrapperStyle={{ fontSize: 10 }} />
- <Bar dataKey="totalDemand" fill="rgba(124,58,237,0.7)" name="Total Demand" />
- <Bar dataKey="podCapacity" fill="rgba(30,64,175,0.25)" name="POD Capacity Available" />
+ <Bar animationDuration={600} dataKey="totalDemand" fill="rgba(124,58,237,0.7)" name="Total Demand" />
+ <Bar animationDuration={600} dataKey="podCapacity" fill="rgba(30,64,175,0.25)" name="POD Capacity Available" />
  </BarChart>
  </ResponsiveContainer>
  </ExportableChart>
@@ -233,7 +233,7 @@ export default function DeadlineGapPage() {
  <Table.Td style={{ fontSize: 12 }}>{formatProjectDate(p.startDate, p.startMonth, monthLabels)}</Table.Td>
  <Table.Td style={{ fontSize: 12 }}>{formatProjectDate(p.targetDate, p.endMonth, monthLabels)}</Table.Td>
  <Table.Td style={{ textAlign: 'center' }}>{p.durationMonths}m</Table.Td>
- <Table.Td style={{ textAlign: 'right', color: '#7c3aed', fontWeight: 600 }}>{formatHours(p.totalDemand)}</Table.Td>
+ <Table.Td style={{ textAlign: 'right', color: COLOR_VIOLET, fontWeight: 600 }}>{formatHours(p.totalDemand)}</Table.Td>
  <Table.Td style={{ textAlign: 'right', color: '#1e40af' }}>{formatHours(p.podCapacity)}</Table.Td>
  <Table.Td style={{ textAlign: 'right', fontWeight: 700 }}>{p.loadPct}%</Table.Td>
  <Table.Td>

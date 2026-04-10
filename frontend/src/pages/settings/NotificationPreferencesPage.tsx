@@ -17,9 +17,9 @@ import {
   IconBell, IconMail, IconClock, IconCheck, IconRefresh,
   IconAlertCircle, IconAlertTriangle,
   IconBolt, IconCalendarEvent, IconMessageCircle,
-  IconRocket, IconFlag,
+  IconRocket, IconFlag, IconTarget,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import {
   useNotificationPreferences,
@@ -77,6 +77,20 @@ const EVENT_TOGGLES: {
     description: 'Notified when a project\'s target date passes without completion',
     icon: <IconCalendarEvent size={16} />,
     color: 'red',
+  },
+  {
+    key: 'onApprovalPending',
+    label: 'Approval request submitted',
+    description: 'Receive an email when a new approval request is submitted (ADMIN users only)',
+    icon: <IconTarget size={16} />,
+    color: 'yellow',
+  },
+  {
+    key: 'onApprovalDecision',
+    label: 'Approval decision received',
+    description: 'Receive an email when your own approval request is approved or rejected',
+    icon: <IconCheck size={16} />,
+    color: 'teal',
   },
 ];
 
@@ -167,7 +181,7 @@ export default function NotificationPreferencesPage() {
   };
 
   const cardBg = isDark ? 'var(--mantine-color-dark-7)' : '#fff';
-  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : '#e9ecef';
+  const borderColor = isDark ? 'var(--mantine-color-dark-4)' : GRAY_100;
 
   if (isLoading) {
     return (
@@ -247,7 +261,7 @@ export default function NotificationPreferencesPage() {
               radius="sm"
               p="sm"
               style={{
-                background: isDark ? 'var(--mantine-color-dark-6)' : '#f8f9fa',
+                background: isDark ? 'var(--mantine-color-dark-6)' : SURFACE_SUBTLE,
                 borderColor,
                 transition: 'background 0.15s',
               }}
@@ -415,8 +429,8 @@ export default function NotificationPreferencesPage() {
         >
           <Group justify="space-between">
             <Group gap="xs">
-              <IconAlertTriangle size={15} color={isDark ? '#ffe066' : '#e67700'} />
-              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#ffe066' : '#e67700' }}>
+              <IconAlertTriangle size={15} color={isDark ? '#ffe066' : COLOR_ORANGE_DARK} />
+              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#ffe066' : COLOR_ORANGE_DARK }}>
                 You have unsaved changes
               </Text>
             </Group>

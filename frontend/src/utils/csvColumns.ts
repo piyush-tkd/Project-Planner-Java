@@ -14,6 +14,17 @@ export const projectColumns: CsvColumnDef<any>[] = [
   { key: 'notes', header: 'Notes' },
   { key: 'startDate', header: 'Start Date' },
   { key: 'targetDate', header: 'Target Date' },
+  { key: 'client', header: 'Client' },
+  {
+    key: 'estimatedBudget',
+    header: 'Estimated Budget ($)',
+    format: (r) => r.estimatedBudget != null ? r.estimatedBudget.toFixed(2) : '',
+  },
+  {
+    key: 'actualCost',
+    header: 'Actual Cost ($)',
+    format: (r) => r.actualCost != null ? r.actualCost.toFixed(2) : '',
+  },
 ];
 
 // ─── Resources ───────────────────────────────────────────────

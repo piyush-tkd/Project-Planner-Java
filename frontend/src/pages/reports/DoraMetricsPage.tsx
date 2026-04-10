@@ -16,23 +16,20 @@ import {
  ResponsiveContainer, Legend, Area, AreaChart,
 } from 'recharts';
 import { useDoraMetrics, useDoraMonthly, DoraMetricValue, DoraMonthCard } from '../../api/reports';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import PageSkeleton from '../../components/common/PageSkeleton';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
 import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
 import { EmptyState } from '../../components/ui';
-import {
- DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, DEEP_BLUE_TINTS, AQUA_TINTS,
- BORDER_DEFAULT, TEXT_SECONDARY,
-} from '../../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, TEXT_DIM, TEXT_SECONDARY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 /* ── Level → colour mapping ─────────────────────────────────────────────── */
 const LEVEL_COLOR: Record<string, string> = {
- elite: '#40c057',
- high: '#339af0',
- medium: '#fab005',
- low: '#fa5252',
+ elite: COLOR_SUCCESS,
+ high: COLOR_BLUE_LIGHT,
+ medium: COLOR_AMBER,
+ low: COLOR_ERROR,
 };
 // Mantine color name for ThemeIcon / Badge (cannot use hex in variant="light")
 const LEVEL_MANTINE: Record<string, string> = {
@@ -69,7 +66,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  onClick?: () => void;
 }) {
  const dark = useDarkMode();
- const color = LEVEL_COLOR[metric.level] ?? '#868e96';
+ const color = LEVEL_COLOR[metric.level] ?? TEXT_DIM;
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  return (
  <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%', height: '100%', display: 'flex' }}>
@@ -171,7 +168,7 @@ function BenchmarkTable({ metricKey, currentLevel }: { metricKey: string; curren
  }}>
  <Table.Td w={80}>
  <Badge size="xs" variant="light" radius="sm"
- color={LEVEL_COLOR[level] === '#40c057' ? 'green' : LEVEL_COLOR[level] === '#339af0' ? 'blue' : LEVEL_COLOR[level] === '#fab005' ? 'yellow' : 'red'}
+ color={LEVEL_COLOR[level] === COLOR_SUCCESS ? 'green' : LEVEL_COLOR[level] === COLOR_BLUE_LIGHT ? 'blue' : LEVEL_COLOR[level] === COLOR_AMBER ? 'yellow' : 'red'}
  >{LEVEL_LABEL[level]}</Badge>
  </Table.Td>
  <Table.Td>
@@ -250,7 +247,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  const dark = useDarkMode();
  const { data, isLoading, error } = useDoraMonthly(lookback);
 
- if (isLoading) return <LoadingSpinner variant="chart" message="Loading monthly breakdown..." />;
+ if (isLoading) return <PageSkeleton variant="chart" />;
  if (error) return <PageError context="loading monthly DORA data" error={error} />;
  if (!data || data.months.length === 0) {
  return (
@@ -292,7 +289,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  </Table.Td>
  {monthCards.map(card => {
  const metric = card[mk] as DoraMetricValue;
- const color = LEVEL_COLOR[metric.level] ?? '#868e96';
+ const color = LEVEL_COLOR[metric.level] ?? TEXT_DIM;
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  return (
  <Table.Td key={card.month} style={{ padding: 0 }}>
@@ -352,7 +349,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  levelScore(card.changeFailureRate.level) +
  levelScore(card.meanTimeToRecovery.level)
  ) / 4;
- const overallColor = avgScore >= 3.5 ? '#40c057' : avgScore >= 2.5 ? '#339af0' : avgScore >= 1.5 ? '#fab005' : '#fa5252';
+ const overallColor = avgScore >= 3.5 ? COLOR_SUCCESS : avgScore >= 2.5 ? COLOR_BLUE_LIGHT : avgScore >= 1.5 ? COLOR_AMBER : COLOR_ERROR;
  return (
  <Paper key={card.month} withBorder radius="md" p="md" style={{ borderLeft: `4px solid ${overallColor}`, boxShadow: SHADOW.card }}>
  <Group justify="space-between" mb="sm">
@@ -444,7 +441,7 @@ export default function DoraMetricsPage() {
  ];
  }, [data]);
 
- if (isLoading) return <LoadingSpinner variant="chart" message="Fetching DORA metrics from Jira..." />;
+ if (isLoading) return <PageSkeleton variant="chart" />;
  if (error) return <PageError context="loading DORA metrics" error={error} onRetry={() => refetch()} />;
  if (!data) return null;
 
@@ -753,7 +750,7 @@ export default function DoraMetricsPage() {
  };
  const mLabel = METRIC_LABELS[monthDrillMetric] ?? monthDrillMetric;
  const mIcon = METRIC_ICONS[monthDrillMetric];
- const color = LEVEL_COLOR[metric.level] ?? '#868e96';
+ const color = LEVEL_COLOR[metric.level] ?? TEXT_DIM;
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  const benchKey = monthDrillMetric === 'deploymentFrequency' ? 'deploy'
  : monthDrillMetric === 'leadTimeForChanges' ? 'leadTime'
@@ -1005,13 +1002,13 @@ export default function DoraMetricsPage() {
  <Bar
  dataKey="releases"
  name={isJira ? 'Resolved Issues' : 'Total Releases'}
- fill={AQUA}
+ fill={AQUA_HEX}
  radius={[4, 4, 0, 0]}
  />
  <Bar
  dataKey="failures"
  name={isJira ? 'Bugs / Incidents' : 'Hotfixes'}
- fill="#fa5252"
+ fill={COLOR_ERROR}
  radius={[4, 4, 0, 0]}
  />
  </BarChart>
@@ -1030,8 +1027,8 @@ export default function DoraMetricsPage() {
  >
  <defs>
  <linearGradient id="leadTimeGrad" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor={AQUA} stopOpacity={0.3} />
- <stop offset="95%" stopColor={AQUA} stopOpacity={0} />
+ <stop offset="5%" stopColor={AQUA_HEX} stopOpacity={0.3} />
+ <stop offset="95%" stopColor={AQUA_HEX} stopOpacity={0} />
  </linearGradient>
  </defs>
  <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
@@ -1067,7 +1064,7 @@ export default function DoraMetricsPage() {
  type="monotone"
  dataKey="leadTimeDays"
  name="Lead Time (days)"
- stroke={AQUA}
+ stroke={AQUA_HEX}
  strokeWidth={2}
  fill="url(#leadTimeGrad)"
  dot={{ r: 4, fill: AQUA, stroke: '#fff', strokeWidth: 2 }}

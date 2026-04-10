@@ -136,8 +136,9 @@ export function useShortcutsPanel() {
 
       if (isTyping) return;
 
-      // "?" toggles shortcuts panel
-      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+      // "?" or ⌘. toggles shortcuts panel (DL-10)
+      const isDotShortcut = e.key === '.' && (e.metaKey || e.ctrlKey);
+      if ((e.key === '?' && !e.metaKey && !e.ctrlKey) || isDotShortcut) {
         e.preventDefault();
         setOpened(o => !o);
         return;
@@ -184,7 +185,7 @@ function KeyRow({ shortcut, dark }: { shortcut: Shortcut; dark: boolean }) {
               size="sm"
               style={{
                 background: dark ? 'rgba(45,204,211,0.15)' : AQUA,
-                color: dark ? '#2DCCD3' : '#fff',
+                color: dark ? AQUA : '#fff',
                 border: `1px solid ${dark ? 'rgba(45,204,211,0.3)' : AQUA}`,
                 borderRadius: 4,
                 padding: '3px 7px',

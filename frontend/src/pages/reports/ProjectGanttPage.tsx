@@ -4,7 +4,7 @@ import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea, Tooltip } from
 import { useProjects } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, FONT_FAMILY, SURFACE_FAINT, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE } from '../../brandTokens';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -12,10 +12,10 @@ import { EmptyState } from '../../components/ui';
 import { IconLayoutGrid } from '@tabler/icons-react';
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#dc2626',
-  P1: '#ea580c',
-  P2: '#2563eb',
-  P3: '#64748b',
+  P0: COLOR_ERROR_DARK,
+  P1: COLOR_ORANGE_DEEP,
+  P2: COLOR_BLUE_STRONG,
+  P3: TEXT_GRAY,
 };
 
 // Visual treatment per status — opacity + pattern overlay
@@ -148,7 +148,7 @@ export default function ProjectGanttPage() {
                     background: m === currentMonthIndex
                       ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
                       : undefined,
-                    ...(m < currentMonthIndex ? { color: '#94a3b8', fontWeight: 400, fontStyle: 'italic' } : {}),
+                    ...(m < currentMonthIndex ? { color: TEXT_SUBTLE, fontWeight: 400, fontStyle: 'italic' } : {}),
                   }}
                 >
                   {monthLabels[m] ?? `M${m}`}
@@ -161,7 +161,7 @@ export default function ProjectGanttPage() {
             {visibleProjects.map(project => {
               const startIdx = project.startMonth ?? 0;
               const endIdx = startIdx + project.durationMonths - 1;
-              const color = PRIORITY_COLORS[project.priority] ?? '#64748b';
+              const color = PRIORITY_COLORS[project.priority] ?? TEXT_GRAY;
               const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
               const useStripes = st.stripes;
 
@@ -195,8 +195,8 @@ export default function ProjectGanttPage() {
                             background: isCurrent
                               ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
                               : isPast
-                                ? (dark ? 'rgba(255,255,255,0.02)' : '#f1f5f9')
-                                : (dark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
+                                ? (dark ? 'rgba(255,255,255,0.02)' : SURFACE_LIGHT)
+                                : (dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT),
                           }}
                         />
                       );

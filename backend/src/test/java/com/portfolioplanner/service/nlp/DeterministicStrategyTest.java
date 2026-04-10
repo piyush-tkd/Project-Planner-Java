@@ -28,6 +28,7 @@ class DeterministicStrategyTest {
 
     @Mock private NlpToolRegistry toolRegistry;
     @Mock private NlpJiraToolExecutor jiraToolExecutor;
+    @Mock private CompositeToolExecutor compositeToolExecutor;
 
     private NlpResponseBuilder responseBuilder;
     private DeterministicStrategy strategy;
@@ -37,7 +38,9 @@ class DeterministicStrategyTest {
     @BeforeEach
     void setUp() {
         responseBuilder = new NlpResponseBuilder(); // Real instance — it's a pure function class
-        strategy = new DeterministicStrategy(toolRegistry, jiraToolExecutor, responseBuilder);
+        // CompositeToolExecutor returns null by default (no comparison match), letting deterministic rules run
+        when(compositeToolExecutor.tryExecute(any(), any())).thenReturn(null);
+        strategy = new DeterministicStrategy(toolRegistry, jiraToolExecutor, responseBuilder, compositeToolExecutor);
         mockCatalog = mock(NlpCatalogResponse.class);
         objectMapper = new ObjectMapper();
     }

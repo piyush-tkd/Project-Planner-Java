@@ -9,6 +9,7 @@ import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.domain.repository.ResourceRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/bulk-import")
+@PreAuthorize("hasRole('ADMIN')") // S2.3
 @RequiredArgsConstructor
 public class BulkImportController {
 

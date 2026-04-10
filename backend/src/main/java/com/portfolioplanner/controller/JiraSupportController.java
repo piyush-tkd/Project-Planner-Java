@@ -54,6 +54,9 @@ public class JiraSupportController {
         board.setQueueId(req.queueId());
         board.setEnabled(true);
         board.setStaleThresholdDays(req.staleThresholdDays() != null ? req.staleThresholdDays() : 3);
+        if (req.alertPriorities() != null && !req.alertPriorities().isBlank()) {
+            board.setAlertPriorities(req.alertPriorities().trim());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(svc.saveBoard(board));
     }
 
@@ -69,6 +72,9 @@ public class JiraSupportController {
         board.setQueueId(req.queueId());
         if (req.enabled() != null) board.setEnabled(req.enabled());
         if (req.staleThresholdDays() != null) board.setStaleThresholdDays(req.staleThresholdDays());
+        if (req.alertPriorities() != null && !req.alertPriorities().isBlank()) {
+            board.setAlertPriorities(req.alertPriorities().trim());
+        }
         return svc.saveBoard(board);
     }
 
@@ -111,5 +117,7 @@ public class JiraSupportController {
             /** JSM custom-queue ID from the queue URL (e.g. 1649). */
             Long queueId,
             Boolean enabled,
-            Integer staleThresholdDays) {}
+            Integer staleThresholdDays,
+            /** Comma-separated Jira priority names that trigger inbox alerts, e.g. "Blocker,Critical,Highest". */
+            String alertPriorities) {}
 }

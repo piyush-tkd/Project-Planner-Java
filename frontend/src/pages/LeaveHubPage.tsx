@@ -1,26 +1,19 @@
 import { useState } from 'react';
-import { Tabs, Title, Text, Group } from '@mantine/core';
+import { Tabs } from '@mantine/core';
 import { IconCalendarOff, IconCalendarEvent } from '@tabler/icons-react';
+import { PPPageLayout } from '../components/pp';
 import LeaveManagementPage from './settings/LeaveManagementPage';
 import HolidayCalendarPage from './settings/HolidayCalendarPage';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 
 export default function LeaveHubPage() {
   const [activeTab, setActiveTab] = useState<string | null>('leave');
 
   return (
-    <div>
-      <Group mb="lg" align="flex-start">
-        <div>
-          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-            Leave &amp; Holidays
-          </Title>
-          <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Team leave management and organisation holiday calendar
-          </Text>
-        </div>
-      </Group>
-
+    <PPPageLayout
+      title="Leave &amp; Holidays"
+      subtitle="Team leave management and organisation holiday calendar"
+      animate
+    >
       <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
         <Tabs.List mb="lg">
           <Tabs.Tab value="leave"    leftSection={<IconCalendarOff size={14} />}>
@@ -39,6 +32,6 @@ export default function LeaveHubPage() {
           <HolidayCalendarPage embedded />
         </Tabs.Panel>
       </Tabs>
-    </div>
+    </PPPageLayout>
   );
 }

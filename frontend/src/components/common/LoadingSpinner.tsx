@@ -1,5 +1,5 @@
 import { Center, Stack, Text } from '@mantine/core';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
 
 /* ── Inject keyframes once via <style> ─────────────────────────────── */
 const STYLE_ID = 'bg-loader-keyframes';
@@ -97,7 +97,7 @@ function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number })
           <SkeletonBar key={c} width={`${100 / cols}%`} height={12} />
         ))}
       </div>
-      <div style={{ height: 1, background: '#e9ecef' }} />
+      <div style={{ height: 1, background: GRAY_100 }} />
       {/* rows */}
       {Array.from({ length: rows }).map((_, r) => (
         <div key={r} style={{ display: 'flex', gap: 16, opacity: 1 - r * 0.12 }}>

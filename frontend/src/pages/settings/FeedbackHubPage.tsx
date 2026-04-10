@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
  Container, Title, Text, Paper, Group, Stack, Badge, Button,
- Table, ActionIcon, Tooltip, Tabs, Box, Loader, ScrollArea,
+ Table, ActionIcon, Tooltip, Tabs, Box, Skeleton, ScrollArea,
  Modal, Image, Textarea, Select, SimpleGrid, ThemeIcon,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -14,7 +14,7 @@ import {
  useAllFeedback, useUpdateFeedback, useDeleteFeedback, UserFeedback,
 } from '../../api/feedback';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE } from '../../brandTokens';
 
 const CATEGORY_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
  BUG: { icon: <IconBug size={14} />, color: 'red', label: 'Bug' },
@@ -97,8 +97,8 @@ export default function FeedbackHubPage() {
  };
 
  return (
- <Container size="xl" py="md" className="page-enter stagger-children">
- <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
+ <Container size="xl" py="md">
+ <Group justify="space-between" align="flex-start" mb="lg">
  <div>
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Feedback Hub
@@ -110,12 +110,12 @@ export default function FeedbackHubPage() {
  </Group>
 
  {/* ── Summary Cards ── */}
- <SimpleGrid cols={{ base: 2, sm: 4, md: 6 }} mb="lg" className="stagger-grid">
+ <SimpleGrid cols={{ base: 2, sm: 4, md: 6 }} mb="lg">
  <SummaryCard label="Total" value={counts.all} color={DEEP_BLUE} icon={<IconMessageReport size={18} />} />
  <SummaryCard label="New" value={counts.new} color="#1c7ed6" icon={<IconMessageReport size={18} />} />
- <SummaryCard label="In Progress" value={counts.inProgress} color="#e67700" icon={<IconPlayerPlay size={18} />} />
+ <SummaryCard label="In Progress" value={counts.inProgress} color={COLOR_ORANGE_DARK} icon={<IconPlayerPlay size={18} />} />
  <SummaryCard label="Resolved" value={counts.done} color="#2b8a3e" icon={<IconCheck size={18} />} />
- <SummaryCard label="Bugs" value={counts.bugs} color="#c92a2a" icon={<IconBug size={18} />} />
+ <SummaryCard label="Bugs" value={counts.bugs} color={COLOR_ERROR_DEEP} icon={<IconBug size={18} />} />
  <SummaryCard label="Suggestions" value={counts.suggestions} color={AQUA} icon={<IconBulb size={18} />} />
  </SimpleGrid>
 
@@ -138,7 +138,7 @@ export default function FeedbackHubPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={560}>
  {isLoading ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
  ) : filtered.length === 0 ? (
  <Box p="xl" ta="center">
  <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
@@ -260,7 +260,7 @@ export default function FeedbackHubPage() {
  <Text size="xs" c="dimmed">by {detailModal.submittedBy} on {new Date(detailModal.createdAt).toLocaleString()}</Text>
  </Group>
 
- <Paper withBorder p="sm" radius="md" style={{ backgroundColor: '#f8f9fa' }}>
+ <Paper withBorder p="sm" radius="md" style={{ backgroundColor: SURFACE_SUBTLE }}>
  <Text size="sm" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'pre-wrap' }}>
  {detailModal.message}
  </Text>

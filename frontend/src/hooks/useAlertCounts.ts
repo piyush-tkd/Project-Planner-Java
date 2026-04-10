@@ -15,7 +15,8 @@ export interface AlertCounts {
   criticalTickets: SupportTicket[];
 }
 
-const CRITICAL_PRIORITIES = new Set(['Blocker', 'Critical', 'Highest']);
+/** Default alert priorities when a board has no specific configuration */
+const DEFAULT_CRITICAL_PRIORITIES = new Set(['Blocker', 'Critical', 'Highest']);
 
 export function useAlertCounts(): AlertCounts {
   const { data: jiraStatus } = useJiraStatus();
@@ -28,14 +29,28 @@ export function useAlertCounts(): AlertCounts {
   const { data: summary } = useExecutiveSummary();
 
   return useMemo(() => {
+    // Build a map: configId → Set<priority> for per-board alert thresholds
+    const prioritiesByConfigId = new Map<number, Set<string>>();
+    for (const board of supportBoards) {
+      const raw = board.alertPriorities ?? 'Blocker,Critical,Highest';
+      const priorities = new Set(raw.split(',').map(p => p.trim()).filter(Boolean));
+      prioritiesByConfigId.set(board.id, priorities);
+    }
+
     const allTickets = (supportSnapshot?.boards ?? []).flatMap(b => b.tickets);
     const supportStale = allTickets.filter(t => t.stale).length;
     const reportsDeficit = summary?.podMonthsInDeficit ?? 0;
-    const criticalTickets = allTickets.filter(
-      t => CRITICAL_PRIORITIES.has(t.priority ?? '') &&
-           t.status?.toLowerCase() !== 'done' &&
-           t.statusCategory?.toLowerCase() !== 'done',
-    );
+
+    // For each board snapshot, use the board-specific priority set to filter alerts
+    const criticalTickets = (supportSnapshot?.boards ?? []).flatMap(boardSnap => {
+      const priorities = prioritiesByConfigId.get(boardSnap.configId) ?? DEFAULT_CRITICAL_PRIORITIES;
+      return boardSnap.tickets.filter(
+        t => priorities.has(t.priority ?? '') &&
+             t.status?.toLowerCase() !== 'done' &&
+             t.statusCategory?.toLowerCase() !== 'done',
+      );
+    });
+
     return { supportStale, reportsDeficit, criticalTickets };
-  }, [supportSnapshot, summary]);
+  }, [supportSnapshot, supportBoards, summary]);
 }

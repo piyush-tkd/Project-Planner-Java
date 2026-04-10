@@ -20,7 +20,7 @@ import { useProjectPodMatrix } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, GRAY_200, SURFACE_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface ProjectPodMatrixResponse {
@@ -62,7 +62,7 @@ interface ProjectWithPods {
 type SortBy = 'podCount' | 'startMonth' | 'name';
 
 const POD_COLORS = [
- '#FF6B6B',
+ COLOR_ERROR_LIGHT,
  '#4ECDC4',
  '#45B7D1',
  '#FFA07A',
@@ -87,9 +87,9 @@ export default function CrossPodDependencyPage() {
  const dark = useDarkMode();
  const [sortBy, setSortBy] = useState<SortBy>('podCount');
  const [selectedPods, setSelectedPods] = useState<string[]>([]);
- const sectionBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
- const barTrackBg = dark ? 'rgba(255,255,255,0.1)' : '#e9ecef';
- const headingColor = dark ? '#e0e0e0' : DEEP_BLUE;
+ const sectionBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
+ const barTrackBg = dark ? 'rgba(255,255,255,0.1)' : GRAY_100;
+ const headingColor = dark ? GRAY_200 : DEEP_BLUE;
 
  const { multiPodProjects, allPods } = useMemo(() => {
  if (!projectPodMatrix) return { multiPodProjects: [], allPods: [] };

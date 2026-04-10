@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  TextInput, Button, Text, Title, Stack, Alert,
+  TextInput, Button, Text, Title, Stack, Alert, useComputedColorScheme,
 } from '@mantine/core';
 import { IconAlertCircle, IconCircleCheck, IconArrowLeft } from '@tabler/icons-react';
 import apiClient from '../api/client';
 import {
-  DEEP_BLUE, AQUA, DEEP_BLUE_TINTS,
+  DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_TINTS,
   FONT_FAMILY, SHADOW,
 } from '../brandTokens';
 
 export default function ForgotPasswordPage() {
+  const isDark = useComputedColorScheme('light') === 'dark';
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
   const [sent,    setSent]    = useState(false);
@@ -46,8 +47,8 @@ export default function ForgotPasswordPage() {
           pointerEvents: 'none',
         }} />
         <svg width="52" height="48" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 16, position: 'relative' }}>
-          <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA} strokeWidth="4" />
-          <polygon points="26,10 44,44 8,44" fill={AQUA} opacity="0.25" />
+          <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA_HEX} strokeWidth="4" />
+          <polygon points="26,10 44,44 8,44" fill={AQUA_HEX} opacity="0.25" />
         </svg>
         <Title order={1} style={{
           color: '#FFFFFF', fontFamily: FONT_FAMILY, fontWeight: 300,
@@ -64,17 +65,17 @@ export default function ForgotPasswordPage() {
 
       {/* ── Right form panel ── */}
       <div style={{
-        flex: 1, backgroundColor: '#FFFFFF',
+        flex: 1, backgroundColor: isDark ? 'rgba(26,29,39,0.95)' : '#FFFFFF',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px',
       }}>
         <div style={{ width: '100%', maxWidth: 396 }}>
 
           <Title order={2} style={{
-            color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 300, fontSize: 32, marginBottom: 6,
+            color: isDark ? '#ffffff' : DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 300, fontSize: 32, marginBottom: 6,
           }}>
             Forgot password?
           </Title>
-          <Text style={{ color: DEEP_BLUE_TINTS[50], fontSize: 14, fontFamily: FONT_FAMILY, marginBottom: 32 }}>
+          <Text style={{ color: isDark ? 'rgba(255,255,255,0.7)' : DEEP_BLUE_TINTS[50], fontSize: 14, fontFamily: FONT_FAMILY, marginBottom: 32 }}>
             Enter your email address and we'll send you a reset link.
           </Text>
 
@@ -105,8 +106,8 @@ export default function ForgotPasswordPage() {
                     autoFocus
                     autoComplete="email"
                     styles={{
-                      label: { fontFamily: FONT_FAMILY, fontWeight: 500, fontSize: 13, color: DEEP_BLUE, marginBottom: 4 },
-                      input: { fontFamily: FONT_FAMILY, fontSize: 14, borderColor: DEEP_BLUE_TINTS[10], borderRadius: 6, height: 42 },
+                      label: { fontFamily: FONT_FAMILY, fontWeight: 500, fontSize: 13, color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE, marginBottom: 4 },
+                      input: { fontFamily: FONT_FAMILY, fontSize: 14, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.12)' : DEEP_BLUE_TINTS[10], color: isDark ? '#fff' : undefined, borderRadius: 6, height: 42 },
                     }}
                   />
                   <Button
@@ -130,7 +131,7 @@ export default function ForgotPasswordPage() {
           <div style={{ marginTop: 24, textAlign: 'center' }}>
             <Link to="/login" style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 13, color: AQUA, fontFamily: FONT_FAMILY, textDecoration: 'none',
+              fontSize: 13, color: isDark ? '#4ecca9' : AQUA, fontFamily: FONT_FAMILY, textDecoration: 'none',
             }}>
               <IconArrowLeft size={13} />
               Back to sign in

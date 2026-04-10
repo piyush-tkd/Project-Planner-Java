@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
  Title, Text, Group, Button, Badge, TagsInput,
- Alert, Loader, ActionIcon, Tooltip, Paper, Divider,
+ Alert, Skeleton, ActionIcon, Tooltip, Paper, Divider,
  ThemeIcon, Box, Stack, Anchor, TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -15,7 +15,7 @@ import {
  ReleaseConfigResponse, ReleaseConfigRequest,
 } from '../../api/jira';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SURFACE_SUCCESS_LIGHT } from '../../brandTokens';
 
 // ── Per-pod version picker ────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ export default function ReleaseSettingsPage() {
  clearCache.mutate(undefined, { onSettled: () => refetch() });
  };
 
- if (statusLoading || configLoading) return <Loader mt="xl" />;
+ if (statusLoading || configLoading) return <Stack gap="xs" p="md">{[...Array(4)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>;
 
  if (!status?.configured) {
  return (
@@ -233,7 +233,10 @@ export default function ReleaseSettingsPage() {
  leftSection={<IconDeviceFloppy size={15} />}
  disabled={!dirty}
  loading={save.isPending}
- style={{ backgroundColor: DEEP_BLUE }}
+ style={{
+ backgroundColor: dirty ? DEEP_BLUE : undefined,
+ color: dirty ? '#ffffff' : undefined,
+ }}
  onClick={handleSave}
  >
  Save
@@ -254,7 +257,7 @@ export default function ReleaseSettingsPage() {
 
  {/* ── Apply a version to ALL PODs at once ─────────────────────── */}
  {savedConfig.length > 0 && (
- <Paper withBorder p="md" radius="md" mb="md" style={{ background: '#f0fdf4', borderColor: AQUA }}>
+ <Paper withBorder p="md" radius="md" mb="md" style={{ background: SURFACE_SUCCESS_LIGHT, borderColor: AQUA }}>
  <Group gap="xs" mb={8}>
  <ThemeIcon size={22} radius="sm" style={{ backgroundColor: AQUA }}>
  <IconLayersIntersect size={13} color="white" />
@@ -275,7 +278,8 @@ export default function ReleaseSettingsPage() {
  />
  <Button
  size="sm"
- style={{ backgroundColor: AQUA }}
+ variant="filled"
+ color="teal"
  disabled={!globalVersion.trim()}
  onClick={handleApplyToAll}
  >
@@ -310,7 +314,7 @@ export default function ReleaseSettingsPage() {
  <Button
  leftSection={<IconDeviceFloppy size={15} />}
  loading={save.isPending}
- style={{ backgroundColor: DEEP_BLUE }}
+ style={{ backgroundColor: DEEP_BLUE, color: '#ffffff' }}
  onClick={handleSave}
  >
  Save Changes

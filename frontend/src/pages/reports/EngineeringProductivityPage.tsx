@@ -18,7 +18,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
-import { AQUA } from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_AMBER, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_LIGHT, COLOR_SUCCESS, GRAY_300, SURFACE_FAINT, TEXT_DIM } from '../../brandTokens';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -43,7 +43,7 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 const LEVEL_HEX: Record<string, string> = {
- elite: '#40c057', high: '#339af0', medium: '#fab005', low: '#fa5252',
+ elite: COLOR_SUCCESS, high: COLOR_BLUE_LIGHT, medium: COLOR_AMBER, low: COLOR_ERROR,
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,11 +56,11 @@ const PRIORITY_COLORS: Record<string, string> = {
  CRITICAL: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'gray',
 };
 
-const PIE_COLORS = ['#2DCCD3', '#0C2340', '#4dabf7', '#fab005', '#ff6b6b', '#868e96'];
+const PIE_COLORS = [AQUA, DEEP_BLUE, COLOR_BLUE_LIGHT, COLOR_AMBER, COLOR_ERROR_LIGHT, TEXT_DIM];
 
 function DoraCard({ label, icon, metric, onClick }: { label: string; icon: React.ReactNode; metric?: DoraMetricValue; onClick?: () => void }) {
  if (!metric) return null;
- const borderColor = LEVEL_HEX[metric.level] ?? '#868e96';
+ const borderColor = LEVEL_HEX[metric.level] ?? TEXT_DIM;
  return (
  <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%' }}>
    <Paper
@@ -88,7 +88,7 @@ function DoraCard({ label, icon, metric, onClick }: { label: string; icon: React
          </ThemeIcon>
          <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
        </Group>
-       <IconChevronRight size={14} style={{ color: '#adb5bd', flexShrink: 0 }} />
+       <IconChevronRight size={14} style={{ color: GRAY_300, flexShrink: 0 }} />
      </Group>
      <Group align="baseline" gap={6} mb={6}>
        <Text size="2rem" fw={800} style={{ lineHeight: 1.1 }}>
@@ -115,7 +115,7 @@ export default function EngineeringProductivityPage() {
  const dark = useDarkMode();
  const [costView, setCostView] = useState<'delivered' | 'all'>('delivered');
 
- const gridStroke = dark ? '#333' : '#eee';
+ const gridStroke = dark ? 'rgba(255,255,255,0.1)' : SURFACE_FAINT;
 
  /* ── Derived data ──────────────────────────────────────────────────────── */
 
@@ -233,7 +233,7 @@ export default function EngineeringProductivityPage() {
  [fmtCurrencyFull(v), item?.payload?.fullName ?? '']}
  contentStyle={{ fontSize: 12 }}
  />
- <Bar dataKey="spend" fill={AQUA} radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="spend" fill={AQUA_HEX} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  </ChartCard>
@@ -256,7 +256,7 @@ export default function EngineeringProductivityPage() {
  [fmtCurrencyFull(v), item?.payload?.fullName ?? '']}
  contentStyle={{ fontSize: 12 }}
  />
- <Bar dataKey="cost" fill="#4dabf7" radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="cost" fill={COLOR_BLUE_LIGHT} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  </ChartCard>
@@ -309,8 +309,8 @@ export default function EngineeringProductivityPage() {
  >
  {statusPieData.map((entry, i) => {
  const STATUS_PIE: Record<string, string> = {
-   'ACTIVE': '#2DCCD3', 'IN DISCOVERY': '#0C2340', 'NOT STARTED': '#4dabf7',
-   'ON HOLD': '#fab005', 'COMPLETED': '#40c057', 'CANCELLED': '#ff6b6b',
+   'ACTIVE': AQUA, 'IN DISCOVERY': DEEP_BLUE, 'NOT STARTED': COLOR_BLUE_LIGHT,
+   'ON HOLD': COLOR_AMBER, 'COMPLETED': COLOR_SUCCESS, 'CANCELLED': COLOR_ERROR_LIGHT,
  };
  return <Cell key={i} fill={STATUS_PIE[entry.name] ?? PIE_COLORS[i % PIE_COLORS.length]} />;
  })}
@@ -334,10 +334,10 @@ export default function EngineeringProductivityPage() {
  >
  {priorityPieData.map((entry, i) => (
  <Cell key={i} fill={
- entry.name === 'P0' ? '#ff6b6b' :
- entry.name === 'P1' ? '#fab005' :
- entry.name === 'P2' ? '#4dabf7' :
- entry.name === 'P3' ? '#868e96' :
+ entry.name === 'P0' ? COLOR_ERROR_LIGHT :
+ entry.name === 'P1' ? COLOR_AMBER :
+ entry.name === 'P2' ? COLOR_BLUE_LIGHT :
+ entry.name === 'P3' ? TEXT_DIM :
  PIE_COLORS[i % PIE_COLORS.length]
  } />
  ))}
@@ -596,7 +596,7 @@ export default function EngineeringProductivityPage() {
  [`${fmtHours(v)} (${item?.payload?.pct ?? 0}%)`, item?.payload?.fullName ?? '']}
  contentStyle={{ fontSize: 12 }}
  />
- <Bar dataKey="hours" fill="#fab005" radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="hours" fill={COLOR_AMBER} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  </ChartCard>

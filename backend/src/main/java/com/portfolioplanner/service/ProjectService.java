@@ -1,10 +1,14 @@
 package com.portfolioplanner.service;
 
+import com.portfolioplanner.domain.model.OrgSettings;
 import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.domain.model.Project;
+import com.portfolioplanner.domain.model.ProjectApproval;
 import com.portfolioplanner.domain.model.ProjectPodPlanning;
 import com.portfolioplanner.domain.model.TimelineConfig;
+import com.portfolioplanner.domain.repository.OrgSettingsRepository;
 import com.portfolioplanner.domain.repository.PodRepository;
+import com.portfolioplanner.domain.repository.ProjectApprovalRepository;
 import com.portfolioplanner.domain.repository.ReleaseCalendarRepository;
 import com.portfolioplanner.domain.model.ReleaseCalendar;
 import com.portfolioplanner.domain.repository.ProjectPodPlanningRepository;
@@ -19,14 +23,20 @@ import com.portfolioplanner.exception.DuplicateNameException;
 import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,6 +45,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ProjectService {
 
+    @Value("${app.org-id:1}")
+    private Long orgId;
+
     private final ProjectRepository projectRepository;
     private final ProjectPodPlanningRepository planningRepository;
     private final PodRepository podRepository;
@@ -42,6 +55,10 @@ public class ProjectService {
     private final TimelineConfigRepository timelineRepository;
     private final EntityMapper mapper;
     private final AuditLogService auditLogService;
+    private final WebhookService webhookService;
+    private final OrgSettingsRepository orgSettingsRepository;
+    private final ProjectApprovalRepository approvalRepository;
+    private final ApprovalNotificationService approvalNotificationService;
 
     public List<ProjectResponse> getAll(String status) {
         List<Project> projects;
@@ -81,7 +98,7 @@ public class ProjectService {
         return mapper.toProjectResponse(project);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     @CacheEvict(value = "calculations", allEntries = true)
     public ProjectResponse update(Long id, ProjectRequest request) {
         Project project = projectRepository.findById(id)
@@ -93,6 +110,74 @@ public class ProjectService {
                 throw new DuplicateNameException("A project with this name already exists");
             }
         });
+
+        // ── Approval gate for status changes ─────────────────────────────────
+        String currentStatus = project.getStatus();
+        String requestedStatus = request.status() != null ? request.status().toUpperCase() : currentStatus;
+        if (!currentStatus.equalsIgnoreCase(requestedStatus)
+                && isApprovalRequired("approval.require_status")) {
+            approvalRepository.findFirstByProjectIdAndStatusOrderByRequestedAtDesc(
+                    id, ProjectApproval.ApprovalStatus.PENDING).ifPresent(existing -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PENDING_APPROVAL_EXISTS");
+            });
+            ProjectApproval a = new ProjectApproval();
+            a.setProjectId(id);
+            a.setRequestedBy(getCurrentUsername());
+            a.setProposedChange("STATUS:" + currentStatus + "→" + requestedStatus);
+            a.setRequestNote("Status transition requested: " + currentStatus + " → " + requestedStatus);
+            a.setStatus(ProjectApproval.ApprovalStatus.PENDING);
+            approvalRepository.save(a);
+            approvalNotificationService.notifyNewApprovalPending(a,
+                    project.getName(), "Status: " + currentStatus + " → " + requestedStatus);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "APPROVAL_REQUIRED");
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Approval gate for timeline extensions ─────────────────────────────
+        Integer currentEnd = project.getTargetEndMonth();
+        Integer requestedEnd = request.targetEndMonth();
+        if (requestedEnd != null && currentEnd != null
+                && requestedEnd > currentEnd
+                && isApprovalRequired("approval.require_timeline")) {
+            approvalRepository.findFirstByProjectIdAndStatusOrderByRequestedAtDesc(
+                    id, ProjectApproval.ApprovalStatus.PENDING).ifPresent(existing -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PENDING_APPROVAL_EXISTS");
+            });
+            ProjectApproval a = new ProjectApproval();
+            a.setProjectId(id);
+            a.setRequestedBy(getCurrentUsername());
+            a.setProposedChange("TIMELINE:" + currentEnd + "→" + requestedEnd);
+            a.setRequestNote("Timeline extension requested: month " + currentEnd + " → month " + requestedEnd);
+            a.setStatus(ProjectApproval.ApprovalStatus.PENDING);
+            approvalRepository.save(a);
+            approvalNotificationService.notifyNewApprovalPending(a,
+                    project.getName(), "Timeline extended: month " + currentEnd + " → month " + requestedEnd);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "APPROVAL_REQUIRED");
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Approval gate for budget increases ────────────────────────────────
+        BigDecimal currentBudget = project.getEstimatedBudget();
+        BigDecimal requestedBudget = request.estimatedBudget();
+        if (requestedBudget != null && currentBudget != null
+                && requestedBudget.compareTo(currentBudget) > 0
+                && isApprovalRequired("approval.require_budget")) {
+            approvalRepository.findFirstByProjectIdAndStatusOrderByRequestedAtDesc(
+                    id, ProjectApproval.ApprovalStatus.PENDING).ifPresent(existing -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "PENDING_APPROVAL_EXISTS");
+            });
+            ProjectApproval a = new ProjectApproval();
+            a.setProjectId(id);
+            a.setRequestedBy(getCurrentUsername());
+            a.setProposedChange("BUDGET:" + currentBudget.toPlainString() + "→" + requestedBudget.toPlainString());
+            a.setRequestNote("Budget increase requested: " + currentBudget.toPlainString() + " → " + requestedBudget.toPlainString());
+            a.setStatus(ProjectApproval.ApprovalStatus.PENDING);
+            approvalRepository.save(a);
+            approvalNotificationService.notifyNewApprovalPending(a,
+                    project.getName(), "Budget increase: $" + currentBudget.toPlainString() + " → $" + requestedBudget.toPlainString());
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "APPROVAL_REQUIRED");
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // Capture before-state for diff
         String beforeDetails = projectSnapshot(project);
@@ -111,17 +196,123 @@ public class ProjectService {
         return mapper.toProjectResponse(project);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     @CacheEvict(value = "calculations", allEntries = true)
     public ProjectResponse patchStatus(Long id, String newStatus) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
         String before = project.getStatus();
-        project.setStatus(newStatus.toUpperCase());
+        String desired = newStatus.toUpperCase();
+
+        // ── Approval gate ────────────────────────────────────────────────────
+        if (isApprovalRequired("approval.require_status") && !before.equalsIgnoreCase(desired)) {
+            // Block if there's already a pending approval for this project
+            approvalRepository.findFirstByProjectIdAndStatusOrderByRequestedAtDesc(
+                    id, ProjectApproval.ApprovalStatus.PENDING).ifPresent(existing -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "PENDING_APPROVAL_EXISTS");
+            });
+            // Auto-create the pending approval and reject the direct save
+            ProjectApproval a = new ProjectApproval();
+            a.setProjectId(id);
+            a.setRequestedBy(getCurrentUsername());
+            a.setProposedChange("STATUS:" + before + "→" + desired);
+            a.setRequestNote("Status transition requested: " + before + " → " + desired);
+            a.setStatus(ProjectApproval.ApprovalStatus.PENDING);
+            approvalRepository.save(a);
+            approvalNotificationService.notifyNewApprovalPending(a, project.getName(),
+                    "Status: " + before + " → " + desired);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "APPROVAL_REQUIRED");
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+        project.setStatus(desired);
         project = projectRepository.save(project);
         auditLogService.log("Project", project.getId(), project.getName(), "STATUS_CHANGE",
                 "status: " + before + " → " + project.getStatus());
+        webhookService.fireProjectStatusChanged(
+                project.getId(), project.getName(), before, project.getStatus());
         return mapper.toProjectResponse(project);
+    }
+
+    /**
+     * Apply the proposed change stored on an approval record.
+     * Called automatically when a reviewer approves the request.
+     */
+    @Transactional
+    @CacheEvict(value = "calculations", allEntries = true)
+    public void applyProposedChange(Long projectId, String proposedChange) {
+        if (proposedChange == null || proposedChange.isBlank()) return;
+        if (proposedChange.startsWith("STATUS:")) {
+            // FORMAT: "STATUS:BEFORE→AFTER"
+            String[] parts = proposedChange.substring("STATUS:".length()).split("→", 2);
+            if (parts.length == 2) {
+                String newStatus = parts[1];
+                Project project = projectRepository.findById(projectId).orElse(null);
+                if (project != null) {
+                    String before = project.getStatus();
+                    project.setStatus(newStatus);
+                    projectRepository.save(project);
+                    auditLogService.log("Project", project.getId(), project.getName(),
+                            "STATUS_CHANGE", "status: " + before + " → " + newStatus + " (auto-applied via approval)");
+                    webhookService.fireProjectStatusChanged(
+                            project.getId(), project.getName(), before, newStatus);
+                }
+            }
+        } else if (proposedChange.startsWith("TIMELINE:")) {
+            // FORMAT: "TIMELINE:OLD_MONTH→NEW_MONTH"
+            String[] parts = proposedChange.substring("TIMELINE:".length()).split("→", 2);
+            if (parts.length == 2) {
+                try {
+                    int newEndMonth = Integer.parseInt(parts[1]);
+                    Project project = projectRepository.findById(projectId).orElse(null);
+                    if (project != null) {
+                        project.setTargetEndMonth(newEndMonth);
+                        projectRepository.save(project);
+                        auditLogService.log("Project", project.getId(), project.getName(),
+                                "TIMELINE_CHANGE", "targetEndMonth: " + parts[0] + " → " + newEndMonth + " (auto-applied via approval)");
+                    }
+                } catch (NumberFormatException ignored) { }
+            }
+        } else if (proposedChange.startsWith("BUDGET:")) {
+            // FORMAT: "BUDGET:OLD_AMOUNT→NEW_AMOUNT"
+            String[] parts = proposedChange.substring("BUDGET:".length()).split("→", 2);
+            if (parts.length == 2) {
+                try {
+                    BigDecimal newBudget = new BigDecimal(parts[1]);
+                    Project project = projectRepository.findById(projectId).orElse(null);
+                    if (project != null) {
+                        project.setEstimatedBudget(newBudget);
+                        projectRepository.save(project);
+                        auditLogService.log("Project", project.getId(), project.getName(),
+                                "BUDGET_CHANGE", "estimatedBudget: " + parts[0] + " → " + newBudget.toPlainString() + " (auto-applied via approval)");
+                    }
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+    }
+
+    /**
+     * Returns the username of the currently authenticated user, or {@code "system"}
+     * as a safe fallback for unauthenticated/background calls.
+     */
+    private String getCurrentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return "system";
+        }
+        return auth.getName();
+    }
+
+    /** Check if an approval feature flag is enabled in OrgSettings. */
+    private boolean isApprovalRequired(String featureKey) {
+        Map<String, Boolean> features = orgSettingsRepository.findByOrgId(orgId)
+                .map(OrgSettings::getFeatures)
+                .orElse(null);
+        if (features == null) return false;
+        // If auto-approve is globally enabled, bypass human review for all gates
+        if (Boolean.TRUE.equals(features.get("approval.auto_approve"))) return false;
+        return Boolean.TRUE.equals(features.get(featureKey));
     }
 
     @Transactional

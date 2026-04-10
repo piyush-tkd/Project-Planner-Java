@@ -54,6 +54,10 @@ export interface ActualsRow {
   hasTimeData: boolean;
   actualHoursByMonth: Record<number, number>;
   actualHoursByResource: Record<string, number>;
+  /** Actual hours grouped by Jira sprint name. */
+  sprintBreakdown: Record<string, number>;
+  /** Planned hours from PP sprint allocations for this project. */
+  plannedHours: number;
   monthLabels: Record<number, string>;
   errorMessage: string | null;
 }
@@ -734,6 +738,11 @@ export interface SupportBoard {
   queueId: number | null;
   enabled: boolean;
   staleThresholdDays: number;
+  /**
+   * Comma-separated Jira priority names that trigger inbox alerts for this board.
+   * Defaults to "Blocker,Critical,Highest".
+   */
+  alertPriorities: string;
 }
 
 export interface SnapshotDayPoint {
@@ -849,6 +858,8 @@ export interface BoardUpsertPayload {
   queueId?: number | null;
   enabled?: boolean;
   staleThresholdDays: number;
+  /** Comma-separated Jira priority names that trigger inbox alerts, e.g. "Blocker,Critical,Highest" */
+  alertPriorities?: string;
 }
 
 export function useCreateSupportBoard() {
@@ -1004,6 +1015,16 @@ export interface JiraAnalyticsData {
   byComponent: AnalyticsBreakdown[];
   byPod: AnalyticsBreakdown[];
   byFixVersion: AnalyticsBreakdown[];
+  // Extended dimensions
+  byEpic?: AnalyticsBreakdown[];
+  byReporter?: AnalyticsBreakdown[];
+  byResolution?: AnalyticsBreakdown[];
+  bySprint?: AnalyticsBreakdown[];
+  byProject?: AnalyticsBreakdown[];
+  byStatusCategory?: AnalyticsBreakdown[];
+  byCreator?: AnalyticsBreakdown[];
+  byCreatedMonth?: AnalyticsBreakdown[];
+  byResolvedMonth?: AnalyticsBreakdown[];
   createdVsResolved: AnalyticsTrend[];
   workload: AnalyticsWorkload[];
   aging: AnalyticsBucket[];
@@ -1022,15 +1043,26 @@ export interface AnalyticsFilterPod {
   projectKeys: string[];
 }
 
-export interface AnalyticsFilters {
-  pods: AnalyticsFilterPod[];
+export interface AnalyticsFilterSupportBoard {
+  id: number;
+  name: string;
+  projectKey: string | null;
 }
 
-export function useJiraAnalytics(months?: number, pods?: string) {
+export interface AnalyticsFilters {
+  pods: AnalyticsFilterPod[];
+  supportBoards?: AnalyticsFilterSupportBoard[];
+}
+
+export function useJiraAnalytics(months?: number, pods?: string, supportBoards?: string) {
   return useQuery<JiraAnalyticsData>({
-    queryKey: ['jira', 'analytics', months ?? 3, pods ?? 'all'],
+    queryKey: ['jira', 'analytics', months ?? 3, pods ?? 'all', supportBoards ?? 'none'],
     queryFn: () => apiClient.get('/jira/analytics', {
-      params: { ...(months ? { months } : {}), ...(pods ? { pods } : {}) },
+      params: {
+        ...(months ? { months } : {}),
+        ...(pods ? { pods } : {}),
+        ...(supportBoards ? { supportBoards } : {}),
+      },
     }).then(r => r.data),
     staleTime: 30 * 60_000,
     refetchOnMount: false,
@@ -1165,5 +1197,148 @@ export function useTriggerJiraSync() {
       setTimeout(invalidateAll, 15000);  // medium syncs
       setTimeout(invalidateAll, 30000);  // large syncs
     },
+  });
+}
+
+// ── Custom Query / Power Analytics ──────────────────────────────────────────
+
+export interface JiraAnalyticsField {
+  id: string;
+  name: string;
+  category: 'standard' | 'custom';
+  type: 'string' | 'multi' | 'date' | 'boolean';
+}
+
+export interface CustomQueryParams {
+  groupBy: string;
+  metric?: 'count' | 'storyPoints';
+  jql?: string;
+  pods?: string;
+  limit?: number;
+  enabled?: boolean;
+}
+
+export interface CustomQueryResult {
+  name: string;
+  count: number;
+  value: number;
+}
+
+/** Fetch all groupable fields (standard + custom) for the selected PODs. */
+export function useJiraAnalyticsFields(pods?: string) {
+  return useQuery<JiraAnalyticsField[]>({
+    queryKey: ['jira', 'analytics', 'fields', pods ?? 'all'],
+    queryFn: () =>
+      apiClient
+        .get('/jira/analytics/fields', { params: pods ? { pods } : undefined })
+        .then(r => r.data),
+    staleTime: 60_000 * 10, // cache 10 min — fields don't change often
+  });
+}
+
+/** Run a custom aggregation query (groupBy + optional JQL filter). */
+export function useJiraCustomQuery(params: CustomQueryParams) {
+  const { groupBy, metric = 'count', jql, pods, limit = 20, enabled = true } = params;
+  return useQuery<CustomQueryResult[]>({
+    queryKey: ['jira', 'analytics', 'custom-query', groupBy, metric, jql ?? '', pods ?? 'all', limit],
+    queryFn: () =>
+      apiClient
+        .post('/jira/analytics/custom-query', { groupBy, metric, jql, pods, limit })
+        .then(r => r.data),
+    enabled: enabled && !!groupBy,
+    staleTime: 60_000 * 2, // 2 min cache
+  });
+}
+
+// ── Power Query Engine ──────────────────────────────────────────────────
+
+export interface PowerQueryFilter {
+  field: string;
+  op: '=' | '!=' | 'in' | 'not_in' | '>' | '<' | '>=' | '<=' | 'contains' | 'is_empty' | 'is_not_empty';
+  values: string[];
+  logicOp?: 'AND' | 'OR';
+}
+
+export interface PowerQueryMetric {
+  field: 'count' | 'storyPoints' | 'hours' | 'cycleTimeDays';
+  aggregation: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90' | 'p95';
+  alias: string;
+}
+
+export interface PowerQueryRequest {
+  filters?: PowerQueryFilter[];
+  groupBy?: string[];
+  metrics?: PowerQueryMetric[];
+  timeField?: 'created' | 'resolved';
+  startDate?: string;
+  endDate?: string;
+  granularity?: 'day' | 'week' | 'month' | 'quarter' | 'year';
+  comparisonType?: 'period_over_period' | 'yoy';
+  comparisonPeriods?: number;
+  orderBy?: string;
+  orderDirection?: 'asc' | 'desc';
+  limit?: number;
+  pods?: string;
+  joins?: ('worklogs' | 'labels' | 'components' | 'fixVersions')[];
+}
+
+export interface PowerQueryResponse {
+  data: Record<string, unknown>[];
+  rowCount: number;
+  limit: number;
+  error?: string;
+}
+
+export interface PowerQueryOperator {
+  op: string;
+  label: string;
+  types: string[];
+}
+
+export interface PowerQueryPreset {
+  name: string;
+  description: string;
+  query: Partial<PowerQueryRequest>;
+}
+
+/** Execute a Power Query and return results. */
+export function usePowerQuery(request: PowerQueryRequest | null, enabled = true) {
+  return useQuery<PowerQueryResponse>({
+    queryKey: ['power-query', JSON.stringify(request)],
+    queryFn: () =>
+      apiClient.post('/power-query/execute', request).then(r => r.data),
+    enabled: enabled && request !== null,
+    staleTime: 60_000 * 2,
+  });
+}
+
+/** Fetch distinct values for a field (autocomplete). */
+export function usePowerQueryFieldValues(field: string | null, pods?: string) {
+  return useQuery<string[]>({
+    queryKey: ['power-query', 'values', field, pods ?? 'all'],
+    queryFn: () =>
+      apiClient
+        .get('/power-query/values', { params: { field, pods, limit: 100 } })
+        .then(r => r.data),
+    enabled: !!field,
+    staleTime: 60_000 * 5,
+  });
+}
+
+/** Fetch supported operators. */
+export function usePowerQueryOperators() {
+  return useQuery<PowerQueryOperator[]>({
+    queryKey: ['power-query', 'operators'],
+    queryFn: () => apiClient.get('/power-query/operators').then(r => r.data),
+    staleTime: Infinity, // static data
+  });
+}
+
+/** Fetch query presets/templates. */
+export function usePowerQueryPresets() {
+  return useQuery<PowerQueryPreset[]>({
+    queryKey: ['power-query', 'presets'],
+    queryFn: () => apiClient.get('/power-query/presets').then(r => r.data),
+    staleTime: Infinity,
   });
 }

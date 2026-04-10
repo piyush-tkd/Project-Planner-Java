@@ -6,6 +6,7 @@ import com.portfolioplanner.domain.model.Resource;
 import com.portfolioplanner.domain.repository.JiraIssueLabelRepository;
 import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
 import com.portfolioplanner.domain.repository.JiraSyncedIssueRepository;
+import com.portfolioplanner.domain.repository.ProjectSprintAllocationRepository;
 import com.portfolioplanner.domain.repository.ResourceRepository;
 import com.portfolioplanner.service.TimelineService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class JiraActualsService {
     private final JiraSyncedIssueRepository issueRepo;
     private final JiraIssueLabelRepository labelRepo;
     private final JdbcTemplate jdbcTemplate;
+    private final ProjectSprintAllocationRepository sprintAllocationRepo;
 
     // Jira stores time in seconds; 1 FTE-day = 8 h = 28800 s
     private static final double SECONDS_PER_HOUR = 3600.0;
@@ -340,6 +342,33 @@ public class JiraActualsService {
             monthMap.forEach((name, h) -> byResource.merge(name, h, Double::sum));
         }
 
+        // ── Sprint breakdown: actual hours per Jira sprint name ──
+        Map<String, Double> sprintBreakdown = new LinkedHashMap<>();
+        for (JiraSyncedIssue issue : issues) {
+            if (issue.getSprintName() != null && !issue.getSprintName().isBlank()) {
+                double hoursLogged = issue.getTimeSpent() != null
+                        ? issue.getTimeSpent() / SECONDS_PER_HOUR : 0.0;
+                if (hoursLogged > 0) {
+                    sprintBreakdown.merge(issue.getSprintName(), hoursLogged, Double::sum);
+                }
+            }
+        }
+
+        // ── Planned hours: sum all sprint allocations for this project ──
+        double plannedHours = 0.0;
+        try {
+            List<com.portfolioplanner.domain.model.ProjectSprintAllocation> allocs =
+                    sprintAllocationRepo.findByProjectId(mapping.getProject().getId());
+            for (com.portfolioplanner.domain.model.ProjectSprintAllocation alloc : allocs) {
+                plannedHours += nvlDecimal(alloc.getDevHours())
+                        + nvlDecimal(alloc.getQaHours())
+                        + nvlDecimal(alloc.getBsaHours())
+                        + nvlDecimal(alloc.getTechLeadHours());
+            }
+        } catch (Exception e) {
+            log.debug("Could not compute planned hours for project {}: {}", mapping.getProject().getId(), e.getMessage());
+        }
+
         return new ActualsRow(
                 mapping.getProject().getId(),
                 mapping.getProject().getName(),
@@ -352,6 +381,8 @@ public class JiraActualsService {
                 hasTimeData,
                 monthTotals,
                 byResource,
+                sprintBreakdown,
+                plannedHours,
                 monthLabels,
                 null);
     }
@@ -391,6 +422,10 @@ public class JiraActualsService {
         return (s != null && !s.isBlank()) ? s : def;
     }
 
+    private static double nvlDecimal(BigDecimal b) {
+        return b != null ? b.doubleValue() : 0.0;
+    }
+
     // ── DTOs ──────────────────────────────────────────────────────────
 
     public record SimpleProject(String key, String name) {}
@@ -423,12 +458,16 @@ public class JiraActualsService {
             boolean hasTimeData,
             Map<Integer, Double> actualHoursByMonth,
             Map<String, Double> actualHoursByResource,
+            /** Actual hours grouped by Jira sprint name (sprint breakdown). */
+            Map<String, Double> sprintBreakdown,
+            /** Planned hours summed from ProjectSprintAllocation for this project. */
+            double plannedHours,
             Map<Integer, String> monthLabels,
             String errorMessage) {
 
         static ActualsRow error(Long id, String name, String jiraKey, String msg) {
             return new ActualsRow(id, name, jiraKey, null, null,
-                    0, 0, 0, false, Map.of(), Map.of(), Map.of(), msg);
+                    0, 0, 0, false, Map.of(), Map.of(), Map.of(), 0.0, Map.of(), msg);
         }
     }
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
-  Title,
   Text,
   Stack,
   Center,
@@ -14,13 +14,15 @@ import {
   Textarea,
   Select,
   NumberInput,
-  Loader,
+  Skeleton,
   ActionIcon,
   Menu,
   Tooltip,
   ThemeIcon,
   Divider,
   ScrollArea,
+  Popover,
+  Alert,
 } from '@mantine/core';
 import {
   IconTargetArrow,
@@ -35,8 +37,9 @@ import {
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { PPPageLayout } from '../components/pp';
 import apiClient from '../api/client';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, DEEP_BLUE, SURFACE_BG } from '../brandTokens';
 
 interface LinkedProject {
   projectId: number;
@@ -67,9 +70,11 @@ interface CreateObjectivePayload {
 }
 
 export default function ObjectivesPage() {
+  const dark = useDarkMode();
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [linkModalObjectiveId, setLinkModalObjectiveId] = useState<string | null>(null);
   const [addProjectId, setAddProjectId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateObjectivePayload>({
@@ -83,7 +88,7 @@ export default function ObjectivesPage() {
   });
 
   // Fetch objectives
-  const { data: objectives = [], isLoading, error } = useQuery({
+  const { data: objectives = [], isLoading, isError } = useQuery({
     queryKey: ['objectives'],
     queryFn: async () => {
       const res = await apiClient.get('/objectives');
@@ -92,7 +97,7 @@ export default function ObjectivesPage() {
   });
 
   // Fetch all projects (for link dropdown)
-  const { data: allProjects = [] } = useQuery({
+  const { data: allProjects = [], isError: projectsError } = useQuery({
     queryKey: ['projects-list'],
     queryFn: async () => {
       const res = await apiClient.get('/projects');
@@ -185,6 +190,24 @@ export default function ObjectivesPage() {
     },
   });
 
+  // Inline update mutation
+  const inlineUpdateMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
+      const res = await apiClient.put(`/objectives/${id}`, { [field]: value });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['objectives'] });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        color: 'red',
+        title: 'Error',
+        message: err.message || 'Failed to update objective',
+      });
+    },
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -265,12 +288,12 @@ export default function ObjectivesPage() {
   const EmptyState = ({ icon: Icon, title, description }: { icon: any; title: string; description: string }) => (
     <Center py={80}>
       <Stack align="center" gap="md">
-        <Icon size={64} color="#0C2340" opacity={0.2} />
+        <Icon size={64} color={DEEP_BLUE} opacity={0.2} />
         <Stack gap={4} align="center">
-          <Text fw={600} size="lg" style={{ fontFamily: FONT_FAMILY }}>
+          <Text fw={600} size="lg">
             {title}
           </Text>
-          <Text c="dimmed" size="sm" style={{ fontFamily: FONT_FAMILY }}>
+          <Text c="dimmed" size="sm">
             {description}
           </Text>
         </Stack>
@@ -286,16 +309,36 @@ export default function ObjectivesPage() {
       style={{
         borderColor: AQUA,
         borderWidth: 2,
-        background: 'white',
+        background: dark ? 'rgba(255,255,255,0.04)' : SURFACE_BG,
         boxShadow: '0 1px 4px rgba(12, 35, 64, 0.06)',
       }}
     >
       <Group justify="space-between" mb="sm">
         <Stack gap={0} style={{ flex: 1 }}>
           <Group justify="space-between">
-            <Text fw={600} style={{ fontFamily: FONT_FAMILY }}>
-              {objective.title}
-            </Text>
+            {editingCell?.id === objective.id && editingCell?.field === 'title' ? (
+              <TextInput
+                autoFocus
+                defaultValue={objective.title}
+                size="sm"
+                style={{ flex: 1 }}
+                onBlur={(e) => {
+                  inlineUpdateMutation.mutate({ id: objective.id, field: 'title', value: e.currentTarget.value });
+                  setEditingCell(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setEditingCell(null);
+                  if (e.key === 'Enter') {
+                    inlineUpdateMutation.mutate({ id: objective.id, field: 'title', value: e.currentTarget.value });
+                    setEditingCell(null);
+                  }
+                }}
+              />
+            ) : (
+              <Text fw={600} style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: objective.id, field: 'title' })}>
+                {objective.title}
+              </Text>
+            )}
             <Group gap={4}>
               <Tooltip label="Link Projects — auto-computes progress from linked project timelines">
                 <ActionIcon
@@ -315,12 +358,6 @@ export default function ObjectivesPage() {
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    leftSection={<IconEdit size={14} />}
-                    onClick={() => openEditModal(objective)}
-                  >
-                    Edit
-                  </Menu.Item>
-                  <Menu.Item
                     leftSection={<IconLink size={14} />}
                     onClick={() => setLinkModalObjectiveId(objective.id)}
                   >
@@ -338,39 +375,147 @@ export default function ObjectivesPage() {
               </Menu>
             </Group>
           </Group>
-          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            {objective.quarter}
-          </Text>
+          {editingCell?.id === objective.id && editingCell?.field === 'quarter' ? (
+            <TextInput
+              autoFocus
+              defaultValue={objective.quarter || ''}
+              size="xs"
+              placeholder="e.g., Q2 2026"
+              onBlur={(e) => {
+                inlineUpdateMutation.mutate({ id: objective.id, field: 'quarter', value: e.currentTarget.value });
+                setEditingCell(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setEditingCell(null);
+                if (e.key === 'Enter') {
+                  inlineUpdateMutation.mutate({ id: objective.id, field: 'quarter', value: e.currentTarget.value });
+                  setEditingCell(null);
+                }
+              }}
+            />
+          ) : (
+            <Text size="xs" c="dimmed" style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: objective.id, field: 'quarter' })}>
+              {objective.quarter || 'Click to add quarter'}
+            </Text>
+          )}
           {objective.description && (
-            <Text size="xs" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" c="dimmed" mt={4}>
               {objective.description}
             </Text>
           )}
-          {objective.owner && (
-            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-              Owner: {objective.owner}
+          {editingCell?.id === objective.id && editingCell?.field === 'owner' ? (
+            <TextInput
+              autoFocus
+              defaultValue={objective.owner || ''}
+              size="xs"
+              placeholder="Owner"
+              mt={4}
+              onBlur={(e) => {
+                inlineUpdateMutation.mutate({ id: objective.id, field: 'owner', value: e.currentTarget.value });
+                setEditingCell(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setEditingCell(null);
+                if (e.key === 'Enter') {
+                  inlineUpdateMutation.mutate({ id: objective.id, field: 'owner', value: e.currentTarget.value });
+                  setEditingCell(null);
+                }
+              }}
+            />
+          ) : (
+            <Text size="xs" c="dimmed" style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: objective.id, field: 'owner' })} mt={4}>
+              Owner: {objective.owner || 'Unassigned'}
             </Text>
           )}
         </Stack>
         <Stack gap={4} align="flex-end">
-          <Badge color="blue" variant="light">
-            {objective.progress}%
-          </Badge>
-          <Badge color={
-            objective.status === 'COMPLETED' ? 'teal' :
-            objective.status === 'AT_RISK' ? 'red' :
-            objective.status === 'ON_TRACK' ? 'green' : 'gray'
-          } variant="dot" size="xs">
-            {objective.status.replace('_', ' ')}
-          </Badge>
+          {editingCell?.id === objective.id && editingCell?.field === 'progress' ? (
+            <NumberInput
+              autoFocus
+              defaultValue={objective.progress}
+              min={0}
+              max={100}
+              size="xs"
+              w={80}
+              onBlur={(e) => {
+                const val = Number(e.currentTarget.value) || 0;
+                inlineUpdateMutation.mutate({ id: objective.id, field: 'progress', value: val });
+                setEditingCell(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setEditingCell(null);
+                if (e.key === 'Enter') {
+                  const val = Number(e.currentTarget.value) || 0;
+                  inlineUpdateMutation.mutate({ id: objective.id, field: 'progress', value: val });
+                  setEditingCell(null);
+                }
+              }}
+            />
+          ) : (
+            <Badge color="blue" variant="light" style={{ cursor: 'pointer' }} onClick={() => setEditingCell({ id: objective.id, field: 'progress' })}>
+              {objective.progress}%
+            </Badge>
+          )}
+          {editingCell?.id === objective.id && editingCell?.field === 'status' ? (
+            <Select
+              size="xs"
+              data={[
+                { value: 'NOT_STARTED', label: 'Not Started' },
+                { value: 'ON_TRACK', label: 'On Track' },
+                { value: 'AT_RISK', label: 'At Risk' },
+                { value: 'COMPLETED', label: 'Completed' },
+              ]}
+              defaultValue={objective.status}
+              onBlur={(e) => {
+                const val = e.currentTarget.value || objective.status;
+                inlineUpdateMutation.mutate({ id: objective.id, field: 'status', value: val });
+                setEditingCell(null);
+              }}
+              onChange={(val) => {
+                if (val) {
+                  inlineUpdateMutation.mutate({ id: objective.id, field: 'status', value: val });
+                  setEditingCell(null);
+                }
+              }}
+              autoFocus
+            />
+          ) : (
+            <Badge color={
+              objective.status === 'COMPLETED' ? 'teal' :
+              objective.status === 'AT_RISK' ? 'red' :
+              objective.status === 'ON_TRACK' ? 'green' : 'gray'
+            } variant="dot" size="xs" style={{ cursor: 'pointer' }} onClick={() => setEditingCell({ id: objective.id, field: 'status' })}>
+              {objective.status.replace('_', ' ')}
+            </Badge>
+          )}
         </Stack>
       </Group>
       <Progress value={objective.progress} color={AQUA} size="md" radius="md" />
       <Group justify="space-between" mt="sm">
-        {objective.targetDate && (
-          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Due: {objective.targetDate}
-          </Text>
+        {editingCell?.id === objective.id && editingCell?.field === 'targetDate' ? (
+          <TextInput
+            autoFocus
+            defaultValue={objective.targetDate || ''}
+            size="xs"
+            placeholder="yyyy-MM-dd"
+            onBlur={(e) => {
+              inlineUpdateMutation.mutate({ id: objective.id, field: 'targetDate', value: e.currentTarget.value });
+              setEditingCell(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditingCell(null);
+              if (e.key === 'Enter') {
+                inlineUpdateMutation.mutate({ id: objective.id, field: 'targetDate', value: e.currentTarget.value });
+                setEditingCell(null);
+              }
+            }}
+          />
+        ) : (
+          objective.targetDate && (
+            <Text size="xs" c="dimmed" style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: objective.id, field: 'targetDate' })}>
+              Due: {objective.targetDate}
+            </Text>
+          )
         )}
       </Group>
     </Card>
@@ -378,28 +523,27 @@ export default function ObjectivesPage() {
 
   if (isLoading) {
     return (
-      <Center p="xl">
-        <Loader />
-      </Center>
+      <Stack gap="xs" p="md">{[...Array(5)].map((_, i) => <Skeleton key={i} height={52} radius="sm" />)}</Stack>
     );
   }
 
   return (
-    <Stack gap="lg" p="md">
+    <PPPageLayout
+      title="Objectives"
+      subtitle="OKR tracking and strategic goal alignment"
+      animate
+    >
+      {(isError || projectsError) && (
+        <Alert icon={<IconAlertTriangle size={16} />} color="red" mb="md" mx="md" radius="md">
+          Failed to load data. Please try again or refresh the page.
+        </Alert>
+      )}
       {/* Header with Button */}
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={1} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 }}>
-            Objectives
-          </Title>
-          <Text c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-            Track OKRs and strategic goals
-          </Text>
-        </div>
+      <Group justify="flex-end" mb="lg">
         <Button
           color={AQUA}
           onClick={openCreateModal}
-          styles={{ root: { backgroundColor: AQUA, color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+          styles={{ root: { backgroundColor: AQUA, color: DEEP_BLUE, fontWeight: 600 } }}
         >
           New Objective
         </Button>
@@ -582,6 +726,6 @@ export default function ObjectivesPage() {
           )}
         </Stack>
       </Modal>
-    </Stack>
+    </PPPageLayout>
   );
 }

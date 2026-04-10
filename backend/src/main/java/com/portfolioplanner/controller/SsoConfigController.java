@@ -5,6 +5,7 @@ import com.portfolioplanner.domain.model.SsoConfig.SsoProvider;
 import com.portfolioplanner.domain.repository.SsoConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -17,6 +18,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/admin/sso")
+@PreAuthorize("hasRole('ADMIN')")   // S2.3 — SSO config is admin-only
 @RequiredArgsConstructor
 public class SsoConfigController {
 

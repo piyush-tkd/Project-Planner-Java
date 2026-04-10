@@ -57,6 +57,16 @@ public class PodService {
         return mapper.toPodResponse(pod);
     }
 
+    @Transactional
+    @CacheEvict(value = "calculations", allEntries = true)
+    public void delete(Long id) {
+        Pod pod = podRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Pod", id));
+        // Soft-delete: hide from all active queries (getAll uses findByActiveTrueOrderByDisplayOrderAsc)
+        pod.setActive(false);
+        podRepository.save(pod);
+    }
+
     public int getResourceCount(Long podId) {
         return assignmentRepository.findByPodId(podId).size();
     }

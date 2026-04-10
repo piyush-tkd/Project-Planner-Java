@@ -1,28 +1,29 @@
+import { COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, GRAY_300, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING } from '../brandTokens';
 export const utilizationColors = {
-  under: '#40c057',
-  normal: '#fab005',
-  over: '#fd7e14',
-  critical: '#fa5252',
+  under: COLOR_SUCCESS,
+  normal: COLOR_AMBER,
+  over: COLOR_ORANGE,
+  critical: COLOR_ERROR,
 };
 
 export const priorityColors: Record<string, string> = {
-  P0: '#fa5252',
-  P1: '#fd7e14',
-  P2: '#339af0',
-  P3: '#adb5bd',
+  P0: COLOR_ERROR,
+  P1: COLOR_ORANGE,
+  P2: COLOR_BLUE_LIGHT,
+  P3: GRAY_300,
 };
 
 export const statusColors: Record<string, string> = {
-  ACTIVE: '#40c057',
-  ON_HOLD: '#fab005',
-  COMPLETED: '#339af0',
-  CANCELLED: '#fa5252',
+  ACTIVE: COLOR_SUCCESS,
+  ON_HOLD: COLOR_AMBER,
+  COMPLETED: COLOR_BLUE_LIGHT,
+  CANCELLED: COLOR_ERROR,
 };
 
 export const gapColors = {
-  surplus: '#d3f9d8',
-  deficit: '#ffe3e3',
-  neutral: '#f8f9fa',
+  surplus: SURFACE_SUCCESS,
+  deficit: SURFACE_ERROR,
+  neutral: SURFACE_SUBTLE,
 };
 
 export const gapColorsDark = {
@@ -45,10 +46,10 @@ export function getUtilizationBgColor(percent: number, dark = false): string {
     if (percent <= 120) return 'rgba(253, 126, 20, 0.2)';
     return 'rgba(250, 82, 82, 0.2)';
   }
-  if (percent < 80) return '#d3f9d8';
-  if (percent <= 100) return '#fff3bf';
+  if (percent < 80) return SURFACE_SUCCESS;
+  if (percent <= 100) return SURFACE_WARNING;
   if (percent <= 120) return '#ffe8cc';
-  return '#ffe3e3';
+  return SURFACE_ERROR;
 }
 
 export function getConcurrencyColor(count: number, dark = false): string {
@@ -57,9 +58,9 @@ export function getConcurrencyColor(count: number, dark = false): string {
     if (count <= 4) return 'rgba(250, 176, 5, 0.15)';
     return 'rgba(250, 82, 82, 0.2)';
   }
-  if (count <= 2) return '#d3f9d8';
-  if (count <= 4) return '#fff3bf';
-  return '#ffe3e3';
+  if (count <= 2) return SURFACE_SUCCESS;
+  if (count <= 4) return SURFACE_WARNING;
+  return SURFACE_ERROR;
 }
 
 export function getConcurrencyColorByLevel(level: string, dark = false): string {
@@ -68,9 +69,9 @@ export function getConcurrencyColorByLevel(level: string, dark = false): string 
     if (level === 'MEDIUM') return 'rgba(250, 176, 5, 0.15)';
     return 'rgba(250, 82, 82, 0.2)';
   }
-  if (level === 'LOW') return '#d3f9d8';
-  if (level === 'MEDIUM') return '#fff3bf';
-  return '#ffe3e3';
+  if (level === 'LOW') return SURFACE_SUCCESS;
+  if (level === 'MEDIUM') return SURFACE_WARNING;
+  return SURFACE_ERROR;
 }
 
 export function getGapCellColor(gap: number, dark = false): string {

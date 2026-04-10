@@ -1,16 +1,16 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Card, Text, Group, Stack, Badge, Slider, Button, Tooltip, ActionIcon } from '@mantine/core';
 import { IconLock, IconLockOpen, IconRefresh, IconGripVertical } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, AQUA_TINTS } from '../../brandTokens';
+import { AQUA, AQUA_HEX, AQUA_TINTS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_300, SHADOW, SURFACE_SUCCESS, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { PhaseScheduleResponse, SchedulingRulesResponse } from '../../types';
 
 // Phase color config
 const PHASE_COLORS: Record<string, { bg: string; light: string; text: string }> = {
-  DEV: { bg: '#228be6', light: '#d0ebff', text: '#1864ab' },
-  QA:  { bg: '#40c057', light: '#d3f9d8', text: '#2b8a3e' },
+  DEV: { bg: COLOR_BLUE_DARK, light: '#d0ebff', text: '#1864ab' },
+  QA:  { bg: COLOR_SUCCESS, light: SURFACE_SUCCESS, text: '#2b8a3e' },
   UAT: { bg: '#e64980', light: '#fcc2d7', text: '#a61e4d' },
-  E2E: { bg: '#fd7e14', light: '#ffe8cc', text: '#d9480f' },
+  E2E: { bg: COLOR_ORANGE, light: '#ffe8cc', text: '#d9480f' },
 };
 
 // Utils
@@ -244,21 +244,21 @@ export default function TimelineSlider({ phases, onPhasesChange, rules, projectS
           style={{ display: 'block', cursor: drag ? (drag.type === 'move' ? 'grabbing' : 'ew-resize') : 'default', userSelect: 'none' }}
         >
           {/* Background */}
-          <rect width={SVG_W} height={svgH} fill={dark ? '#1a1b1e' : '#fafbfc'} rx={8} />
+          <rect width={SVG_W} height={svgH} fill={dark ? DARK_BG : '#fafbfc'} rx={8} />
 
           {/* Week gridlines */}
           {weekLines.map((wl, i) => (
             <g key={i}>
-              <line x1={wl.x} x2={wl.x} y1={PAD_T - 5} y2={svgH - 10} stroke={dark ? '#373A40' : '#e9ecef'} strokeWidth={1} />
-              <text x={wl.x} y={PAD_T - 14} fill={dark ? '#5C5F66' : '#adb5bd'} fontSize={9} textAnchor="middle" fontFamily={FONT_FAMILY}>{wl.label}</text>
+              <line x1={wl.x} x2={wl.x} y1={PAD_T - 5} y2={svgH - 10} stroke={dark ? DARK_BORDER : GRAY_100} strokeWidth={1} />
+              <text x={wl.x} y={PAD_T - 14} fill={dark ? '#5C5F66' : GRAY_300} fontSize={9} textAnchor="middle" fontFamily={FONT_FAMILY}>{wl.label}</text>
             </g>
           ))}
 
           {/* TODAY marker */}
           {todayX !== null && (
             <g>
-              <line x1={todayX} x2={todayX} y1={PAD_T - 5} y2={svgH - 10} stroke="#fa5252" strokeWidth={1.5} strokeDasharray="4,3" />
-              <text x={todayX} y={PAD_T - 14} fill="#fa5252" fontSize={9} fontWeight={700} textAnchor="middle" fontFamily={FONT_FAMILY}>TODAY</text>
+              <line x1={todayX} x2={todayX} y1={PAD_T - 5} y2={svgH - 10} stroke={COLOR_ERROR} strokeWidth={1.5} strokeDasharray="4,3" />
+              <text x={todayX} y={PAD_T - 14} fill={COLOR_ERROR} fontSize={9} fontWeight={700} textAnchor="middle" fontFamily={FONT_FAMILY}>TODAY</text>
             </g>
           )}
 
@@ -268,8 +268,8 @@ export default function TimelineSlider({ phases, onPhasesChange, rules, projectS
             const x2 = dayToX(z.end);
             return (
               <g key={`ov-${i}`}>
-                <rect x={x1} y={PAD_T - 2} width={x2 - x1} height={svgH - PAD_T - 20} rx={4} fill={AQUA} opacity={0.08} />
-                <text x={(x1 + x2) / 2} y={svgH - 12} fill={AQUA} fontSize={8} textAnchor="middle" fontWeight={600} fontFamily={FONT_FAMILY}>{z.labels.join('+')}</text>
+                <rect x={x1} y={PAD_T - 2} width={x2 - x1} height={svgH - PAD_T - 20} rx={4} fill={AQUA_HEX} opacity={0.08} />
+                <text x={(x1 + x2) / 2} y={svgH - 12} fill={AQUA_HEX} fontSize={8} textAnchor="middle" fontWeight={600} fontFamily={FONT_FAMILY}>{z.labels.join('+')}</text>
               </g>
             );
           })}
@@ -341,7 +341,7 @@ export default function TimelineSlider({ phases, onPhasesChange, rules, projectS
 
                 {/* Lock icon */}
                 {phase.locked && (
-                  <text x={x + w + 4} y={y + BAR_H / 2 + 4} fill="#868e96" fontSize={11}>🔒</text>
+                  <text x={x + w + 4} y={y + BAR_H / 2 + 4} fill={TEXT_DIM} fontSize={11}>🔒</text>
                 )}
 
                 {/* Bar label */}

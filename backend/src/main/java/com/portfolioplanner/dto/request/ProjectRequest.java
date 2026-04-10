@@ -4,6 +4,7 @@ import com.portfolioplanner.domain.model.enums.Priority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record ProjectRequest(
@@ -20,6 +21,8 @@ public record ProjectRequest(
         LocalDate targetDate,
         LocalDate startDate,
         String capacityNote,
-        String client
+        String client,
+        BigDecimal estimatedBudget,
+        BigDecimal actualCost
 ) {
 }

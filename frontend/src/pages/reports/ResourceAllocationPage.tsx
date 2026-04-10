@@ -11,7 +11,7 @@ import MonthHeader from '../../components/common/MonthHeader';
 import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
 import { formatRole } from '../../types';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 
@@ -20,7 +20,7 @@ export default function ResourceAllocationPage() {
  const { data: availability } = useAllAvailability();
  const { monthLabels, currentMonthIndex, workingHoursPerMonth } = useMonthLabels();
  const dark = useDarkMode();
- const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+ const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
  const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
  const [search, setSearch] = useState('');

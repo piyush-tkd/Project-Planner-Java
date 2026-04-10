@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import {
   Stack, SimpleGrid, Paper, Title, Text, Group, ThemeIcon,
-  SegmentedControl, Select, Center, Loader, Badge,
+  SegmentedControl, Select, Center, Skeleton, Badge,
 } from '@mantine/core';
 import {
   IconBrain, IconTrendingUp, IconCurrencyDollar,
@@ -25,11 +25,11 @@ import {
 import apiClient from '../../api/client';
 import ChartCard from '../../components/common/ChartCard';
 import { EmptyState } from '../../components/ui';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, DEEP_BLUE, FONT_FAMILY, GRAY_300, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Colour palette for up to 6 PODs ──────────────────────────────────────────
-const POD_COLORS = ['#12b886', '#339af0', '#f59f00', '#fa5252', '#7950f2', '#fd7e14'];
+const POD_COLORS = ['#12b886', COLOR_BLUE_LIGHT, '#f59f00', COLOR_ERROR, '#7950f2', COLOR_ORANGE];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AiSummary {
@@ -105,7 +105,7 @@ export default function AiImpactPage() {
   }, []);
 
   if (loading) {
-    return <Center h={300}><Loader color="teal" /></Center>;
+    return <Stack gap="xs" p="md">{[...Array(6)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>;
   }
 
   if (!summary && pods.length === 0) {
@@ -135,7 +135,7 @@ export default function AiImpactPage() {
     : `${v} pts`;
 
   const gridColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const axisColor = dark ? '#868e96' : '#adb5bd';
+  const axisColor = dark ? TEXT_DIM : GRAY_300;
 
   return (
     <Stack gap="lg">
@@ -267,8 +267,8 @@ export default function AiImpactPage() {
                     contentStyle={{ fontSize: 12, borderRadius: 6 }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="AI"       fill={AQUA}     radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Baseline" fill="#adb5bd"  radius={[3, 3, 0, 0]} />
+                  <Bar animationDuration={600} dataKey="AI"       fill={AQUA_HEX}     radius={[3, 3, 0, 0]} />
+                  <Bar animationDuration={600} dataKey="Baseline" fill={GRAY_300}  radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             );

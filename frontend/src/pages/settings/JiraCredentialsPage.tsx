@@ -15,6 +15,7 @@ import {
  useCapexSettings, useSaveCapexSettings,
 } from '../../api/jira';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import apiClient from '../../api/client';
 
 // ── CapEx Field Section ────────────────────────────────────────────────
 
@@ -142,8 +143,7 @@ export default function JiraCredentialsPage() {
  const handleTestConnection = async () => {
  setTesting(true);
  try {
- const response = await fetch('/api/jira/test');
- const data = await response.json();
+ const { data } = await apiClient.get('/jira/test');
  if (data.ok) {
  notifications.show({
  title: 'Connection successful',

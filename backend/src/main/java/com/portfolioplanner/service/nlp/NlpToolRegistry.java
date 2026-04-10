@@ -158,6 +158,36 @@ public class NlpToolRegistry {
                         "Get T-shirt size configuration (XS/S/M/L/XL → base hours mapping). Returns: size names and base hour values. Use for: 'T-shirt sizes', 'project sizing', 'what is an XL project', 'sizing configuration', 'how are projects sized'.",
                         """
                         {}
+                        """),
+                new ToolDefinition("create_jira_issue_form",
+                        "Pre-fills the Jira issue creation form with a summary and issue type",
+                        """
+                        { "summary": "string", "issueType": "string" }
+                        """),
+                new ToolDefinition("create_pod_form",
+                        "Pre-fills the Pod creation form with a name",
+                        """
+                        { "name": "string?" }
+                        """),
+                new ToolDefinition("create_sprint_form",
+                        "Pre-fills the Sprint creation form with a name",
+                        """
+                        { "name": "string?" }
+                        """),
+                new ToolDefinition("create_release_form",
+                        "Pre-fills the Release creation form with a name",
+                        """
+                        { "name": "string?" }
+                        """),
+                new ToolDefinition("get_capex_summary",
+                        "Returns the monthly CapEx/budget report showing capital expenditure by project",
+                        """
+                        {}
+                        """),
+                new ToolDefinition("log_time_jira",
+                        "Log work hours against a Jira issue. Records time spent on a task. Use for: 'log 4 hours on PROJ-123', 'log 2h on PROJ-456 for today', 'track time on issue X', 'record hours for X'.",
+                        """
+                        { "hours": "number (hours spent)", "issueKey": "string (e.g., PROJ-123)", "date": "string? (e.g., 'today', '2026-04-07', defaults to 'today')" }
                         """)
         ));
         // Add Jira tools if available
@@ -197,6 +227,42 @@ public class NlpToolRegistry {
 
                 """);
         return sb.toString();
+    }
+
+    // ── Role-Based Access Control ─────────────────────────────────────────────
+
+    /**
+     * Tools that require READ_WRITE or higher role to execute.
+     * READ_ONLY users receive an access-denied ToolResult for these tools.
+     *
+     * Restricted: financial/billing data (cost rates) and cross-pod resource data.
+     * All other tools are accessible to all authenticated roles.
+     */
+    private static final Set<String> ROLE_RESTRICTED_TOOLS = Set.of(
+            "get_cost_rates"        // Billing/hourly rates — financial data
+    );
+
+    /**
+     * Returns true if the given tool is restricted to READ_WRITE+ roles.
+     */
+    public boolean isRestrictedTool(String toolName) {
+        return ROLE_RESTRICTED_TOOLS.contains(normalizeToolName(toolName));
+    }
+
+    /**
+     * Execute a tool with an optional role guard.
+     * If userRole is "READ_ONLY" and the tool is restricted, returns an access-denied ToolResult.
+     * If userRole is null or not restricted, delegates to the standard executeTool().
+     */
+    public ToolResult executeToolWithRbac(String toolName, JsonNode params, NlpCatalogResponse catalog, String userRole) {
+        if ("READ_ONLY".equalsIgnoreCase(userRole) && isRestrictedTool(toolName)) {
+            String friendlyName = toolName.replaceFirst("^get_", "").replace('_', ' ');
+            return ToolResult.fail(
+                    "Access denied: your READ_ONLY role does not permit viewing " + friendlyName + " data. " +
+                    "Contact your administrator to request READ_WRITE access."
+            );
+        }
+        return executeTool(toolName, params, catalog);
     }
 
     /**
@@ -290,11 +356,14 @@ public class NlpToolRegistry {
     private static final Set<String> KNOWN_TOOLS = Set.of(
             "get_resource_profile", "get_project_profile", "get_pod_profile",
             "list_resources", "list_projects",
-            "get_sprint_info", "get_release_info",
-            "get_team_composition", "get_utilization_summary",
-            "get_capacity_summary", "get_portfolio_summary",
-            "get_resource_allocation", "get_availability",
-            "search_by_skill", "get_budget_summary"
+            "get_project_estimates", "get_sprint_allocations",
+            "get_resource_availability", "get_project_dependencies",
+            "get_cost_rates", "get_sprint_info", "get_release_info",
+            "get_project_actuals", "get_effort_patterns", "get_role_effort_mix",
+            "get_capacity_summary", "get_utilization_summary",
+            "get_team_composition", "get_portfolio_summary",
+            "get_overrides", "get_tshirt_sizes",
+            "create_jira_issue_form", "get_capex_summary", "log_time_jira"
     );
 
     /**
@@ -333,6 +402,33 @@ public class NlpToolRegistry {
                 case "get_portfolio_summary" -> getPortfolioSummary(catalog);
                 case "get_overrides" -> getOverrides(params, catalog);
                 case "get_tshirt_sizes" -> getTshirtSizes(catalog);
+                case "create_jira_issue_form" -> {
+                    String summary = params.path("summary").asText("");
+                    String type = params.path("issueType").asText("Task");
+                    yield ToolResult.ok(String.format("Summary: %s\nIssueType: %s\n_formPrefill: true", summary, type));
+                }
+                case "create_pod_form" -> {
+                    String name = params.path("name").asText("");
+                    yield ToolResult.ok(String.format("Summary: %s\n_formPrefill: true\nroute: /pods", name));
+                }
+                case "create_sprint_form" -> {
+                    String name = params.path("name").asText("");
+                    yield ToolResult.ok(String.format("Summary: %s\n_formPrefill: true\nroute: /sprint-planner", name));
+                }
+                case "create_release_form" -> {
+                    String name = params.path("name").asText("");
+                    yield ToolResult.ok(String.format("Summary: %s\n_formPrefill: true\nroute: /delivery/releases", name));
+                }
+                case "get_capex_summary" -> {
+                    yield ToolResult.ok("_type: NAVIGATE\nroute: /reports/budget-capex\nmessage: Opening the Budget & CapEx report...");
+                }
+                case "log_time_jira" -> {
+                    String hours = params.path("hours").asText("0");
+                    String issueKey = params.path("issueKey").asText("");
+                    String date = params.path("date").asText("today");
+                    yield ToolResult.ok(String.format("Hours: %sh\nIssueKey: %s\nDate: %s\n_shape: TIME_LOG\nMessage: Logged %sh on %s for %s",
+                            hours, issueKey, date, hours, issueKey, date));
+                }
                 default -> ToolResult.fail("Unknown tool: " + toolName);
             };
         } catch (Exception e) {

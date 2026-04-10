@@ -10,10 +10,10 @@ import {
   IconArrowsSort,
 } from '@tabler/icons-react';
 import { usePodHours, PeriodType, ResourceRow, PodHoursEntry, PodInfo } from '../../api/podHours';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_GREEN, COLOR_WARNING, DARK_BG, DEEP_BLUE, FONT_FAMILY, GRAY_200, GRAY_400} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
-const BUFFER_COLOR       = '#f59e0b';
+const BUFFER_COLOR       = COLOR_WARNING;
 const BUFFER_LIGHT_DARK  = 'rgba(245,158,11,0.10)';
 const BUFFER_LIGHT_LIGHT = 'rgba(245,158,11,0.08)';
 
@@ -58,7 +58,7 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
   const pct   = previous > 0 ? ((delta / previous) * 100) : null;
 
   const sign  = delta > 0 ? '+' : '';
-  const color = delta > 0 ? '#22c55e' : delta < 0 ? '#f87171' : '#9ca3af';
+  const color = delta > 0 ? COLOR_GREEN : delta < 0 ? '#f87171' : GRAY_400;
   const Icon  = delta > 0 ? IconArrowUp : delta < 0 ? IconArrowDown : IconMinus;
   const label = pct !== null
     ? `${sign}${delta.toFixed(1)}h (${sign}${pct.toFixed(0)}%)`
@@ -218,7 +218,7 @@ function BufferDrillModal({
         </Group>
       }
       size="lg"
-      styles={{ content: { background: dark ? '#1a1b1e' : '#fff' }, header: { background: dark ? '#1a1b1e' : '#fff' } }}
+      styles={{ content: { background: dark ? DARK_BG : '#fff' }, header: { background: dark ? DARK_BG : '#fff' } }}
     >
       <Stack gap="sm">
         <Group gap={24}>
@@ -465,7 +465,7 @@ function MatrixTab({ resources, podNames, dark, search }: {
             const podMap = new Map<string, PodHoursEntry>();
             res.pods.forEach(p => podMap.set(p.podName, p));
             const stickyBg = dark
-              ? (idx % 2 === 1 ? 'rgba(255,255,255,0.04)' : '#1a1b1e')
+              ? (idx % 2 === 1 ? 'rgba(255,255,255,0.04)' : DARK_BG)
               : (idx % 2 === 1 ? 'rgba(12,35,64,0.03)' : '#fff');
 
             return (
@@ -520,7 +520,7 @@ function MatrixTab({ resources, podNames, dark, search }: {
                       >
                         <Box>
                           <Text size="sm" fw={entry.buffer ? 700 : 500} style={{
-                            color: entry.buffer ? BUFFER_COLOR : (dark ? '#e0e0e0' : '#333'),
+                            color: entry.buffer ? BUFFER_COLOR : (dark ? GRAY_200 : '#333'),
                             fontFamily: FONT_FAMILY,
                           }}>
                             {fmtHours(entry.hours)}
@@ -624,7 +624,7 @@ function DetailsTab({ resources, dark, search }: { resources: ResourceRow[]; dar
               </Table.Td>
               <Table.Td style={{ padding: '8px 12px', textAlign: 'right' }}>
                 <Text size="sm" fw={700} style={{
-                  color: row.buffer ? BUFFER_COLOR : (dark ? '#e0e0e0' : '#333'),
+                  color: row.buffer ? BUFFER_COLOR : (dark ? GRAY_200 : '#333'),
                   fontFamily: FONT_FAMILY,
                 }}>
                   {fmtHours(row.hours)}

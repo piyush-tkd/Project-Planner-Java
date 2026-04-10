@@ -23,7 +23,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CsvToolbar from '../../components/common/CsvToolbar';
 import { tshirtSizeColumns, effortPatternColumns } from '../../utils/csvColumns';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_BLUE_LIGHT, COLOR_ERROR_DEEP, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 const ROLES = ['DEVELOPER', 'QA', 'BSA', 'TECH_LEAD'];
 const LOCATIONS = ['US', 'INDIA'];
@@ -557,7 +557,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  {(() => {
  const entries = Array.from({ length: monthCount }, (_, i) => [`M${i + 1}`, monthWeights[`M${i + 1}`] ?? 0] as [string, number]);
  const total = entries.reduce((s, [, v]) => s + v, 0);
- const BAR_COLORS = ['#339af0', '#51cf66', '#ff6b6b', '#ffd43b', '#845ef7', '#ff922b', '#20c997', '#74c0fc', '#a9e34b', '#f783ac', '#4dabf7', '#69db7c'];
+ const BAR_COLORS = [COLOR_BLUE_LIGHT, COLOR_GREEN_LIGHT, COLOR_ERROR_LIGHT, '#ffd43b', COLOR_VIOLET_LIGHT, '#ff922b', '#20c997', '#74c0fc', '#a9e34b', '#f783ac', '#4dabf7', '#69db7c'];
  if (total === 0) return null;
  return (
  <div>
@@ -626,7 +626,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
 
  {/* Delete confirmations */}
  <Modal opened={deleteSizeId !== null} onClose={() => setDeleteSizeId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: '#c92a2a' }}>Delete T-shirt Size</Text>} size="sm">
+ title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete T-shirt Size</Text>} size="sm">
  <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this T-shirt size?</Text>
  <Group justify="flex-end" mt="md">
  <Button variant="subtle" onClick={() => setDeleteSizeId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
@@ -636,7 +636,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  </Modal>
 
  <Modal opened={deletePatternId !== null} onClose={() => setDeletePatternId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: '#c92a2a' }}>Delete Effort Pattern</Text>} size="sm">
+ title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete Effort Pattern</Text>} size="sm">
  <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this effort pattern?</Text>
  <Group justify="flex-end" mt="md">
  <Button variant="subtle" onClick={() => setDeletePatternId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
@@ -646,7 +646,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  </Modal>
 
  <Modal opened={deleteCostRateId !== null} onClose={() => setDeleteCostRateId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: '#c92a2a' }}>Delete Cost Rate</Text>} size="sm">
+ title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete Cost Rate</Text>} size="sm">
  <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this cost rate?</Text>
  <Group justify="flex-end" mt="md">
  <Button variant="subtle" onClick={() => setDeleteCostRateId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>

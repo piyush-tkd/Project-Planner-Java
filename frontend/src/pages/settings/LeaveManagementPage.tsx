@@ -13,7 +13,7 @@ import { useLeaveEntries, useImportLeave, useDeleteLeaveEntry } from '../../api/
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SURFACE_FAINT, BORDER_DEFAULT } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const MONTHS = [
@@ -172,8 +172,8 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
           <Box
             px="md" py="xs"
             style={{
-              background: isDark ? '#1A2B3C' : '#EEF4FA',
-              borderBottom: `1px solid ${isDark ? '#2C3E50' : '#D0DCE8'}`,
+              background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT,
+              borderBottom: `1px solid var(--pp-border)`,
             }}
           >
             <Text fw={700} size="sm" style={{ color: isDark ? AQUA : DEEP_BLUE }}>

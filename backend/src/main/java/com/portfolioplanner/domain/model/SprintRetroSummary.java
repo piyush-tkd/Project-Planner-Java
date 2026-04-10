@@ -55,6 +55,10 @@ public class SprintRetroSummary {
     @Column(name = "concerns", columnDefinition = "TEXT")
     private String concerns;
 
+    /** Actual end date of the sprint — used to order velocity comparisons chronologically. */
+    @Column(name = "sprint_end_date")
+    private LocalDateTime sprintEndDate;
+
     @Column(name = "generated_at", nullable = false)
     private LocalDateTime generatedAt;
 

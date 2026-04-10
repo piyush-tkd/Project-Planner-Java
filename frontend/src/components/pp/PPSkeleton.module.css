@@ -1,0 +1,156 @@
+/* ===== PPSkeleton — DL-11 ===== */
+
+/* ── Shared shimmer animation ─────────────────────────────────────── */
+.block {
+  background: linear-gradient(
+    90deg,
+    #1a1d27 25%,
+    #242836 50%,
+    #1a1d27 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Staggered wave offsets */
+.block:nth-child(1)  { animation-delay: 0ms; }
+.block:nth-child(2)  { animation-delay: 100ms; }
+.block:nth-child(3)  { animation-delay: 200ms; }
+.block:nth-child(4)  { animation-delay: 300ms; }
+.block:nth-child(5)  { animation-delay: 400ms; }
+.block:nth-child(6)  { animation-delay: 500ms; }
+.block:nth-child(7)  { animation-delay: 600ms; }
+.block:nth-child(8)  { animation-delay: 700ms; }
+
+/* ── Dashboard variant ────────────────────────────────────────────── */
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metricCardSkeleton {
+  height: 80px;
+  border-radius: 8px;
+}
+
+.chartRowSkeleton {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.chartBlockSkeleton {
+  height: 200px;
+  border-radius: 8px;
+}
+
+/* ── Table variant ────────────────────────────────────────────────── */
+.tableContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #2e3346;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tableHeader {
+  height: 40px;
+  border-radius: 0;
+  border-bottom: 1px solid #2e3346;
+}
+
+.tableRow {
+  height: 48px;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(46, 51, 70, 0.5);
+  margin: 0 !important;
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+/* ── Kanban variant ───────────────────────────────────────────────── */
+.kanbanBoard {
+  display: flex;
+  gap: 16px;
+}
+
+.kanbanColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.kanbanHeader {
+  height: 32px;
+  width: 80%;
+  border-radius: 6px;
+}
+
+.kanbanCard {
+  height: 80px;
+  border-radius: 8px;
+}
+
+/* ── Detail variant ───────────────────────────────────────────────── */
+.detailContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailTitle {
+  width: 300px;
+  height: 32px;
+}
+
+.detailSubtitle {
+  width: 200px;
+  height: 16px;
+  margin-bottom: 12px;
+}
+
+.detailRow {
+  height: 24px;
+  border-radius: 6px;
+}
+
+/* ── Chart variant ────────────────────────────────────────────────── */
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chartTitle {
+  width: 200px;
+  height: 20px;
+}
+
+.chartBody {
+  height: 240px;
+  border-radius: 8px;
+}
+
+/* ── Cards variant ────────────────────────────────────────────────── */
+.cardsGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.cardSkeleton {
+  height: 120px;
+  border-radius: 8px;
+}

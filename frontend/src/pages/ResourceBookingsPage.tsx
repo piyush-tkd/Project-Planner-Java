@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Title,
@@ -6,6 +6,7 @@ import {
   Group,
   Badge,
   Select,
+  MultiSelect,
   Button,
   Paper,
   Tooltip,
@@ -21,9 +22,11 @@ import {
   TextInput,
   NumberInput,
   Textarea,
-  Loader,
+  Skeleton,
   Center,
+  Alert,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import {
   IconCalendarPlus,
   IconChevronLeft,
@@ -34,13 +37,22 @@ import {
   IconList,
   IconTrash,
   IconUsers,
+  IconAlertTriangle,
 } from '@tabler/icons-react';
 import { EmptyState } from '../components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { DateInput } from '@mantine/dates';
 import apiClient from '../api/client';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS } from '../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_ALT, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SURFACE_AMBER, SURFACE_BLUE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_SUBTLE} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useInlineEdit } from '../hooks/useInlineEdit';
+import {
+  InlineTextCell,
+  InlineNumberCell,
+  InlineSelectCell,
+  InlineDateCell,
+} from '../components/common/InlineCell';
 
 interface Resource {
   id: number | string;
@@ -101,23 +113,25 @@ function getWeeks(centerDate: Date, count = 12) {
 }
 
 const BOOKING_COLORS = [
-  { bg: '#dbeafe', border: '#3b82f6', text: '#1d4ed8' },
-  { bg: '#dcfce7', border: '#22c55e', text: '#15803d' },
-  { bg: '#fef3c7', border: '#f59e0b', text: '#b45309' },
-  { bg: '#ede9fe', border: '#8b5cf6', text: '#6d28d9' },
+  { bg: SURFACE_BLUE_LIGHT, border: COLOR_BLUE, text: '#1d4ed8' },
+  { bg: '#dcfce7', border: COLOR_GREEN, text: '#15803d' },
+  { bg: SURFACE_AMBER, border: COLOR_WARNING, text: '#b45309' },
+  { bg: SURFACE_VIOLET, border: COLOR_VIOLET_ALT, text: '#6d28d9' },
   { bg: '#fce7f3', border: '#ec4899', text: '#be185d' },
-  { bg: '#ffedd5', border: '#f97316', text: '#c2410c' },
+  { bg: SURFACE_ORANGE, border: COLOR_ORANGE_ALT, text: '#c2410c' },
 ];
 
 export default function ResourceBookingsPage() {
   const isDark = useDarkMode();
   const queryClient = useQueryClient();
+  const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
   const [weekOffset, setWeekOffset] = useState(0);
   const [filterPod, setFilterPod] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('timeline');
   const [modalOpen, setModalOpen] = useState(false);
-  const [formData, setFormData] = useState<CreateBookingPayload>({
-    resourceId: '',
+  // Multi-resource form state — resourceIds is an array; one booking is created per resource on submit
+  const [formResourceIds, setFormResourceIds] = useState<string[]>([]);
+  const [formData, setFormData] = useState<Omit<CreateBookingPayload, 'resourceId'>>({
     projectId: '',
     projectLabel: '',
     startDate: '',
@@ -128,7 +142,7 @@ export default function ResourceBookingsPage() {
   });
 
   // Fetch resources
-  const { data: resources = [], isLoading: resourcesLoading } = useQuery({
+  const { data: resources = [], isLoading: resourcesLoading, isError: resourcesError } = useQuery({
     queryKey: ['resources'],
     queryFn: async () => {
       const res = await apiClient.get('/resources');
@@ -137,7 +151,7 @@ export default function ResourceBookingsPage() {
   });
 
   // Fetch projects
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isError: projectsError } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
       const res = await apiClient.get('/projects');
@@ -145,25 +159,26 @@ export default function ResourceBookingsPage() {
     },
   });
 
-  // Fetch bookings
+  // Fetch bookings — use stable ISO string keys so invalidateQueries prefix match works reliably
   const weeks = useMemo(() => {
     const base = new Date();
     base.setDate(base.getDate() + weekOffset * 7);
     return getWeeks(base, 10);
   }, [weekOffset]);
 
-  const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
-    queryKey: ['bookings', weeks[0]?.start, weeks[weeks.length - 1]?.end],
+  const fromStr = weeks[0]?.start.toISOString().split('T')[0] ?? '';
+  const toStr   = weeks[weeks.length - 1]?.end.toISOString().split('T')[0] ?? '';
+
+  const { data: bookings = [], isLoading: bookingsLoading, isError: bookingsError } = useQuery({
+    queryKey: ['bookings', fromStr, toStr],
     queryFn: async () => {
       if (!weeks.length) return [];
-      const from = weeks[0]?.start.toISOString().split('T')[0];
-      const to = weeks[weeks.length - 1]?.end.toISOString().split('T')[0];
       const res = await apiClient.get('/resource-bookings', {
-        params: { from, to },
+        params: { from: fromStr, to: toStr },
       });
       return res.data;
     },
-    enabled: weeks.length > 0,
+    enabled: !!fromStr && !!toStr,
   });
 
   // Create mutation
@@ -172,21 +187,34 @@ export default function ResourceBookingsPage() {
       const res = await apiClient.post('/resource-bookings', payload);
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      notifications.show({
-        color: 'green',
-        title: 'Success',
-        message: 'Booking created successfully',
-      });
-      resetForm();
-      setModalOpen(false);
-    },
     onError: (err: any) => {
       notifications.show({
         color: 'red',
         title: 'Error',
         message: err.message || 'Failed to create booking',
+      });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async (payload: { id: string; data: CreateBookingPayload }) => {
+      const res = await apiClient.put(`/resource-bookings/${payload.id}`, payload.data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      notifications.show({
+        color: 'green',
+        title: 'Success',
+        message: 'Booking updated successfully',
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        color: 'red',
+        title: 'Error',
+        message: err.message || 'Failed to update booking',
       });
     },
   });
@@ -214,8 +242,8 @@ export default function ResourceBookingsPage() {
   });
 
   const resetForm = () => {
+    setFormResourceIds([]);
     setFormData({
-      resourceId: '',
       projectId: '',
       projectLabel: '',
       startDate: '',
@@ -226,18 +254,38 @@ export default function ResourceBookingsPage() {
     });
   };
 
-  const handleSubmit = () => {
-    if (!formData.resourceId || !formData.projectLabel || !formData.startDate || !formData.endDate) {
+  const handleSubmit = useCallback(async () => {
+    if (formResourceIds.length === 0 || !formData.projectLabel || !formData.startDate || !formData.endDate) {
       notifications.show({
         color: 'yellow',
         title: 'Validation',
-        message: 'Resource, project, start date, and end date are required',
+        message: 'At least one resource, a project label, start date, and end date are required',
       });
       return;
     }
 
-    createMutation.mutate(formData);
-  };
+    try {
+      // Create one booking per selected resource (sequentially to avoid mutation state conflicts)
+      for (const rid of formResourceIds) {
+        await createMutation.mutateAsync({ ...formData, resourceId: rid });
+      }
+      // Invalidate after all bookings are saved so the timeline refetches fresh data
+      await queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      notifications.show({
+        color: 'green',
+        title: 'Success',
+        message: formResourceIds.length === 1
+          ? 'Booking created successfully'
+          : `${formResourceIds.length} bookings created successfully`,
+      });
+      resetForm();
+      setModalOpen(false);
+      // If the user has navigated away from the current week, reset so the new booking is visible
+      setWeekOffset(0);
+    } catch {
+      // individual errors already shown by onError above
+    }
+  }, [formResourceIds, formData, createMutation, queryClient, resetForm]);
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this booking?')) {
@@ -276,9 +324,7 @@ export default function ResourceBookingsPage() {
 
   if (resourcesLoading) {
     return (
-      <Center p="xl">
-        <Loader />
-      </Center>
+      <Stack gap="xs" p="md">{[...Array(5)].map((_, i) => <Skeleton key={i} height={52} radius="sm" />)}</Stack>
     );
   }
 
@@ -293,17 +339,14 @@ export default function ResourceBookingsPage() {
   }
 
   return (
-    <Box className="page-enter" style={{ padding: '0 0 32px' }}>
-      {/* Header */}
+    <PPPageLayout title="Resource Bookings" subtitle="Resource booking requests and approval workflows" animate>
+      {(resourcesError || projectsError || bookingsError) && (
+        <Alert icon={<IconAlertTriangle size={16} />} color="red" mb="md" mx="md" radius="md">
+          Failed to load data. Please try again or refresh the page.
+        </Alert>
+      )}
       <Group justify="space-between" align="flex-start" mb="lg" p="md">
-        <Box>
-          <Title order={1} style={{ color: DEEP_BLUE, fontWeight: 800 }}>
-            Resource Bookings
-          </Title>
-          <Text c="dimmed" size="sm" mt={2}>
-            Visual timeline of resource allocation across projects and weeks
-          </Text>
-        </Box>
+        <Box />
         <Group gap="sm">
           <Button
             variant="light"
@@ -334,12 +377,12 @@ export default function ResourceBookingsPage() {
           {
             label: 'Fully Booked',
             value: resources.filter((r: Resource) => (utilization[String(r.id)] ?? 0) >= 90).length,
-            color: '#ef4444',
+            color: COLOR_ERROR_STRONG,
           },
           {
             label: 'Under-Utilized',
             value: resources.filter((r: Resource) => (utilization[String(r.id)] ?? 0) < 50).length,
-            color: '#f59e0b',
+            color: COLOR_WARNING,
           },
           {
             label: 'Available Capacity',
@@ -347,11 +390,11 @@ export default function ResourceBookingsPage() {
               resources.reduce((sum: number, r: Resource) => sum + (100 - (utilization[String(r.id)] ?? 0)), 0) /
                 resources.length
             )}%`,
-            color: '#16a34a',
+            color: COLOR_GREEN_STRONG,
           },
         ].map((stat) => (
           <Card key={stat.label} className="kpi-card-modern" withBorder radius="lg" p="md">
-            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: '#94a3b8' }}>
+            <Text size="xs" tt="uppercase" fw={700} style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }}>
               {stat.label}
             </Text>
             <Text size="xl" fw={800} mt={4} style={{ color: stat.color, fontSize: 28 }}>
@@ -419,9 +462,7 @@ export default function ResourceBookingsPage() {
       </Paper>
 
       {bookingsLoading ? (
-        <Center p="xl">
-          <Loader />
-        </Center>
+        <Stack gap="xs" p="md">{[...Array(5)].map((_, i) => <Skeleton key={i} height={52} radius="sm" />)}</Stack>
       ) : viewMode === 'timeline' ? (
         /* Timeline View */
         <Paper withBorder radius="md" style={{ overflow: 'hidden', margin: '0 16px' }}>
@@ -585,9 +626,9 @@ export default function ResourceBookingsPage() {
           <Box style={{ padding: '10px 16px', borderTop: '1px solid #e7e9ec', background: '#fafbfc' }}>
             <Group gap="xl">
               <Text size="xs" c="dimmed">
-                <span style={{ color: '#16a34a' }}>●</span> Available &nbsp;
-                <span style={{ color: '#f59e0b' }}>●</span> Partially Booked &nbsp;
-                <span style={{ color: '#ef4444' }}>●</span> Fully Booked
+                <span style={{ color: COLOR_GREEN_STRONG }}>●</span> Available &nbsp;
+                <span style={{ color: COLOR_WARNING }}>●</span> Partially Booked &nbsp;
+                <span style={{ color: COLOR_ERROR_STRONG }}>●</span> Fully Booked
               </Text>
               <Text size="xs" c="dimmed">
                 Showing {filteredResources.length} of {resources.length} resources across {weeks.length} weeks
@@ -601,7 +642,7 @@ export default function ResourceBookingsPage() {
           {filteredResources.map((resource: Resource) => {
             const resourceBookings = bookings.filter((b: Booking) => String(b.resourceId) === String(resource.id));
             const util = Math.round(utilization[String(resource.id)] ?? 0);
-            const utilColor = util >= 90 ? '#ef4444' : util >= 70 ? '#f59e0b' : '#16a34a';
+            const utilColor = util >= 90 ? COLOR_ERROR_STRONG : util >= 70 ? COLOR_WARNING : COLOR_GREEN_STRONG;
             return (
               <Card
                 key={resource.id}
@@ -646,29 +687,41 @@ export default function ResourceBookingsPage() {
                   mb="sm"
                 />
                 <Divider mb="sm" />
-                <Stack gap={4}>
+                <Stack gap={6}>
                   {resourceBookings.slice(0, 3).map((b: Booking, i: number) => {
                     const col = BOOKING_COLORS[i % BOOKING_COLORS.length];
                     return (
-                      <Group key={b.id} justify="space-between">
-                        <Group gap={6}>
-                          <Box
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: col.border,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Text size="xs" style={{ color: DEEP_BLUE }}>
-                            {b.projectLabel}
-                          </Text>
-                        </Group>
-                        <Group gap={4}>
-                          <Text size="xs" fw={600} c="dimmed">
-                            {b.allocationPct}%
-                          </Text>
+                      <Box key={b.id} style={{ borderLeft: `3px solid ${col.border}`, paddingLeft: 12 }}>
+                        <Group justify="space-between" mb="xs">
+                          <Group gap={6} style={{ flex: 1 }}>
+                            <InlineSelectCell
+                              value={b.projectLabel}
+                              options={projects.map((p: Project) => ({
+                                value: p.name ?? p.label ?? String(p.id),
+                                label: p.name ?? p.label ?? String(p.id),
+                              }))}
+                              onSave={async (newValue: string) => {
+                                const found = projects.find((p: Project) => (p.name ?? p.label ?? String(p.id)) === newValue);
+                                await updateMutation.mutateAsync({
+                                  id: b.id,
+                                  data: {
+                                    resourceId: b.resourceId,
+                                    projectId: found?.id ? String(found.id) : undefined,
+                                    projectLabel: newValue,
+                                    startDate: b.startDate,
+                                    endDate: b.endDate,
+                                    allocationPct: b.allocationPct,
+                                    bookingType: b.bookingType,
+                                    notes: b.notes,
+                                  },
+                                });
+                              }}
+                              isEditing={isEditing(b.id, 'projectLabel')}
+                              onStartEdit={() => startEdit(b.id, 'projectLabel')}
+                              onCancel={() => stopEdit()}
+                              placeholder="Project…"
+                            />
+                          </Group>
                           <ActionIcon
                             size="xs"
                             variant="subtle"
@@ -678,7 +731,138 @@ export default function ResourceBookingsPage() {
                             <IconTrash size={12} />
                           </ActionIcon>
                         </Group>
-                      </Group>
+                        <Group gap="xs" mb="xs">
+                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Start</Text>
+                          <InlineDateCell
+                            value={b.startDate}
+                            onSave={async (newValue: string | null) => {
+                              await updateMutation.mutateAsync({
+                                id: b.id,
+                                data: {
+                                  resourceId: b.resourceId,
+                                  projectId: b.projectId,
+                                  projectLabel: b.projectLabel,
+                                  startDate: newValue || b.startDate,
+                                  endDate: b.endDate,
+                                  allocationPct: b.allocationPct,
+                                  bookingType: b.bookingType,
+                                  notes: b.notes,
+                                },
+                              });
+                            }}
+                            isEditing={isEditing(b.id, 'startDate')}
+                            onStartEdit={() => startEdit(b.id, 'startDate')}
+                            onCancel={() => stopEdit()}
+                          />
+                        </Group>
+                        <Group gap="xs" mb="xs">
+                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>End</Text>
+                          <InlineDateCell
+                            value={b.endDate}
+                            onSave={async (newValue: string | null) => {
+                              await updateMutation.mutateAsync({
+                                id: b.id,
+                                data: {
+                                  resourceId: b.resourceId,
+                                  projectId: b.projectId,
+                                  projectLabel: b.projectLabel,
+                                  startDate: b.startDate,
+                                  endDate: newValue || b.endDate,
+                                  allocationPct: b.allocationPct,
+                                  bookingType: b.bookingType,
+                                  notes: b.notes,
+                                },
+                              });
+                            }}
+                            isEditing={isEditing(b.id, 'endDate')}
+                            onStartEdit={() => startEdit(b.id, 'endDate')}
+                            onCancel={() => stopEdit()}
+                          />
+                        </Group>
+                        <Group gap="xs" mb="xs">
+                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>FTE %</Text>
+                          <InlineNumberCell
+                            value={b.allocationPct}
+                            min={1}
+                            max={100}
+                            suffix="%"
+                            onSave={async (newValue: number) => {
+                              await updateMutation.mutateAsync({
+                                id: b.id,
+                                data: {
+                                  resourceId: b.resourceId,
+                                  projectId: b.projectId,
+                                  projectLabel: b.projectLabel,
+                                  startDate: b.startDate,
+                                  endDate: b.endDate,
+                                  allocationPct: newValue,
+                                  bookingType: b.bookingType,
+                                  notes: b.notes,
+                                },
+                              });
+                            }}
+                            isEditing={isEditing(b.id, 'allocationPct')}
+                            onStartEdit={() => startEdit(b.id, 'allocationPct')}
+                            onCancel={() => stopEdit()}
+                          />
+                        </Group>
+                        <Group gap="xs" mb="xs">
+                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Type</Text>
+                          <InlineSelectCell
+                            value={b.bookingType}
+                            options={[
+                              { value: 'PROJECT', label: 'Project' },
+                              { value: 'TRAINING', label: 'Training' },
+                              { value: 'LEAVE', label: 'Leave' },
+                              { value: 'OTHER', label: 'Other' },
+                            ]}
+                            onSave={async (newValue: string) => {
+                              await updateMutation.mutateAsync({
+                                id: b.id,
+                                data: {
+                                  resourceId: b.resourceId,
+                                  projectId: b.projectId,
+                                  projectLabel: b.projectLabel,
+                                  startDate: b.startDate,
+                                  endDate: b.endDate,
+                                  allocationPct: b.allocationPct,
+                                  bookingType: newValue as any,
+                                  notes: b.notes,
+                                },
+                              });
+                            }}
+                            isEditing={isEditing(b.id, 'bookingType')}
+                            onStartEdit={() => startEdit(b.id, 'bookingType')}
+                            onCancel={() => stopEdit()}
+                          />
+                        </Group>
+                        <Group gap="xs">
+                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Notes</Text>
+                          <InlineTextCell
+                            value={b.notes || ''}
+                            onSave={async (newValue: string) => {
+                              await updateMutation.mutateAsync({
+                                id: b.id,
+                                data: {
+                                  resourceId: b.resourceId,
+                                  projectId: b.projectId,
+                                  projectLabel: b.projectLabel,
+                                  startDate: b.startDate,
+                                  endDate: b.endDate,
+                                  allocationPct: b.allocationPct,
+                                  bookingType: b.bookingType,
+                                  notes: newValue,
+                                },
+                              });
+                            }}
+                            isEditing={isEditing(b.id, 'notes')}
+                            onStartEdit={() => startEdit(b.id, 'notes')}
+                            onCancel={() => stopEdit()}
+                            placeholder="Add notes…"
+                            maxWidth={300}
+                          />
+                        </Group>
+                      </Box>
                     );
                   })}
                   {resourceBookings.length === 0 && (
@@ -701,17 +885,20 @@ export default function ResourceBookingsPage() {
         size="lg"
       >
         <Stack gap="md">
-          <Select
+          <MultiSelect
             label="Resource"
-            placeholder="Select a resource"
+            description="Select one or more resources — a booking will be created for each"
+            placeholder={formResourceIds.length === 0 ? 'Select resources…' : undefined}
             required
             searchable
+            clearable
             data={resources.map((r: Resource) => ({
               value: String(r.id),
               label: `${r.name} (${r.role})`,
             }))}
-            value={formData.resourceId}
-            onChange={(val) => setFormData({ ...formData, resourceId: val || '' })}
+            value={formResourceIds}
+            onChange={setFormResourceIds}
+            maxDropdownHeight={240}
           />
           <Select
             label="Project"
@@ -735,21 +922,24 @@ export default function ResourceBookingsPage() {
             value={formData.projectLabel}
             onChange={(e) => setFormData({ ...formData, projectLabel: e.currentTarget.value })}
           />
-          <TextInput
+          <DateInput
             label="Start Date"
-            placeholder="yyyy-MM-dd"
-            type="date"
+            placeholder="Pick a start date"
+            valueFormat="YYYY-MM-DD"
             required
-            value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.currentTarget.value })}
+            clearable
+            value={formData.startDate ? new Date(formData.startDate + 'T00:00:00') : null}
+            onChange={(d) => setFormData({ ...formData, startDate: d ? d.toISOString().slice(0, 10) : '' })}
           />
-          <TextInput
+          <DateInput
             label="End Date"
-            placeholder="yyyy-MM-dd"
-            type="date"
+            placeholder="Pick an end date"
+            valueFormat="YYYY-MM-DD"
             required
-            value={formData.endDate}
-            onChange={(e) => setFormData({ ...formData, endDate: e.currentTarget.value })}
+            clearable
+            minDate={formData.startDate ? new Date(formData.startDate + 'T00:00:00') : undefined}
+            value={formData.endDate ? new Date(formData.endDate + 'T00:00:00') : null}
+            onChange={(d) => setFormData({ ...formData, endDate: d ? d.toISOString().slice(0, 10) : '' })}
           />
           <NumberInput
             label="Allocation %"
@@ -792,6 +982,6 @@ export default function ResourceBookingsPage() {
           </Group>
         </Stack>
       </Modal>
-    </Box>
+    </PPPageLayout>
   );
 }

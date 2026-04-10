@@ -17,7 +17,8 @@ import { deriveTshirtSize } from '../types/project';
 import type { SprintResponse } from '../types/project';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_GREEN_DARK, COLOR_ORANGE_DARK, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_300, GRAY_BORDER, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS} from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
 
 // ── Brand colours ────────────────────────────────────────────────────────────
 
@@ -25,18 +26,18 @@ import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 interface CellStyle { bg: string; text: string; label: string }
 
 function getCellStyle(pct: number): CellStyle {
- if (pct <= 50) return { bg: '#d3f9d8', text: '#2f9e44', label: 'Slack' };
- if (pct <= 80) return { bg: '#fff9db', text: '#e67700', label: 'Healthy' };
+ if (pct <= 50) return { bg: SURFACE_SUCCESS, text: COLOR_GREEN_DARK, label: 'Slack' };
+ if (pct <= 80) return { bg: '#fff9db', text: COLOR_ORANGE_DARK, label: 'Healthy' };
  if (pct <= 95) return { bg: '#ffe8cc', text: '#d9480f', label: 'Busy' };
- return { bg: '#ffe3e3', text: '#c92a2a', label: 'Overloaded' };
+ return { bg: SURFACE_ERROR, text: COLOR_ERROR_DEEP, label: 'Overloaded' };
 }
 
 // ── Legend items ──────────────────────────────────────────────────────────────
 const LEGEND: { label: string; bg: string; text: string }[] = [
- { label: '≤50% Slack', bg: '#d3f9d8', text: '#2f9e44' },
- { label: '51–80% Healthy', bg: '#fff9db', text: '#e67700' },
+ { label: '≤50% Slack', bg: SURFACE_SUCCESS, text: COLOR_GREEN_DARK },
+ { label: '51–80% Healthy', bg: '#fff9db', text: COLOR_ORANGE_DARK },
  { label: '81–95% Busy', bg: '#ffe8cc', text: '#d9480f' },
- { label: '>95% Overloaded', bg: '#ffe3e3', text: '#c92a2a' },
+ { label: '>95% Overloaded', bg: SURFACE_ERROR, text: COLOR_ERROR_DEEP },
 ];
 
 // ── Priority / status badge colours ──────────────────────────────────────────
@@ -214,6 +215,7 @@ export default function TeamCalendarPage() {
  const isMonthView = viewMode === 'month';
 
  return (
+ <PPPageLayout title="Team Calendar" subtitle="Cross-team project timelines, sprints and milestones" animate>
  <Stack gap="md" className="page-enter stagger-children">
  {/* ── Header ──────────────────────────────────────────────────────── */}
  <Group gap="sm" align="center" className="slide-in-left">
@@ -225,7 +227,7 @@ export default function TeamCalendarPage() {
  Team Calendar
  </Title>
  <Text size="sm" c="dimmed">
- POD utilisation heatmap · {isMonthView ? 'by month' : 'by sprint'} · project counts · click a cell for details
+ POD utilisation heatmap
  </Text>
  </div>
  </Group>
@@ -359,7 +361,7 @@ export default function TeamCalendarPage() {
  {lbl.type}
  {isCurrent && (
  <span style={{
- marginLeft: 4, background: '#40c4c9', color: '#0C2340',
+ marginLeft: 4, background: '#40c4c9', color: DEEP_BLUE,
  borderRadius: 3, padding: '1px 4px', fontSize: 8,
  }}>
  NOW
@@ -379,7 +381,7 @@ export default function TeamCalendarPage() {
  {/* ── Data rows ─────────────────────────────────────────── */}
  <tbody>
  {rows.map((row, ri) => (
- <tr key={row.podName} style={{ background: isDark ? (ri % 2 === 0 ? '#1a1b1e' : '#222222') : (ri % 2 === 0 ? '#fff' : '#f8f9fa') }}>
+ <tr key={row.podName} style={{ background: isDark ? (ri % 2 === 0 ? DARK_BG : '#222222') : (ri % 2 === 0 ? '#fff' : SURFACE_SUBTLE) }}>
  {/* POD name cell */}
  <td style={{
  padding: '10px 16px',
@@ -389,7 +391,7 @@ export default function TeamCalendarPage() {
  borderRight: isDark ? '1px solid #373A40' : '1px solid #e9ecef',
  borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef',
  position: 'sticky', left: 0, zIndex: 1,
- background: isDark ? (ri % 2 === 0 ? '#1a1b1e' : '#222222') : (ri % 2 === 0 ? '#fff' : '#f8f9fa'),
+ background: isDark ? (ri % 2 === 0 ? DARK_BG : '#222222') : (ri % 2 === 0 ? '#fff' : SURFACE_SUBTLE),
  whiteSpace: 'nowrap',
  }}>
  {row.podName}
@@ -450,7 +452,7 @@ export default function TeamCalendarPage() {
  <tr>
  <td
  colSpan={isMonthView ? 13 : sprintColumns.length + 1}
- style={{ padding: 40, textAlign: 'center', color: '#adb5bd' }}
+ style={{ padding: 40, textAlign: 'center', color: GRAY_300 }}
  >
  {!isMonthView && sprintColumns.length === 0
  ? 'No sprints defined. Add sprints in Sprint Calendar.'
@@ -464,7 +466,7 @@ export default function TeamCalendarPage() {
  </ScrollArea>
 
  {/* ── Legend ─────────────────────────────────────────────────────── */}
- <Group gap="lg" px="md" py="sm" style={{ borderTop: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#f8f9fa' }} wrap="wrap">
+ <Group gap="lg" px="md" py="sm" style={{ borderTop: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? DARK_BG : SURFACE_SUBTLE }} wrap="wrap">
  {LEGEND.map(l => (
  <Group key={l.label} gap={6} align="center">
  <Box style={{
@@ -476,7 +478,7 @@ export default function TeamCalendarPage() {
  ))}
  {!isMonthView && (
  <>
- <Box style={{ width: 1, height: 14, background: isDark ? '#373A40' : '#dee2e6' }} />
+ <Box style={{ width: 1, height: 14, background: isDark ? DARK_BORDER : GRAY_BORDER }} />
  <Group gap={6} align="center">
  <Box style={{ width: 14, height: 14, borderRadius: 3, background: AQUA }} />
  <Text size="xs" c="dimmed">Current sprint</Text>
@@ -498,6 +500,7 @@ export default function TeamCalendarPage() {
  onNavigate={projectId => { setActiveCell(null); navigate(`/projects/${projectId}`); }}
  />
  </Stack>
+ </PPPageLayout>
  );
 }
 
@@ -540,7 +543,7 @@ function HeatmapCell({
  <td
  onClick={onClick && !isEmpty ? onClick : undefined}
  style={{
- background: isEmpty ? (isDark ? (rowEven ? '#1a1b1e' : '#222222') : (rowEven ? '#fff' : '#f8f9fa')) : style.bg,
+ background: isEmpty ? (isDark ? (rowEven ? DARK_BG : '#222222') : (rowEven ? '#fff' : SURFACE_SUBTLE)) : style.bg,
  color: style.text,
  textAlign: 'center',
  padding: '8px 4px',

@@ -3,7 +3,8 @@
  * No more "View Full Report" button — content loads directly in the tab panel.
  */
 import { useState } from 'react';
-import { Title, Text, Stack, Tabs } from '@mantine/core';
+import { Text, Stack, Tabs } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import {
   IconFlame,
   IconUserPlus,
@@ -43,16 +44,7 @@ export default function CapacityHubPage() {
   const [activeTab, setActiveTab] = useState<string | null>('utilization');
 
   return (
-    <Stack gap="lg">
-      <div>
-        <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-          Capacity
-        </Title>
-        <Text c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-          Resource capacity planning and workforce analytics
-        </Text>
-      </div>
-
+    <PPPageLayout title="Capacity" subtitle="Resource capacity planning and workforce analytics" animate>
       <Tabs
         value={activeTab}
         onChange={setActiveTab}
@@ -83,6 +75,6 @@ export default function CapacityHubPage() {
           );
         })}
       </Tabs>
-    </Stack>
+    </PPPageLayout>
   );
 }

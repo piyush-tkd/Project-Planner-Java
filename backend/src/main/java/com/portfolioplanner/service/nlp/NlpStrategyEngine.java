@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Chain-of-responsibility engine that tries each configured NLP strategy
@@ -44,6 +45,9 @@ public class NlpStrategyEngine {
 
     /** Process a query through the strategy chain. */
     public NlpQueryResponse process(String query, NlpCatalogResponse catalog) {
+        long chainStart = System.currentTimeMillis();
+        List<Map<String, Object>> tierTrace = new ArrayList<>();
+
         for (String strategyName : chain) {
             NlpStrategy strategy = strategyMap.get(strategyName);
             if (strategy == null) {
@@ -52,6 +56,7 @@ public class NlpStrategyEngine {
             }
             if (!strategy.isAvailable()) {
                 log.debug("Strategy {} not available, skipping", strategyName);
+                tierTrace.add(Map.of("tier", strategyName, "skipped", true, "reason", "unavailable"));
                 continue;
             }
 
@@ -61,14 +66,34 @@ public class NlpStrategyEngine {
             log.debug("Strategy {} returned intent={} confidence={} in {}ms",
                     strategyName, result.intent(), result.confidence(), elapsed);
 
+            tierTrace.add(Map.of(
+                    "tier", strategyName,
+                    "intent", result.intent() != null ? result.intent() : "null",
+                    "confidence", result.confidence(),
+                    "latencyMs", elapsed,
+                    "resolved", result.confidence() >= confidenceThreshold
+            ));
+
             if (result.confidence() >= confidenceThreshold) {
-                return result.toResponse(strategyName);
+                long total = System.currentTimeMillis() - chainStart;
+                Map<String, Object> debug = new LinkedHashMap<>();
+                debug.put("resolvedBy", strategyName);
+                debug.put("tierTrace", tierTrace);
+                debug.put("totalLatencyMs", total);
+                debug.put("thresholdUsed", confidenceThreshold);
+                return result.toResponse(strategyName).withDebug(debug);
             }
 
             // If this was the last strategy in the chain, return whatever we got
             // (even low confidence) rather than a generic fallback
             if (strategyName.equals(chain.get(chain.size() - 1)) && result.confidence() > 0) {
-                return result.toResponse(strategyName);
+                long total = System.currentTimeMillis() - chainStart;
+                Map<String, Object> debug = new LinkedHashMap<>();
+                debug.put("resolvedBy", strategyName + " (best-effort)");
+                debug.put("tierTrace", tierTrace);
+                debug.put("totalLatencyMs", total);
+                debug.put("thresholdUsed", confidenceThreshold);
+                return result.toResponse(strategyName).withDebug(debug);
             }
         }
 

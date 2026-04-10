@@ -4,6 +4,7 @@ import com.portfolioplanner.domain.model.OrgSettings;
 import com.portfolioplanner.domain.repository.OrgSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class OrgSettingsController {
     }
 
     // ── PUT /api/org/settings ────────────────────────────────────────────────
+    @PreAuthorize("hasRole('ADMIN')")   // S2.3 — only admins may change org settings
     @PutMapping("/settings")
     public ResponseEntity<OrgSettingsDto> update(@RequestBody OrgSettingsDto req) {
         OrgSettings s = getOrDefault();

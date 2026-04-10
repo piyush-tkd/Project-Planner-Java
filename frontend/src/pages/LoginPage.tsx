@@ -10,11 +10,12 @@ import {
  Alert,
  Divider,
 } from '@mantine/core';
+import { useComputedColorScheme } from '@mantine/core';
 import { IconAlertCircle, IconClockOff, IconShield } from '@tabler/icons-react';
 import { useAuth } from '../auth/AuthContext';
 import apiClient from '../api/client';
 import {
- DEEP_BLUE, AQUA, DEEP_BLUE_TINTS,
+ DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, DEEP_BLUE_TINTS, SURFACE_FAINT,
  FONT_FAMILY, SHADOW,
 } from '../brandTokens';
 
@@ -29,6 +30,7 @@ export default function LoginPage() {
  const { login } = useAuth();
  const navigate = useNavigate();
  const location = useLocation();
+ const isDark = useComputedColorScheme('light') === 'dark';
 
  const [username, setUsername] = useState('');
  const [password, setPassword] = useState('');
@@ -77,7 +79,7 @@ export default function LoginPage() {
  {/* ── Left panel: brand / logo ── */}
  <div style={{
  flex: '0 0 45%',
- backgroundColor: DEEP_BLUE,
+ backgroundColor: DEEP_BLUE_HEX,
  display: 'flex',
  flexDirection: 'column',
  alignItems: 'center',
@@ -96,8 +98,8 @@ export default function LoginPage() {
 
  {/* Logo mark — Aqua triangle */}
  <svg width="52" height="48" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 16, position: 'relative' }}>
- <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA} strokeWidth="4" />
- <polygon points="26,10 44,44 8,44" fill={AQUA} opacity="0.25" />
+ <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA_HEX} strokeWidth="4" />
+ <polygon points="26,10 44,44 8,44" fill={AQUA_HEX} opacity="0.25" />
  </svg>
 
  <Title
@@ -119,7 +121,7 @@ export default function LoginPage() {
  <div style={{
  width: 48,
  height: 3,
- backgroundColor: AQUA,
+ backgroundColor: AQUA_HEX,
  borderRadius: 2,
  marginTop: 24,
  marginBottom: 24,
@@ -129,9 +131,9 @@ export default function LoginPage() {
  </div>
 
  {/* ── Right panel: login form ── */}
- <div style={{
+ <div className="login-form-panel" style={{
  flex: 1,
- backgroundColor: '#FFFFFF',
+ backgroundColor: isDark ? 'rgba(26,29,39,0.95)' : '#FFFFFF',
  display: 'flex',
  alignItems: 'center',
  justifyContent: 'center',
@@ -142,7 +144,7 @@ export default function LoginPage() {
  <Title
  order={2}
  style={{
- color: DEEP_BLUE,
+ color: isDark ? '#ffffff' : DEEP_BLUE,
  fontFamily: FONT_FAMILY,
  fontWeight: 300,
  fontSize: 32,
@@ -153,7 +155,7 @@ export default function LoginPage() {
  </Title>
 
  <Text style={{
- color: DEEP_BLUE_TINTS[50],
+ color: isDark ? 'rgba(255,255,255,0.7)' : DEEP_BLUE_TINTS[50],
  fontSize: 14,
  fontFamily: FONT_FAMILY,
  marginBottom: 32,
@@ -200,13 +202,15 @@ export default function LoginPage() {
  fontFamily: FONT_FAMILY,
  fontWeight: 500,
  fontSize: 13,
- color: DEEP_BLUE,
+ color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
  marginBottom: 4,
  },
  input: {
  fontFamily: FONT_FAMILY,
  fontSize: 14,
- borderColor: DEEP_BLUE_TINTS[10],
+ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+ borderColor: isDark ? 'rgba(255,255,255,0.12)' : DEEP_BLUE_TINTS[10],
+ color: isDark ? '#fff' : undefined,
  borderRadius: 6,
  height: 42,
  '&:focus': { borderColor: AQUA },
@@ -227,13 +231,15 @@ export default function LoginPage() {
  fontFamily: FONT_FAMILY,
  fontWeight: 500,
  fontSize: 13,
- color: DEEP_BLUE,
+ color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
  marginBottom: 4,
  },
  input: {
  fontFamily: FONT_FAMILY,
  fontSize: 14,
- borderColor: DEEP_BLUE_TINTS[10],
+ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+ borderColor: isDark ? 'rgba(255,255,255,0.12)' : DEEP_BLUE_TINTS[10],
+ color: isDark ? '#fff' : undefined,
  borderRadius: 6,
  height: 42,
  },
@@ -244,7 +250,7 @@ export default function LoginPage() {
  to="/forgot-password"
  style={{
  fontSize: 13,
- color: AQUA,
+ color: isDark ? '#4ecca9' : AQUA,
  fontFamily: FONT_FAMILY,
  textDecoration: 'none',
  }}
@@ -260,7 +266,7 @@ export default function LoginPage() {
  loading={loading}
  disabled={!username || !password}
  style={{
- backgroundColor: DEEP_BLUE,
+ backgroundColor: DEEP_BLUE_HEX,
  borderRadius: 6,
  height: 44,
  fontFamily: FONT_FAMILY,
@@ -281,7 +287,7 @@ export default function LoginPage() {
        label="or"
        labelPosition="center"
        my="xs"
-       styles={{ label: { color: DEEP_BLUE_TINTS[40], fontFamily: FONT_FAMILY, fontSize: 12 } }}
+       styles={{ label: { color: isDark ? 'rgba(255,255,255,0.4)' : DEEP_BLUE_TINTS[40], fontFamily: FONT_FAMILY, fontSize: 12 } }}
      />
      <Button
        component="a"
@@ -290,8 +296,8 @@ export default function LoginPage() {
        variant="outline"
        leftSection={<IconShield size={16} />}
        style={{
-         borderColor: DEEP_BLUE_TINTS[20],
-         color: DEEP_BLUE,
+         borderColor: isDark ? 'rgba(255,255,255,0.2)' : DEEP_BLUE_TINTS[20],
+         color: isDark ? '#fff' : DEEP_BLUE,
          borderRadius: 6,
          height: 44,
          fontFamily: FONT_FAMILY,

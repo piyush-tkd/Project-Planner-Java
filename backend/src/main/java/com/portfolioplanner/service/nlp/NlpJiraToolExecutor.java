@@ -328,7 +328,7 @@ public class NlpJiraToolExecutor {
                     .collect(Collectors.toList());
         }
 
-        var analytics = analyticsService.getAnalytics(months, podIds);
+        var analytics = analyticsService.getAnalytics(months, podIds, null);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> analyticsMap = (Map<String, Object>) analytics;
@@ -391,7 +391,7 @@ public class NlpJiraToolExecutor {
                     .collect(Collectors.toList());
         }
 
-        var analytics = analyticsService.getAnalytics(3, podIds);
+        var analytics = analyticsService.getAnalytics(3, podIds, null);
         @SuppressWarnings("unchecked")
         Map<String, Object> analyticsMap = (Map<String, Object>) analytics;
 

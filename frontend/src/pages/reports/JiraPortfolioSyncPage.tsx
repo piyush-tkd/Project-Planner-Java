@@ -37,7 +37,7 @@ import {
   IconLink,
 } from '@tabler/icons-react';
 
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, CHART_COLORS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -47,16 +47,16 @@ import { useProjects } from '../../api/projects';
 import { useProductivityMetrics } from '../../api/reports';
 
 const STATUS_COLORS: Record<string, string> = {
-  COMPLETED: '#51cf66',
+  COMPLETED: COLOR_GREEN_LIGHT,
   ACTIVE: DEEP_BLUE,
   IN_DISCOVERY: '#b197fc',
   NOT_STARTED: '#a6adba',
   ON_HOLD: '#ff922b',
-  CANCELLED: '#ff6b6b',
+  CANCELLED: COLOR_ERROR_LIGHT,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#ff6b6b',
+  P0: COLOR_ERROR_LIGHT,
   P1: '#ff922b',
   P2: DEEP_BLUE,
   P3: '#a6adba',
@@ -276,7 +276,7 @@ export default function JiraPortfolioSyncPage() {
               <IconAlertTriangle size={18} />
             </ThemeIcon>
           </Group>
-          <Text size="xl" fw={700} style={{ color: '#ff922b' }}>
+          <Text size="xl" fw={700} c="orange">
             {kpis?.staleProjects || 0}
           </Text>
         </Card>
@@ -291,7 +291,7 @@ export default function JiraPortfolioSyncPage() {
               <IconCircleCheck size={18} />
             </ThemeIcon>
           </Group>
-          <Text size="xl" fw={700} style={{ color: '#51cf66' }}>
+          <Text size="xl" fw={700} style={{ color: COLOR_GREEN_LIGHT }}>
             {Math.round(kpis?.completionRate || 0)}%
           </Text>
         </Card>
@@ -452,9 +452,9 @@ export default function JiraPortfolioSyncPage() {
             />
             <YAxis label={{ value: 'Project Count', angle: -90, position: 'insideLeft' }} />
             <RechartTooltip />
-            <Bar dataKey="COMPLETED" stackId="a" fill="#51cf66" name="Completed" />
-            <Bar dataKey="ACTIVE" stackId="a" fill={DEEP_BLUE} name="Active" />
-            <Bar dataKey="other" stackId="a" fill="#a6adba" name="Other" />
+            <Bar animationDuration={600} dataKey="COMPLETED" stackId="a" fill={COLOR_GREEN_LIGHT} name="Completed" />
+            <Bar animationDuration={600} dataKey="ACTIVE" stackId="a" fill={DEEP_BLUE_HEX} name="Active" />
+            <Bar animationDuration={600} dataKey="other" stackId="a" fill="#a6adba" name="Other" />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -473,7 +473,7 @@ export default function JiraPortfolioSyncPage() {
             />
             <YAxis label={{ value: 'Projects Created', angle: -90, position: 'insideLeft' }} />
             <RechartTooltip />
-            <Bar dataKey="projects" fill={AQUA} name="Projects Created" radius={[8, 8, 0, 0]} />
+            <Bar animationDuration={600} dataKey="projects" fill={AQUA_HEX} name="Projects Created" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>

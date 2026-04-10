@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { notifications } from '@mantine/notifications';
 import {
  Title, Stack, Grid, Card, Text, Button, Group, Table, Badge,
  Checkbox, NumberInput, Collapse, ActionIcon, Tooltip, Alert,
@@ -15,9 +16,10 @@ import { getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { formatHours } from '../../utils/formatting';
 import { ProjectStatus } from '../../types';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SURFACE_RED_FAINT, SURFACE_SUBTLE, SURFACE_SUCCESS_LIGHT} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
+import { PPPageLayout } from '../../components/pp';
 import apiClient from '../../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ export default function ScenarioSimulatorPage() {
  const { data: projects, isLoading } = useProjects();
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const dark = useDarkMode();
- const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+ const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
  const runScenario = useRunScenario();
 
  const activeProjects = useMemo(
@@ -120,7 +122,7 @@ export default function ScenarioSimulatorPage() {
  });
  }
  });
- runScenario.mutate({ projectOverrides: overrides });
+ runScenario.mutate({ projectOverrides: overrides }, { onError: (e: unknown) => notifications.show({ title: 'Simulation failed', message: (e as Error).message || 'Could not run scenario.', color: 'red' }) });
  }
 
  const months = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -149,13 +151,10 @@ export default function ScenarioSimulatorPage() {
  if (isLoading) return <LoadingSpinner variant="chart" message="Loading scenario simulator..." />;
 
  return (
+ <PPPageLayout title="Scenario Simulator" subtitle="Model capacity scenarios and compare outcomes" animate>
  <Stack className="page-enter stagger-children">
  <Group justify="space-between" align="flex-start" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Scenario Simulator</Title>
- <Text size="sm" c="dimmed" mt={2}>
- Toggle projects in/out of the plan or adjust timelines to see the capacity impact.
- </Text>
  </div>
  <Group gap="sm">
  {anyChanges && (
@@ -411,7 +410,7 @@ export default function ScenarioSimulatorPage() {
  {months.map(m => {
  const gap = monthData.get(m) ?? 0;
  const cellBg = viewMode === 'delta'
- ? gap > 50 ? '#e6fcf5' : gap < -50 ? '#fff5f5' : undefined
+ ? gap > 50 ? SURFACE_SUCCESS_LIGHT : gap < -50 ? SURFACE_RED_FAINT : undefined
  : (m >= currentMonthIndex ? getGapCellColor(gap, dark) : undefined);
  return (
  <Table.Td key={m} style={{
@@ -441,5 +440,6 @@ export default function ScenarioSimulatorPage() {
  </Grid.Col>
  </Grid>
  </Stack>
+ </PPPageLayout>
  );
 }

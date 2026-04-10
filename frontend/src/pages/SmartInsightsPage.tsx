@@ -29,9 +29,10 @@ import {
 import { useProjects } from '../api/projects';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import type { ProjectResponse } from '../types/project';
+import { PPPageLayout } from '../components/pp';
 
 // ── Scoring engine ─────────────────────────────────────────────────────────
 
@@ -210,26 +211,11 @@ export default function SmartInsightsPage() {
   if (isError)   return <PageError context="Loading smart insights" />;
 
   return (
-    <Box style={{ fontFamily: FONT_FAMILY, paddingBottom: 48 }}>
-
-      {/* ── Header ── */}
-      <Group gap="sm" mb="xl" align="flex-start" wrap="wrap">
-        <ThemeIcon
-          size={44}
-          radius="md"
-          style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}, #4f46e5)` }}
-        >
-          <IconBrain size={24} color={AQUA} />
-        </ThemeIcon>
-        <Box>
-          <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-            Smart Insights
-          </Title>
-          <Text c="dimmed" size="sm" style={{ fontFamily: FONT_FAMILY }}>
-            AI-computed portfolio health scoring across {kpis.total} active projects
-          </Text>
-        </Box>
-      </Group>
+    <PPPageLayout
+      title="Smart Insights"
+      subtitle={`AI-computed portfolio health scoring across ${kpis.total} active projects`}
+      animate
+    >
 
       {/* ── KPI strip ── */}
       <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} mb="xl">
@@ -372,7 +358,7 @@ export default function SmartInsightsPage() {
 
       {/* ── Bottom 10 projects by health score ── */}
       <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
-        <Box p="md" style={{ borderBottom: `1px solid rgba(45,204,211,0.15)` }}>
+        <Box p="md" style={{ borderBottom: `1px solid ${dark ? `${AQUA_TINTS[80]}22` : `${AQUA_TINTS[10]}`}` }}>
           <Group gap="xs">
             <IconAlertTriangle size={16} color="orange" />
             <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
@@ -466,6 +452,6 @@ export default function SmartInsightsPage() {
         </Text>
       </Alert>
 
-    </Box>
+    </PPPageLayout>
   );
 }

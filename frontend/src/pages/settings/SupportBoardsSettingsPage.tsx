@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
  Container, Title, Text, Button, Table, Badge, ActionIcon, Modal, TextInput,
- Switch, Group, Stack, Paper, Tooltip, Loader, Box, Alert, NumberInput,
- ScrollArea, SimpleGrid, ThemeIcon,
+ Switch, Group, Stack, Paper, Tooltip, Skeleton, Box, Alert, NumberInput,
+ ScrollArea, SimpleGrid, ThemeIcon, MultiSelect,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -16,7 +16,7 @@ import {
 } from '../../api/jira';
 import { useJiraStatus } from '../../api/jira';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
 
 export default function SupportBoardsSettingsPage() {
  const dark = useDarkMode();
@@ -119,12 +119,12 @@ export default function SupportBoardsSettingsPage() {
  </Paper>
  <Paper shadow="xs" radius="md" p="md" withBorder>
  <Group gap="sm" align="flex-start">
- <ThemeIcon size={36} radius="md" variant="light" style={{ color: '#868e96', backgroundColor: '#868e9615' }}>
+ <ThemeIcon size={36} radius="md" variant="light" style={{ color: TEXT_DIM, backgroundColor: '#868e9615' }}>
  <IconX size={18} />
  </ThemeIcon>
  <div>
  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Disabled</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: '#868e96' }}>{disabledCount}</Text>
+ <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: TEXT_DIM }}>{disabledCount}</Text>
  </div>
  </Group>
  </Paper>
@@ -134,7 +134,7 @@ export default function SupportBoardsSettingsPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={480}>
  {isLoading ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
  ) : boards.length === 0 ? (
  <Box p="xl" ta="center">
  <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
@@ -151,6 +151,7 @@ export default function SupportBoardsSettingsPage() {
  <Table.Th style={{ fontFamily: FONT_FAMILY }}>Board Name</Table.Th>
  <Table.Th style={{ fontFamily: FONT_FAMILY }}>Project / Queue</Table.Th>
  <Table.Th style={{ fontFamily: FONT_FAMILY }}>Stale After</Table.Th>
+ <Table.Th style={{ fontFamily: FONT_FAMILY }}>Alert Priorities</Table.Th>
  <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
  <Table.Th style={{ fontFamily: FONT_FAMILY, width: 90 }}>Actions</Table.Th>
  </Table.Tr>
@@ -181,6 +182,13 @@ export default function SupportBoardsSettingsPage() {
  <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
  {b.staleThresholdDays ?? 3} biz days
  </Text>
+ </Table.Td>
+ <Table.Td>
+ <Group gap={4} wrap="wrap">
+ {(b.alertPriorities ?? 'Blocker,Critical,Highest').split(',').map(p => p.trim()).filter(Boolean).map(p => (
+ <Badge key={p} size="xs" variant="light" color="orange" style={{ fontFamily: FONT_FAMILY }}>{p}</Badge>
+ ))}
+ </Group>
  </Table.Td>
  <Table.Td>
  <Badge
@@ -232,7 +240,7 @@ export default function SupportBoardsSettingsPage() {
  <Modal
  opened={deleteTarget !== null}
  onClose={() => setDeleteTarget(null)}
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: '#c92a2a' }}>Remove Support Board</Text>}
+ title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Remove Support Board</Text>}
  size="sm"
  centered
  >
@@ -268,6 +276,10 @@ interface FormProps {
  error: string | null;
 }
 
+const JIRA_PRIORITY_OPTIONS = [
+ 'Blocker', 'Critical', 'Highest', 'High', 'Medium', 'Low', 'Lowest',
+];
+
 function BoardFormModal({
  opened, mode, initial, onClose, onSave, saving, error,
 }: FormProps) {
@@ -277,6 +289,7 @@ function BoardFormModal({
  const [queueId, setQueueId] = useState('');
  const [enabled, setEnabled] = useState(true);
  const [staleThresholdDays, setStaleThresholdDays] = useState<number>(3);
+ const [alertPriorities, setAlertPriorities] = useState<string[]>(['Blocker', 'Critical', 'Highest']);
 
  useEffect(() => {
  if (opened) {
@@ -286,9 +299,12 @@ function BoardFormModal({
  setQueueId(initial.queueId != null ? String(initial.queueId) : '');
  setEnabled(initial.enabled);
  setStaleThresholdDays(initial.staleThresholdDays ?? 3);
+ const raw = initial.alertPriorities ?? 'Blocker,Critical,Highest';
+ setAlertPriorities(raw.split(',').map(p => p.trim()).filter(Boolean));
  } else {
  setName(''); setProjectKey(''); setQueueId('');
  setEnabled(true); setStaleThresholdDays(3);
+ setAlertPriorities(['Blocker', 'Critical', 'Highest']);
  }
  }
  }, [opened]);
@@ -297,7 +313,14 @@ function BoardFormModal({
  const pk = projectKey.trim().toUpperCase() || null;
  const qId = queueId ? Number(queueId) : null;
  if (!name.trim() || !pk) return;
- onSave({ name: name.trim(), projectKey: pk, queueId: qId, enabled, staleThresholdDays });
+ onSave({
+ name: name.trim(),
+ projectKey: pk,
+ queueId: qId,
+ enabled,
+ staleThresholdDays,
+ alertPriorities: alertPriorities.join(','),
+ });
  }
 
  const canSave = !!name.trim() && !!projectKey.trim();
@@ -352,6 +375,21 @@ function BoardFormModal({
  value={staleThresholdDays}
  onChange={v => setStaleThresholdDays(typeof v === 'number' ? v : 3)}
  styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY }, description: { fontFamily: FONT_FAMILY } }}
+ />
+
+ <MultiSelect
+ label="Inbox alert priorities"
+ description="Tickets with these priorities appear as alerts in the Inbox. Select at least one."
+ data={JIRA_PRIORITY_OPTIONS}
+ value={alertPriorities}
+ onChange={setAlertPriorities}
+ placeholder="Select priorities…"
+ clearable
+ styles={{
+ label: { fontFamily: FONT_FAMILY },
+ input: { fontFamily: FONT_FAMILY },
+ description: { fontFamily: FONT_FAMILY },
+ }}
  />
 
  {mode === 'edit' && (

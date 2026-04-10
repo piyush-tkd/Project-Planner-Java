@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { DateInput } from '@mantine/dates';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
-  Title,
   Text,
   Stack,
   Center,
@@ -16,15 +16,20 @@ import {
   TextInput,
   Textarea,
   Select,
-  Loader,
+  Skeleton,
   ActionIcon,
   Menu,
+  NumberInput,
+  Tooltip,
+  Alert,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import { IconAlertTriangle, IconListCheck, IconHelp, IconEdit, IconTrash, IconDots } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { PageInsightCard } from '../components/common/PageInsightCard';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SURFACE_FAINT, SURFACE_BG, COLOR_ERROR_DARK, UX_WARNING, COLOR_ORANGE_DARK, DEEP_BLUE_TINTS } from '../brandTokens';
 
 interface Risk {
   id: string;
@@ -65,6 +70,7 @@ export default function RiskRegisterPage() {
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [formData, setFormData] = useState<CreateRiskPayload>({
     title: '',
     description: '',
@@ -78,7 +84,7 @@ export default function RiskRegisterPage() {
   });
 
   // Fetch summary
-  const { data: summary } = useQuery({
+  const { data: summary, isError: summaryError } = useQuery({
     queryKey: ['risks-summary'],
     queryFn: async () => {
       const res = await apiClient.get('/risks/summary');
@@ -87,7 +93,7 @@ export default function RiskRegisterPage() {
   });
 
   // Fetch risks based on tab
-  const { data: risks = [], isLoading } = useQuery({
+  const { data: risks = [], isLoading, isError } = useQuery({
     queryKey: ['risks', activeTab],
     queryFn: async () => {
       let params = {};
@@ -143,6 +149,25 @@ export default function RiskRegisterPage() {
       });
       resetForm();
       setModalOpen(false);
+    },
+    onError: (err: any) => {
+      notifications.show({
+        color: 'red',
+        title: 'Error',
+        message: err.message || 'Failed to update risk',
+      });
+    },
+  });
+
+  // Inline update mutation
+  const inlineUpdateMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
+      const res = await apiClient.put(`/risks/${id}`, { [field]: value });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['risks'] });
+      queryClient.invalidateQueries({ queryKey: ['risks-summary'] });
     },
     onError: (err: any) => {
       notifications.show({
@@ -236,16 +261,16 @@ export default function RiskRegisterPage() {
   };
 
   const severityColors: Record<string, string> = {
-    CRITICAL: '#CC071E',
-    HIGH: '#FFA500',
-    MEDIUM: '#FFC731',
-    LOW: '#6D7B8C',
+    CRITICAL: COLOR_ERROR_DARK,
+    HIGH: COLOR_ORANGE_DARK,
+    MEDIUM: UX_WARNING,
+    LOW: DEEP_BLUE_TINTS[60],
   };
 
   const EmptyState = ({ icon: Icon, title, description }: { icon: any; title: string; description: string }) => (
     <Center py={80}>
       <Stack align="center" gap="md">
-        <Icon size={64} color="#0C2340" opacity={0.2} />
+        <Icon size={64} color={DEEP_BLUE} opacity={0.2} />
         <Stack gap={4} align="center">
           <Text fw={600} size="lg" style={{ fontFamily: FONT_FAMILY }}>
             {title}
@@ -260,24 +285,16 @@ export default function RiskRegisterPage() {
 
   if (isLoading && !summary) {
     return (
-      <Center p="xl">
-        <Loader />
-      </Center>
+      <Stack gap="xs" p="md">{[...Array(5)].map((_, i) => <Skeleton key={i} height={52} radius="sm" />)}</Stack>
     );
   }
 
   return (
-    <Stack gap="lg" p="md">
-      {/* Header with Button */}
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={1} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 }}>
-            Risk & Issues
-          </Title>
-          <Text c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-            Proactive risk management across projects and PODs
-          </Text>
-        </div>
+    <PPPageLayout
+      title="Risk & Issues"
+      subtitle="Proactive risk management across projects and PODs"
+      animate
+      actions={
         <Button
           color={AQUA}
           onClick={openCreateModal}
@@ -285,7 +302,14 @@ export default function RiskRegisterPage() {
         >
           Log Risk
         </Button>
-      </Group>
+      }
+    >
+      {(isError || summaryError) && (
+        <Alert icon={<IconAlertTriangle size={16} />} color="red" mb="md" mx="md" radius="md">
+          Failed to load risk data. Please try again or refresh the page.
+        </Alert>
+      )}
+      <PageInsightCard pageKey="risks" data={risks} />
 
       {/* Summary Stats */}
       <SimpleGrid cols={{ base: 3, xs: 3, sm: 3 }} spacing="md">
@@ -295,7 +319,7 @@ export default function RiskRegisterPage() {
           withBorder
           style={{
             borderColor: AQUA,
-            background: 'white',
+            background: dark ? 'rgba(255,255,255,0.04)' : SURFACE_BG,
             boxShadow: '0 1px 4px rgba(12, 35, 64, 0.06)',
           }}
         >
@@ -312,7 +336,7 @@ export default function RiskRegisterPage() {
           withBorder
           style={{
             borderColor: AQUA,
-            background: 'white',
+            background: dark ? 'rgba(255,255,255,0.04)' : SURFACE_BG,
             boxShadow: '0 1px 4px rgba(12, 35, 64, 0.06)',
           }}
         >
@@ -329,14 +353,14 @@ export default function RiskRegisterPage() {
           withBorder
           style={{
             borderColor: AQUA,
-            background: 'white',
+            background: dark ? 'rgba(255,255,255,0.04)' : SURFACE_BG,
             boxShadow: '0 1px 4px rgba(12, 35, 64, 0.06)',
           }}
         >
           <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
             Critical Items
           </Text>
-          <Text fw={700} size="xl" style={{ color: '#CC071E', fontFamily: FONT_FAMILY }}>
+          <Text fw={700} size="xl" style={{ color: COLOR_ERROR_DARK, fontFamily: FONT_FAMILY }}>
             {summary?.criticalItems ?? 0}
           </Text>
         </Paper>
@@ -376,12 +400,12 @@ export default function RiskRegisterPage() {
               withBorder
               radius="md"
               style={{
-                borderColor: 'rgba(12, 35, 64, 0.1)',
+                borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(12, 35, 64, 0.1)',
                 overflow: 'hidden',
               }}
             >
               <Table striped highlightOnHover>
-                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : '#F7F9FB' }}>
+                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : SURFACE_FAINT }}>
                   <Table.Tr>
                     <Table.Th style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 }}>
                       Title
@@ -409,20 +433,148 @@ export default function RiskRegisterPage() {
                 <Table.Tbody>
                   {risks.map((risk: Risk) => (
                     <Table.Tr key={risk.id}>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.title}</Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'title' ? (
+                          <TextInput
+                            autoFocus
+                            defaultValue={risk.title}
+                            size="xs"
+                            style={{ fontFamily: FONT_FAMILY }}
+                            onBlur={(e) => {
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'title', value: e.currentTarget.value });
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setEditingCell(null);
+                              if (e.key === 'Enter') {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'title', value: e.currentTarget.value });
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'title' })}>
+                            {risk.title}
+                          </Text>
+                        )}
+                      </Table.Td>
                       <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.itemType}</Table.Td>
                       <Table.Td>
-                        <Badge
-                          color={severityColors[risk.severity]}
-                          variant="filled"
-                          style={{ fontFamily: FONT_FAMILY }}
-                        >
-                          {risk.severity}
-                        </Badge>
+                        {editingCell?.id === risk.id && editingCell?.field === 'severity' ? (
+                          <Select
+                            size="xs"
+                            data={[
+                              { value: 'CRITICAL', label: 'Critical' },
+                              { value: 'HIGH', label: 'High' },
+                              { value: 'MEDIUM', label: 'Medium' },
+                              { value: 'LOW', label: 'Low' },
+                            ]}
+                            defaultValue={risk.severity}
+                            onBlur={(e) => {
+                              const val = e.currentTarget.value || risk.severity;
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'severity', value: val });
+                              setEditingCell(null);
+                            }}
+                            onChange={(val) => {
+                              if (val) {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'severity', value: val });
+                                setEditingCell(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <Badge
+                            color={severityColors[risk.severity]}
+                            variant="filled"
+                            style={{ fontFamily: FONT_FAMILY, cursor: 'pointer' }}
+                            onClick={() => setEditingCell({ id: risk.id, field: 'severity' })}
+                          >
+                            {risk.severity}
+                          </Badge>
+                        )}
                       </Table.Td>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.status}</Table.Td>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.owner || '-'}</Table.Td>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.dueDate || '-'}</Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'status' ? (
+                          <Select
+                            size="xs"
+                            data={[
+                              { value: 'OPEN', label: 'Open' },
+                              { value: 'IN_PROGRESS', label: 'In Progress' },
+                              { value: 'MITIGATED', label: 'Mitigated' },
+                              { value: 'CLOSED', label: 'Closed' },
+                            ]}
+                            defaultValue={risk.status}
+                            onBlur={(e) => {
+                              const val = e.currentTarget.value || risk.status;
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'status', value: val });
+                              setEditingCell(null);
+                            }}
+                            onChange={(val) => {
+                              if (val) {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'status', value: val });
+                                setEditingCell(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'status' })}>
+                            {risk.status}
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'owner' ? (
+                          <TextInput
+                            autoFocus
+                            defaultValue={risk.owner || ''}
+                            size="xs"
+                            style={{ fontFamily: FONT_FAMILY }}
+                            onBlur={(e) => {
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'owner', value: e.currentTarget.value });
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setEditingCell(null);
+                              if (e.key === 'Enter') {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'owner', value: e.currentTarget.value });
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'owner' })}>
+                            {risk.owner || '-'}
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'dueDate' ? (
+                          <TextInput
+                            autoFocus
+                            defaultValue={risk.dueDate || ''}
+                            size="xs"
+                            placeholder="yyyy-MM-dd"
+                            style={{ fontFamily: FONT_FAMILY }}
+                            onBlur={(e) => {
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'dueDate', value: e.currentTarget.value });
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setEditingCell(null);
+                              if (e.key === 'Enter') {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'dueDate', value: e.currentTarget.value });
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'dueDate' })}>
+                            {risk.dueDate || '-'}
+                          </Text>
+                        )}
+                      </Table.Td>
                       <Table.Td>
                         <Menu shadow="md">
                           <Menu.Target>
@@ -431,12 +583,6 @@ export default function RiskRegisterPage() {
                             </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconEdit size={14} />}
-                              onClick={() => openEditModal(risk)}
-                            >
-                              Edit
-                            </Menu.Item>
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
                               color="red"
@@ -467,12 +613,12 @@ export default function RiskRegisterPage() {
               withBorder
               radius="md"
               style={{
-                borderColor: 'rgba(12, 35, 64, 0.1)',
+                borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(12, 35, 64, 0.1)',
                 overflow: 'hidden',
               }}
             >
               <Table striped highlightOnHover>
-                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : '#F7F9FB' }}>
+                <Table.Thead style={{ backgroundColor: dark ? 'var(--mantine-color-dark-7)' : SURFACE_FAINT }}>
                   <Table.Tr>
                     <Table.Th style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE, fontWeight: 600 }}>
                       Title
@@ -494,18 +640,121 @@ export default function RiskRegisterPage() {
                 <Table.Tbody>
                   {risks.map((risk: Risk) => (
                     <Table.Tr key={risk.id}>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.title}</Table.Td>
-                      <Table.Td>
-                        <Badge
-                          color={severityColors[risk.severity]}
-                          variant="filled"
-                          style={{ fontFamily: FONT_FAMILY }}
-                        >
-                          {risk.severity}
-                        </Badge>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'title' ? (
+                          <TextInput
+                            autoFocus
+                            defaultValue={risk.title}
+                            size="xs"
+                            style={{ fontFamily: FONT_FAMILY }}
+                            onBlur={(e) => {
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'title', value: e.currentTarget.value });
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setEditingCell(null);
+                              if (e.key === 'Enter') {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'title', value: e.currentTarget.value });
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'title' })}>
+                            {risk.title}
+                          </Text>
+                        )}
                       </Table.Td>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.status}</Table.Td>
-                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>{risk.owner || '-'}</Table.Td>
+                      <Table.Td>
+                        {editingCell?.id === risk.id && editingCell?.field === 'severity' ? (
+                          <Select
+                            size="xs"
+                            data={[
+                              { value: 'CRITICAL', label: 'Critical' },
+                              { value: 'HIGH', label: 'High' },
+                              { value: 'MEDIUM', label: 'Medium' },
+                              { value: 'LOW', label: 'Low' },
+                            ]}
+                            defaultValue={risk.severity}
+                            onBlur={(e) => {
+                              const val = e.currentTarget.value || risk.severity;
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'severity', value: val });
+                              setEditingCell(null);
+                            }}
+                            onChange={(val) => {
+                              if (val) {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'severity', value: val });
+                                setEditingCell(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <Badge
+                            color={severityColors[risk.severity]}
+                            variant="filled"
+                            style={{ fontFamily: FONT_FAMILY, cursor: 'pointer' }}
+                            onClick={() => setEditingCell({ id: risk.id, field: 'severity' })}
+                          >
+                            {risk.severity}
+                          </Badge>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'status' ? (
+                          <Select
+                            size="xs"
+                            data={[
+                              { value: 'OPEN', label: 'Open' },
+                              { value: 'IN_PROGRESS', label: 'In Progress' },
+                              { value: 'MITIGATED', label: 'Mitigated' },
+                              { value: 'CLOSED', label: 'Closed' },
+                            ]}
+                            defaultValue={risk.status}
+                            onBlur={(e) => {
+                              const val = e.currentTarget.value || risk.status;
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'status', value: val });
+                              setEditingCell(null);
+                            }}
+                            onChange={(val) => {
+                              if (val) {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'status', value: val });
+                                setEditingCell(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'status' })}>
+                            {risk.status}
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ fontFamily: FONT_FAMILY }}>
+                        {editingCell?.id === risk.id && editingCell?.field === 'owner' ? (
+                          <TextInput
+                            autoFocus
+                            defaultValue={risk.owner || ''}
+                            size="xs"
+                            style={{ fontFamily: FONT_FAMILY }}
+                            onBlur={(e) => {
+                              inlineUpdateMutation.mutate({ id: risk.id, field: 'owner', value: e.currentTarget.value });
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setEditingCell(null);
+                              if (e.key === 'Enter') {
+                                inlineUpdateMutation.mutate({ id: risk.id, field: 'owner', value: e.currentTarget.value });
+                                setEditingCell(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={{ cursor: 'text' }} onClick={() => setEditingCell({ id: risk.id, field: 'owner' })}>
+                            {risk.owner || '-'}
+                          </Text>
+                        )}
+                      </Table.Td>
                       <Table.Td>
                         <Menu shadow="md">
                           <Menu.Target>
@@ -514,12 +763,6 @@ export default function RiskRegisterPage() {
                             </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconEdit size={14} />}
-                              onClick={() => openEditModal(risk)}
-                            >
-                              Edit
-                            </Menu.Item>
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
                               color="red"
@@ -629,11 +872,13 @@ export default function RiskRegisterPage() {
             value={formData.owner}
             onChange={(e) => setFormData({ ...formData, owner: e.currentTarget.value })}
           />
-          <TextInput
+          <DateInput
             label="Due Date"
-            placeholder="yyyy-MM-dd"
-            value={formData.dueDate}
-            onChange={(e) => setFormData({ ...formData, dueDate: e.currentTarget.value })}
+            placeholder="Pick a date"
+            valueFormat="YYYY-MM-DD"
+            value={formData.dueDate ? new Date(formData.dueDate) : null}
+            onChange={(d) => setFormData({ ...formData, dueDate: d ? d.toISOString().slice(0, 10) : '' })}
+            clearable
           />
           <Textarea
             label="Mitigation Plan"
@@ -656,6 +901,6 @@ export default function RiskRegisterPage() {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </PPPageLayout>
   );
 }

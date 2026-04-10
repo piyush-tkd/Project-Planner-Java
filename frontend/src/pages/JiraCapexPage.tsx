@@ -2,13 +2,15 @@ import { useState, useMemo, useEffect } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
  Box, Title, Text, Group, Stack, Badge, Button, Paper,
- Loader, Alert, ThemeIcon, Tooltip, Divider,
+ Loader, Alert, ThemeIcon, Tooltip, Divider, Skeleton,
  TextInput, ScrollArea, Table, SimpleGrid,
  Modal, ActionIcon, SegmentedControl, Progress,
  Select, Collapse,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { MonthPickerInput } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
 import {
  IconCurrencyDollar, IconRefresh, IconAlertTriangle,
  IconCheck, IconSettings, IconSearch, IconExternalLink,
@@ -25,14 +27,14 @@ import {
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
-const AMBER = '#F59E0B';
-const GREEN = '#22C55E';
-const RED = '#EF4444';
-const GRAY = '#94A3B8';
-const PURPLE = '#7C3AED';
-const INDIA_COLOR = '#7C3AED'; // purple
+const AMBER = COLOR_WARNING;
+const GREEN = COLOR_GREEN;
+const RED = COLOR_ERROR_STRONG;
+const GRAY = TEXT_SUBTLE;
+const PURPLE = COLOR_VIOLET;
+const INDIA_COLOR = COLOR_VIOLET; // purple
 const US_COLOR = '#0EA5E9'; // sky blue
 
 const CAT_COLORS: Record<string, string> = {
@@ -48,26 +50,26 @@ const LOC_COLORS: Record<string, string> = {
 
 // ── Issue type colour map ──────────────────────────────────────────────
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
- 'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
- 'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
- 'Incident': { bg: '#FEE2E2', text: '#B91C1C' },
- 'Change Request': { bg: '#F3E8FF', text: '#9333EA' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
+ 'Improvement': { bg: SURFACE_BLUE_LIGHT, text: COLOR_TEAL },
+ 'New Feature': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
+ 'Incident': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Change Request': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
 };
 function issueTypeStyle(typeName: string) {
- return ISSUE_TYPE_COLORS[typeName] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[typeName] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
 const STATUS_CAT_BG: Record<string, string> = {
- 'In Progress': '#FEF3C7',
- 'To Do': '#F1F5F9',
- 'Done': '#DCFCE7',
+ 'In Progress': SURFACE_AMBER,
+ 'To Do': SURFACE_LIGHT,
+ 'Done': SURFACE_SUCCESS_LIGHT,
 };
 const STATUS_CAT_COLOR: Record<string, string> = {
  'In Progress': AMBER,
@@ -136,7 +138,7 @@ function CapexSettingsModal({
  onClose={onClose}
  title={
  <Group gap="xs">
- <ThemeIcon size={24} radius="sm" style={{ backgroundColor: isDark ? '#4a5568' : DEEP_BLUE }}>
+ <ThemeIcon size={24} radius="sm" color={isDark ? 'var(--pp-text)' : DEEP_BLUE}>
  <IconSettings size={14} color="white" />
  </ThemeIcon>
  <Text fw={700} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>CapEx Field Settings</Text>
@@ -152,10 +154,7 @@ function CapexSettingsModal({
  </Alert>
 
  {showLoader && (
- <Group gap="xs">
- <Loader size="xs" />
- <Text size="sm" c="dimmed">Loading Jira custom fields…</Text>
- </Group>
+ <Stack gap="xs">{[1,2,3].map(i => <Skeleton key={i} height={36} radius="sm" />)}</Stack>
  )}
 
  {fieldsError && (
@@ -217,7 +216,7 @@ function CapexSettingsModal({
  leftSection={<IconCheck size={14} />}
  loading={save.isPending}
  onClick={() => {
- save.mutate({ capexFieldId: fieldId }, { onSuccess: onClose });
+ save.mutate({ capexFieldId: fieldId }, { onSuccess: () => { notifications.show({ title: 'Saved', message: 'CapEx field mapping updated.', color: 'teal' }); onClose(); }, onError: (e: unknown) => notifications.show({ title: 'Save failed', message: (e as Error).message || 'Could not save CapEx field.', color: 'red' }) });
  }}
  >
  Save
@@ -286,7 +285,7 @@ function IssueModal({
  {filtered.map(issue => (
  <Table.Tr
  key={issue.key}
- style={!issue.capexCategory ? { backgroundColor: isDark ? '#3d3000' : '#FFFBEB' } : undefined}
+ style={!issue.capexCategory ? { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT } : undefined}
  >
  <Table.Td>
  {jiraBaseUrl ? (
@@ -315,7 +314,7 @@ function IssueModal({
  </Table.Td>
  <Table.Td>
  <Badge size="xs" variant="light" style={{
- backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? '#F1F5F9',
+ backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? SURFACE_LIGHT,
  color: STATUS_CAT_COLOR[issue.statusCategory] ?? GRAY,
  }}>
  {issue.statusName}
@@ -545,7 +544,7 @@ function CompactIssueSection({
  </Table.Td>
  <Table.Td ta="center">
  <Badge size="xs" style={{
- backgroundColor: STATUS_CAT_BG[i.statusCategory] ?? '#F1F5F9',
+ backgroundColor: STATUS_CAT_BG[i.statusCategory] ?? SURFACE_LIGHT,
  color: STATUS_CAT_COLOR[i.statusCategory] ?? GRAY,
  }}>
  {i.statusName}
@@ -714,7 +713,8 @@ export default function JiraCapexPage() {
  ? Math.round((report.taggedIssues / report.totalIssues) * 100) : 0;
 
  return (
- <Box p="md" className="page-enter stagger-children">
+ <PPPageLayout title="Jira CapEx" subtitle="Capital expenditure tracking and Jira cost allocation" animate>
+ <Box className="page-enter stagger-children">
  {/* Settings Modal */}
  <CapexSettingsModal opened={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
@@ -727,23 +727,8 @@ export default function JiraCapexPage() {
  jiraBaseUrl={jiraBaseUrl}
  />
 
- {/* ── Header ── */}
- <Group justify="space-between" mb="lg" className="slide-in-left">
- <Group gap="sm">
- <ThemeIcon size={38} radius="md" style={{ backgroundColor: isDark ? '#4a5568' : DEEP_BLUE }}>
- <IconCurrencyDollar size={22} color="white" />
- </ThemeIcon>
- <div>
- <Title order={3} style={{ color: isDark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
- CapEx / OpEx Tracker
- </Title>
- <Text size="sm" c="dimmed">
- IDS vs NON-IDS hours by month · {fieldId
- ? <span style={{ color: AQUA }}>field: {fieldId}</span>
- : <span style={{ color: AMBER }}>⚠ No field configured — click Settings</span>}
- </Text>
- </div>
- </Group>
+ {/* ── Toolbar ── */}
+ <Group justify="flex-end" mb="lg" className="slide-in-left">
  <Group gap="xs">
  <Button
  variant="light" size="sm"
@@ -937,7 +922,7 @@ export default function JiraCapexPage() {
  <Collapse in={podExpanded}>
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={podBarData} margin={{ top: 0, right: 4, left: -20, bottom: 40 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis
  dataKey="pod" tick={{ fontSize: 9 }}
  angle={-30} textAnchor="end" interval={0}
@@ -1060,7 +1045,7 @@ export default function JiraCapexPage() {
  <Text size="xs" fw={600} c="dimmed" mb="xs">IDS vs NON-IDS Hours by Location</Text>
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={locationBarData} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
  <YAxis tick={{ fontSize: 9 }} />
  <RTooltip
@@ -1068,10 +1053,10 @@ export default function JiraCapexPage() {
  formatter={(v: number, n: string) => [`${v.toFixed(1)}h`, n]}
  />
  <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
- <Bar dataKey="IDS" fill={DEEP_BLUE} radius={[3, 3, 0, 0]} />
- <Bar dataKey="NON-IDS" fill={AQUA} radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="IDS" fill={DEEP_BLUE_HEX} radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="NON-IDS" fill={AQUA_HEX} radius={[3, 3, 0, 0]} />
  {report.untaggedIssues > 0 && (
- <Bar dataKey="Untagged" fill={AMBER} radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="Untagged" fill={AMBER} radius={[3, 3, 0, 0]} />
  )}
  </BarChart>
  </ResponsiveContainer>
@@ -1093,7 +1078,7 @@ export default function JiraCapexPage() {
  <BarChart data={authorBarData}
  margin={{ top: 0, right: 4, left: -20, bottom: 60 }}
  layout="horizontal">
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis
  dataKey="name" tick={{ fontSize: 9 }}
  angle={-40} textAnchor="end" interval={0}
@@ -1108,10 +1093,10 @@ export default function JiraCapexPage() {
  }}
  />
  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
- <Bar dataKey="IDS" stackId="a" fill={DEEP_BLUE} />
- <Bar dataKey="NON-IDS" stackId="a" fill={AQUA} />
+ <Bar animationDuration={600} dataKey="IDS" stackId="a" fill={DEEP_BLUE_HEX} />
+ <Bar animationDuration={600} dataKey="NON-IDS" stackId="a" fill={AQUA_HEX} />
  {report.authorBreakdown.some(a => a.untaggedHours > 0) && (
- <Bar dataKey="Untagged" stackId="a" fill={AMBER}
+ <Bar animationDuration={600} dataKey="Untagged" stackId="a" fill={AMBER}
  radius={[3, 3, 0, 0]} />
  )}
  </BarChart>
@@ -1253,7 +1238,7 @@ export default function JiraCapexPage() {
  {filteredIssues.map(issue => (
  <Table.Tr
  key={issue.key}
- style={!issue.capexCategory ? { backgroundColor: isDark ? '#3d3000' : '#FFFBEB' } : undefined}
+ style={!issue.capexCategory ? { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT } : undefined}
  >
  <Table.Td>
  {jiraBaseUrl ? (
@@ -1302,7 +1287,7 @@ export default function JiraCapexPage() {
  </Table.Td>
  <Table.Td>
  <Badge size="xs" variant="light" style={{
- backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? '#F1F5F9',
+ backgroundColor: STATUS_CAT_BG[issue.statusCategory] ?? SURFACE_LIGHT,
  color: STATUS_CAT_COLOR[issue.statusCategory] ?? GRAY,
  }}>
  {issue.statusName}
@@ -1337,5 +1322,6 @@ export default function JiraCapexPage() {
  </Alert>
  )}
  </Box>
+ </PPPageLayout>
  );
 }

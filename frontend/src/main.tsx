@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineProvider, createTheme, mergeThemeOverrides } from '@mantine/core';
 import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { Notifications, notifications } from '@mantine/notifications';
@@ -8,24 +8,28 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import { logErrorToServer } from './api/errorLogs';
 import { AuthProvider } from './auth/AuthContext';
 import { OrgSettingsProvider } from './context/OrgSettingsContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 import App from './App';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/dates/styles.css';
 import './global.css';
+import './styles/microinteractions.css';
 
 import {
-  DEEP_BLUE, AQUA, FONT_FAMILY, RADIUS, SHADOW,
+  DEEP_BLUE_HEX, AQUA_HEX, FONT_FAMILY, RADIUS, SHADOW,
   DEEP_BLUE_TINTS, AQUA_TINTS, LEGACY_BLUE_TINTS,
 } from './brandTokens';
+import { slateTheme } from './theme/slate';  // S3.1 — wire Slate design system
 
 /**
  * Baylor Genetics — Brand Design Tokens (v01.1)
+ * Slate design system is layered as the base; brand tokens extend it.
  *
  * Primary:   Deep Blue #0C2340  |  Aqua #2DCCD3
  * Font:      DIN Next LT Pro / Arial fallback
  */
-const theme = createTheme({
+const brandTheme = createTheme({
   primaryColor: 'aqua',        // Wrike-style teal CTA buttons + focus rings
   fontFamily: FONT_FAMILY,
   headings: {
@@ -49,7 +53,7 @@ const theme = createTheme({
       DEEP_BLUE_TINTS[60],  // 5  #6D7B8C
       DEEP_BLUE_TINTS[70],  // 6  #556579
       DEEP_BLUE_TINTS[80],  // 7  #3D4F66
-      DEEP_BLUE,            // 8  #0C2340
+      DEEP_BLUE_HEX,        // 8  #0C2340
       '#081A30',            // 9  darker
     ] as unknown as [string,string,string,string,string,string,string,string,string,string],
 
@@ -63,7 +67,7 @@ const theme = createTheme({
       AQUA_TINTS[60],  // 5  #81E0E5
       AQUA_TINTS[70],  // 6  #6CDBE0
       AQUA_TINTS[80],  // 7  #57D6DC
-      AQUA,            // 8  #2DCCD3
+      AQUA_HEX,        // 8  #2DCCD3
       '#25ADB3',       // 9  darker
     ] as unknown as [string,string,string,string,string,string,string,string,string,string],
 
@@ -88,13 +92,14 @@ const theme = createTheme({
       styles: { root: { fontWeight: 600, letterSpacing: '0.01em' } },
     },
     Modal: {
-      defaultProps: { size: 'xl', radius: 'md' },
+      // keepMounted:false prevents Mantine from leaving 12+ empty portal shells in the DOM
+      defaultProps: { size: 'xl', radius: 'md', keepMounted: false },
     },
     Card: {
       defaultProps: { radius: 'md', shadow: 'sm', withBorder: true },
       styles: {
         root: {
-          borderColor: DEEP_BLUE_TINTS[10],
+          borderColor: DEEP_BLUE_TINTS[10],   // static hex — fine for Mantine theme registration
           transition: 'box-shadow 200ms ease, transform 200ms ease',
         },
       },
@@ -124,6 +129,9 @@ const theme = createTheme({
     },
   },
 });
+
+// S3.1 — Merge slate as base layer; brand tokens override where they overlap
+const theme = mergeThemeOverrides(slateTheme, brandTheme);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -183,12 +191,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications />
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
             <OrgSettingsProvider>
-              <ErrorBoundary>
-                <App />
-              </ErrorBoundary>
+              <FavoritesProvider>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+              </FavoritesProvider>
             </OrgSettingsProvider>
           </AuthProvider>
         </BrowserRouter>

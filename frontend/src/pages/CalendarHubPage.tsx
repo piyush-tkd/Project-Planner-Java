@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PPPageLayout } from '../components/pp';
 import {
   Title,
   Text,
@@ -10,10 +11,10 @@ import {
   SimpleGrid,
   Center,
   Box,
-  Loader,
+  Skeleton,
 } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useSprints } from '../api/sprints';
 import { useReleases } from '../api/releases';
@@ -79,10 +80,10 @@ export default function CalendarHubPage() {
   };
 
   const layerColors: Record<string, string> = {
-    Sprints: '#2563eb',
+    Sprints: COLOR_BLUE_STRONG,
     Releases: '#9333ea',
-    'Code Freeze': '#dc2626',
-    Holidays: '#f59e0b',
+    'Code Freeze': COLOR_ERROR_DARK,
+    Holidays: COLOR_WARNING,
   };
 
   // Check if a date falls within or on the boundary of a sprint
@@ -98,7 +99,7 @@ export default function CalendarHubPage() {
         } else if (s.endDate === iso) {
           events.push({ layer: 'Sprints', event: `■ ${s.name}`, color: layerColors['Sprints'] });
         } else if (s.requirementsLockInDate === iso) {
-          events.push({ layer: 'Sprints', event: `🔒 Req Lock: ${s.name}`, color: '#7c3aed' });
+          events.push({ layer: 'Sprints', event: `🔒 Req Lock: ${s.name}`, color: COLOR_VIOLET });
         }
       }
     }
@@ -134,16 +135,11 @@ export default function CalendarHubPage() {
   };
 
   return (
-    <Stack gap="lg" p="md">
-      {/* Header */}
-      <div>
-        <Title order={1} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 }}>
-          Strategic Calendar
-        </Title>
-        <Text c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-          Unified view of sprints, releases, code freezes, and holidays
-        </Text>
-      </div>
+    <PPPageLayout
+      title="Strategic Calendar"
+      subtitle="Unified view of sprints, releases, code freezes, and holidays"
+      animate
+    >
 
       {/* Layer Toggle Buttons */}
       <Group gap="sm">
@@ -163,7 +159,7 @@ export default function CalendarHubPage() {
             {layer}
           </Button>
         ))}
-        {isLoading && <Loader size="xs" />}
+        {isLoading && <Skeleton height={28} width={80} radius="sm" />}
       </Group>
 
       {/* Month Navigation */}
@@ -274,7 +270,7 @@ export default function CalendarHubPage() {
 
       {/* Legend */}
       <Group gap="md" pt="md">
-        <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>Legend:</Text>
+        <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE }}>Legend:</Text>
         {Object.entries(layerColors).map(([layer, color]) => (
           <Group key={layer} gap={6}>
             <Box style={{ width: '12px', height: '12px', backgroundColor: color, borderRadius: '2px' }} />
@@ -291,6 +287,6 @@ export default function CalendarHubPage() {
           <Text size="xs" c="dimmed">{holidays.length} holiday{holidays.length !== 1 ? 's' : ''} loaded</Text>
         </Group>
       )}
-    </Stack>
+    </PPPageLayout>
   );
 }

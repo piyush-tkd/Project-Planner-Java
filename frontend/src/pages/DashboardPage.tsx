@@ -3,9 +3,10 @@ import { useQuery }  from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import {
-  Title, Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge,
+  Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge, Title,
   Paper, ThemeIcon, ScrollArea, Tabs, Box, RingProgress, Tooltip as MTooltip,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import {
   IconUsers, IconBriefcase, IconFlame, IconAlertTriangle,
   IconChartBar, IconChartAreaLine, IconUserPlus, IconCalendar,
@@ -13,7 +14,8 @@ import {
   IconArrowsLeftRight, IconTag, IconStar, IconDots, IconPlus,
   IconLayoutDashboard, IconPresentation, IconChartDonut, IconTable,
   IconTargetArrow, IconCheck, IconCircleDashed, IconArrowUpRight,
-  IconBrain,
+  IconBrain, IconBulb, IconClock, IconRocket, IconSnowflake,
+  IconStatusChange, IconPlayerPlay,
 } from '@tabler/icons-react';
 import { usePodHours } from '../api/podHours';
 import {
@@ -24,35 +26,41 @@ import {
   useExecutiveSummary, useUtilizationHeatmap, useHiringForecast, useCapacityDemandSummary,
 } from '../api/reports';
 import { useSupportSnapshot, useSupportBoards } from '../api/jira';
+import { useNlpInsights, NlpInsightCard } from '../api/nlp';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { getUtilizationBgColor } from '../utils/colors';
 import { formatPercent, formatHours } from '../utils/formatting';
 import { formatRole } from '../types';
 import SummaryCard from '../components/charts/SummaryCard';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import PageSkeleton from '../components/common/PageSkeleton';
+import { AnimatedNumber } from '../components/common/AnimatedNumber';
+import { PageInsightCard } from '../components/common/PageInsightCard';
 import ChartCard from '../components/common/ChartCard';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
+import ExportPortfolioButton from '../components/common/ExportPortfolioButton';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useJiraStatus, usePodWatchConfig, useReleaseConfig } from '../api/jira';
 import { useProjects } from '../api/projects';
 import { ProjectResponse } from '../types';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../brandTokens';
+import { AQUA, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_EMERALD, COLOR_ERROR, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_DARK, COLOR_GREEN_LIGHT, COLOR_GREEN_STRONG, COLOR_ORANGE, COLOR_ORANGE_DEEP, COLOR_SUCCESS, COLOR_TEAL, COLOR_VIOLET, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, COLOR_WARNING, DARK_TEXT_PRIMARY, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_300, GRAY_400, SHADOW, SURFACE_BLUE, SURFACE_FAINT, SURFACE_LIGHT, SURFACE_RED_FAINT, SURFACE_SUBTLE, SURFACE_SUCCESS_LIGHT, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { useProjectsHealth, RAG_COLORS, RAG_LABEL, RagStatus } from '../api/projectHealth';
+import HealthBadge from '../components/common/HealthBadge';
 
 // ── Wrike-style pastel status colors ──────────────────────────────────────
 const STATUS_META: Record<string, { bg: string; text: string; border: string; label: string; chart: string }> = {
-  NOT_STARTED:  { bg: '#eff6ff', text: '#3b82f6', border: '#bfdbfe', label: 'Not Started',  chart: '#93c5fd' },
-  IN_DISCOVERY: { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe', label: 'In Discovery', chart: '#c4b5fd' },
-  ACTIVE:       { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0', label: 'Active',        chart: '#6ee7b7' },
-  ON_HOLD:      { bg: '#fffbeb', text: '#d97706', border: '#fde68a', label: 'On Hold',       chart: '#fcd34d' },
-  COMPLETED:    { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Completed',     chart: '#86efac' },
-  CANCELLED:    { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', label: 'Cancelled',     chart: '#cbd5e1' },
+  NOT_STARTED:  { bg: SURFACE_BLUE, text: COLOR_BLUE, border: '#bfdbfe', label: 'Not Started',  chart: '#93c5fd' },
+  IN_DISCOVERY: { bg: '#f5f3ff', text: COLOR_VIOLET, border: '#ddd6fe', label: 'In Discovery', chart: '#c4b5fd' },
+  ACTIVE:       { bg: '#ecfdf5', text: COLOR_EMERALD, border: '#a7f3d0', label: 'Active',        chart: '#6ee7b7' },
+  ON_HOLD:      { bg: '#fffbeb', text: COLOR_AMBER_DARK, border: '#fde68a', label: 'On Hold',       chart: '#fcd34d' },
+  COMPLETED:    { bg: SURFACE_SUCCESS_LIGHT, text: COLOR_GREEN_STRONG, border: '#bbf7d0', label: 'Completed',     chart: '#86efac' },
+  CANCELLED:    { bg: SURFACE_FAINT, text: TEXT_GRAY, border: BORDER_STRONG, label: 'Cancelled',     chart: '#cbd5e1' },
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  DEVELOPER: '#3b82f6',
-  QA: '#8b5cf6',
-  BSA: '#f59e0b',
-  TECH_LEAD: '#ef4444',
+  DEVELOPER: COLOR_BLUE,
+  QA: COLOR_VIOLET_ALT,
+  BSA: COLOR_WARNING,
+  TECH_LEAD: COLOR_ERROR_STRONG,
 };
 
 // ── Wrike-style widget card wrapper ──────────────────────────────────────
@@ -74,8 +82,8 @@ function WrikeCard({ title, count, children, minH, onTitleClick }: {
     >
       <Box px={20} py={14}
         onClick={onTitleClick}
-        style={{ borderBottom: '1px solid #f1f5f9', cursor: onTitleClick ? 'pointer' : 'default' }}>
-        <Text fw={700} size="sm" style={{ color: '#1e293b' }}>
+        style={{ borderBottom: '1px solid var(--pp-border)', cursor: onTitleClick ? 'pointer' : 'default' }}>
+        <Text fw={700} size="sm" style={{ color: 'var(--pp-text)' }}>
           {title}{count !== undefined && <Text component="span" c="dimmed" fw={400} ml={6}>({count})</Text>}
           {onTitleClick && <Text component="span" c="dimmed" fw={400} ml={6} size="xs">↗</Text>}
         </Text>
@@ -108,7 +116,7 @@ function StatusPill({ status }: { status: string }) {
 function KpiNumberCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)', textAlign: 'center' }}>
-      <Text size="xs" fw={600} tt="uppercase" style={{ color: '#94a3b8', letterSpacing: '0.6px', marginBottom: 8 }}>{label}</Text>
+      <Text size="xs" fw={600} tt="uppercase" style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', marginBottom: 8 }}>{label}</Text>
       <Text style={{ fontSize: 40, fontWeight: 800, color: 'var(--mantine-color-text)', lineHeight: 1, fontFamily: FONT_FAMILY }}>{value}</Text>
       {sub && <Text size="xs" c="dimmed" mt={4}>{sub}</Text>}
     </Paper>
@@ -125,13 +133,14 @@ function DashboardHeader({ title, activeBoard, onBoardChange }: {
     <Box mb={20}>
       <Group justify="space-between" align="center" mb={12}>
         <Group gap={8}>
-          <Title order={2} style={{ color: '#0f172a', fontWeight: 800, letterSpacing: '-0.02em' }}>{title}</Title>
+          <Title order={2} style={{ color: 'var(--pp-text)', fontWeight: 800, letterSpacing: '-0.02em' }}>{title}</Title>
           <ActionIcon icon={<IconStar size={16} />} />
         </Group>
         <Group gap={8}>
+          <ExportPortfolioButton />
           <Button size="xs" variant="filled" color="teal"
             leftSection={<IconPlus size={14} />}
-            style={{ background: '#2DCCD3', color: '#0C2340', fontWeight: 700 }}>
+            style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}>
             Widget
           </Button>
           <ActionIcon icon={<IconDots size={16} />} />
@@ -141,11 +150,10 @@ function DashboardHeader({ title, activeBoard, onBoardChange }: {
         <Tabs value={activeBoard} onChange={(v) => onBoardChange(v ?? 'team')}
           styles={{
             root: { flex: 1 },
-            list: { borderBottom: '1px solid #e2e8f0', gap: 0 },
+            list: { borderBottom: '1px solid var(--pp-border)', gap: 0 },
             tab: {
-              fontSize: 13, fontWeight: 600, color: '#64748b',
+              fontSize: 13, fontWeight: 600, color: 'var(--pp-text-secondary)',
               padding: '8px 16px', borderRadius: '6px 6px 0 0',
-              '&[data-active]': { color: '#0f172a', borderBottom: '2px solid #2DCCD3', background: 'transparent' },
             },
           }}
         >
@@ -167,7 +175,7 @@ function ActionIcon({ icon }: { icon: React.ReactNode }) {
         width: 32, height: 32, borderRadius: 8,
         border: '1px solid var(--mantine-color-default-border)', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', color: '#64748b', background: 'var(--mantine-color-body)',
+        cursor: 'pointer', color: TEXT_GRAY, background: 'var(--mantine-color-body)',
       }}
     >
       {icon}
@@ -211,7 +219,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
       .map(([status, count]) => ({
         name: STATUS_META[status]?.label ?? status,
         value: count,
-        color: STATUS_META[status]?.chart ?? '#94a3b8',
+        color: STATUS_META[status]?.chart ?? TEXT_SUBTLE,
       }));
   }, [projects]);
 
@@ -241,15 +249,15 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
   };
 
   const tableHeaderStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, color: dark ? '#9ca3af' : '#94a3b8', textTransform: 'none',
+    fontSize: 12, fontWeight: 500, color: dark ? 'rgba(255,255,255,0.50)' : TEXT_SUBTLE, textTransform: 'none',
     letterSpacing: 0, padding: '10px 16px', background: 'transparent',
-    borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+    borderBottom: `1px solid var(--pp-border)`,
   };
   const tdStyle: React.CSSProperties = {
     padding: '12px 16px',
-    borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#f8fafc'}`,
+    borderBottom: `1px solid var(--pp-border)`,
     fontSize: 13,
-    color: dark ? '#e2e8f0' : '#1e293b',
+    color: 'var(--pp-text)',
   };
 
   return (
@@ -266,15 +274,15 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
           </thead>
           <tbody>
             {dueSoon.length === 0 && (
-              <tr><td colSpan={3} style={{ ...tdStyle, color: '#94a3b8', textAlign: 'center', padding: '24px 16px' }}>No projects due this week</td></tr>
+              <tr><td colSpan={3} style={{ ...tdStyle, color: TEXT_SUBTLE, textAlign: 'center', padding: '24px 16px' }}>No projects due this week</td></tr>
             )}
             {dueSoon.map(p => (
               <tr key={p.id} style={{ transition: 'background 0.1s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : '#f8fafc')}
+                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : SURFACE_FAINT)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <td style={tdStyle}>{p.name.length > 24 ? p.name.slice(0, 24) + '…' : p.name}</td>
                 <td style={{ ...tdStyle, textAlign: 'center' }}><StatusPill status={p.status} /></td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>{formatDate(p.targetDate)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: TEXT_GRAY }}>{formatDate(p.targetDate)}</td>
               </tr>
             ))}
           </tbody>
@@ -287,7 +295,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
           <Group align="center" justify="center" gap="xl">
             <ResponsiveContainer width={160} height={160}>
               <PieChart>
-                <Pie data={statusCounts} dataKey="value" cx="50%" cy="50%"
+                <Pie animationDuration={600} data={statusCounts} dataKey="value" cx="50%" cy="50%"
                   innerRadius={50} outerRadius={75} paddingAngle={2}
                   cursor="pointer"
                   onClick={(data) => {
@@ -310,7 +318,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
                     onClick={() => statusKey && navigate(`/projects?status=${statusKey}`)}>
                     <Box style={{ width: 10, height: 10, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
                     <Text size="xs" c="dimmed" style={{ minWidth: 90 }}>{entry.name}</Text>
-                    <Text size="xs" fw={700} style={{ color: '#1e293b' }}>
+                    <Text size="xs" fw={700} style={{ color: 'var(--pp-text)' }}>
                       {total > 0 ? Math.round((entry.value / total) * 100) : 0}%
                     </Text>
                   </Group>
@@ -333,24 +341,24 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
           </thead>
           <tbody>
             {inProgress.length === 0 && (
-              <tr><td colSpan={3} style={{ ...tdStyle, color: '#94a3b8', textAlign: 'center', padding: '24px 16px' }}>No projects in progress</td></tr>
+              <tr><td colSpan={3} style={{ ...tdStyle, color: TEXT_SUBTLE, textAlign: 'center', padding: '24px 16px' }}>No projects in progress</td></tr>
             )}
             {inProgress.map(p => (
               <tr key={p.id}
-                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : '#f8fafc')}
+                onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(45,204,211,0.06)' : SURFACE_FAINT)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <td style={tdStyle}>{p.name.length > 24 ? p.name.slice(0, 24) + '…' : p.name}</td>
                 <td style={{ ...tdStyle, textAlign: 'center' }}>
                   <Box style={{
                     display: 'inline-block', fontSize: 11, fontWeight: 700,
                     padding: '2px 8px', borderRadius: 12,
-                    background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : '#f0fdf4',
-                    color: p.priority === 'P0' ? '#dc2626' : p.priority === 'P1' ? '#ea580c' : '#16a34a',
+                    background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : SURFACE_SUCCESS_LIGHT,
+                    color: p.priority === 'P0' ? COLOR_ERROR_DARK : p.priority === 'P1' ? COLOR_ORANGE_DEEP : COLOR_GREEN_STRONG,
                   }}>
                     {p.priority}
                   </Box>
                 </td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>{formatDate(p.targetDate)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: TEXT_GRAY }}>{formatDate(p.targetDate)}</td>
               </tr>
             ))}
           </tbody>
@@ -362,12 +370,12 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
         <Box p={20} pt={16}>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={byOwner} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-              <XAxis type="number" fontSize={10} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="owner" width={90} fontSize={11} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={dark ? "rgba(255,255,255,0.06)" : SURFACE_LIGHT} />
+              <XAxis type="number" fontSize={10} tick={{ fill: TEXT_SUBTLE }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="owner" width={90} fontSize={11} tick={{ fill: TEXT_GRAY }} axisLine={false} tickLine={false} />
               <Tooltip />
               {Object.keys(STATUS_META).map(s => (
-                <Bar key={s} dataKey={s} stackId="a" fill={STATUS_META[s].chart}
+                <Bar animationDuration={600} key={s} dataKey={s} stackId="a" fill={STATUS_META[s].chart}
                   name={STATUS_META[s].label} radius={[0, 0, 0, 0]} />
               ))}
             </BarChart>
@@ -388,13 +396,16 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
 }
 
 // ── EXECUTIVE BOARD ───────────────────────────────────────────────────────
-function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }: {
+function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles, healthData }: {
   projects: ProjectResponse[];
   summary: any;
   capDemData: any[];
   hiringData: any[];
   hireRoles: string[];
+  healthData: import('../api/projectHealth').ProjectHealthDto[];
 }) {
+  const navigate = useNavigate();
+  const dark = useDarkMode();
   const capDemChart = useMemo(() =>
     (capDemData ?? []).map(d => ({
       month: d.monthLabel,
@@ -409,16 +420,36 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
     (capDemData ?? []).reduce((s, d) => s + d.totalCapacityHours, 0),
     [capDemData]);
 
+  // Budget rollup across active/in-flight projects
+  const budgetRollup = useMemo(() => {
+    const active = projects.filter(p => p.status !== 'CANCELLED' && p.status !== 'COMPLETED');
+    const withBudget = active.filter(p => p.estimatedBudget != null);
+    const totalEst = withBudget.reduce((s, p) => s + (p.estimatedBudget ?? 0), 0);
+    const totalAct = withBudget.reduce((s, p) => s + (p.actualCost ?? 0), 0);
+    const pct = totalEst > 0 ? Math.round((totalAct / totalEst) * 100) : null;
+    return { totalEst, totalAct, pct, count: withBudget.length };
+  }, [projects]);
+
+  // Health scorecard summary for dashboard
+  const healthSummary = useMemo(() => {
+    const active = healthData.filter(h => h.ragStatus !== 'GREY');
+    const green  = active.filter(h => h.ragStatus === 'GREEN').length;
+    const amber  = active.filter(h => h.ragStatus === 'AMBER').length;
+    const red    = active.filter(h => h.ragStatus === 'RED').length;
+    const sorted = [...active].sort((a, b) => (a.overallScore ?? 100) - (b.overallScore ?? 100));
+    return { green, amber, red, total: active.length, sorted };
+  }, [healthData]);
+
   const tableHeaderStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, color: '#94a3b8', textTransform: 'none',
+    fontSize: 12, fontWeight: 500, color: TEXT_SUBTLE, textTransform: 'none',
     letterSpacing: 0, padding: '10px 16px', background: 'transparent',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid var(--pp-border)',
   };
-  const tdStyle: React.CSSProperties = { padding: '12px 16px', borderBottom: '1px solid #f8fafc', fontSize: 13, color: '#1e293b' };
+  const tdStyle: React.CSSProperties = { padding: '12px 16px', borderBottom: '1px solid var(--pp-border)', fontSize: 13, color: 'var(--pp-text)' };
 
   // Health score: simple heuristic
   const getHealthDot = (score: number) => ({
-    color: score >= 4 ? '#22c55e' : score >= 2.5 ? '#f59e0b' : '#ef4444',
+    color: score >= 4 ? COLOR_GREEN : score >= 2.5 ? COLOR_WARNING : COLOR_ERROR_STRONG,
     label: score.toFixed(1),
   });
 
@@ -432,18 +463,18 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
             <Box p={20}>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={capDemChart} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" fontSize={11} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                  <CartesianGrid strokeDasharray="3 3" stroke={dark ? "rgba(255,255,255,0.06)" : SURFACE_LIGHT} />
+                  <XAxis dataKey="month" fontSize={11} tick={{ fill: TEXT_SUBTLE }} axisLine={false} tickLine={false} />
+                  <YAxis fontSize={10} tick={{ fill: TEXT_SUBTLE }} axisLine={false} tickLine={false}
                     tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                   <Tooltip formatter={(v: number) => formatHours(v)} />
-                  <Line type="monotone" dataKey="capacity" stroke="#22c55e" strokeWidth={2.5} dot={false} name="Capacity" />
-                  <Line type="monotone" dataKey="demand" stroke="#fcd34d" strokeWidth={2.5} dot={false} name="Planned Demand" />
+                  <Line animationDuration={600} type="monotone" dataKey="capacity" stroke={COLOR_GREEN} strokeWidth={2.5} dot={false} name="Capacity" />
+                  <Line animationDuration={600} type="monotone" dataKey="demand" stroke="#fcd34d" strokeWidth={2.5} dot={false} name="Planned Demand" />
                 </LineChart>
               </ResponsiveContainer>
               <Group gap={20} mt={12} justify="center">
                 <Group gap={6}><Box style={{ width: 12, height: 3, background: '#fcd34d', borderRadius: 2 }} /><Text size="xs" c="dimmed">Planned demand</Text></Group>
-                <Group gap={6}><Box style={{ width: 12, height: 3, background: '#22c55e', borderRadius: 2 }} /><Text size="xs" c="dimmed">Capacity</Text></Group>
+                <Group gap={6}><Box style={{ width: 12, height: 3, background: COLOR_GREEN, borderRadius: 2 }} /><Text size="xs" c="dimmed">Capacity</Text></Group>
               </Group>
             </Box>
           </WrikeCard>
@@ -451,8 +482,83 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
 
         {/* KPI stack */}
         <Stack gap="lg">
-          <KpiNumberCard label="Completion Progress" value={`${completionPct}%`} sub={`${completedCount} of ${projects.length} projects`} />
-          <KpiNumberCard label="Total Capacity Hours" value={totalBudgetHours >= 1000 ? `${(totalBudgetHours / 1000).toFixed(0)}k h` : `${Math.round(totalBudgetHours)} h`} sub="Full year across all PODs" />
+          <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)', textAlign: 'center' }}>
+            <Text size="xs" fw={600} tt="uppercase" style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', marginBottom: 8 }}>Completion Progress</Text>
+            <Text style={{ fontSize: 40, fontWeight: 800, color: 'var(--mantine-color-text)', lineHeight: 1, fontFamily: FONT_FAMILY }}>
+              <AnimatedNumber value={completionPct} decimals={0} suffix="%" />
+            </Text>
+            <Text size="xs" c="dimmed" mt={4}>{completedCount} of {projects.length} projects</Text>
+          </Paper>
+          <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)', textAlign: 'center' }}>
+            <Text size="xs" fw={600} tt="uppercase" style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', marginBottom: 8 }}>Total Capacity Hours</Text>
+            <Text style={{ fontSize: 40, fontWeight: 800, color: 'var(--mantine-color-text)', lineHeight: 1, fontFamily: FONT_FAMILY }}>
+              {totalBudgetHours >= 1000 ? (
+                <AnimatedNumber value={totalBudgetHours / 1000} decimals={1} suffix="k h" />
+              ) : (
+                <AnimatedNumber value={totalBudgetHours} decimals={0} suffix=" h" />
+              )}
+            </Text>
+            <Text size="xs" c="dimmed" mt={4}>Full year across all PODs</Text>
+          </Paper>
+          {healthSummary.total > 0 && (
+            <Paper withBorder radius="lg" p="md" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)' }}>
+              <Text size="xs" fw={600} tt="uppercase" style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', marginBottom: 10 }}>Portfolio Health</Text>
+              {/* RAG summary counts */}
+              <Group gap="xs" mb={10} justify="center">
+                {[
+                  { label: 'Healthy', count: healthSummary.green, color: RAG_COLORS.GREEN },
+                  { label: 'At Risk', count: healthSummary.amber, color: RAG_COLORS.AMBER },
+                  { label: 'Critical', count: healthSummary.red, color: RAG_COLORS.RED },
+                ].map(({ label, count, color }) => (
+                  <Paper key={label} withBorder radius="sm" px="xs" py={4} style={{ textAlign: 'center', minWidth: 58 }}>
+                    <Text fw={700} size="lg" style={{ color, fontFamily: FONT_FAMILY, lineHeight: 1 }}>
+                      <AnimatedNumber value={count} decimals={0} />
+                    </Text>
+                    <Text size="10px" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
+                  </Paper>
+                ))}
+              </Group>
+              {/* Per-project heat strip (worst first, max 12) */}
+              <Stack gap={4}>
+                {healthSummary.sorted.slice(0, 12).map(h => (
+                  <Group key={h.projectId} justify="space-between" gap="xs" wrap="nowrap"
+                    style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${h.projectId}`)}>
+                    <Text size="xs" truncate style={{ fontFamily: FONT_FAMILY, flex: 1, minWidth: 0 }}>
+                      {h.projectName}
+                    </Text>
+                    <HealthBadge rag={h.ragStatus} score={h.overallScore ?? undefined} variant="score" size="xs" />
+                  </Group>
+                ))}
+              </Stack>
+              {healthSummary.sorted.length > 12 && (
+                <Text size="xs" c="dimmed" mt={6} ta="center" style={{ fontFamily: FONT_FAMILY }}>
+                  +{healthSummary.sorted.length - 12} more
+                </Text>
+              )}
+            </Paper>
+          )}
+          {budgetRollup.count > 0 && (
+            <Paper withBorder radius="lg" p="xl" style={{ border: '1px solid var(--mantine-color-default-border)', background: 'var(--mantine-color-body)', textAlign: 'center' }}>
+              <Text size="xs" fw={600} tt="uppercase" style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', marginBottom: 8 }}>Portfolio Budget</Text>
+              <Text fw={700} size="xl" style={{ color: (budgetRollup.pct ?? 0) > 100 ? COLOR_ERROR_STRONG : DARK_TEXT_PRIMARY }}>
+                ${budgetRollup.totalAct >= 1_000_000
+                  ? `${(budgetRollup.totalAct / 1_000_000).toFixed(1)}M`
+                  : budgetRollup.totalAct >= 1_000
+                    ? `${(budgetRollup.totalAct / 1_000).toFixed(0)}k`
+                    : budgetRollup.totalAct.toFixed(0)}
+                {' '}<Text span size="sm" c="dimmed">/ ${budgetRollup.totalEst >= 1_000_000
+                  ? `${(budgetRollup.totalEst / 1_000_000).toFixed(1)}M`
+                  : budgetRollup.totalEst >= 1_000
+                    ? `${(budgetRollup.totalEst / 1_000).toFixed(0)}k`
+                    : budgetRollup.totalEst.toFixed(0)}</Text>
+              </Text>
+              {budgetRollup.pct != null && (
+                <Text size="xs" mt={4} c={(budgetRollup.pct ?? 0) > 100 ? 'red' : (budgetRollup.pct ?? 0) >= 80 ? 'orange' : 'teal'}>
+                  {budgetRollup.pct}% spent · {budgetRollup.count} project{budgetRollup.count !== 1 ? 's' : ''}
+                </Text>
+              )}
+            </Paper>
+          )}
         </Stack>
       </SimpleGrid>
 
@@ -482,7 +588,7 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
                 const dot = getHealthDot(healthScore);
                 return (
                   <tr key={p.id}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     <td style={tdStyle}>{p.name}</td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}><StatusPill status={p.status} /></td>
@@ -490,21 +596,21 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
                       <Box style={{
                         display: 'inline-block', fontSize: 11, fontWeight: 700,
                         padding: '2px 8px', borderRadius: 12,
-                        background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : p.priority === 'P2' ? '#eff6ff' : '#f8fafc',
-                        color: p.priority === 'P0' ? '#dc2626' : p.priority === 'P1' ? '#ea580c' : p.priority === 'P2' ? '#3b82f6' : '#64748b',
+                        background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : p.priority === 'P2' ? SURFACE_BLUE : SURFACE_FAINT,
+                        color: p.priority === 'P0' ? COLOR_ERROR_DARK : p.priority === 'P1' ? COLOR_ORANGE_DEEP : p.priority === 'P2' ? COLOR_BLUE : TEXT_GRAY,
                       }}>
                         {p.priority}
                       </Box>
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                    <td style={{ ...tdStyle, textAlign: 'center', color: TEXT_GRAY }}>
                       {p.owner.split(' ').map((w, i) => i === 0 ? w : w[0] + '.').join(' ')}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'center', color: '#64748b', fontSize: 12 }}>
+                    <td style={{ ...tdStyle, textAlign: 'center', color: TEXT_GRAY, fontSize: 12 }}>
                       {p.targetDate ? new Date(p.targetDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
                       <Group gap={4} justify="center">
-                        <Text size="sm" fw={600} style={{ color: '#1e293b' }}>{dot.label}</Text>
+                        <Text size="sm" fw={600} style={{ color: "var(--pp-text)" }}>{dot.label}</Text>
                         <Box style={{ width: 8, height: 8, borderRadius: '50%', background: dot.color }} />
                       </Group>
                     </td>
@@ -521,6 +627,7 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles }
 
 // ── ANALYST BOARD ─────────────────────────────────────────────────────────
 function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
+  const dark = useDarkMode();
   // Treemap data by status
   const treemapData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -532,7 +639,7 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
         .map(([status, count]) => ({
           name: STATUS_META[status]?.label ?? status,
           size: count,
-          color: STATUS_META[status]?.chart ?? '#94a3b8',
+          color: STATUS_META[status]?.chart ?? TEXT_SUBTLE,
         })),
     };
   }, [projects]);
@@ -586,7 +693,7 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
         <rect x={x} y={y} width={width} height={height}
           style={{ fill: props.color ?? '#93c5fd', stroke: '#fff', strokeWidth: 2, borderRadius: 4 }} />
         {width > 50 && height > 30 && (
-          <text x={x + 8} y={y + 18} fontSize={11} fontWeight={600} fill="#1e293b">
+          <text x={x + 8} y={y + 18} fontSize={11} fontWeight={600} fill={DARK_TEXT_PRIMARY}>
             {name}
           </text>
         )}
@@ -600,11 +707,11 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
   };
 
   const tableHeaderStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, color: '#94a3b8', textTransform: 'none',
+    fontSize: 12, fontWeight: 500, color: TEXT_SUBTLE, textTransform: 'none',
     letterSpacing: 0, padding: '10px 16px', background: 'transparent',
     borderBottom: '1px solid #e2e8f0',
   };
-  const tdStyle: React.CSSProperties = { padding: '11px 16px', borderBottom: '1px solid #f8fafc', fontSize: 13, color: '#1e293b' };
+  const tdStyle: React.CSSProperties = { padding: '11px 16px', borderBottom: '1px solid var(--pp-border)', fontSize: 13, color: 'var(--pp-text)' };
 
   return (
     <Stack gap="lg">
@@ -631,12 +738,12 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
           <Box p={16}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={byOwner} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" fontSize={10} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="owner" width={85} fontSize={11} tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={dark ? "rgba(255,255,255,0.06)" : SURFACE_LIGHT} />
+                <XAxis type="number" fontSize={10} tick={{ fill: TEXT_SUBTLE }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="owner" width={85} fontSize={11} tick={{ fill: TEXT_GRAY }} axisLine={false} tickLine={false} />
                 <Tooltip />
                 {Object.keys(STATUS_META).map(s => (
-                  <Bar key={s} dataKey={s} stackId="a" fill={STATUS_META[s].chart}
+                  <Bar animationDuration={600} key={s} dataKey={s} stackId="a" fill={STATUS_META[s].chart}
                     name={STATUS_META[s].label} />
                 ))}
               </BarChart>
@@ -671,11 +778,11 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
             <tbody>
               {crossTab.map((row, i) => (
                 <tr key={i}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <td style={tdStyle}>{row.status}</td>
                   {owners.map(o => (
-                    <td key={o} style={{ ...tdStyle, textAlign: 'center', color: row[o] > 0 ? '#1e293b' : '#cbd5e1', fontWeight: row[o] > 0 ? 600 : 400 }}>
+                    <td key={o} style={{ ...tdStyle, textAlign: 'center', color: row[o] > 0 ? DARK_TEXT_PRIMARY : '#cbd5e1', fontWeight: row[o] > 0 ? 600 : 400 }}>
                       {row[o] ?? 0}
                     </td>
                   ))}
@@ -686,6 +793,52 @@ function AnalystBoard({ projects }: { projects: ProjectResponse[] }) {
         </ScrollArea>
       </WrikeCard>
     </Stack>
+  );
+}
+
+// ── AI Insights Bar ───────────────────────────────────────────────────────
+function AiInsightsBar() {
+  const { data: insights } = useNlpInsights();
+  const navigate = useNavigate();
+
+  if (!insights || insights.length === 0) return null;
+
+  const iconMap: Record<string, React.ReactNode> = {
+    'clock': <IconClock size={13} />,
+    'alert-triangle': <IconAlertTriangle size={13} />,
+    'rocket': <IconRocket size={13} />,
+    'snowflake': <IconSnowflake size={13} />,
+    'users': <IconUsers size={13} />,
+    'briefcase': <IconBriefcase size={13} />,
+    'chart-bar': <IconChartBar size={13} />,
+    'status-change': <IconStatusChange size={13} />,
+    'player-play': <IconPlayerPlay size={13} />,
+  };
+
+  return (
+    <Paper p="sm" radius="lg" withBorder mb="md" style={{ borderLeft: '3px solid #2DCCD3' }}>
+      <Group gap="xs" mb={8} wrap="nowrap">
+        <IconBulb size={14} color="#2DCCD3" />
+        <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '0.06em', color: '#2DCCD3' }}>
+          AI Insights
+        </Text>
+      </Group>
+      <Group gap="xs">
+        {insights.slice(0, 4).map(card => (
+          <Badge
+            key={card.id}
+            variant="light"
+            color={card.color}
+            size="sm"
+            leftSection={iconMap[card.icon] || <IconBulb size={11} />}
+            style={{ cursor: 'pointer', textTransform: 'none', fontWeight: 500 }}
+            onClick={() => card.drillDownRoute ? navigate(card.drillDownRoute) : undefined}
+          >
+            {card.title}
+          </Badge>
+        ))}
+      </Group>
+    </Paper>
   );
 }
 
@@ -703,7 +856,8 @@ export default function DashboardPage() {
       .catch(() => { /* silently ignore — widget simply won't render counts */ });
   }, []);
 
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], dataUpdatedAt: dashUpdatedAt } = useProjects();
+  const { data: healthData = [] } = useProjectsHealth();
   const { data: summary, isLoading: summaryLoading } = useExecutiveSummary();
   const { data: heatmapCells, isLoading: heatmapLoading } = useUtilizationHeatmap();
   const { data: hiringData, isLoading: hiringLoading } = useHiringForecast();
@@ -711,7 +865,7 @@ export default function DashboardPage() {
   const { monthLabels, currentMonthIndex } = useMonthLabels();
   const navigate = useNavigate();
   const dark = useDarkMode();
-  const pastBg = dark ? 'rgba(255,255,255,0.04)' : '#f8f9fa';
+  const pastBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
 
   // ── Real objectives from API ──────────────────────────────────────────────
   interface ObjItem { id: number; title: string; progress: number; status: string }
@@ -781,7 +935,7 @@ export default function DashboardPage() {
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  if (summaryLoading) return <LoadingSpinner variant="dashboard" message="Loading dashboard..." />;
+  if (summaryLoading) return <PageSkeleton variant="dashboard" />;
 
   const boardTitles: Record<string, string> = {
     team: 'Team dashboard',
@@ -790,13 +944,18 @@ export default function DashboardPage() {
   };
 
   return (
-    <Stack pb="xl">
-      {/* Wrike-style header with board selector */}
-      <DashboardHeader
-        title={boardTitles[activeBoard] ?? 'Dashboard'}
-        activeBoard={activeBoard}
-        onBoardChange={setActiveBoard}
-      />
+    <PPPageLayout title="Dashboard" subtitle="Your portfolio at a glance" animate dataUpdatedAt={dashUpdatedAt}>
+      <PageInsightCard pageKey="dashboard" />
+      <Stack pb="xl">
+        {/* AI Insights Bar */}
+        <AiInsightsBar />
+
+        {/* Wrike-style header with board selector */}
+        <DashboardHeader
+          title={boardTitles[activeBoard] ?? 'Dashboard'}
+          activeBoard={activeBoard}
+          onBoardChange={setActiveBoard}
+        />
 
       {/* Board content */}
       {activeBoard === 'team' && <TeamDashboard projects={projects} />}
@@ -807,13 +966,14 @@ export default function DashboardPage() {
           capDemData={capDemData}
           hiringData={hiringData ?? []}
           hireRoles={hireRoles}
+          healthData={healthData}
         />
       )}
       {activeBoard === 'analyst' && <AnalystBoard projects={projects} />}
 
       {/* ── Legacy resource widgets below (always visible) ── */}
       <Box mt={8}>
-        <Text size="xs" fw={700} tt="uppercase" style={{ color: '#94a3b8', letterSpacing: '0.7px', marginBottom: 12 }}>
+        <Text size="xs" fw={700} tt="uppercase" style={{ color: 'var(--pp-text-muted)', letterSpacing: '0.7px', marginBottom: 12 }}>
           Resource & Capacity Overview
         </Text>
         <WidgetGrid pageKey="dashboard">
@@ -821,15 +981,15 @@ export default function DashboardPage() {
           <Widget id="kpi-cards" title="KPI Summary">
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
               <SummaryCard title="Total Resources" value={summary?.totalResources ?? 0}
-                icon={<IconUsers size={20} color="#339af0" />} onClick={() => navigate('/resources')} />
+                icon={<IconUsers size={20} color={COLOR_BLUE_LIGHT} />} onClick={() => navigate('/resources')} />
               <SummaryCard title="Active Projects" value={summary?.activeProjects ?? 0}
-                icon={<IconBriefcase size={20} color="#845ef7" />} onClick={() => navigate('/projects')} />
+                icon={<IconBriefcase size={20} color={COLOR_VIOLET_LIGHT} />} onClick={() => navigate('/projects')} />
               <SummaryCard title="Overall Utilization" value={formatPercent(summary?.overallUtilizationPct ?? 0)}
-                icon={<IconFlame size={20} color="#fd7e14" />}
+                icon={<IconFlame size={20} color={COLOR_ORANGE} />}
                 color={(summary?.overallUtilizationPct ?? 0) > 100 ? 'red' : undefined}
                 onClick={() => navigate('/reports/utilization')} sparkData={utilizationSparkline} />
               <SummaryCard title="POD-Months in Deficit" value={summary?.podMonthsInDeficit ?? 0}
-                icon={<IconAlertTriangle size={20} color="#fa5252" />}
+                icon={<IconAlertTriangle size={20} color={COLOR_ERROR} />}
                 color={(summary?.podMonthsInDeficit ?? 0) > 0 ? 'red' : 'green'}
                 onClick={() => navigate('/reports/capacity-gap')} sparkData={deficitSparkline} />
             </SimpleGrid>
@@ -862,27 +1022,27 @@ export default function DashboardPage() {
               <SimpleGrid cols={{ base: 2, sm: 4 }}>
                 {/* HIGH */}
                 <Paper withBorder p="md" radius="md"
-                  style={{ borderLeft: '4px solid #fa5252', background: '#fff5f5' }}>
-                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>High</Text>
-                  <Text size="xl" fw={800} c="#fa5252">{insightCounts.high}</Text>
+                  style={{ borderLeft: '4px solid #fa5252', background: dark ? 'rgba(250,82,82,0.10)' : SURFACE_RED_FAINT }}>
+                  <Text size="xs" fw={600} tt="uppercase" style={{ letterSpacing: '0.5px', color: dark ? 'rgba(255,255,255,0.50)' : TEXT_SUBTLE }}>High</Text>
+                  <Text size="xl" fw={800} style={{ color: '#fa5252' }}>{insightCounts.high}</Text>
                 </Paper>
                 {/* MEDIUM */}
                 <Paper withBorder p="md" radius="md"
-                  style={{ borderLeft: '4px solid #fd7e14', background: '#fff4e6' }}>
-                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Medium</Text>
-                  <Text size="xl" fw={800} c="#fd7e14">{insightCounts.medium}</Text>
+                  style={{ borderLeft: '4px solid #fd7e14', background: dark ? 'rgba(253,126,20,0.10)' : '#fff4e6' }}>
+                  <Text size="xs" fw={600} tt="uppercase" style={{ letterSpacing: '0.5px', color: dark ? 'rgba(255,255,255,0.50)' : TEXT_SUBTLE }}>Medium</Text>
+                  <Text size="xl" fw={800} style={{ color: '#fd7e14' }}>{insightCounts.medium}</Text>
                 </Paper>
                 {/* LOW */}
                 <Paper withBorder p="md" radius="md"
-                  style={{ borderLeft: '4px solid #339af0', background: '#e7f5ff' }}>
-                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Low</Text>
-                  <Text size="xl" fw={800} c="#339af0">{insightCounts.low}</Text>
+                  style={{ borderLeft: '4px solid #339af0', background: dark ? 'rgba(51,154,240,0.10)' : '#e7f5ff' }}>
+                  <Text size="xs" fw={600} tt="uppercase" style={{ letterSpacing: '0.5px', color: dark ? 'rgba(255,255,255,0.50)' : TEXT_SUBTLE }}>Low</Text>
+                  <Text size="xl" fw={800} style={{ color: '#339af0' }}>{insightCounts.low}</Text>
                 </Paper>
                 {/* TOTAL */}
                 <Paper withBorder p="md" radius="md"
-                  style={{ borderLeft: `4px solid ${DEEP_BLUE}`, background: '#f8f9fa' }}>
-                  <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.5px' }}>Total Active</Text>
-                  <Text size="xl" fw={800} style={{ color: DEEP_BLUE }}>{insightCounts.total}</Text>
+                  style={{ borderLeft: `4px solid ${AQUA}`, background: dark ? 'rgba(45,204,211,0.08)' : SURFACE_SUBTLE }}>
+                  <Text size="xs" fw={600} tt="uppercase" style={{ letterSpacing: '0.5px', color: dark ? 'rgba(255,255,255,0.50)' : TEXT_SUBTLE }}>Total Active</Text>
+                  <Text size="xl" fw={800} style={{ color: AQUA }}>{insightCounts.total}</Text>
                 </Paper>
               </SimpleGrid>
             ) : (
@@ -903,7 +1063,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <Text size="sm" c="dimmed" fw={500}>POD Dashboard</Text>
-                        <Text size="xl" fw={700} style={{ color: DEEP_BLUE }}>{activePodCount} Active POD{activePodCount !== 1 ? 's' : ''}</Text>
+                        <Text size="xl" fw={700} style={{ color: 'var(--pp-text)' }}>{activePodCount} Active POD{activePodCount !== 1 ? 's' : ''}</Text>
                       </div>
                     </Group>
                     <IconArrowRight size={16} color={AQUA} />
@@ -932,25 +1092,25 @@ export default function DashboardPage() {
                   <Card withBorder padding="lg" radius="lg" onClick={() => navigate('/jira-support')}
                     style={{
                       cursor: 'pointer',
-                      borderLeft: `4px solid ${supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : supportHealth === 'green' ? '#51cf66' : '#adb5bd'}`,
+                      borderLeft: `4px solid ${supportHealth === 'red' ? COLOR_ERROR : supportHealth === 'orange' ? COLOR_ORANGE : supportHealth === 'green' ? COLOR_GREEN_LIGHT : GRAY_300}`,
                     }}>
                     <Group justify="space-between" align="flex-start">
                       <Group gap="sm">
                         <div style={{
                           width: 44, height: 44, borderRadius: 12,
-                          background: `linear-gradient(135deg, ${supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#51cf66'}, ${supportHealth === 'red' ? '#e03131' : supportHealth === 'orange' ? '#f08c00' : '#40c057'})`,
+                          background: `linear-gradient(135deg, ${supportHealth === 'red' ? COLOR_ERROR : supportHealth === 'orange' ? COLOR_ORANGE : COLOR_GREEN_LIGHT}, ${supportHealth === 'red' ? '#e03131' : supportHealth === 'orange' ? '#f08c00' : COLOR_SUCCESS})`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <IconHeadset size={22} color="white" />
                         </div>
                         <div>
                           <Text size="sm" c="dimmed" fw={500}>Support Queue</Text>
-                          <Text size="xl" fw={700} style={{ color: supportHealth === 'red' ? '#fa5252' : supportHealth === 'orange' ? '#fd7e14' : '#2f9e44' }}>{supportTotal} Open</Text>
+                          <Text size="xl" fw={700} style={{ color: supportHealth === 'red' ? COLOR_ERROR : supportHealth === 'orange' ? COLOR_ORANGE : COLOR_GREEN_DARK }}>{supportTotal} Open</Text>
                         </div>
                       </Group>
                       <Group gap="xs" align="center" mt={4}>
                         {supportStale > 0 && <Badge size="sm" variant="light" color={supportHealth === 'red' ? 'red' : 'orange'}>{supportStale} stale</Badge>}
-                        <IconArrowRight size={16} color={supportHealth === 'red' ? '#fa5252' : AQUA} />
+                        <IconArrowRight size={16} color={supportHealth === 'red' ? COLOR_ERROR : AQUA} />
                       </Group>
                     </Group>
                     <Text size="xs" c="dimmed" mt="sm">{supportBoards.filter(b => b.enabled).length} board{supportBoards.filter(b => b.enabled).length !== 1 ? 's' : ''} monitored</Text>
@@ -1006,7 +1166,7 @@ export default function DashboardPage() {
                 </Box>
               ) : dashboardObjectives.map((obj, i) => {
                 const st = (obj.status || '').toUpperCase();
-                const statusColor = st === 'ON_TRACK' ? '#10b981' : st === 'AT_RISK' ? '#f59e0b' : st === 'COMPLETED' ? AQUA : '#94a3b8';
+                const statusColor = st === 'ON_TRACK' ? COLOR_TEAL : st === 'AT_RISK' ? COLOR_WARNING : st === 'COMPLETED' ? AQUA : TEXT_SUBTLE;
                 const mantineColor = st === 'ON_TRACK' ? 'teal' : st === 'AT_RISK' ? 'yellow' : st === 'COMPLETED' ? 'cyan' : 'gray';
                 const statusLabel = st === 'ON_TRACK' ? 'On Track' : st === 'AT_RISK' ? 'At Risk' : st === 'COMPLETED' ? 'Complete' : 'Not Started';
                 const progress = obj.progress ?? 0;
@@ -1025,7 +1185,7 @@ export default function DashboardPage() {
                     <Group justify="space-between" mb={6}>
                       <Group gap={8}>
                         <IconTargetArrow size={14} color={statusColor} />
-                        <Text size="sm" fw={600} style={{ color: '#1e293b', fontFamily: FONT_FAMILY }}>
+                        <Text size="sm" fw={600} style={{ color: 'var(--pp-text)', fontFamily: FONT_FAMILY }}>
                           {obj.title}
                         </Text>
                       </Group>
@@ -1034,7 +1194,7 @@ export default function DashboardPage() {
                       </Badge>
                     </Group>
                     <Group gap={8}>
-                      <Box style={{ flex: 1, height: 4, borderRadius: 4, background: '#e2e8f0', overflow: 'hidden' }}>
+                      <Box style={{ flex: 1, height: 4, borderRadius: 4, background: BORDER_STRONG, overflow: 'hidden' }}>
                         <Box style={{ width: `${progress}%`, height: '100%', background: statusColor, borderRadius: 4, transition: 'width 600ms ease' }} />
                       </Box>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, minWidth: 28 }}>{progress}%</Text>
@@ -1080,6 +1240,7 @@ export default function DashboardPage() {
           </Widget>
         </WidgetGrid>
       </Box>
-    </Stack>
+      </Stack>
+    </PPPageLayout>
   );
 }

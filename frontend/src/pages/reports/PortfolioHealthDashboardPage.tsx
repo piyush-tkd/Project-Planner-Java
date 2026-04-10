@@ -42,15 +42,7 @@ import { usePods } from '../../api/pods';
 import { useCapacityDemandSummary } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import {
-  DEEP_BLUE,
-  AQUA,
-  FONT_FAMILY,
-  SHADOW,
-  CHART_COLORS,
-  AQUA_TINTS,
-  DEEP_BLUE_TINTS,
-} from '../../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_STRONG, CHART_COLORS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_ORANGE_ALT, COLOR_SUCCESS, DARK_TEXT_PRIMARY, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, SLATE_700, SURFACE_LIGHT, TEXT_DIM, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
@@ -59,19 +51,19 @@ import { ProjectResponse } from '../../types/project';
 // ── Status and Priority Colors ──
 
 const STATUS_COLORS: Record<string, string> = {
-  COMPLETED: '#40c057',
-  ACTIVE: '#228be6',
+  COMPLETED: COLOR_SUCCESS,
+  ACTIVE: COLOR_BLUE_DARK,
   IN_DISCOVERY: '#7950f2',
-  NOT_STARTED: '#868e96',
-  ON_HOLD: '#fd7e14',
-  CANCELLED: '#fa5252',
+  NOT_STARTED: TEXT_DIM,
+  ON_HOLD: COLOR_ORANGE,
+  CANCELLED: COLOR_ERROR,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#fa5252',
-  P1: '#fd7e14',
-  P2: '#228be6',
-  P3: '#868e96',
+  P0: COLOR_ERROR,
+  P1: COLOR_ORANGE,
+  P2: COLOR_BLUE_DARK,
+  P3: TEXT_DIM,
 };
 
 // ── Type Definitions ──
@@ -419,11 +411,11 @@ export default function PortfolioHealthDashboardPage() {
                   paddingAngle={2}
                   dataKey="value"
                   label={({ name, value, x, y, textAnchor }) => (
-                    <text x={x} y={y} textAnchor={textAnchor} fill={dark ? '#94a3b8' : '#475569'} fontSize={11}>
+                    <text x={x} y={y} textAnchor={textAnchor} fill={dark ? TEXT_SUBTLE : '#475569'} fontSize={11}>
                       {`${name}: ${value}`}
                     </text>
                   )}
-                  labelLine={{ stroke: dark ? '#475569' : '#94a3b8' }}
+                  labelLine={{ stroke: dark ? '#475569' : TEXT_SUBTLE }}
                 >
                   {projectsByStatusChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -431,10 +423,10 @@ export default function PortfolioHealthDashboardPage() {
                 </Pie>
                 <RechartTooltip
                   contentStyle={{
-                    backgroundColor: dark ? '#1e293b' : '#fff',
-                    border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: dark ? DARK_TEXT_PRIMARY : '#fff',
+                    border: `1px solid ${dark ? SLATE_700 : BORDER_STRONG}`,
                     borderRadius: '8px',
-                    color: dark ? '#f1f5f9' : '#0f172a',
+                    color: dark ? SURFACE_LIGHT : '#0f172a',
                     fontSize: 13,
                   }}
                   formatter={(value) => value}
@@ -456,11 +448,11 @@ export default function PortfolioHealthDashboardPage() {
                   paddingAngle={2}
                   dataKey="count"
                   label={({ priority, count, x, y, textAnchor }) => (
-                    <text x={x} y={y} textAnchor={textAnchor} fill={dark ? '#94a3b8' : '#475569'} fontSize={11}>
+                    <text x={x} y={y} textAnchor={textAnchor} fill={dark ? TEXT_SUBTLE : '#475569'} fontSize={11}>
                       {`${priority}: ${count}`}
                     </text>
                   )}
-                  labelLine={{ stroke: dark ? '#475569' : '#94a3b8' }}
+                  labelLine={{ stroke: dark ? '#475569' : TEXT_SUBTLE }}
                 >
                   {priorityDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -468,10 +460,10 @@ export default function PortfolioHealthDashboardPage() {
                 </Pie>
                 <RechartTooltip
                   contentStyle={{
-                    backgroundColor: dark ? '#1e293b' : '#fff',
-                    border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: dark ? DARK_TEXT_PRIMARY : '#fff',
+                    border: `1px solid ${dark ? SLATE_700 : BORDER_STRONG}`,
                     borderRadius: '8px',
-                    color: dark ? '#f1f5f9' : '#0f172a',
+                    color: dark ? SURFACE_LIGHT : '#0f172a',
                     fontSize: 13,
                   }}
                   formatter={(value) => value}
@@ -487,22 +479,22 @@ export default function PortfolioHealthDashboardPage() {
             <Table fz="xs" highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Project Name
                   </Table.Th>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Priority
                   </Table.Th>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Status
                   </Table.Th>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Owner
                   </Table.Th>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Target Date
                   </Table.Th>
-                  <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+                  <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
                     Risk Reason
                   </Table.Th>
                 </Table.Tr>
@@ -568,29 +560,29 @@ export default function PortfolioHealthDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b' }}
+                  tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY }}
                   tickLine={false}
-                  axisLine={{ stroke: dark ? '#334155' : '#e2e8f0' }}
+                  axisLine={{ stroke: dark ? SLATE_700 : BORDER_STRONG }}
                   allowDecimals={false}
                 />
                 <YAxis
                   dataKey="name"
                   type="category"
                   width={140}
-                  tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b' }}
+                  tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <RechartTooltip
                   contentStyle={{
-                    backgroundColor: dark ? '#1e293b' : '#fff',
-                    border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: dark ? DARK_TEXT_PRIMARY : '#fff',
+                    border: `1px solid ${dark ? SLATE_700 : BORDER_STRONG}`,
                     borderRadius: '8px',
-                    color: dark ? '#f1f5f9' : '#0f172a',
+                    color: dark ? SURFACE_LIGHT : '#0f172a',
                     fontSize: 13,
                   }}
                 />
-                <Bar dataKey="value" fill={AQUA} radius={[0, 4, 4, 0]} />
+                <Bar animationDuration={600} dataKey="value" fill={AQUA_HEX} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -601,33 +593,33 @@ export default function PortfolioHealthDashboardPage() {
               <AreaChart data={capacityTrendData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="capacityGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={AQUA} stopOpacity={dark ? 0.35 : 0.45} />
-                    <stop offset="95%" stopColor={AQUA} stopOpacity={dark ? 0.05 : 0.1} />
+                    <stop offset="5%" stopColor={AQUA_HEX} stopOpacity={dark ? 0.35 : 0.45} />
+                    <stop offset="95%" stopColor={AQUA_HEX} stopOpacity={dark ? 0.05 : 0.1} />
                   </linearGradient>
                   <linearGradient id="demandGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={dark ? 0.5 : 0.4} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={dark ? 0.05 : 0.05} />
+                    <stop offset="5%" stopColor={COLOR_ORANGE_ALT} stopOpacity={dark ? 0.5 : 0.4} />
+                    <stop offset="95%" stopColor={COLOR_ORANGE_ALT} stopOpacity={dark ? 0.05 : 0.05} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b', fontFamily: 'inherit' }}
+                  tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY, fontFamily: 'inherit' }}
                   tickLine={false}
-                  axisLine={{ stroke: dark ? '#334155' : '#e2e8f0' }}
+                  axisLine={{ stroke: dark ? SLATE_700 : BORDER_STRONG }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b', fontFamily: 'inherit' }}
+                  tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY, fontFamily: 'inherit' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
                 />
                 <RechartTooltip
                   contentStyle={{
-                    backgroundColor: dark ? '#1e293b' : '#fff',
-                    border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: dark ? DARK_TEXT_PRIMARY : '#fff',
+                    border: `1px solid ${dark ? SLATE_700 : BORDER_STRONG}`,
                     borderRadius: '8px',
-                    color: dark ? '#f1f5f9' : '#0f172a',
+                    color: dark ? SURFACE_LIGHT : '#0f172a',
                     fontSize: 13,
                   }}
                   formatter={(value: number) =>
@@ -635,13 +627,13 @@ export default function PortfolioHealthDashboardPage() {
                   }
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 12, color: dark ? '#94a3b8' : '#64748b' }}
+                  wrapperStyle={{ fontSize: 12, color: dark ? TEXT_SUBTLE : TEXT_GRAY }}
                 />
                 <Area
                   type="monotone"
                   dataKey="capacity"
                   fill="url(#capacityGrad)"
-                  stroke={AQUA}
+                  stroke={AQUA_HEX}
                   strokeWidth={2}
                   name="Capacity"
                   dot={false}
@@ -651,11 +643,11 @@ export default function PortfolioHealthDashboardPage() {
                   type="monotone"
                   dataKey="demand"
                   fill="url(#demandGrad)"
-                  stroke="#f97316"
+                  stroke={COLOR_ORANGE_ALT}
                   strokeWidth={2}
                   name="Demand"
                   dot={false}
-                  activeDot={{ r: 4, fill: '#f97316' }}
+                  activeDot={{ r: 4, fill: COLOR_ORANGE_ALT }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -675,27 +667,27 @@ export default function PortfolioHealthDashboardPage() {
                 angle={-35}
                 textAnchor="end"
                 interval={0}
-                tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b' }}
+                tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY }}
                 tickLine={false}
-                axisLine={{ stroke: dark ? '#334155' : '#e2e8f0' }}
+                axisLine={{ stroke: dark ? SLATE_700 : BORDER_STRONG }}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: dark ? '#94a3b8' : '#64748b' }}
+                tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : TEXT_GRAY }}
                 tickLine={false}
                 axisLine={false}
                 allowDecimals={false}
               />
               <RechartTooltip
                 contentStyle={{
-                  backgroundColor: dark ? '#1e293b' : '#fff',
-                  border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                  backgroundColor: dark ? DARK_TEXT_PRIMARY : '#fff',
+                  border: `1px solid ${dark ? SLATE_700 : BORDER_STRONG}`,
                   borderRadius: '8px',
-                  color: dark ? '#f1f5f9' : '#0f172a',
+                  color: dark ? SURFACE_LIGHT : '#0f172a',
                   fontSize: 13,
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: 12, color: dark ? '#94a3b8' : '#64748b' }} />
-              <Bar dataKey="activeProjects" fill={AQUA} name="Active Projects" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12, color: dark ? TEXT_SUBTLE : TEXT_GRAY }} />
+              <Bar animationDuration={600} dataKey="activeProjects" fill={AQUA_HEX} name="Active Projects" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { COLOR_ERROR, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING } from '../../brandTokens';
 import {
   getUtilizationColor,
   getUtilizationBgColor,
@@ -36,11 +37,11 @@ describe('getUtilizationColor', () => {
 // ── getUtilizationBgColor ────────────────────────────────────────────────────
 describe('getUtilizationBgColor', () => {
   it('light mode: under 80% → green tint', () => {
-    expect(getUtilizationBgColor(50)).toBe('#d3f9d8');
+    expect(getUtilizationBgColor(50)).toBe(SURFACE_SUCCESS);
   });
 
   it('light mode: 80–100% → yellow tint', () => {
-    expect(getUtilizationBgColor(90)).toBe('#fff3bf');
+    expect(getUtilizationBgColor(90)).toBe(SURFACE_WARNING);
   });
 
   it('light mode: 101–120% → orange tint', () => {
@@ -48,7 +49,7 @@ describe('getUtilizationBgColor', () => {
   });
 
   it('light mode: > 120% → red tint', () => {
-    expect(getUtilizationBgColor(150)).toBe('#ffe3e3');
+    expect(getUtilizationBgColor(150)).toBe(SURFACE_ERROR);
   });
 
   it('dark mode: returns rgba strings', () => {
@@ -60,17 +61,17 @@ describe('getUtilizationBgColor', () => {
 // ── getConcurrencyColor ───────────────────────────────────────────────────────
 describe('getConcurrencyColor', () => {
   it('≤ 2 projects → green', () => {
-    expect(getConcurrencyColor(1)).toBe('#d3f9d8');
-    expect(getConcurrencyColor(2)).toBe('#d3f9d8');
+    expect(getConcurrencyColor(1)).toBe(SURFACE_SUCCESS);
+    expect(getConcurrencyColor(2)).toBe(SURFACE_SUCCESS);
   });
 
   it('3–4 projects → yellow', () => {
-    expect(getConcurrencyColor(3)).toBe('#fff3bf');
-    expect(getConcurrencyColor(4)).toBe('#fff3bf');
+    expect(getConcurrencyColor(3)).toBe(SURFACE_WARNING);
+    expect(getConcurrencyColor(4)).toBe(SURFACE_WARNING);
   });
 
   it('> 4 projects → red', () => {
-    expect(getConcurrencyColor(5)).toBe('#ffe3e3');
+    expect(getConcurrencyColor(5)).toBe(SURFACE_ERROR);
   });
 
   it('dark mode returns rgba strings', () => {
@@ -81,16 +82,16 @@ describe('getConcurrencyColor', () => {
 // ── getConcurrencyColorByLevel ────────────────────────────────────────────────
 describe('getConcurrencyColorByLevel', () => {
   it('LOW → green', () => {
-    expect(getConcurrencyColorByLevel('LOW')).toBe('#d3f9d8');
+    expect(getConcurrencyColorByLevel('LOW')).toBe(SURFACE_SUCCESS);
   });
 
   it('MEDIUM → yellow', () => {
-    expect(getConcurrencyColorByLevel('MEDIUM')).toBe('#fff3bf');
+    expect(getConcurrencyColorByLevel('MEDIUM')).toBe(SURFACE_WARNING);
   });
 
   it('HIGH or unknown → red', () => {
-    expect(getConcurrencyColorByLevel('HIGH')).toBe('#ffe3e3');
-    expect(getConcurrencyColorByLevel('CRITICAL')).toBe('#ffe3e3');
+    expect(getConcurrencyColorByLevel('HIGH')).toBe(SURFACE_ERROR);
+    expect(getConcurrencyColorByLevel('CRITICAL')).toBe(SURFACE_ERROR);
   });
 
   it('dark mode returns rgba strings for each level', () => {
@@ -103,15 +104,15 @@ describe('getConcurrencyColorByLevel', () => {
 // ── getGapCellColor ───────────────────────────────────────────────────────────
 describe('getGapCellColor', () => {
   it('positive gap (surplus) → green tint', () => {
-    expect(getGapCellColor(100)).toBe('#d3f9d8');
+    expect(getGapCellColor(100)).toBe(SURFACE_SUCCESS);
   });
 
   it('negative gap (deficit) → red tint', () => {
-    expect(getGapCellColor(-100)).toBe('#ffe3e3');
+    expect(getGapCellColor(-100)).toBe(SURFACE_ERROR);
   });
 
   it('zero gap → neutral', () => {
-    expect(getGapCellColor(0)).toBe('#f8f9fa');
+    expect(getGapCellColor(0)).toBe(SURFACE_SUBTLE);
   });
 
   it('dark mode returns rgba strings', () => {
@@ -130,7 +131,7 @@ describe('Priority colour map', () => {
   });
 
   it('P0 is the most urgent (red)', () => {
-    expect(priorityColors['P0']).toBe('#fa5252');
+    expect(priorityColors['P0']).toBe(COLOR_ERROR);
   });
 });
 

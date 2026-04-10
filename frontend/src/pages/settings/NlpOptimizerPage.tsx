@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
  Container, Title, Text, Paper, Group, Stack, Badge, Button,
- Table, ActionIcon, Tooltip, SimpleGrid, Box, Loader, Switch,
- Tabs, ThemeIcon, Progress, ScrollArea, Modal, Image,
+ Table, ActionIcon, Tooltip, SimpleGrid, Box, Skeleton, Loader, Switch,
+ Tabs, ThemeIcon, Progress, ScrollArea, Modal, Image, Alert,
  useMantineColorScheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -19,21 +19,21 @@ import {
  useNlpFeedback, useNlpLearnerRunHistory, NlpLearnerStats, NlpLearnerRunHistory,
 } from '../../api/nlp';
 import { useQueryClient } from '@tanstack/react-query';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_200} from '../../brandTokens';
 
 export default function NlpOptimizerPage() {
  const queryClient = useQueryClient();
  const { colorScheme } = useMantineColorScheme();
  const isDark = colorScheme === 'dark';
- const headingColor = isDark ? '#e0e0e0' : DEEP_BLUE;
+ const headingColor = isDark ? GRAY_200 : DEEP_BLUE;
  const [stats, setStats] = useState<NlpLearnerStats | null>(null);
  const [activeTab, setActiveTab] = useState<string | null>('low-confidence');
 
  const runLearner = useRunNlpLearner();
- const { data: lowConfLogs, isLoading: loadingLowConf } = useNlpLowConfidenceLogs();
- const { data: negRatedLogs, isLoading: loadingNeg } = useNlpNegativeRatedLogs();
- const { data: patterns, isLoading: loadingPatterns } = useNlpLearnedPatterns();
- const { data: runHistory, isLoading: loadingHistory } = useNlpLearnerRunHistory();
+ const { data: lowConfLogs, isLoading: loadingLowConf, isError: errorLowConf } = useNlpLowConfidenceLogs();
+ const { data: negRatedLogs, isLoading: loadingNeg, isError: errorNeg } = useNlpNegativeRatedLogs();
+ const { data: patterns, isLoading: loadingPatterns, isError: errorPatterns } = useNlpLearnedPatterns();
+ const { data: runHistory, isLoading: loadingHistory, isError: errorHistory } = useNlpLearnerRunHistory();
  const togglePattern = useToggleNlpPattern();
  const deletePattern = useDeleteNlpPattern();
  const submitFeedback = useNlpFeedback();
@@ -160,9 +160,9 @@ export default function NlpOptimizerPage() {
  <SimpleGrid cols={{ base: 2, sm: 4 }} mb="lg">
  <StatCard label="Total Queries" value={displayStats.totalQueries} icon={<IconDatabase size={18} />} color={DEEP_BLUE}
  onClick={() => setActiveTab('run-history')} tooltip="View run history" />
- <StatCard label="Unknown" value={displayStats.unknownQueries} icon={<IconAlertTriangle size={18} />} color="#e67700"
+ <StatCard label="Unknown" value={displayStats.unknownQueries} icon={<IconAlertTriangle size={18} />} color={COLOR_ORANGE_DARK}
  onClick={() => setActiveTab('low-confidence')} tooltip="View low confidence logs" />
- <StatCard label="Low Confidence" value={displayStats.lowConfidenceQueries} icon={<IconTrendingUp size={18} />} color="#c92a2a"
+ <StatCard label="Low Confidence" value={displayStats.lowConfidenceQueries} icon={<IconTrendingUp size={18} />} color={COLOR_ERROR_DEEP}
  onClick={() => setActiveTab('low-confidence')} tooltip="View low confidence logs" />
  <StatCard label="New Patterns" value={displayStats.newPatternsGenerated} icon={<IconSparkles size={18} />} color={AQUA}
  onClick={() => setActiveTab('patterns')} tooltip="View learned patterns" />
@@ -170,7 +170,7 @@ export default function NlpOptimizerPage() {
  onClick={() => setActiveTab('patterns')} tooltip="View learned patterns" />
  <StatCard label="Positive Ratings" value={displayStats.positiveRatings} icon={<IconCheck size={18} />} color="#2b8a3e"
  onClick={() => setActiveTab('run-history')} tooltip="View run history" />
- <StatCard label="Negative Ratings" value={displayStats.negativeRatings} icon={<IconThumbDown size={18} />} color="#c92a2a"
+ <StatCard label="Negative Ratings" value={displayStats.negativeRatings} icon={<IconThumbDown size={18} />} color={COLOR_ERROR_DEEP}
  onClick={() => setActiveTab('negative-rated')} tooltip="View negative feedback" />
  <StatCard
  label="Strategies"
@@ -226,7 +226,7 @@ export default function NlpOptimizerPage() {
  {Object.entries(displayStats.strategyAvgConfidence).map(([strategy, avg]) => (
  <Paper key={strategy} p="sm" radius="md" withBorder style={{ flex: 1, minWidth: 140 }}>
  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{strategy}</Text>
- <Text size="lg" fw={700} style={{ color: avg >= 0.75 ? '#2b8a3e' : '#e67700', fontFamily: FONT_FAMILY }}>
+ <Text size="lg" fw={700} style={{ color: avg >= 0.75 ? '#2b8a3e' : COLOR_ORANGE_DARK, fontFamily: FONT_FAMILY }}>
  {Math.round(avg * 100)}%
  </Text>
  </Paper>
@@ -254,6 +254,10 @@ export default function NlpOptimizerPage() {
  style={{ fontFamily: FONT_FAMILY }}>
  Run History {runHistory ? `(${runHistory.length})` : ''}
  </Tabs.Tab>
+ <Tabs.Tab value="analytics" leftSection={<IconChartBar size={14} />}
+ style={{ fontFamily: FONT_FAMILY }}>
+ Analytics
+ </Tabs.Tab>
  </Tabs.List>
 
  {/* ── Low Confidence Logs ── */}
@@ -261,7 +265,9 @@ export default function NlpOptimizerPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={480}>
  {loadingLowConf ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
+ ) : errorLowConf ? (
+ <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load low-confidence logs. Refresh to try again.</Alert></Box>
  ) : !lowConfLogs || lowConfLogs.length === 0 ? (
  <Box p="xl" ta="center">
  <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No low-confidence queries found.</Text>
@@ -338,7 +344,9 @@ export default function NlpOptimizerPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={480}>
  {loadingNeg ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
+ ) : errorNeg ? (
+ <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load negatively-rated logs. Refresh to try again.</Alert></Box>
  ) : !negRatedLogs || negRatedLogs.length === 0 ? (
  <Box p="xl" ta="center">
  <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No negatively-rated queries found.</Text>
@@ -421,7 +429,9 @@ export default function NlpOptimizerPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={480}>
  {loadingPatterns ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
+ ) : errorPatterns ? (
+ <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load learned patterns. Refresh to try again.</Alert></Box>
  ) : !patterns || patterns.length === 0 ? (
  <Box p="xl" ta="center">
  <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -533,7 +543,9 @@ export default function NlpOptimizerPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={480}>
  {loadingHistory ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
+ ) : errorHistory ? (
+ <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load run history. Refresh to try again.</Alert></Box>
  ) : !runHistory || runHistory.length === 0 ? (
  <Box p="xl" ta="center">
  <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
@@ -631,6 +643,17 @@ export default function NlpOptimizerPage() {
  )}
  </ScrollArea>
  </Paper>
+ </Tabs.Panel>
+
+ {/* ── Analytics Dashboard ── */}
+ <Tabs.Panel value="analytics">
+ <AnalyticsPanel
+ displayStats={displayStats}
+ runHistory={runHistory ?? []}
+ lowConfLogs={lowConfLogs ?? []}
+ negRatedLogs={negRatedLogs ?? []}
+ isDark={isDark}
+ />
  </Tabs.Panel>
  </Tabs>
 
@@ -735,4 +758,203 @@ function StatCard({ label, value, icon, color, onClick, tooltip }: {
  );
 
  return tooltip ? <Tooltip label={tooltip} position="bottom">{card}</Tooltip> : card;
+}
+
+// ── Analytics Panel ──
+
+interface AnalyticsPanelProps {
+ displayStats: {
+ totalQueries: number; unknownQueries: number; lowConfidenceQueries: number;
+ positiveRatings: number; negativeRatings: number; activePatterns: number;
+ newPatternsGenerated: number; strategyCount: number;
+ intentDistribution: Record<string, number> | null;
+ strategyAvgConfidence: Record<string, number> | null;
+ lastRunAt: string | null;
+ } | null;
+ runHistory: NlpLearnerRunHistory[];
+ lowConfLogs: { id: number; queryText: string; confidence: number | null; resolvedBy: string | null }[];
+ negRatedLogs: { id: number; queryText: string; confidence: number | null; resolvedBy: string | null }[];
+ isDark: boolean;
+}
+
+function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, isDark }: AnalyticsPanelProps) {
+ const borderColor = isDark ? '#2C2C2C' : '#E9ECEF';
+
+ // ── Strategy distribution from run history ──
+ const strategyDistribution = (() => {
+ if (!displayStats?.strategyAvgConfidence) return [];
+ const entries = Object.entries(displayStats.strategyAvgConfidence);
+ return entries.map(([strategy, avgConf]) => ({
+ strategy,
+ avgConf: Math.round(avgConf * 100),
+ color: strategy === 'DETERMINISTIC' ? 'teal' : strategy === 'RULE_BASED' ? 'blue' : 'violet',
+ }));
+ })();
+
+ // ── Intent distribution ──
+ const intentEntries = (() => {
+ if (!displayStats?.intentDistribution) return [];
+ const total = Object.values(displayStats.intentDistribution).reduce((a, b) => a + b, 0) || 1;
+ return Object.entries(displayStats.intentDistribution)
+ .sort((a, b) => b[1] - a[1])
+ .map(([intent, count]) => ({ intent, count, pct: Math.round((count / total) * 100) }));
+ })();
+
+ // ── Query volume trend (last 10 runs, oldest→newest) ──
+ const volumeTrend = [...runHistory].reverse().slice(-10);
+
+ // ── Top failure queries (merged low-conf + neg-rated, deduplicated) ──
+ const failureQueryMap = new Map<string, { queryText: string; reason: string; conf: number }>();
+ lowConfLogs.slice(0, 10).forEach(l => {
+ if (!failureQueryMap.has(l.queryText)) {
+ failureQueryMap.set(l.queryText, { queryText: l.queryText, reason: 'Low confidence', conf: l.confidence ?? 0 });
+ }
+ });
+ negRatedLogs.slice(0, 10).forEach(l => {
+ failureQueryMap.set(l.queryText, { queryText: l.queryText, reason: 'Negative rating', conf: l.confidence ?? 0 });
+ });
+ const topFailures = Array.from(failureQueryMap.values()).slice(0, 8);
+
+ const maxVolume = Math.max(...volumeTrend.map(r => r.totalQueries), 1);
+
+ return (
+ <Stack gap="md">
+ <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+ {/* Strategy Confidence */}
+ <Paper shadow="xs" radius="md" withBorder p="md">
+ <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ Strategy Avg. Confidence
+ </Text>
+ {strategyDistribution.length === 0 ? (
+ <Text c="dimmed" size="xs">Run the learner to populate strategy metrics.</Text>
+ ) : (
+ <Stack gap="sm">
+ {strategyDistribution.map(({ strategy, avgConf, color }) => (
+ <Box key={strategy}>
+ <Group justify="space-between" mb={4}>
+ <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{strategy}</Text>
+ <Badge size="xs" color={color} variant="light">{avgConf}%</Badge>
+ </Group>
+ <Progress value={avgConf} color={color} radius="sm" size="sm" />
+ </Box>
+ ))}
+ </Stack>
+ )}
+ </Paper>
+
+ {/* Intent Distribution */}
+ <Paper shadow="xs" radius="md" withBorder p="md">
+ <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ Intent Distribution
+ </Text>
+ {intentEntries.length === 0 ? (
+ <Text c="dimmed" size="xs">Run the learner to populate intent metrics.</Text>
+ ) : (
+ <Stack gap="sm">
+ {intentEntries.map(({ intent, count, pct }) => (
+ <Box key={intent}>
+ <Group justify="space-between" mb={4}>
+ <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{intent}</Text>
+ <Group gap={4}>
+ <Text size="xs" c="dimmed">{count}</Text>
+ <Badge size="xs" color="blue" variant="light">{pct}%</Badge>
+ </Group>
+ </Group>
+ <Progress value={pct} color="blue" radius="sm" size="sm" />
+ </Box>
+ ))}
+ </Stack>
+ )}
+ </Paper>
+ </SimpleGrid>
+
+ {/* Query Volume Trend */}
+ <Paper shadow="xs" radius="md" withBorder p="md">
+ <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ Query Volume — Last {volumeTrend.length} Runs
+ </Text>
+ {volumeTrend.length === 0 ? (
+ <Text c="dimmed" size="xs">No run history yet. Click "Run Learner" to start.</Text>
+ ) : (
+ <Box style={{ overflowX: 'auto' }}>
+ <Group gap={0} align="flex-end" style={{ minWidth: 320, height: 80 }}>
+ {volumeTrend.map((run) => {
+ const barPct = Math.max(8, Math.round((run.totalQueries / maxVolume) * 100));
+ const unknownPct = run.totalQueries > 0
+ ? Math.round((run.unknownQueries / run.totalQueries) * 100)
+ : 0;
+ return (
+ <Tooltip
+ key={run.id}
+ label={`${new Date(run.runAt).toLocaleDateString()} · ${run.totalQueries} queries · ${run.unknownQueries} unknown`}
+ position="top"
+ fz="xs"
+ >
+ <Box
+ style={{
+ flex: 1,
+ height: `${barPct}%`,
+ minHeight: 8,
+ background: unknownPct > 20
+ ? `linear-gradient(to top, #FA5252 ${unknownPct}%, ${AQUA} ${unknownPct}%)`
+ : AQUA,
+ borderRadius: '4px 4px 0 0',
+ margin: '0 2px',
+ cursor: 'default',
+ opacity: 0.85,
+ transition: 'opacity 0.15s',
+ }}
+ onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+ onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+ />
+ </Tooltip>
+ );
+ })}
+ </Group>
+ <Box
+ style={{ borderTop: `1px solid ${borderColor}`, marginTop: 4, paddingTop: 4 }}
+ >
+ <Group gap={0} style={{ minWidth: 320 }}>
+ {volumeTrend.map((run) => (
+ <Text key={run.id} size="xs" c="dimmed" ta="center"
+ style={{ flex: 1, fontSize: 10, fontFamily: FONT_FAMILY }}>
+ {new Date(run.runAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+ </Text>
+ ))}
+ </Group>
+ </Box>
+ </Box>
+ )}
+ </Paper>
+
+ {/* Top Failure Queries */}
+ <Paper shadow="xs" radius="md" withBorder p="md">
+ <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ Top Failure Queries
+ </Text>
+ {topFailures.length === 0 ? (
+ <Text c="dimmed" size="xs">No failure queries logged yet — great coverage!</Text>
+ ) : (
+ <Stack gap="xs">
+ {topFailures.map((f, idx) => (
+ <Group key={idx} gap="sm" align="flex-start" wrap="nowrap"
+ style={{ padding: '6px 8px', borderRadius: 6,
+ background: isDark ? '#1A1B1E' : '#F8F9FA',
+ border: `1px solid ${borderColor}` }}>
+ <Badge size="xs" color={f.reason === 'Negative rating' ? 'red' : 'orange'} variant="light">
+ {f.reason}
+ </Badge>
+ <Text size="xs" style={{ fontFamily: FONT_FAMILY, flex: 1 }} lineClamp={2}>
+ {f.queryText}
+ </Text>
+ {f.conf > 0 && (
+ <Badge size="xs" color="gray" variant="light">{Math.round(f.conf * 100)}%</Badge>
+ )}
+ </Group>
+ ))}
+ </Stack>
+ )}
+ </Paper>
+ </Stack>
+ );
 }

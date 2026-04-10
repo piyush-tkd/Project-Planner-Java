@@ -1,0 +1,165 @@
+/* ===== PPDataTable — DL-5 ===== */
+
+.wrapper {
+  border: 1px solid var(--pp-border, #2e3346);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--pp-surface, #1a1d27);
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--pp-border, #2e3346);
+  background: var(--pp-surface, #1a1d27);
+}
+
+.toolbarLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Table scroll container ────────────────────────────────────────── */
+.tableScroll {
+  overflow: auto;
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.thead {
+  background: var(--pp-surface-elevated, #242836);
+}
+
+.th {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--pp-text-muted, #8b8fa3) !important;
+  white-space: nowrap;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--pp-border, #2e3346) !important;
+  background: var(--pp-surface-elevated, #242836) !important;
+}
+
+.thSortable {
+  cursor: pointer;
+  user-select: none;
+}
+.thSortable:hover {
+  color: var(--pp-text-secondary, #b0b3c1) !important;
+}
+
+.thActive {
+  color: var(--pp-accent, #2DCCD3) !important;
+}
+
+.sortIcon {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* ── Body rows ─────────────────────────────────────────────────────── */
+.tr {
+  border-left: 3px solid transparent;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tr:hover {
+  background-color: rgba(45, 204, 211, 0.04);
+  border-left-color: var(--pp-accent, #2DCCD3);
+}
+
+.trClickable {
+  cursor: pointer;
+}
+
+.td {
+  font-size: 14px !important;
+  font-weight: 400;
+  color: var(--pp-text, #e2e4eb) !important;
+  padding: 12px 14px !important;
+  min-height: 48px;
+  border-bottom: 1px solid var(--pp-border, #2e3346) !important;
+  vertical-align: middle;
+}
+
+/* ── Loading skeleton ──────────────────────────────────────────────── */
+.skeletonRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(46, 51, 70, 0.5);
+}
+
+.skeletonCell {
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--pp-shimmer-from, #1a1d27) 25%,
+    var(--pp-shimmer-mid,  #242836) 50%,
+    var(--pp-shimmer-from, #1a1d27) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Empty state ───────────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--pp-text-muted, #8b8fa3);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pp-text-secondary, #b0b3c1);
+  margin: 0;
+}
+
+.emptyDesc {
+  font-size: 13px;
+  color: var(--pp-text-muted, #8b8fa3);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 14px;
+  border-top: 1px solid var(--pp-border, #2e3346);
+  font-size: 12px;
+  color: var(--pp-text-muted, #8b8fa3);
+}
+
+/* ── Column toggle popover ─────────────────────────────────────────── */
+.columnToggleList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}

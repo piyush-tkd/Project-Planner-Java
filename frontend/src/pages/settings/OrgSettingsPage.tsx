@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Button, TextInput, Paper, Tabs,
   ColorInput, SimpleGrid, Box, Switch, Badge, Select, Divider,
-  FileButton, Loader, Center, ThemeIcon, Tooltip, NumberInput,
-  PasswordInput, UnstyledButton,
+  FileButton, Center, ThemeIcon, Tooltip, NumberInput,
+  PasswordInput, UnstyledButton, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -13,7 +13,7 @@ import {
   IconKey, IconTicket, IconPackage, IconHeadset,
   IconSettings, IconBrandAzure, IconMail, IconPlugConnected,
   IconClock, IconCloudDownload, IconCircleCheck, IconCircleX, IconChevronRight,
-  IconShield, IconLink, IconCopy,
+  IconShield, IconLink, IconCopy, IconListCheck, IconPercentage, IconArrowRight,
 } from '@tabler/icons-react';
 import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 import apiClient from '../../api/client';
@@ -172,7 +172,7 @@ function JiraEpicSyncPanel({ schedule, setSchedule, scheduleSaving, handleSchedu
         // Filter out placeholder rows that carry no real identity
         // (boardId === 0 / falsy means Jira hasn't been configured yet)
         const validBoards = boardStatus.filter((b: any) => b.boardId && b.boardName);
-        if (statusLoading) return <Center py="sm"><Loader size="sm" /></Center>;
+        if (statusLoading) return <Stack gap="xs" py="xs">{[1,2].map(i => <Skeleton key={i} height={28} radius="sm" />)}</Stack>;
         if (validBoards.length === 0) return (
           <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
             No boards found. Configure Jira credentials first.
@@ -213,6 +213,7 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   branding: 'general', workspace: 'general',
   email: 'notifications', ai: 'notifications',
   data: 'system',
+  approvals: 'approvals',
 };
 const resolveTabKey = (raw: string | null) =>
   raw ? (LEGACY_TAB_MAP[raw] ?? raw) : 'general';
@@ -343,6 +344,24 @@ export default function OrgSettingsPage() {
     }
   };
 
+  const [smtpSendingTest, setSmtpSendingTest] = useState(false);
+  const handleSmtpSendTest = async () => {
+    setSmtpSendingTest(true);
+    try {
+      const { data } = await apiClient.post('/settings/smtp/send-test');
+      notifications.show({
+        title: data.success ? 'Test email sent' : 'Send failed',
+        message: data.message,
+        color: data.success ? 'teal' : 'red',
+        autoClose: 8000,
+      });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Could not send test email', color: 'red' });
+    } finally {
+      setSmtpSendingTest(false);
+    }
+  };
+
   // ── SSO state ─────────────────────────────────────────────────────────────
   interface SsoDraft {
     provider: string; clientId: string; clientSecret: string;
@@ -399,6 +418,58 @@ export default function OrgSettingsPage() {
     }
   };
 
+  // ── Approval rules state (features JSONB + localStorage for threshold) ──────
+  const APPROVAL_PREFS_KEY = 'pp_approval_prefs';
+  const loadApprovalPrefs = () => {
+    try { return JSON.parse(localStorage.getItem(APPROVAL_PREFS_KEY) ?? '{}'); }
+    catch { return {}; }
+  };
+  interface ApprovalPrefs {
+    requireBudgetChange: boolean;
+    requireTimelineChange: boolean;
+    requireScopeChange: boolean;
+    requireStatusToActive: boolean;
+    autoApproveEnabled: boolean;
+    autoApproveThresholdPct: number;
+  }
+  const APPROVAL_DEFAULTS: ApprovalPrefs = {
+    requireBudgetChange: true,
+    requireTimelineChange: false,
+    requireScopeChange: true,
+    requireStatusToActive: false,
+    autoApproveEnabled: true,
+    autoApproveThresholdPct: 5,
+  };
+  const [approvalPrefs, setApprovalPrefs] = useState<ApprovalPrefs>(() => ({
+    ...APPROVAL_DEFAULTS,
+    ...loadApprovalPrefs(),
+  }));
+  const [approvalSaving, setApprovalSaving] = useState(false);
+
+  const saveApprovalPrefs = async () => {
+    setApprovalSaving(true);
+    try {
+      localStorage.setItem(APPROVAL_PREFS_KEY, JSON.stringify(approvalPrefs));
+      // Also persist the boolean flags into the org settings features map
+      await apiClient.put('/org/settings', {
+        ...draft,
+        features: {
+          ...draft.features,
+          'approval.require_status':    approvalPrefs.requireStatusToActive,
+          'approval.require_budget':    approvalPrefs.requireBudgetChange,
+          'approval.require_timeline':  approvalPrefs.requireTimelineChange,
+          'approval.require_scope':     approvalPrefs.requireScopeChange,
+          'approval.auto_approve':      approvalPrefs.autoApproveEnabled,
+        },
+      });
+      notifications.show({ title: 'Saved', message: 'Approval rules updated.', color: 'teal' });
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to save approval settings.', color: 'red' });
+    } finally {
+      setApprovalSaving(false);
+    }
+  };
+
   useEffect(() => { setDraft(orgSettings); setIsDirty(false); }, [orgSettings]);
 
   const handleChange = (key: keyof OrgConfig, val: string | null) => {
@@ -430,7 +501,7 @@ export default function OrgSettingsPage() {
     }
   };
 
-  if (ctxLoading) return <Center h={200}><Loader color="teal" /></Center>;
+  if (ctxLoading) return <Stack gap="xs" p="md">{[...Array(4)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>;
 
   // ── Nav-link data sets ───────────────────────────────────────────────────
   const jiraLinks: NavItem[] = [
@@ -492,6 +563,7 @@ export default function OrgSettingsPage() {
           <Tabs.Tab value="jira"          leftSection={<IconPlugConnected size={13} />}>Integrations</Tabs.Tab>
           <Tabs.Tab value="notifications" leftSection={<IconBell size={13} />}>Notifications &amp; Email</Tabs.Tab>
           <Tabs.Tab value="system"        leftSection={<IconSettings size={13} />}>System</Tabs.Tab>
+          <Tabs.Tab value="approvals"     leftSection={<IconListCheck size={13} />}>Approvals</Tabs.Tab>
         </Tabs.List>
 
         {/* ── GENERAL (Branding + Workspace side by side) ─── */}
@@ -567,6 +639,44 @@ export default function OrgSettingsPage() {
                     />
                   </Stack>
                 </Group>
+              </Paper>
+
+              {/* Logo URL */}
+              <Paper withBorder p="md" radius="md">
+                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  Logo
+                </Text>
+                <TextInput
+                  label="Logo URL"
+                  value={draft.logoUrl ?? ''}
+                  onChange={e => handleChange('logoUrl', e.target.value || null)}
+                  placeholder="https://example.com/logo.png"
+                  size="sm"
+                  description="Full URL to your organization logo image"
+                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                />
+                {draft.logoUrl && (
+                  <Box mt="sm">
+                    <Text size="xs" fw={500} mb="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                      Preview:
+                    </Text>
+                    <Box style={{
+                      padding: 8,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      borderRadius: 6,
+                      background: 'var(--mantine-color-body)',
+                    }}>
+                      <img 
+                        src={draft.logoUrl} 
+                        alt="logo preview" 
+                        style={{ maxWidth: 100, maxHeight: 60, objectFit: 'contain' }}
+                        onError={() => {
+                          // Image failed to load
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                )}
               </Paper>
 
               {/* Accent Colors */}
@@ -1081,6 +1191,12 @@ export default function OrgSettingsPage() {
                     loading={smtpTesting} onClick={handleSmtpTest}>
                     Test Connection
                   </Button>
+                  <Button size="xs" variant="light" color="teal"
+                    leftSection={<IconMail size={12} />}
+                    loading={smtpSendingTest} onClick={handleSmtpSendTest}
+                    disabled={!smtp.enabled}>
+                    Send Test Email
+                  </Button>
                 </Group>
 
                 <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
@@ -1088,6 +1204,17 @@ export default function OrgSettingsPage() {
                   STARTTLS on. Password must be an <em>App Password</em> (Google Account → Security).
                 </Text>
               </Paper>
+
+              <Button
+                variant="light"
+                color="blue"
+                size="xs"
+                leftSection={<IconMail size={13} />}
+                rightSection={<IconArrowRight size={13} />}
+                onClick={() => navigate('/settings/email-templates')}
+              >
+                Customise Email Templates
+              </Button>
 
               <Divider label={
                 <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
@@ -1120,6 +1247,107 @@ export default function OrgSettingsPage() {
             <Box style={{ overflowX: 'auto', width: '100%' }}>
               <RefDataSettingsPage embedded />
             </Box>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ── APPROVALS ─────────────────────────────────────────────── */}
+        <Tabs.Panel value="approvals">
+          <Stack gap="lg">
+
+            {/* Header + link to queue */}
+            <Group justify="space-between" align="flex-start">
+              <Box>
+                <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+                  Approval Workflow Configuration
+                </Text>
+                <Text size="xs" c="dimmed" mt={2}>
+                  Control which project changes require human approval before taking effect.
+                </Text>
+              </Box>
+              <Button
+                variant="light"
+                color="teal"
+                size="xs"
+                rightSection={<IconArrowRight size={13} />}
+                onClick={() => navigate('/approvals')}
+              >
+                View Approval Queue
+              </Button>
+            </Group>
+
+            {/* Section: Approval triggers */}
+            <Paper withBorder radius="md" p="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, marginBottom: 12 }}>
+                Approval Required When…
+              </Text>
+              <Stack gap="xs">
+                <Switch
+                  label="Budget changes (any amount)"
+                  description="Require approval when a project's budget estimate is modified"
+                  checked={approvalPrefs.requireBudgetChange}
+                  onChange={e => setApprovalPrefs(p => ({ ...p, requireBudgetChange: e.currentTarget.checked }))}
+                />
+                <Switch
+                  label="Timeline / deadline extension"
+                  description="Require approval when the target end date is pushed out"
+                  checked={approvalPrefs.requireTimelineChange}
+                  onChange={e => setApprovalPrefs(p => ({ ...p, requireTimelineChange: e.currentTarget.checked }))}
+                />
+                <Switch
+                  label="Scope change (major)"
+                  description="Require approval when the project scope, deliverables, or objectives change"
+                  checked={approvalPrefs.requireScopeChange}
+                  onChange={e => setApprovalPrefs(p => ({ ...p, requireScopeChange: e.currentTarget.checked }))}
+                />
+                <Switch
+                  label="Status change to Active"
+                  description="Require approval before a project moves from Planning → Active"
+                  checked={approvalPrefs.requireStatusToActive}
+                  onChange={e => setApprovalPrefs(p => ({ ...p, requireStatusToActive: e.currentTarget.checked }))}
+                />
+              </Stack>
+            </Paper>
+
+            {/* Section: Auto-approve rules */}
+            <Paper withBorder radius="md" p="md">
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed"
+                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, marginBottom: 12 }}>
+                Auto-Approve Rules
+              </Text>
+              <Stack gap="sm">
+                <Switch
+                  label="Enable auto-approve for small budget variances"
+                  description="Budget changes below the threshold below are automatically approved without review"
+                  checked={approvalPrefs.autoApproveEnabled}
+                  onChange={e => setApprovalPrefs(p => ({ ...p, autoApproveEnabled: e.currentTarget.checked }))}
+                />
+                {approvalPrefs.autoApproveEnabled && (
+                  <NumberInput
+                    label="Auto-approve threshold (%)"
+                    description="Budget changes under this percentage are auto-approved (e.g. 5 = changes under 5% of total budget)"
+                    placeholder="5"
+                    min={1} max={50} step={1}
+                    leftSection={<IconPercentage size={13} />}
+                    value={approvalPrefs.autoApproveThresholdPct}
+                    onChange={v => setApprovalPrefs(p => ({ ...p, autoApproveThresholdPct: typeof v === 'number' ? v : 5 }))}
+                    w={260}
+                  />
+                )}
+              </Stack>
+            </Paper>
+
+            {/* Save */}
+            <Group justify="flex-end">
+              <Button
+                leftSection={<IconCheck size={14} />}
+                loading={approvalSaving}
+                onClick={saveApprovalPrefs}
+              >
+                Save Approval Rules
+              </Button>
+            </Group>
+
           </Stack>
         </Tabs.Panel>
 

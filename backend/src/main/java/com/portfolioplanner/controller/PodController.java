@@ -36,4 +36,10 @@ public class PodController {
     public ResponseEntity<PodResponse> update(@PathVariable Long id, @RequestBody Pod pod) {
         return ResponseEntity.ok(podService.update(id, pod));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        podService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

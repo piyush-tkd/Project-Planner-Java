@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Title, Text, Group, Select, Table, TextInput,
   Stack, SimpleGrid, ScrollArea, ThemeIcon, SegmentedControl,
-  Tooltip, Modal, Badge, Paper, Loader, Box, UnstyledButton, Avatar,
+  Tooltip, Modal, Badge, Paper, Box, UnstyledButton, Avatar, Skeleton,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -23,7 +23,7 @@ import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { EmptyState } from '../../components/ui';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_BLUE_STRONG, COLOR_ERROR, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE, COLOR_ORANGE_DEEP, COLOR_SUCCESS, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DARK_BORDER, DARK_SURFACE, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_BORDER, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUBTLE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 type MetricView = 'hours' | 'dollars' | 'stories' | 'bugs' | 'sp' | 'issues';
@@ -96,31 +96,31 @@ const METRIC_OPTIONS: { value: MetricView; label: string }[] = [
 
 // ── Issue type / status styling ─────────────────────────────────────────
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  'Story': { bg: '#EDE9FE', text: '#7C3AED' },
-  'Bug': { bg: '#FEE2E2', text: '#DC2626' },
-  'Task': { bg: '#DBEAFE', text: '#2563EB' },
-  'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
-  'Subtask': { bg: '#F1F5F9', text: '#64748B' },
-  'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+  'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+  'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+  'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+  'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+  'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+  'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
   'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
   'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
-  'Spike': { bg: '#FEF3C7', text: '#D97706' },
+  'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
 };
 const STATUS_COLORS: Record<string, string> = {
-  'Done': '#22C55E', 'In Progress': '#F59E0B', 'To Do': '#94A3B8',
+  'Done': COLOR_GREEN, 'In Progress': COLOR_WARNING, 'To Do': TEXT_SUBTLE,
 };
 function issueTypeStyle(t: string) {
-  return ISSUE_TYPE_COLORS[t] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+  return ISSUE_TYPE_COLORS[t] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
 // ── Chart colors ────────────────────────────────────────────────────────
 const CHART_COLORS = {
   hours:   '#20c997',
-  dollars: '#40c057',
+  dollars: COLOR_SUCCESS,
   stories: '#5c7cfa',
-  bugs:    '#fa5252',
-  sp:      '#fd7e14',
-  issues:  '#339af0',
+  bugs:    COLOR_ERROR,
+  sp:      COLOR_ORANGE,
+  issues:  COLOR_BLUE_LIGHT,
   commits: '#ae3ec9',
 };
 
@@ -256,7 +256,7 @@ export default function ResourcePerformancePage() {
       {/* Header */}
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: 'var(--pp-text)' }}>
             Resource Performance
           </Title>
           <Text size="sm" c="dimmed" mt={4}>
@@ -290,8 +290,8 @@ export default function ResourcePerformancePage() {
           <SummaryCard
             title="Mapped Resources"
             value={`${data.mappedResources} / ${data.totalResources}`}
-            icon={<IconUsers size={20} color="#339af0" />}
-            color="#339af0"
+            icon={<IconUsers size={20} color={COLOR_BLUE_LIGHT} />}
+            color={COLOR_BLUE_LIGHT}
           />
           <SummaryCard
             title={`YTD Hours (${year})`}
@@ -303,8 +303,8 @@ export default function ResourcePerformancePage() {
           <SummaryCard
             title={`YTD Value (${year})`}
             value={formatDollars(data.totalDollarValue)}
-            icon={<IconCoin size={20} color="#40c057" />}
-            color="#40c057"
+            icon={<IconCoin size={20} color={COLOR_SUCCESS} />}
+            color={COLOR_SUCCESS}
             sparkData={sparkFor(data, 'dollars')}
           />
           <SummaryCard
@@ -317,15 +317,15 @@ export default function ResourcePerformancePage() {
           <SummaryCard
             title="Bugs"
             value={String(data.totalBugs)}
-            icon={<IconBug size={20} color="#fa5252" />}
-            color="#fa5252"
+            icon={<IconBug size={20} color={COLOR_ERROR} />}
+            color={COLOR_ERROR}
             sparkData={sparkFor(data, 'bugs')}
           />
           <SummaryCard
             title="Story Points"
             value={String(Math.round(data.totalStoryPoints))}
-            icon={<IconTarget size={20} color="#fd7e14" />}
-            color="#fd7e14"
+            icon={<IconTarget size={20} color={COLOR_ORANGE} />}
+            color={COLOR_ORANGE}
             sparkData={sparkFor(data, 'sp')}
           />
         </SimpleGrid>
@@ -360,15 +360,15 @@ export default function ResourcePerformancePage() {
         <Table fz="xs" withColumnBorders withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 36, position: 'sticky', left: 0, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1 }}>#</Table.Th>
-              <Table.Th style={{ minWidth: 170, position: 'sticky', left: 36, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1 }}>Resource</Table.Th>
+              <Table.Th style={{ width: 36, position: 'sticky', left: 0, background: 'var(--pp-bg)', zIndex: 1 }}>#</Table.Th>
+              <Table.Th style={{ minWidth: 170, position: 'sticky', left: 36, background: 'var(--pp-bg)', zIndex: 1 }}>Resource</Table.Th>
               <Table.Th style={{ width: 65 }}>Rate</Table.Th>
               {periodLabels.map(label => (
                 <Table.Th key={label} style={{ width: 72, textAlign: 'center' }}>
                   <Text size="xs" fw={600}>{label.replace(` ${year}`, '')}</Text>
                 </Table.Th>
               ))}
-              <Table.Th style={{ width: 80, textAlign: 'center', background: isDark ? '#25262b' : '#f8f9fa' }}>
+              <Table.Th style={{ width: 80, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE }}>
                 <Text size="xs" fw={700}>Total</Text>
               </Table.Th>
             </Table.Tr>
@@ -378,12 +378,12 @@ export default function ResourcePerformancePage() {
               const total = resourceTotal(r);
               return (
                 <Table.Tr key={r.resourceId}>
-                  <Table.Td style={{ position: 'sticky', left: 0, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1 }}>
+                  <Table.Td style={{ position: 'sticky', left: 0, background: 'var(--pp-bg)', zIndex: 1 }}>
                     <Text size="xs" c="dimmed" fw={500}>{idx + 1}</Text>
                   </Table.Td>
 
                   {/* Resource name — clickable for drilldown */}
-                  <Table.Td style={{ position: 'sticky', left: 36, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1, minWidth: 200 }}>
+                  <Table.Td style={{ position: 'sticky', left: 36, background: 'var(--pp-bg)', zIndex: 1, minWidth: 200 }}>
                     <Group
                       gap="xs" wrap="nowrap"
                       style={{ cursor: 'pointer' }}
@@ -434,7 +434,7 @@ export default function ResourcePerformancePage() {
                     );
                   })}
 
-                  <Table.Td style={{ textAlign: 'center', background: isDark ? '#25262b' : '#f8f9fa' }}>
+                  <Table.Td style={{ textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE }}>
                     <Text size="xs" fw={700} c={total > 0 ? metricColor(metric) : 'dimmed'}>
                       {formatMetric(total, metric)}
                     </Text>
@@ -445,9 +445,9 @@ export default function ResourcePerformancePage() {
 
             {/* Grand Total Row */}
             {filtered.length > 0 && data && (
-              <Table.Tr style={{ background: isDark ? '#25262b' : '#f1f3f5' }}>
-                <Table.Td style={{ position: 'sticky', left: 0, background: isDark ? '#25262b' : '#f1f3f5', zIndex: 1 }} />
-                <Table.Td style={{ position: 'sticky', left: 36, background: isDark ? '#25262b' : '#f1f3f5', zIndex: 1 }}>
+              <Table.Tr style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f3f5' }}>
+                <Table.Td style={{ position: 'sticky', left: 0, background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f3f5', zIndex: 1 }} />
+                <Table.Td style={{ position: 'sticky', left: 36, background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f3f5', zIndex: 1 }}>
                   <Text size="xs" fw={700}>Grand Total</Text>
                 </Table.Td>
                 <Table.Td />
@@ -461,7 +461,7 @@ export default function ResourcePerformancePage() {
                     </Table.Td>
                   );
                 })}
-                <Table.Td style={{ textAlign: 'center', background: isDark ? '#2c2e33' : '#e9ecef' }}>
+                <Table.Td style={{ textAlign: 'center', background: isDark ? '#2c2e33' : GRAY_100 }}>
                   <Text size="xs" fw={700} c={metricColor(metric)}>
                     {formatMetric(
                       filtered.reduce((sum, r) => sum + resourceTotal(r), 0),
@@ -501,8 +501,8 @@ export default function ResourcePerformancePage() {
                   tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`} />
                 <RTooltip
                   contentStyle={{
-                    background: isDark ? '#25262b' : '#fff',
-                    border: `1px solid ${isDark ? '#373A40' : '#dee2e6'}`,
+                    background: isDark ? DARK_SURFACE : '#fff',
+                    border: `1px solid ${isDark ? DARK_BORDER : GRAY_BORDER}`,
                     borderRadius: 8,
                     fontSize: 12,
                   }}
@@ -512,8 +512,8 @@ export default function ResourcePerformancePage() {
                   }
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="left" dataKey="hours" name="Hours" fill={CHART_COLORS.hours} radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="dollars" name="Dollars" fill={CHART_COLORS.dollars} radius={[4, 4, 0, 0]} />
+                <Bar animationDuration={600} yAxisId="left" dataKey="hours" name="Hours" fill={CHART_COLORS.hours} radius={[4, 4, 0, 0]} />
+                <Bar animationDuration={600} yAxisId="right" dataKey="dollars" name="Dollars" fill={CHART_COLORS.dollars} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -533,13 +533,13 @@ export default function ResourcePerformancePage() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <RTooltip
                   contentStyle={{
-                    background: isDark ? '#25262b' : '#fff',
-                    border: `1px solid ${isDark ? '#373A40' : '#dee2e6'}`,
+                    background: isDark ? DARK_SURFACE : '#fff',
+                    border: `1px solid ${isDark ? DARK_BORDER : GRAY_BORDER}`,
                     borderRadius: 8,
                     fontSize: 12,
                   }}
                 />
-                <Area type="monotone" dataKey="sp" name="Story Points" stroke={CHART_COLORS.sp}
+                <Area animationDuration={600} type="monotone" dataKey="sp" name="Story Points" stroke={CHART_COLORS.sp}
                   fill="url(#spGrad)" strokeWidth={2.5} dot={{ r: 4, fill: CHART_COLORS.sp }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -554,15 +554,15 @@ export default function ResourcePerformancePage() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <RTooltip
                   contentStyle={{
-                    background: isDark ? '#25262b' : '#fff',
-                    border: `1px solid ${isDark ? '#373A40' : '#dee2e6'}`,
+                    background: isDark ? DARK_SURFACE : '#fff',
+                    border: `1px solid ${isDark ? DARK_BORDER : GRAY_BORDER}`,
                     borderRadius: 8,
                     fontSize: 12,
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="stories" name="Stories" fill={CHART_COLORS.stories} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="bugs" name="Bugs" fill={CHART_COLORS.bugs} radius={[4, 4, 0, 0]} />
+                <Bar animationDuration={600} dataKey="stories" name="Stories" fill={CHART_COLORS.stories} radius={[4, 4, 0, 0]} />
+                <Bar animationDuration={600} dataKey="bugs" name="Bugs" fill={CHART_COLORS.bugs} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -582,13 +582,13 @@ export default function ResourcePerformancePage() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <RTooltip
                   contentStyle={{
-                    background: isDark ? '#25262b' : '#fff',
-                    border: `1px solid ${isDark ? '#373A40' : '#dee2e6'}`,
+                    background: isDark ? DARK_SURFACE : '#fff',
+                    border: `1px solid ${isDark ? DARK_BORDER : GRAY_BORDER}`,
                     borderRadius: 8,
                     fontSize: 12,
                   }}
                 />
-                <Area type="monotone" dataKey="issues" name="Issues" stroke={CHART_COLORS.issues}
+                <Area animationDuration={600} type="monotone" dataKey="issues" name="Issues" stroke={CHART_COLORS.issues}
                   fill="url(#issueGrad)" strokeWidth={2.5} dot={{ r: 4, fill: CHART_COLORS.issues }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -633,9 +633,9 @@ export default function ResourcePerformancePage() {
               display: 'flex',
               gap: 4,
               padding: '4px 6px',
-              background: 'rgba(45,204,211,0.06)',
+              background: isDark ? 'rgba(45,204,211,0.08)' : 'rgba(45,204,211,0.06)',
               borderRadius: 10,
-              border: `1px solid rgba(45,204,211,0.15)`,
+              border: `1px solid ${isDark ? 'rgba(45,204,211,0.25)' : 'rgba(45,204,211,0.15)'}`,
               flexWrap: 'wrap',
             }}
           >
@@ -656,20 +656,20 @@ export default function ResourcePerformancePage() {
                     cursor: 'pointer',
                     transition: 'all 150ms ease',
                     background: isActive ? AQUA : 'transparent',
-                    color: isActive ? '#fff' : 'rgba(45,204,211,0.75)',
+                    color: isActive ? '#fff' : isDark ? 'rgba(45,204,211,0.85)' : 'rgba(45,204,211,0.75)',
                     boxShadow: isActive ? `0 2px 8px ${AQUA}55` : 'none',
                     border: isActive ? 'none' : '1px solid transparent',
                   }}
                   onMouseEnter={e => {
                     if (!isActive) {
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(45,204,211,0.12)';
+                      (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(45,204,211,0.15)' : 'rgba(45,204,211,0.12)';
                       (e.currentTarget as HTMLElement).style.color = AQUA;
                     }
                   }}
                   onMouseLeave={e => {
                     if (!isActive) {
                       (e.currentTarget as HTMLElement).style.background = 'transparent';
-                      (e.currentTarget as HTMLElement).style.color = 'rgba(45,204,211,0.75)';
+                      (e.currentTarget as HTMLElement).style.color = isDark ? 'rgba(45,204,211,0.85)' : 'rgba(45,204,211,0.75)';
                     }
                   }}
                 >
@@ -681,7 +681,9 @@ export default function ResourcePerformancePage() {
         )}
 
         {drillLoading && (
-          <Group justify="center" py="xl"><Loader size="sm" /><Text size="sm" c="dimmed">Loading issues...</Text></Group>
+          <Stack gap="xs">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} height={36} radius="sm" />)}
+          </Stack>
         )}
 
         {!drillLoading && drillIssues && drillIssues.length === 0 && (
@@ -704,7 +706,7 @@ export default function ResourcePerformancePage() {
               <Table.Tbody>
                 {drillIssues.map(issue => {
                   const ts = issueTypeStyle(issue.issueType);
-                  const statusColor = STATUS_COLORS[issue.statusCategory] ?? '#94A3B8';
+                  const statusColor = STATUS_COLORS[issue.statusCategory] ?? TEXT_SUBTLE;
                   return (
                     <Table.Tr key={issue.issueKey}>
                       <Table.Td>

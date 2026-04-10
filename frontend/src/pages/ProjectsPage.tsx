@@ -1,22 +1,25 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Title, Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
-ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popover, Switch,
+  Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
+ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popover, Switch, Skeleton,
 } from '@mantine/core';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
+import { AQUA, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, TEXT_SUBTLE} from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
+import { useToast } from '../hooks/useToast';
 import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash, IconTimeline } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus, useDeleteProject } from '../api/projects';
+import { useProjectsHealth } from '../api/projectHealth';
+import HealthBadge from '../components/common/HealthBadge';
+import { usePendingApprovals } from '../api/projectApprovals';
 import type { ProjectPodMatrixResponse, ProjectResponse } from '../types';
 import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
 import ProjectFlagChips from '../components/projects/ProjectFlagChips';
 import type { SourceType } from '../types/project';
 import { useEffortPatterns } from '../api/refData';
 import { useJiraAllProjectsSimple } from '../api/jira';
-import CsvToolbar from '../components/common/CsvToolbar';
-import { projectColumns } from '../utils/csvColumns';
 import KanbanBoardView from '../components/projects/KanbanBoardView';
 import GanttView from '../components/projects/GanttView';
 import { Priority, ProjectStatus } from '../types';
@@ -28,6 +31,7 @@ import AdvancedFilterPanel, { applyAdvancedFilters } from '../components/common/
 import type { AdvancedFilters, FilterField } from '../components/common/AdvancedFilterPanel';
 import PriorityBadge from '../components/common/PriorityBadge';
 import SummaryCard from '../components/charts/SummaryCard';
+import { PageInsightCard } from '../components/common/PageInsightCard';
 import SortableHeader from '../components/common/SortableHeader';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -64,13 +68,27 @@ function initials(name: string): string {
 }
 
 export default function ProjectsPage() {
+  const toast = useToast();
   const isDark = useDarkMode();
-  const { data: projects, isLoading, error } = useProjects();
+  const { data: projects, isLoading, error, dataUpdatedAt: projectsUpdatedAt } = useProjects();
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
   const patchStatusMutation = usePatchProjectStatus();
   const copyMutation = useCopyProject();
   const deleteMutation = useDeleteProject();
+
+  // Track which projects have pending approvals for the badge
+  const { data: pendingApprovals = [] } = usePendingApprovals();
+  const pendingProjectIds = useMemo(
+    () => new Set(pendingApprovals.map(a => a.projectId)),
+    [pendingApprovals]
+  );
+
+  const { data: healthData = [] } = useProjectsHealth();
+  const healthByProjectId = useMemo(
+    () => new Map(healthData.map(h => [h.projectId, h])),
+    [healthData]
+  );
 
   // ── Row selection + delete confirmation ───────────────────────────────
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
@@ -103,25 +121,22 @@ export default function ProjectsPage() {
         await deleteMutation.mutateAsync(id);
         successCount++;
       } catch {
-        notifications.show({ title: 'Error', message: `Failed to delete project #${id}`, color: 'red' });
+        toast.error('Delete failed', `Failed to delete project #${id}`);
       }
     }
     if (successCount > 0) {
-      notifications.show({
-        title: 'Deleted',
-        message: `${successCount} project${successCount !== 1 ? 's' : ''} deleted`,
-        color: 'red',
-      });
+      toast.success('Projects deleted', `${successCount} project${successCount !== 1 ? 's' : ''} deleted`);
     }
     setSelectedRows(new Set());
     setDeleteTarget(null);
   };
 
   // ── Inline table editing ──────────────────────────────────────────────
-  type EditableField = 'name' | 'owner' | 'priority' | 'status' | 'startDate' | 'targetDate';
+  type EditableField = 'name' | 'owner' | 'priority' | 'status' | 'startDate' | 'targetDate' | 'estimatedBudget';
   const [editingCell, setEditingCell] = useState<{ id: number; field: EditableField } | null>(null);
   const [editDraft, setEditDraft] = useState<string>('');
   const [editDateDraft, setEditDateDraft] = useState<Date | null>(null);
+  const [editNumberDraft, setEditNumberDraft] = useState<number | null>(null);
   // Inline add-row state
   const [addRowActive, setAddRowActive] = useState(false);
   const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string; startMonth: number; durationMonths: number; defaultPattern: string }>({
@@ -142,7 +157,7 @@ export default function ProjectsPage() {
   const [nameError, setNameError] = useState<string>('');
 
   // ── Column visibility (persisted to localStorage) ────────────────────
-  const ALL_COLS = ['#', 'Priority', 'Owner', 'Start', 'End', 'Duration', 'Pattern', 'Status', 'Created'] as const;
+  const ALL_COLS = ['#', 'Priority', 'Owner', 'Start', 'End', 'Duration', 'Pattern', 'Status', 'Budget', 'Health', 'Created'] as const;
   type ColKey = typeof ALL_COLS[number];
   const DEFAULT_VISIBLE_ARRAY: ColKey[] = ['#', 'Priority', 'Owner', 'Start', 'End', 'Status'];
   const [visibleColsArray, setVisibleColsArray] = useLocalStorage<ColKey[]>('pp_projects_visible_cols', DEFAULT_VISIBLE_ARRAY);
@@ -259,11 +274,11 @@ export default function ProjectsPage() {
     setImportErrors(errors);
 
     if (successCount > 0) {
-      notifications.show({
-        title: 'Import Complete',
-        message: `${successCount} project${successCount !== 1 ? 's' : ''} imported from Jira${errors.length > 0 ? ` (${errors.length} failed)` : ''}.`,
-        color: errors.length > 0 ? 'orange' : 'green',
-      });
+      if (errors.length > 0) {
+        toast.warning('Import Complete', `${successCount} imported, ${errors.length} failed`);
+      } else {
+        toast.success('Import Complete', `${successCount} project${successCount !== 1 ? 's' : ''} imported from Jira`);
+      }
     }
 
     if (errors.length === 0) {
@@ -438,40 +453,69 @@ export default function ProjectsPage() {
     return { total: all.length, active, onHold, p0p1, avgDuration };
   }, [projects]);
 
+  // ── Shared approval-required error handler ────────────────────────────
+  const handleStatusChangeError = useCallback((error: any) => {
+    const reason = error?.response?.data?.message ?? error?.response?.data ?? '';
+    if (String(reason).includes('APPROVAL_REQUIRED')) {
+      toast.warning('Approval required', 'This status change has been submitted for approval. Open the project to track its progress.');
+    } else if (String(reason).includes('PENDING_APPROVAL_EXISTS')) {
+      toast.warning('Pending approval exists', 'This project already has a pending approval. Resolve it before making another change.');
+    } else {
+      toast.error('Error', 'Failed to update project status');
+    }
+  }, [toast]);
+
   // ── Board drag-and-drop status change ────────────────────────────────
   const handleBoardStatusChange = useCallback((projectId: number, newStatus: string) => {
     patchStatusMutation.mutate({ id: projectId, status: newStatus }, {
-      onError: () => notifications.show({ color: 'red', title: 'Error', message: 'Failed to update project status' }),
+      onError: handleStatusChangeError,
     });
-  }, [patchStatusMutation]);
+  }, [patchStatusMutation, handleStatusChangeError]);
 
   // ── Inline cell editing helpers ───────────────────────────────────────
-  const startEdit = (id: number, field: EditableField, currentValue: string) => {
+  const startEdit = (id: number, field: EditableField, currentValue: string | number | null) => {
     setEditingCell({ id, field });
     if (field === 'startDate' || field === 'targetDate') {
-      setEditDateDraft(currentValue ? new Date(currentValue) : null);
+      const strVal = typeof currentValue === 'string' ? currentValue : '';
+      setEditDateDraft(strVal ? new Date(strVal) : null);
+    } else if (field === 'estimatedBudget') {
+      setEditNumberDraft(typeof currentValue === 'number' ? currentValue : null);
     } else {
-      setEditDraft(currentValue ?? '');
+      setEditDraft(String(currentValue ?? ''));
     }
   };
 
   const commitEdit = (project: ProjectResponse) => {
     if (!editingCell || editingCell.id !== project.id) return;
     const isDateField = editingCell.field === 'startDate' || editingCell.field === 'targetDate';
+    const isNumberField = editingCell.field === 'estimatedBudget';
     let updatedStartDate = project.startDate ?? null;
     let updatedTargetDate = project.targetDate ?? null;
+    let updatedBudget = project.estimatedBudget ?? null;
     let updated = { ...project };
     if (isDateField) {
       const isoStr = editDateDraft ? editDateDraft.toISOString().split('T')[0] : null;
       if (editingCell.field === 'startDate') updatedStartDate = isoStr;
       else updatedTargetDate = isoStr;
+    } else if (isNumberField) {
+      updatedBudget = editNumberDraft;
+      updated = { ...project, estimatedBudget: editNumberDraft };
     } else {
       updated = { ...project, [editingCell.field]: editDraft };
     }
     updateMutation.mutate(
       { id: project.id, data: { name: updated.name, priority: updated.priority, owner: updated.owner ?? '', startMonth: updated.startMonth ?? 1, durationMonths: updated.durationMonths ?? 1, defaultPattern: updated.defaultPattern ?? 'Flat', status: updated.status, notes: updated.notes ?? null, startDate: updatedStartDate, targetDate: updatedTargetDate, client: updated.client ?? null } },
       {
-        onError: () => notifications.show({ color: 'red', title: 'Error', message: 'Failed to save change' }),
+        onError: (error: any) => {
+          const reason = error?.response?.data?.message ?? error?.response?.data ?? '';
+          if (String(reason).includes('APPROVAL_REQUIRED')) {
+            toast.warning('Approval required', 'This change has been submitted for approval. Open the project to track its progress.');
+          } else if (String(reason).includes('PENDING_APPROVAL_EXISTS')) {
+            toast.warning('Pending approval exists', 'This project already has a pending approval. Resolve it first.');
+          } else {
+            toast.error('Save failed', 'Failed to save change');
+          }
+        },
       }
     );
     setEditingCell(null);
@@ -488,9 +532,9 @@ export default function ProjectsPage() {
         onSuccess: () => {
           setAddRowActive(false);
           setAddRowForm({ name: '', priority: 'P2', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat' });
-          notifications.show({ title: 'Created', message: 'Project created', color: 'green' });
+          toast.success('Project created', 'New project added to the portfolio');
         },
-        onError: (err: any) => notifications.show({ color: 'red', title: 'Error', message: err?.response?.data?.message || 'Failed to create project' }),
+        onError: (err: any) => toast.error('Create failed', err?.response?.data?.message || 'Failed to create project'),
       }
     );
   };
@@ -524,9 +568,11 @@ export default function ProjectsPage() {
   if (error) return <PageError context="loading projects" error={error} />;
 
   return (
-    <Stack className="page-enter stagger-children">
-      <Group justify="space-between" className="slide-in-left" align="center">
-        <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Projects</Title>
+    <PPPageLayout
+      title="Projects"
+      animate
+      dataUpdatedAt={projectsUpdatedAt}
+      actions={
         <Group gap="sm" align="center">
           {/* View switcher — Table / Board (Kanban) */}
           <Tabs
@@ -540,27 +586,6 @@ export default function ProjectsPage() {
               <Tabs.Tab value="gantt" leftSection={<IconTimeline size={14} />}>Timeline</Tabs.Tab>
             </Tabs.List>
           </Tabs>
-          <CsvToolbar
-            data={projects ?? []}
-            columns={projectColumns}
-            filename="projects"
-            onImport={(rows) => {
-              rows.forEach(row => {
-                createMutation.mutate({
-                  name: row.name ?? '',
-                  priority: row.priority ?? 'P2',
-                  owner: row.owner ?? '',
-                  startMonth: Number(row.startMonth) || 1,
-                  durationMonths: Number(row.durationMonths) || 3,
-                  defaultPattern: row.defaultPattern ?? 'Flat',
-                  status: row.status ?? 'ACTIVE',
-                  notes: row.notes || null,
-                  startDate: row.startDate || null,
-                  targetDate: row.targetDate || null,
-                });
-              });
-            }}
-          />
           <Button
             variant="light"
             color="blue"
@@ -577,27 +602,29 @@ export default function ProjectsPage() {
           </Button>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>Add Project</Button>
         </Group>
-      </Group>
-
+      }
+    >
+      <PageInsightCard pageKey="projects" data={projects} />
+      <Stack gap={16} className="stagger-children">
       <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} className="stagger-grid">
         <SummaryCard
           title="Total Projects"
           value={stats.total}
-          icon={<IconBriefcase size={20} color="#339af0" />}
+          icon={<IconBriefcase size={20} color={COLOR_BLUE_LIGHT} />}
           onClick={() => { setCardFilter(null); setStatusFilter('ALL'); }}
           active={cardFilter === null && statusFilter === 'ALL'}
         />
         <SummaryCard
           title="Active"
           value={stats.active}
-          icon={<IconFlame size={20} color="#40c057" />}
+          icon={<IconFlame size={20} color={COLOR_SUCCESS} />}
           onClick={() => applyCardFilter('ACTIVE')}
           active={cardFilter === 'ACTIVE'}
         />
         <SummaryCard
           title="On Hold"
           value={stats.onHold}
-          icon={<IconAlertTriangle size={20} color="#fab005" />}
+          icon={<IconAlertTriangle size={20} color={COLOR_AMBER} />}
           color={stats.onHold > 0 ? 'yellow' : undefined}
           onClick={() => applyCardFilter('ON_HOLD')}
           active={cardFilter === 'ON_HOLD'}
@@ -605,7 +632,7 @@ export default function ProjectsPage() {
         <SummaryCard
           title="P0 / P1"
           value={stats.p0p1}
-          icon={<IconFlame size={20} color="#fa5252" />}
+          icon={<IconFlame size={20} color={COLOR_ERROR} />}
           color={stats.p0p1 > 0 ? 'red' : undefined}
           onClick={() => applyCardFilter('P0P1')}
           active={cardFilter === 'P0P1'}
@@ -613,7 +640,7 @@ export default function ProjectsPage() {
         <SummaryCard
           title="Avg Duration"
           value={`${stats.avgDuration}m`}
-          icon={<IconClock size={20} color="#845ef7" />}
+          icon={<IconClock size={20} color={COLOR_VIOLET_LIGHT} />}
         />
       </SimpleGrid>
 
@@ -716,7 +743,7 @@ export default function ProjectsPage() {
             </Tooltip>
           </Popover.Target>
           <Popover.Dropdown>
-            <Text size="xs" fw={600} mb="xs" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Visible Columns</Text>
+            <Text size="xs" fw={600} mb="xs" style={{ color: 'var(--pp-text)', fontFamily: FONT_FAMILY }}>Visible Columns</Text>
             <Stack gap={6}>
               {ALL_COLS.map(col => (
                 <Switch
@@ -845,6 +872,8 @@ export default function ProjectsPage() {
                   {visibleCols.has('Duration') && <SortableHeader sortKey="durationMonths" currentKey={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>}
                   {visibleCols.has('Pattern') && <Table.Th>Pattern</Table.Th>}
                   {visibleCols.has('Status') && <SortableHeader sortKey="status" currentKey={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>}
+                  {visibleCols.has('Budget') && <Table.Th style={{ whiteSpace: 'nowrap' }}>Est. Budget</Table.Th>}
+                  {visibleCols.has('Health') && <Table.Th style={{ whiteSpace: 'nowrap' }}>Health</Table.Th>}
                   {visibleCols.has('Created') && <SortableHeader sortKey="createdAt" currentKey={sortKey} dir={sortDir} onSort={onSort}>Created</SortableHeader>}
                   <Table.Th style={{ width: 110 }}>Source</Table.Th>
                   <Table.Th style={{ width: 50 }}>Actions</Table.Th>
@@ -854,7 +883,7 @@ export default function ProjectsPage() {
                 {pagedProjects.length === 0 && (
                   <Table.Tr>
                     <Table.Td colSpan={13} style={{ textAlign: 'center', padding: '2rem' }}>
-                      <Text c="dimmed" size="sm">No projects match the current filters.</Text>
+                      <Text size="sm" style={{ color: 'var(--pp-text-muted)' }}>No projects match the current filters.</Text>
                     </Table.Td>
                   </Table.Tr>
                 )}
@@ -905,7 +934,7 @@ export default function ProjectsPage() {
                         </Table.Td>
                         {visibleCols.has('#') && <Table.Td c="dimmed" style={{ fontSize: 12 }}>{pagination.startIndex + idx + 1}</Table.Td>}
                         {/* Inline-editable name */}
-                        <Table.Td fw={600} style={{ color: isDark ? '#e2e8f0' : '#0f172a', minWidth: 160 }}
+                        <Table.Td fw={600} style={{ color: 'var(--pp-text)', minWidth: 160 }}
                           onClick={e => { e.stopPropagation(); startEdit(p.id, 'name', p.name); }}>
                           {editingCell?.id === p.id && editingCell.field === 'name' ? (
                             <TextInput
@@ -922,6 +951,11 @@ export default function ProjectsPage() {
                             <Group gap={6} wrap="nowrap">
                               <span>{p.name}</span>
                               <ProjectFlagChips project={p} compact />
+                              {pendingProjectIds.has(p.id) && (
+                                <Badge size="xs" color="yellow" variant="filled" style={{ flexShrink: 0 }}>
+                                  Pending Approval
+                                </Badge>
+                              )}
                             </Group>
                           )}
                         </Table.Td>
@@ -1008,6 +1042,53 @@ export default function ProjectsPage() {
                                 onClick={e => e.stopPropagation()}
                               />
                             ) : <StatusBadge status={p.status} />}
+                          </Table.Td>
+                        )}
+                        {visibleCols.has('Budget') && (
+                          <Table.Td style={{ whiteSpace: 'nowrap', fontSize: 12, cursor: 'pointer', minWidth: 140 }}
+                            onClick={e => { e.stopPropagation(); startEdit(p.id, 'estimatedBudget', p.estimatedBudget); }}>
+                            {editingCell?.id === p.id && editingCell.field === 'estimatedBudget' ? (
+                              <NumberInput
+                                size="xs"
+                                value={editNumberDraft ?? ''}
+                                autoFocus
+                                onChange={v => setEditNumberDraft(v === '' ? null : v ? Number(v) : null)}
+                                onBlur={() => commitEdit(p)}
+                                onKeyDown={e => { if (e.key === 'Enter') commitEdit(p); if (e.key === 'Escape') cancelEdit(); }}
+                                onClick={e => e.stopPropagation()}
+                                prefix="$"
+                                decimalScale={0}
+                                min={0}
+                              />
+                            ) : (
+                              p.estimatedBudget != null
+                                ? <span style={{ color: (p.actualCost ?? 0) > p.estimatedBudget ? 'var(--mantine-color-red-6)' : 'inherit' }}>
+                                    ${p.estimatedBudget.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    {p.actualCost != null && (
+                                      <span style={{ color: 'var(--mantine-color-dimmed)', marginLeft: 4, fontSize: 11 }}>
+                                        ({Math.round((p.actualCost / p.estimatedBudget) * 100)}%)
+                                      </span>
+                                    )}
+                                  </span>
+                                : <span style={{ color: 'var(--mantine-color-dimmed)' }}>—</span>
+                            )}
+                          </Table.Td>
+                        )}
+                        {visibleCols.has('Health') && (
+                          <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                            {(() => {
+                              const h = healthByProjectId.get(p.id);
+                              if (!h) return <span style={{ color: 'var(--mantine-color-dimmed)' }}>—</span>;
+                              return (
+                                <HealthBadge
+                                  rag={h.ragStatus}
+                                  score={h.overallScore ?? undefined}
+                                  variant="score"
+                                  size="xs"
+                                  tooltip={[h.scheduleLabel, h.budgetLabel, h.riskLabel].filter(Boolean).join(' · ')}
+                                />
+                              );
+                            })()}
                           </Table.Td>
                         )}
                         {visibleCols.has('Created') && <Table.Td c="dimmed" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Table.Td>}
@@ -1101,10 +1182,10 @@ export default function ProjectsPage() {
                           <Table.Td>
                             <Group gap={6} wrap="nowrap">
                               {[
-                                { label: 'Dev', val: pod.devHours, color: '#3b82f6' },
-                                { label: 'QA', val: pod.qaHours, color: '#8b5cf6' },
-                                { label: 'BSA', val: pod.bsaHours, color: '#f59e0b' },
-                                { label: 'TL', val: pod.techLeadHours, color: '#ef4444' },
+                                { label: 'Dev', val: pod.devHours, color: COLOR_BLUE },
+                                { label: 'QA', val: pod.qaHours, color: COLOR_VIOLET_ALT },
+                                { label: 'BSA', val: pod.bsaHours, color: COLOR_WARNING },
+                                { label: 'TL', val: pod.techLeadHours, color: COLOR_ERROR_STRONG },
                               ].filter(r => r.val > 0).map(r => (
                                 <Tooltip key={r.label} label={`${r.label}: ${r.val}h`}>
                                   <Badge
@@ -1116,7 +1197,7 @@ export default function ProjectsPage() {
                                 </Tooltip>
                               ))}
                               {pod.totalHoursWithContingency > 0 && (
-                                <Text size="xs" fw={700} style={{ color: isDark ? '#94a3b8' : '#475569', whiteSpace: 'nowrap' }}>
+                                <Text size="xs" fw={700} style={{ color: isDark ? TEXT_SUBTLE : '#475569', whiteSpace: 'nowrap' }}>
                                   = {Math.round(pod.totalHoursWithContingency)}h total
                                 </Text>
                               )}
@@ -1221,7 +1302,7 @@ export default function ProjectsPage() {
                     style={{ cursor: 'pointer', opacity: 0.6 }}
                     onClick={() => setAddRowActive(true)}
                   >
-                    <Table.Td colSpan={12} style={{ textAlign: 'center', padding: '8px', color: '#94a3b8', fontSize: 12 }}>
+                    <Table.Td colSpan={12} style={{ textAlign: 'center', padding: '8px', color: TEXT_SUBTLE, fontSize: 12 }}>
                       <Group gap={4} justify="center">
                         <IconPlus size={13} />
                         <span>Add project</span>
@@ -1321,9 +1402,10 @@ export default function ProjectsPage() {
       >
         <Stack gap="sm">
           {jiraProjectsLoading ? (
-            <Stack align="center" py="xl">
-              <Loader size="sm" />
-              <Text size="sm" c="dimmed">Loading Jira projects...</Text>
+            <Stack gap="xs">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} height={36} radius="sm" />
+              ))}
             </Stack>
           ) : jiraProjects.length === 0 ? (
             <Alert color="orange" icon={<IconAlertTriangle size={14} />}>
@@ -1510,6 +1592,7 @@ export default function ProjectsPage() {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+      </Stack>
+    </PPPageLayout>
   );
 }

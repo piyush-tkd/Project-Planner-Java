@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { notifications } from '@mantine/notifications';
 import {
  Title, Stack, Group, Select, Text, Badge, Box, SimpleGrid, Alert,
  Progress, ThemeIcon, Center, Loader, Paper, Tooltip,
@@ -13,7 +14,7 @@ import {
  IconChevronDown, IconChevronUp, IconExternalLink, IconTrendingUp,
  IconTrendingDown, IconEqual, IconRocket, IconBulb, IconTarget,
  IconArrowRight, IconSearch, IconSortAscending, IconSortDescending,
- IconFilter, IconSubtask, IconAdjustments, IconChartBar,
+ IconFilter, IconSubtask, IconAdjustments, IconChartBar, IconDownload,
 } from '@tabler/icons-react';
 
 // ── Scope Recommender types ───────────────────────────────────────────────────
@@ -37,26 +38,27 @@ import { useCapacityGap } from '../api/reports';
 import { useProjectPodMatrix } from '../api/projects';
 import { useTimeline } from '../api/timeline';
 import { useBauAssumptions } from '../api/pods';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import type { SprintResponse } from '../types/project';
 import type { PodMonthGap, BauAssumptionResponse } from '../types';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { PPPageLayout } from '../components/pp';
 
 // ── Colour tokens ─────────────────────────────────────────────────────────────
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
  'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
  'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
 };
 
 const STATUS_CAT_COLOR: Record<string, string> = {
- 'To Do': '#94A3B8', 'In Progress': '#F59E0B', 'Done': '#22C55E',
+ 'To Do': TEXT_SUBTLE, 'In Progress': COLOR_WARNING, 'Done': COLOR_GREEN,
 };
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -113,12 +115,12 @@ interface HealthInfo {
 }
 
 function healthScore(utilization: number): HealthInfo {
- if (utilization < 0.6) return { grade: 'A+', color: 'blue', label: 'Under-utilized', ringColor: '#3B82F6' };
- if (utilization < 0.85) return { grade: 'A', color: 'green', label: 'Healthy', ringColor: '#22C55E' };
+ if (utilization < 0.6) return { grade: 'A+', color: 'blue', label: 'Under-utilized', ringColor: COLOR_BLUE };
+ if (utilization < 0.85) return { grade: 'A', color: 'green', label: 'Healthy', ringColor: COLOR_GREEN };
  if (utilization < 1.0) return { grade: 'B', color: 'teal', label: 'Good', ringColor: '#14B8A6' };
- if (utilization < 1.1) return { grade: 'C', color: 'yellow', label: 'At Capacity', ringColor: '#F59E0B' };
- if (utilization < 1.25) return { grade: 'D', color: 'orange', label: 'Over Capacity', ringColor: '#F97316' };
- return { grade: 'F', color: 'red', label: 'Critical', ringColor: '#EF4444' };
+ if (utilization < 1.1) return { grade: 'C', color: 'yellow', label: 'At Capacity', ringColor: COLOR_WARNING };
+ if (utilization < 1.25) return { grade: 'D', color: 'orange', label: 'Over Capacity', ringColor: COLOR_ORANGE_ALT };
+ return { grade: 'F', color: 'red', label: 'Critical', ringColor: COLOR_ERROR_STRONG };
 }
 
 /** Groups issues so subtasks appear immediately after their parent story. */
@@ -189,7 +191,7 @@ function PodRecommenderCard({
 }: PodCardProps) {
  const isDark = useDarkMode();
  const [expanded, setExpanded] = useState(true);
- const [issueFilter, setIssueFilter] = useState<'All' | 'Story' | 'Bug' | 'Task' | 'Sub-task'>('All');
+ const [issueFilter, setIssueFilter] = useState<'All' | 'Story' | 'Bug' | 'Task' | 'Sub-task'>('Story');
  const [issueSort, setIssueSort] = useState<'grouped' | 'status' | 'sp' | 'assignee'>('grouped');
  const [issueSearch, setIssueSearch] = useState('');
 
@@ -392,7 +394,7 @@ function PodRecommenderCard({
  {/* Sprint demand (planning matrix) */}
  <Box style={{ textAlign: 'center' }}>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>Plan Demand</Text>
- <Text fw={800} size="xl" style={{ color: utilization > 1.0 ? '#EF4444' : (isDark ? '#fff' : DEEP_BLUE) }}>
+ <Text fw={800} size="xl" style={{ color: utilization > 1.0 ? COLOR_ERROR_STRONG : (isDark ? '#fff' : DEEP_BLUE) }}>
  {monthGap ? `${Math.round(sprintDemand)} hrs` : '—'}
  </Text>
  <Text size="xs" c="dimmed">{sortedProjects.length} project(s)</Text>
@@ -417,7 +419,7 @@ function PodRecommenderCard({
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>Available</Text>
  </Tooltip>
  <Text fw={800} size="xl" style={{
- color: availableBandwidth < 0 ? '#EF4444' : availableBandwidth > sprintCapacity * 0.35 ? '#3B82F6' : '#22C55E',
+ color: availableBandwidth < 0 ? COLOR_ERROR_STRONG : availableBandwidth > sprintCapacity * 0.35 ? COLOR_BLUE : COLOR_GREEN,
  }}>
  {monthGap ? `${Math.round(availableBandwidth)} hrs` : '—'}
  </Text>
@@ -562,8 +564,8 @@ function PodRecommenderCard({
  </Table.Thead>
  <Table.Tbody>
  {visibleIssues.map((issue) => {
- const ts = ISSUE_TYPE_COLORS[issue.issueType] ?? { bg: '#EFF6FF', text: '#3B82F6' };
- const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? '#94A3B8';
+ const ts = ISSUE_TYPE_COLORS[issue.issueType] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
+ const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? TEXT_SUBTLE;
  const done = issue.statusCategory === 'Done';
  const isChild = issue._isSubtask && issue._depth === 1;
  return (
@@ -571,7 +573,7 @@ function PodRecommenderCard({
  key={issue.key}
  style={{
  opacity: done ? 0.7 : 1,
- background: isChild ? '#F8FAFC' : undefined,
+ background: isChild ? (isDark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT) : undefined,
  }}
  >
  <Table.Td>
@@ -582,11 +584,15 @@ function PodRecommenderCard({
  <Anchor href={`${jiraBaseUrl}/browse/${issue.key}`} target="_blank" fw={600} size="xs">
  {issue.key}
  </Anchor>
- <IconExternalLink size={10} color="#94A3B8" />
+ <IconExternalLink size={10} color={TEXT_SUBTLE} />
  </Group>
  </Table.Td>
  <Table.Td>
- <Badge size="xs" style={{ background: ts.bg, color: ts.text, border: `1px solid ${ts.text}33` }}>
+ <Badge size="xs" style={{
+   background: isDark ? `${ts.text}22` : ts.bg,
+   color: ts.text,
+   border: `1px solid ${ts.text}33`,
+ }}>
  {issue.issueType}
  </Badge>
  </Table.Td>
@@ -602,7 +608,7 @@ function PodRecommenderCard({
  paddingLeft: isChild ? 8 : 0,
  }}
  >
- {done && <IconCheck size={10} style={{ marginRight: 3, color: '#22C55E', display: 'inline', verticalAlign: 'middle' }} />}
+ {done && <IconCheck size={10} style={{ marginRight: 3, color: COLOR_GREEN, display: 'inline', verticalAlign: 'middle' }} />}
  {issue.summary}
  </Text>
  </Tooltip>
@@ -671,7 +677,8 @@ export default function SprintPlanningRecommenderPage() {
  const recommendMutation = useMutation<ScopeRecommendResponse, Error, ScopeRecommendRequest>({
    mutationFn: (body) => apiClient.post('/sprints/recommend', body).then(r => r.data),
    onSuccess: (data) => setRecResult(data),
- });
+   onError: (e: unknown) => notifications.show({ title: 'Recommendation failed', message: (e as Error).message || 'Could not generate recommendation.', color: 'red' }),
+  });
  const [podHealthFilter, setPodHealthFilter] = useState<PodHealthFilter>('all');
  const [podSortBy, setPodSortBy] = useState<PodSortBy>('name');
  const [podSearch, setPodSearch] = useState('');
@@ -930,20 +937,42 @@ export default function SprintPlanningRecommenderPage() {
  return result;
  }, [allPods, podSearch, podHealthFilter, podSortBy, podUtilization, jiraByPod, gapByPod]);
 
+ // CSV export function
+ const exportSprintCsv = () => {
+ const headers = ['POD Name', 'Project Capacity (hrs)', 'Plan Demand (hrs)', 'Utilization', 'Health Grade', 'Status'];
+ const rows = filteredSortedPods.map(pod => {
+ const gap = pod.capacityPodId != null ? gapByPod.get(pod.capacityPodId) : null;
+ const util = podUtilization.get(pod.podName) ?? 0;
+ const health = healthScore(util);
+ const capacity = gap ? Math.round(gap.capacityHours * sprintFraction) : 0;
+ const demand = gap ? Math.round(gap.demandHours * sprintFraction) : 0;
+ const utilPct = (util * 100).toFixed(1);
+ return [
+ pod.podName,
+ capacity,
+ demand,
+ `${utilPct}%`,
+ health.grade,
+ health.label,
+ ].map(v => `"${v}"`).join(',');
+ });
+ const csv = [headers.map(h => `"${h}"`).join(','), ...rows].join('\n');
+ const blob = new Blob([csv], { type: 'text/csv' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = `sprint-plan-${activeSprint?.name || 'export'}-${new Date().toISOString().slice(0, 10)}.csv`;
+ a.click();
+ URL.revokeObjectURL(url);
+ notifications.show({ title: 'Export complete', message: `CSV exported with ${filteredSortedPods.length} POD(s).`, color: 'green' });
+ };
+
  return (
+ <PPPageLayout title="Sprint Planning" subtitle="AI-powered scope recommendations based on team capacity" animate>
  <Stack className="page-enter stagger-children">
  {/* ── Header ─────────────────────────────────────────────────────────── */}
  <Group justify="space-between" align="flex-start" className="slide-in-left">
  <Group gap="sm">
- <ThemeIcon size="xl" radius="md" color="violet" variant="light">
- <IconBrain size={22} />
- </ThemeIcon>
- <Box>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Sprint Planning Recommender</Title>
- <Text size="sm" c="dimmed">
- Capacity vs demand analysis for leadership and scrum masters
- </Text>
- </Box>
  </Group>
  <Select
  w={320}
@@ -1128,7 +1157,7 @@ export default function SprintPlanningRecommenderPage() {
  <SimpleGrid cols={4}>
  <Paper
  withBorder p="sm" ta="center"
- style={{ cursor: 'pointer', borderColor: podHealthFilter === 'all' ? DEEP_BLUE : undefined }}
+ style={{ cursor: 'pointer', borderColor: podHealthFilter === 'all' ? (isDark ? 'rgba(255,255,255,0.55)' : DEEP_BLUE) : undefined }}
  onClick={() => setPodHealthFilter('all')}
  >
  <Text size="xs" c="dimmed" fw={600} tt="uppercase">PODs</Text>
@@ -1139,33 +1168,33 @@ export default function SprintPlanningRecommenderPage() {
  </Paper>
  <Paper
  withBorder p="sm" ta="center"
- style={{ cursor: 'pointer', borderColor: podHealthFilter === 'over' ? '#EF4444' : overCount > 0 ? '#EF444433' : undefined }}
+ style={{ cursor: 'pointer', borderColor: podHealthFilter === 'over' ? COLOR_ERROR_STRONG : overCount > 0 ? '#EF444433' : undefined }}
  onClick={() => setPodHealthFilter(f => f === 'over' ? 'all' : 'over')}
  >
  <Group gap="xs" justify="center" mb={2}>
- <IconTrendingUp size={14} color="#EF4444" />
+ <IconTrendingUp size={14} color={COLOR_ERROR_STRONG} />
  <Text size="xs" c="red" fw={600} tt="uppercase">Over Capacity</Text>
  </Group>
  <Text fw={800} size="xl" c={overCount > 0 ? 'red' : 'dimmed'}>{overCount}</Text>
  </Paper>
  <Paper
  withBorder p="sm" ta="center"
- style={{ cursor: 'pointer', borderColor: podHealthFilter === 'under' ? '#3B82F6' : underCount > 0 ? '#3B82F633' : undefined }}
+ style={{ cursor: 'pointer', borderColor: podHealthFilter === 'under' ? COLOR_BLUE : underCount > 0 ? '#3B82F633' : undefined }}
  onClick={() => setPodHealthFilter(f => f === 'under' ? 'all' : 'under')}
  >
  <Group gap="xs" justify="center" mb={2}>
- <IconTrendingDown size={14} color="#3B82F6" />
+ <IconTrendingDown size={14} color={COLOR_BLUE} />
  <Text size="xs" c="blue" fw={600} tt="uppercase">Under-utilized</Text>
  </Group>
  <Text fw={800} size="xl" c={underCount > 0 ? 'blue' : 'dimmed'}>{underCount}</Text>
  </Paper>
  <Paper
  withBorder p="sm" ta="center"
- style={{ cursor: 'pointer', borderColor: podHealthFilter === 'healthy' ? '#22C55E' : '#22C55E33' }}
+ style={{ cursor: 'pointer', borderColor: podHealthFilter === 'healthy' ? COLOR_GREEN : '#22C55E33' }}
  onClick={() => setPodHealthFilter(f => f === 'healthy' ? 'all' : 'healthy')}
  >
  <Group gap="xs" justify="center" mb={2}>
- <IconEqual size={14} color="#22C55E" />
+ <IconEqual size={14} color={COLOR_GREEN} />
  <Text size="xs" c="green" fw={600} tt="uppercase">Healthy</Text>
  </Group>
  <Text fw={800} size="xl" c="green">{healthyCount}</Text>
@@ -1213,6 +1242,16 @@ export default function SprintPlanningRecommenderPage() {
  </Badge>
  )}
  <Text size="xs" c="dimmed">{filteredSortedPods.length} of {allPods.length} PODs</Text>
+ <Button
+ variant="light"
+ color="teal"
+ size="xs"
+ leftSection={<IconDownload size={14} />}
+ onClick={exportSprintCsv}
+ disabled={filteredSortedPods.length === 0}
+ >
+ Export CSV
+ </Button>
  </Group>
  )}
 
@@ -1271,7 +1310,7 @@ export default function SprintPlanningRecommenderPage() {
  {!isLoading && activeSprint && filteredSortedPods.length === 0 && allPods.length > 0 && (
  <Center py="lg">
  <Stack align="center" gap="xs">
- <IconFilter size={24} color="#94A3B8" />
+ <IconFilter size={24} color={TEXT_SUBTLE} />
  <Text size="sm" c="dimmed">No PODs match the current filter.</Text>
  <Button variant="subtle" size="xs" onClick={() => { setPodHealthFilter('all'); setPodSearch(''); }}>
  Clear filters
@@ -1280,5 +1319,6 @@ export default function SprintPlanningRecommenderPage() {
  </Center>
  )}
  </Stack>
+ </PPPageLayout>
  );
 }

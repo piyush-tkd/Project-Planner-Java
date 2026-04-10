@@ -141,6 +141,96 @@ public class NlpRoutingCatalog {
                 "get_project_estimates", Map.of(), "name", "SUMMARY", "DATA_QUERY", null, 0.92);
     }
 
+    // ── Autocomplete suggestions ──────────────────────────────────────────────
+
+    /**
+     * A curated list of human-readable example phrases, one per distinct query type.
+     * Used by the smart autocomplete endpoint to return matching suggestions as the
+     * user types. Ordered by most-commonly-used first.
+     */
+    private static final List<String> EXAMPLE_PHRASES = List.of(
+            // Projects
+            "Show me P0 projects",
+            "Show me P1 projects",
+            "Show me P2 projects",
+            "List all active projects",
+            "Show me on-hold projects",
+            "Show completed projects",
+            "List all projects",
+            "Show projects owned by [name]",
+
+            // Resources
+            "Show me all developers",
+            "List all QA engineers",
+            "Show me business analysts",
+            "Show me tech leads",
+            "List all resources",
+            "Show me the team members",
+
+            // Profiles
+            "Tell me about project [name]",
+            "Tell me about pod [name]",
+            "Who is [name]",
+            "Details for [name]",
+
+            // Analytics
+            "Show me the portfolio summary",
+            "Portfolio overview",
+            "Show team composition",
+            "What is the headcount?",
+            "Show resource utilization",
+            "Show capacity summary",
+            "What is the available capacity?",
+            "Show cost rates",
+            "Show billing rates",
+
+            // Sprints & Releases
+            "Show me the current sprint",
+            "What is the active sprint?",
+            "Show upcoming sprints",
+            "Show upcoming releases",
+            "Show sprint allocations",
+
+            // Effort
+            "Show effort patterns",
+            "Show role effort mix",
+
+            // Dependencies & Estimates
+            "Show dependencies for project [name]",
+            "Show estimates for project [name]",
+            "What is [name]'s availability?",
+
+            // Comparison
+            "Compare pod [A] and pod [B]",
+            "Compare project [A] and project [B]"
+    );
+
+    /**
+     * Return up to {@code limit} example phrases that match (contain) the partial query.
+     * Matching is case-insensitive. Used by the autocomplete endpoint.
+     */
+    public List<String> getSuggestions(String partialQuery, int limit) {
+        if (partialQuery == null || partialQuery.isBlank()) return List.of();
+        String lower = partialQuery.trim().toLowerCase();
+
+        return EXAMPLE_PHRASES.stream()
+                .filter(phrase -> {
+                    // Prefix match first, then substring match
+                    String phraseLower = phrase.toLowerCase();
+                    return phraseLower.startsWith(lower) || phraseLower.contains(lower);
+                })
+                .sorted((a, b) -> {
+                    // Prefer prefix matches over substring matches
+                    boolean aPrefix = a.toLowerCase().startsWith(lower);
+                    boolean bPrefix = b.toLowerCase().startsWith(lower);
+                    if (aPrefix && !bPrefix) return -1;
+                    if (!aPrefix && bPrefix) return 1;
+                    return a.compareTo(b);
+                })
+                .limit(limit)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     private void addEntry(String regex, String toolName, Map<String, String> baseParams,
                            String captureParam, String shape, String intent,
                            String drillDown, double confidence) {

@@ -37,7 +37,7 @@ import {
   IconTrendingUp,
 } from '@tabler/icons-react';
 
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, CHART_COLORS, COLOR_ORANGE_ALT, DARK_BG, DARK_BORDER, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, SHADOW } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -157,15 +157,15 @@ export default function ResourceForecastPage() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <PageError error={error} />;
 
-  const textColor = dark ? '#E9ECEF' : '#2C3E50';
-  const gridColor = dark ? '#373A40' : '#E9ECEF';
-  const bgColor = dark ? '#1A1B1E' : '#FFFFFF';
+  const textColor = dark ? GRAY_100 : '#2C3E50';
+  const gridColor = dark ? DARK_BORDER : GRAY_100;
+  const bgColor = dark ? DARK_BG : '#FFFFFF';
 
   return (
     <Stack gap="lg" p="lg">
       {/* Header */}
       <div>
-        <Title order={1} fw={700} size="h1" c={dark ? '#FFF' : '#1A1B1E'}>
+        <Title order={1} fw={700} size="h1" c={dark ? '#FFF' : DARK_BG}>
           Resource Forecasting
         </Title>
         <Text c="dimmed" size="sm" mt={4}>
@@ -245,7 +245,7 @@ export default function ResourceForecastPage() {
                 labelStyle={{ color: textColor }}
                 formatter={(value) => [parseFloat(String(value)).toFixed(2), 'FTE']}
               />
-              <Bar dataKey="value" fill={AQUA} name="FTE" radius={[8, 8, 0, 0]} />
+              <Bar animationDuration={600} dataKey="value" fill={AQUA_HEX} name="FTE" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -261,7 +261,7 @@ export default function ResourceForecastPage() {
                 labelStyle={{ color: textColor }}
                 formatter={(value) => [value, 'Resources']}
               />
-              <Bar dataKey="value" fill={dark ? AQUA : DEEP_BLUE} name="Resources" radius={[8, 8, 0, 0]} />
+              <Bar animationDuration={600} dataKey="value" fill={dark ? AQUA : DEEP_BLUE} name="Resources" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -284,20 +284,20 @@ export default function ResourceForecastPage() {
               <Area
                 type="monotone"
                 dataKey="totalCapacityHours"
-                fill={AQUA}
-                stroke={AQUA}
+                fill={AQUA_HEX}
+                stroke={AQUA_HEX}
                 fillOpacity={dark ? 0.25 : 0.35}
                 name="Capacity"
               />
               <Area
                 type="monotone"
                 dataKey="totalDemandHours"
-                fill="#f97316"
-                stroke="#f97316"
+                fill={COLOR_ORANGE_ALT}
+                stroke={COLOR_ORANGE_ALT}
                 fillOpacity={dark ? 0.3 : 0.25}
                 name="Demand"
               />
-              <Line type="monotone" dataKey="netGapHours" stroke="#a3e635" strokeWidth={2} dot={false} name="Net Gap" />
+              <Line animationDuration={600} type="monotone" dataKey="netGapHours" stroke="#a3e635" strokeWidth={2} dot={false} name="Net Gap" />
             </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>

@@ -32,11 +32,12 @@ public class JiraAnalyticsService {
     private final JiraIssueFixVersionRepository fixVersionRepo;
     private final JiraIssueWorklogRepository worklogRepo;
     private final JiraSyncStatusRepository syncStatusRepo;
+    private final JiraSupportBoardRepository supportBoardRepo;
 
     /* ── Main aggregation (now from DB) ───────────────────────────────── */
 
-    @Cacheable(value = "jira-analytics", key = "#months + '-' + (#podIds != null ? #podIds.toString() : 'all')")
-    public Map<String, Object> getAnalytics(int months, List<Long> podIds) {
+    @Cacheable(value = "jira-analytics", key = "#months + '-' + (#podIds != null ? #podIds.toString() : 'all') + '-sb-' + (#supportBoardIds != null ? #supportBoardIds.toString() : 'none')")
+    public Map<String, Object> getAnalytics(int months, List<Long> podIds, List<Long> supportBoardIds) {
 
         List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
         if (podIds != null && !podIds.isEmpty()) {
@@ -48,6 +49,16 @@ public class JiraAnalyticsService {
                 .map(JiraPodBoard::getJiraProjectKey)
                 .distinct()
                 .collect(Collectors.toList());
+
+        // Also add project keys from selected support boards
+        if (supportBoardIds != null && !supportBoardIds.isEmpty()) {
+            List<String> sbKeys = supportBoardRepo.findByEnabledTrue().stream()
+                    .filter(sb -> supportBoardIds.contains(sb.getId()) && sb.getProjectKey() != null)
+                    .map(JiraSupportBoard::getProjectKey)
+                    .distinct()
+                    .collect(Collectors.toList());
+            sbKeys.forEach(k -> { if (!projectKeys.contains(k)) projectKeys.add(k); });
+        }
 
         if (projectKeys.isEmpty()) {
             return Map.of("error", "No Jira PODs configured or selected.");
@@ -119,6 +130,17 @@ public class JiraAnalyticsService {
         result.put("byPod", countByPod(allIssues, keyToPod));
         result.put("byFixVersion", countByMultiValue(allIssues, fixVersionsByKey));
 
+        // ── Extended dimension breakdowns ─────────────────────────────────
+        result.put("byEpic", countByField(allIssues, JiraSyncedIssue::getEpicName));
+        result.put("byReporter", countByField(allIssues, JiraSyncedIssue::getReporterDisplayName));
+        result.put("byResolution", countByField(resolvedIssues, JiraSyncedIssue::getResolution));
+        result.put("bySprint", countByField(allIssues, JiraSyncedIssue::getSprintName));
+        result.put("byProject", countByField(allIssues, JiraSyncedIssue::getProjectKey));
+        result.put("byStatusCategory", countByField(allIssues, JiraSyncedIssue::getStatusCategory));
+        result.put("byCreator", countByField(allIssues, JiraSyncedIssue::getCreatorDisplayName));
+        result.put("byCreatedMonth", countByMonth(allIssues, JiraSyncedIssue::getCreatedAt));
+        result.put("byResolvedMonth", countByMonth(resolvedIssues, JiraSyncedIssue::getResolutionDate));
+
         // ── Created vs Resolved trend (weekly) ────────────────────────────
         result.put("createdVsResolved", buildCreatedVsResolved(createdIssues, resolvedIssues, months));
 
@@ -158,7 +180,19 @@ public class JiraAnalyticsService {
             return m;
         }).collect(Collectors.toList());
 
-        return Map.of("pods", podList);
+        List<JiraSupportBoard> supportBoards = supportBoardRepo.findByEnabledTrue();
+        List<Map<String, Object>> sbList = supportBoards.stream().map(sb -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", sb.getId());
+            m.put("name", sb.getName());
+            m.put("projectKey", sb.getProjectKey());
+        return m;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("pods", podList);
+        result.put("supportBoards", sbList);
+        return result;
     }
 
     /* ── KPI computation ─────────────────────────────────────────────── */
@@ -221,6 +255,27 @@ public class JiraAnalyticsService {
         }
         return counts.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("name", e.getKey());
+                    m.put("count", e.getValue());
+                    return m;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /** Group issues by year-month of a LocalDateTime field (e.g. createdAt, resolutionDate). */
+    private List<Map<String, Object>> countByMonth(List<JiraSyncedIssue> issues,
+                                                     java.util.function.Function<JiraSyncedIssue, java.time.LocalDateTime> extractor) {
+        Map<String, Integer> counts = new java.util.TreeMap<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+        for (var issue : issues) {
+            java.time.LocalDateTime dt = extractor.apply(issue);
+            if (dt == null) continue;
+            String key = dt.format(fmt);
+            counts.merge(key, 1, Integer::sum);
+        }
+        return counts.entrySet().stream()
                 .map(e -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("name", e.getKey());

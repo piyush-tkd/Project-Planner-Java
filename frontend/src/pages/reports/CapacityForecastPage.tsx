@@ -9,7 +9,7 @@ import {
   Badge,
   Progress,
   Table,
-  Loader,
+  Skeleton,
   Center,
   ThemeIcon,
   Alert,
@@ -24,7 +24,7 @@ import {
   IconTrendingUp,
 } from '@tabler/icons-react';
 import { useCapacityGap } from '../../api/reports';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, SURFACE_ERROR_LIGHT, SURFACE_ORANGE, SURFACE_SELECTED } from '../../brandTokens';
 import { PodMonthGap } from '../../types/report';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -68,9 +68,9 @@ const DARK_CARD_STYLES = {
   healthy:  { bg: 'rgba(45,204,211,0.10)', border: 'rgba(45,204,211,0.35)',labelColor: '#63e6be', valueColor: '#fff' },
 };
 const LIGHT_CARD_STYLES = {
-  critical: { bg: 'rgba(255,235,235,0.8)', border: 'rgba(250,82,82,0.3)',  labelColor: '#c92a2a', valueColor: '#212529' },
-  warning:  { bg: 'rgba(255,249,219,0.8)', border: 'rgba(245,159,0,0.35)', labelColor: '#e67700', valueColor: '#212529' },
-  healthy:  { bg: 'rgba(235,251,248,0.8)', border: 'rgba(45,204,211,0.3)', labelColor: '#087f5b', valueColor: '#212529' },
+  critical: { bg: SURFACE_ERROR_LIGHT, border: 'rgba(250,82,82,0.3)',  labelColor: COLOR_ERROR_DEEP, valueColor: 'var(--pp-text)' },
+  warning:  { bg: SURFACE_ORANGE, border: 'rgba(245,159,0,0.35)', labelColor: COLOR_ORANGE_DARK, valueColor: 'var(--pp-text)' },
+  healthy:  { bg: SURFACE_SELECTED, border: 'rgba(45,204,211,0.3)', labelColor: '#087f5b', valueColor: 'var(--pp-text)' },
 };
 
 export default function CapacityForecastPage() {
@@ -130,7 +130,7 @@ export default function CapacityForecastPage() {
 
   if (isLoading) {
     return (
-      <Center py={120}><Loader size="lg" /></Center>
+      <Stack gap="xs" p="md">{[...Array(6)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
     );
   }
 

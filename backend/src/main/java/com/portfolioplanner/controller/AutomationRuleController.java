@@ -3,6 +3,7 @@ package com.portfolioplanner.controller;
 import com.portfolioplanner.domain.model.AutomationRule;
 import com.portfolioplanner.domain.repository.AutomationRuleRepository;
 import com.portfolioplanner.dto.AutomationRuleDto;
+import com.portfolioplanner.service.WebhookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 public class AutomationRuleController {
 
     private final AutomationRuleRepository repo;
+    private final WebhookService webhookService;
 
     // ── List ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,9 @@ public class AutomationRuleController {
         rule.setLastFiredAt(LocalDateTime.now());
         rule.setFireCount(rule.getFireCount() + 1);
         repo.save(rule);
+
+        // Fire webhook notification (async — does not block the response)
+        webhookService.fireAutomationRuleFired(rule.getName(), rule.getTriggerEvent());
 
         // In production this would invoke the actual action executor.
         // For now we log and return the rule payload so the UI can confirm.

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack, Title, Text, Button, Center, ThemeIcon } from '@mantine/core';
-import { FONT_FAMILY, TEXT_SECONDARY } from '../../brandTokens';
+import { DARK_TEXT, FONT_FAMILY, GRAY_200, GRAY_400, TEXT_SECONDARY} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface EmptyStateProps {
@@ -39,7 +39,7 @@ export default function EmptyState({
           style={{
             fontFamily: FONT_FAMILY,
             fontWeight: 600,
-            color: dark ? '#e0e0e0' : '#1f2937',
+            color: dark ? GRAY_200 : DARK_TEXT,
           }}
         >
           {title}
@@ -48,7 +48,7 @@ export default function EmptyState({
         <Text
           size="sm"
           ta="center"
-          style={{ color: dark ? '#9ca3af' : TEXT_SECONDARY, lineHeight: 1.6 }}
+          style={{ color: dark ? GRAY_400 : TEXT_SECONDARY, lineHeight: 1.6 }}
         >
           {description}
         </Text>

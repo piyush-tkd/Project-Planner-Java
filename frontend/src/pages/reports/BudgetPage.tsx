@@ -321,7 +321,7 @@ export default function BudgetPage() {
  [formatCurrencyFull(v), item?.payload?.fullName ?? '']}
  contentStyle={{ fontSize: 12 }}
  />
- <Bar dataKey="spend" fill="var(--mantine-color-blue-6)" radius={[3, 3, 0, 0]} />
+ <Bar animationDuration={600} dataKey="spend" fill="var(--mantine-color-blue-6)" radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
  </ChartCard>
@@ -346,9 +346,9 @@ export default function BudgetPage() {
  <YAxis tickFormatter={v => formatCurrency(v)} tick={{ fontSize: 11 }} />
  <RechartTooltip formatter={(v: number) => formatCurrencyFull(v)} contentStyle={{ fontSize: 12 }} />
  {viewMode === 'monthly' ? (
- <Line type="monotone" dataKey="spend" stroke="var(--mantine-color-green-6)" strokeWidth={2} dot={{ r: 3 }} name="Monthly" />
+ <Line animationDuration={600} type="monotone" dataKey="spend" stroke="var(--mantine-color-green-6)" strokeWidth={2} dot={{ r: 3 }} name="Monthly" />
  ) : (
- <Line type="monotone" dataKey="cumulative" stroke="var(--mantine-color-violet-6)" strokeWidth={2} dot={{ r: 3 }} name="Cumulative" />
+ <Line animationDuration={600} type="monotone" dataKey="cumulative" stroke="var(--mantine-color-violet-6)" strokeWidth={2} dot={{ r: 3 }} name="Cumulative" />
  )}
  </LineChart>
  </ResponsiveContainer>

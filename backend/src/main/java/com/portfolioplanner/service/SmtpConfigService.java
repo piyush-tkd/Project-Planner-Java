@@ -23,7 +23,8 @@ import java.util.Properties;
 @RequiredArgsConstructor
 public class SmtpConfigService {
 
-    private final SmtpConfigRepository repo;
+    private final SmtpConfigRepository    repo;
+    private final SmtpPasswordEncryptor   encryptor;
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
@@ -71,8 +72,9 @@ public class SmtpConfigService {
         if (dto.getEnabled()     != null) cfg.setEnabled(dto.getEnabled());
 
         // Only overwrite the stored password when a non-blank value is supplied
+        // Encrypt before persisting so the DB never holds plain-text credentials
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
-            cfg.setPassword(dto.getPassword());
+            cfg.setPassword(encryptor.encrypt(dto.getPassword()));
         }
 
         repo.save(cfg);
@@ -102,7 +104,8 @@ public class SmtpConfigService {
         sender.setHost(cfg.getHost());
         sender.setPort(cfg.getPort());
         sender.setUsername(cfg.getUsername());
-        sender.setPassword(cfg.getPassword());
+        // Decrypt password at use-time; plain-text legacy values pass through unchanged
+        sender.setPassword(encryptor.decrypt(cfg.getPassword()));
         sender.setDefaultEncoding("UTF-8");
 
         Properties props = sender.getJavaMailProperties();

@@ -511,8 +511,8 @@ public class JiraClient {
                     .queryParam("fields",
                             "summary,status,assignee,timespent,timeoriginalestimate,timeestimate," +
                             spFields + "," +
-                            "story_points,issuetype,priority,labels,created,resolutiondate," +
-                            "customfield_10014,parent," +
+                            "story_points,issuetype,priority,labels,created,updated,resolutiondate," +
+                            "customfield_10014,customfield_10020,parent," +
                             "fixVersions,components,worklog")
                     .queryParam("maxResults", pageSize)
                     .queryParam("startAt", startAt)

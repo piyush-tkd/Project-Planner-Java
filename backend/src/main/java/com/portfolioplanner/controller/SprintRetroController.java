@@ -18,9 +18,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -64,19 +67,36 @@ public class SprintRetroController {
 
     // ── Endpoints ────────────────────────────────────────────────────────────
 
-    /** List all synced sprints (closed ones) with retro status */
+    /**
+     * List closed sprints with retro status, ordered most-recent first.
+     *
+     * @param projectKey optional filter — only sprints for this project
+     * @param limit      max results to return (default 150, max 500)
+     */
     @GetMapping("/sprints")
     public List<SprintSummaryItem> listSprints(
-            @RequestParam(required = false) String projectKey) {
+            @RequestParam(required = false) String projectKey,
+            @RequestParam(defaultValue = "150") int limit) {
+
+        // Cap at 500 to prevent accidental full table scans via the API
+        int effectiveLimit = Math.min(Math.max(limit, 1), 500);
+
         List<JiraSyncedSprint> sprints = projectKey != null && !projectKey.isBlank()
             ? sprintRepo.findByProjectKeyOrderByStartDateDesc(projectKey)
             : sprintRepo.findAll();
 
-        List<Long> retrodIds = retroRepo.findAll().stream()
-            .map(SprintRetroSummary::getSprintJiraId).toList();
+        // Only retro IDs — lightweight fetch for exists-check
+        Set<Long> retroIds = retroRepo.findAll().stream()
+            .map(SprintRetroSummary::getSprintJiraId)
+            .collect(Collectors.toSet());
 
         return sprints.stream()
             .filter(s -> "closed".equalsIgnoreCase(s.getState()))
+            // Sort most-recent first when returning all projects (findAll has no order guarantee)
+            .sorted(Comparator.comparing(
+                (JiraSyncedSprint s) -> s.getEndDate() != null ? s.getEndDate() : java.time.LocalDateTime.MIN,
+                Comparator.reverseOrder()))
+            .limit(effectiveLimit)
             .map(s -> new SprintSummaryItem(
                 s.getSprintJiraId(),
                 s.getName(),
@@ -84,7 +104,7 @@ public class SprintRetroController {
                 s.getState(),
                 s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : null,
                 s.getEndDate()   != null ? s.getEndDate().toLocalDate().toString()   : null,
-                retrodIds.contains(s.getSprintJiraId())
+                retroIds.contains(s.getSprintJiraId())
             ))
             .collect(Collectors.toList());
     }
@@ -107,6 +127,17 @@ public class SprintRetroController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No retro for this sprint"));
     }
 
+    /** Delete a retro summary by its DB id */
+    @DeleteMapping("/summaries/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
+    public ResponseEntity<Void> deleteRetro(@PathVariable Long id) {
+        if (!retroRepo.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Retro not found");
+        }
+        retroRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     /** Generate (or regenerate) a retro summary for a closed sprint */
     @PostMapping("/generate/{sprintJiraId}")
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
@@ -119,10 +150,27 @@ public class SprintRetroController {
         List<String> issueKeys = sprintLinks.stream()
             .map(JiraSprintIssue::getIssueKey).toList();
 
-        // Fetch synced issue details
-        List<JiraSyncedIssue> issues = issueKeys.isEmpty()
-            ? List.of()
-            : issueRepo.findByIssueKeyIn(issueKeys);
+        // Fetch synced issue details.
+        // For older closed sprints synced before historical link preservation was introduced,
+        // jira_sprint_issue may have no rows for this sprint. Fall back to querying issues
+        // by their primary sprintId field — this covers any issue whose "current" sprint at
+        // last sync was this one (i.e. it was never moved to a later sprint).
+        List<JiraSyncedIssue> issues;
+        if (!issueKeys.isEmpty()) {
+            issues = issueRepo.findByIssueKeyIn(issueKeys);
+        } else {
+            issues = issueRepo.findBySprintId(sprintJiraId);
+            // Also backfill the join table so future lookups and re-generates are faster
+            if (!issues.isEmpty()) {
+                Set<String> existing = sprintIssueRepo.findBySprintJiraId(sprintJiraId).stream()
+                    .map(JiraSprintIssue::getIssueKey).collect(java.util.stream.Collectors.toSet());
+                for (JiraSyncedIssue i : issues) {
+                    if (!existing.contains(i.getIssueKey())) {
+                        sprintIssueRepo.save(new JiraSprintIssue(sprintJiraId, i.getIssueKey()));
+                    }
+                }
+            }
+        }
 
         int total     = issues.size();
         int completed = (int) issues.stream()
@@ -133,11 +181,19 @@ public class SprintRetroController {
             .filter(i -> "done".equalsIgnoreCase(i.getStatusCategory()) && i.getStoryPoints() != null)
             .mapToDouble(JiraSyncedIssue::getStoryPoints).sum();
 
-        // Velocity delta: compare with previous retro for same project key
+        // Velocity delta: compare with the most recently completed sprint that ended BEFORE
+        // this one (using actual sprint end dates, not retro generation timestamps).
+        // This ensures correct ordering even when retros are generated out of chronological order.
         BigDecimal velocityDelta = null;
         if (sprint.getProjectKey() != null) {
-            List<SprintRetroSummary> prevRetros = retroRepo
-                .findByProjectKeyOrderByGeneratedAtDesc(sprint.getProjectKey());
+            // Use sprint's completeDate if available; fall back to endDate; default to far-future
+            // so that sprints without a recorded end date still exclude themselves correctly.
+            LocalDateTime thisSprintEnded = sprint.getCompleteDate() != null
+                ? sprint.getCompleteDate()
+                : sprint.getEndDate() != null ? sprint.getEndDate() : LocalDateTime.now();
+
+            List<SprintRetroSummary> prevRetros = retroRepo.findPreviousForVelocity(
+                sprint.getProjectKey(), sprintJiraId, thisSprintEnded);
             if (!prevRetros.isEmpty()) {
                 SprintRetroSummary prev = prevRetros.get(0);
                 if (prev.getStoryPointsDone() != null && prev.getStoryPointsDone().doubleValue() > 0) {
@@ -173,6 +229,9 @@ public class SprintRetroController {
         retro.setSprintName(sprint.getName());
         retro.setProjectKey(sprint.getProjectKey());
         retro.setBoardId(sprint.getBoardId());
+        // Store actual sprint end date for chronological velocity ordering
+        retro.setSprintEndDate(sprint.getCompleteDate() != null
+            ? sprint.getCompleteDate() : sprint.getEndDate());
         retro.setCompletedIssues(completed);
         retro.setTotalIssues(total);
         retro.setStoryPointsDone(BigDecimal.valueOf(spDone).setScale(1, RoundingMode.HALF_UP));

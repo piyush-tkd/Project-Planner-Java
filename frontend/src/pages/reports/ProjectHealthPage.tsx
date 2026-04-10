@@ -22,7 +22,7 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
 import { IconAlertTriangle, IconCheck, IconHeartRateMonitor } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_ORANGE, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
 
 interface ProjectResponse {
  id: number;
@@ -75,9 +75,9 @@ const getPriorityColor = (priority: string) => {
 };
 
 const getHealthColor = (level: 'Healthy' | 'At Risk' | 'Critical') => {
- if (level === 'Healthy') return '#51CF66';
+ if (level === 'Healthy') return COLOR_GREEN_LIGHT;
  if (level === 'At Risk') return '#FFD43B';
- return '#FF6B6B';
+ return COLOR_ERROR_LIGHT;
 };
 
 export default function ProjectHealthPage() {
@@ -221,6 +221,7 @@ export default function ProjectHealthPage() {
  const tableRows = filteredScores.map((health) => {
  const timelineStart = health.startMonth;
  const timelineEnd = Math.min(health.startMonth + health.durationMonths, 12);
+ const hoverBg = dark ? 'rgba(255,255,255,0.04)' : SURFACE_SUBTLE;
 
  return (
  <Table.Tr
@@ -228,7 +229,7 @@ export default function ProjectHealthPage() {
  style={{ cursor: 'pointer' }}
  onClick={() => navigate(`/projects/${health.projectId}`)}
  onMouseEnter={(e) => {
- e.currentTarget.style.backgroundColor = '#f8f9fa';
+ e.currentTarget.style.backgroundColor = hoverBg;
  }}
  onMouseLeave={(e) => {
  e.currentTarget.style.backgroundColor = 'transparent';
@@ -252,7 +253,7 @@ export default function ProjectHealthPage() {
  style={{
  position: 'relative',
  height: '24px',
- backgroundColor: '#e9ecef',
+ backgroundColor: dark ? 'rgba(255,255,255,0.1)' : GRAY_100,
  borderRadius: '4px',
  overflow: 'hidden',
  }}
@@ -367,28 +368,28 @@ export default function ProjectHealthPage() {
  <Table fz="xs" highlightOnHover>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Project
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Priority
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Status
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Owner
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Timeline
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  PODs
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Health Score
  </Table.Th>
- <Table.Th style={{ backgroundColor: DEEP_BLUE, color: 'white' }}>
+ <Table.Th style={{ backgroundColor: dark ? '#1f2937' : DEEP_BLUE, color: 'white' }}>
  Risk Factors
  </Table.Th>
  </Table.Tr>
@@ -403,7 +404,7 @@ export default function ProjectHealthPage() {
  style={{
  width: '20px',
  height: '20px',
- backgroundColor: '#51CF66',
+ backgroundColor: COLOR_GREEN_LIGHT,
  borderRadius: '4px',
  }}
  />
@@ -414,7 +415,7 @@ export default function ProjectHealthPage() {
  style={{
  width: '20px',
  height: '20px',
- backgroundColor: '#FFD43B',
+ backgroundColor: COLOR_ORANGE,
  borderRadius: '4px',
  }}
  />
@@ -425,7 +426,7 @@ export default function ProjectHealthPage() {
  style={{
  width: '20px',
  height: '20px',
- backgroundColor: '#FF6B6B',
+ backgroundColor: COLOR_ERROR_LIGHT,
  borderRadius: '4px',
  }}
  />

@@ -14,10 +14,12 @@ import com.portfolioplanner.dto.response.NlpConversationResponse;
 import com.portfolioplanner.service.nlp.NlpCatalogService;
 import com.portfolioplanner.service.nlp.NlpConversationService;
 import com.portfolioplanner.service.nlp.NlpConfigService;
+import com.portfolioplanner.service.nlp.NlpRoutingCatalog;
 import com.portfolioplanner.service.nlp.NlpEmbeddingSyncService;
 import com.portfolioplanner.service.nlp.NlpLearnerService;
 import com.portfolioplanner.service.nlp.NlpInsightService;
 import com.portfolioplanner.service.nlp.NlpService;
+import com.portfolioplanner.service.nlp.NlpStrategyEngine;
 import com.portfolioplanner.service.nlp.NlpVectorSearchService;
 import com.portfolioplanner.service.nlp.NlpToolRegistry;
 import com.portfolioplanner.service.nlp.NlpResponseBuilder;
@@ -49,6 +51,8 @@ public class NlpController {
     private final AppUserRepository userRepo;
     private final NlpToolRegistry toolRegistry;
     private final NlpResponseBuilder responseBuilder;
+    private final NlpStrategyEngine strategyEngine;
+    private final NlpRoutingCatalog routingCatalog;
 
     /** Process a natural language query, optionally with session context for follow-ups. */
     @PostMapping("/query")
@@ -122,10 +126,57 @@ public class NlpController {
         return ResponseEntity.ok(configService.updateConfig(request));
     }
 
+    /**
+     * Smart autocomplete endpoint — returns up to 5 example phrases matching the partial query.
+     * Called on every keystroke (after 300ms debounce) to populate the search dropdown.
+     * Uses the routing catalog's curated phrase list; no DB or LLM involved.
+     */
+    @GetMapping("/suggest")
+    public ResponseEntity<List<String>> suggest(@RequestParam(required = false, defaultValue = "") String q) {
+        if (q.length() < 2) return ResponseEntity.ok(List.of());
+        List<String> suggestions = routingCatalog.getSuggestions(q, 5);
+        return ResponseEntity.ok(suggestions);
+    }
+
     /** Test a specific strategy's availability. */
     @PostMapping("/test-connection")
     public ResponseEntity<NlpConfigResponse> testConnection() {
         return ResponseEntity.ok(configService.getConfig());
+    }
+
+    /**
+     * Health check endpoint — returns the current operational tier of the NLP engine.
+     * Used by the frontend to show a degraded-mode banner when LLM is unavailable.
+     *
+     * Tiers:
+     *   FULL      — pgvector + Ollama both available (full semantic + LLM pipeline)
+     *   DB_ONLY   — pgvector available but Ollama unavailable (routing catalog + rule-based only)
+     *   REGEX_ONLY — pgvector unavailable (deterministic + rule-based only, no vector search)
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> getHealth() {
+        boolean pgvector = vectorSearchService.isPgvectorAvailable();
+        Map<String, Boolean> strategyAvailability = strategyEngine.getStrategyAvailability();
+        boolean ollama = Boolean.TRUE.equals(strategyAvailability.getOrDefault("LOCAL_LLM", false));
+        boolean cloudLlm = Boolean.TRUE.equals(strategyAvailability.getOrDefault("CLOUD_LLM", false));
+
+        String tier;
+        if (pgvector && (ollama || cloudLlm)) {
+            tier = "FULL";
+        } else if (pgvector) {
+            tier = "DB_ONLY";
+        } else {
+            tier = "REGEX_ONLY";
+        }
+
+        Map<String, Object> health = new java.util.LinkedHashMap<>();
+        health.put("pgvector", pgvector);
+        health.put("ollama", ollama);
+        health.put("cloudLlm", cloudLlm);
+        health.put("tier", tier);
+        health.put("strategyAvailability", strategyAvailability);
+        health.put("activeChain", strategyEngine.getChain());
+        return ResponseEntity.ok(health);
     }
 
     // ── Feedback ───────────────────────────────────────────────────────────
@@ -254,6 +305,14 @@ public class NlpController {
     public ResponseEntity<Void> togglePin(@PathVariable Long id, Authentication auth) {
         conversationService.togglePin(id, resolveUsername(auth));
         return ResponseEntity.ok().build();
+    }
+
+    /** Get conversation context JSON for session memory restoration. */
+    @GetMapping("/conversations/{id}/context")
+    public ResponseEntity<String> getConversationContext(@PathVariable Long id, Authentication auth) {
+        return conversationService.getContext(id, resolveUsername(auth))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
     }
 
     private Long resolveUserId(Authentication auth) {

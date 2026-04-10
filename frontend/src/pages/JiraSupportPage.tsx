@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
  Title, Text, Group, Stack, Badge, Tooltip, ActionIcon, Select,
- Table, Paper, Alert, Loader, Center, Tabs, ThemeIcon, Anchor,
+ Table, Paper, Alert, Center, Tabs, ThemeIcon, Anchor,
  Indicator, SimpleGrid, Box, Drawer, Divider, ScrollArea, SegmentedControl, Modal,
  TextInput, Switch, Button,
 } from '@mantine/core';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import { PPPageLayout } from '../components/pp';
+import PageSkeleton from '../components/common/PageSkeleton';
 import { EmptyState } from '../components/ui';
 import CsvToolbar from '../components/common/CsvToolbar';
 import type { CsvColumnDef } from '../utils/csv';
@@ -22,6 +23,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
  useSupportSnapshot, useSupportHistory, useSupportMonthlyThroughput,
  useAllSupportTickets,
@@ -30,30 +32,30 @@ import {
 import { useJiraStatus } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
-import { FONT_FAMILY } from '../brandTokens';
+import { COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_DEEP, COLOR_GREEN_LIGHT, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_LIGHT, FONT_FAMILY, GRAY_300 } from '../brandTokens';
 
 // ── Palette ────────────────────────────────────────────────────────────────────
 
 const PRIORITY_COLORS: Record<string, string> = {
- Critical: '#fa5252', Blocker: '#fa5252', Highest: '#fa5252',
- High: '#fd7e14',
- Medium: '#fab005',
- Low: '#339af0',
- Lowest: '#adb5bd',
+ Critical: COLOR_ERROR, Blocker: COLOR_ERROR, Highest: COLOR_ERROR,
+ High: COLOR_ORANGE,
+ Medium: COLOR_AMBER,
+ Low: COLOR_BLUE_LIGHT,
+ Lowest: GRAY_300,
 };
 
 const STATUS_COLORS: Record<string, string> = {
- 'To Do': '#adb5bd', 'Open': '#adb5bd',
+ 'To Do': GRAY_300, 'Open': GRAY_300,
  'Waiting': '#74c0fc', 'Pending': '#74c0fc',
- 'In Progress': '#339af0',
- 'In Review': '#845ef7',
- 'Blocked': '#fa5252',
- 'Resolved': '#51cf66', 'Done': '#40c057',
+ 'In Progress': COLOR_BLUE_LIGHT,
+ 'In Review': COLOR_VIOLET_LIGHT,
+ 'Blocked': COLOR_ERROR,
+ 'Resolved': COLOR_GREEN_LIGHT, 'Done': COLOR_SUCCESS,
 };
 
 const CHART_PALETTE = [
- '#339af0','#51cf66','#fab005','#fd7e14','#fa5252',
- '#845ef7','#20c997','#f06595','#74c0fc','#a9e34b',
+ COLOR_BLUE_LIGHT,COLOR_GREEN_LIGHT,COLOR_AMBER,COLOR_ORANGE,COLOR_ERROR,
+ COLOR_VIOLET_LIGHT,'#20c997','#f06595','#74c0fc','#a9e34b',
 ];
 
 const PRIORITY_ORDER = ['Critical','Blocker','Highest','High','Medium','Low','Lowest'];
@@ -82,10 +84,10 @@ function getSlaStatus(ticket: SupportTicket): { status: SlaStatus; threshold: nu
 }
 
 const SLA_COLOR: Record<SlaStatus, string> = {
- breached: '#fa5252',
- at_risk: '#fd7e14',
- ok: '#51cf66',
- unknown: '#adb5bd',
+ breached: COLOR_ERROR,
+ at_risk: COLOR_ORANGE,
+ ok: COLOR_GREEN_LIGHT,
+ unknown: GRAY_300,
 };
 
 const SLA_LABEL: Record<SlaStatus, string> = {
@@ -218,7 +220,7 @@ function DonutChart({ data, colorMap, onSliceClick }: {
 
 // ── Horizontal Bar ─────────────────────────────────────────────────────────────
 
-function HBar({ data, color = '#339af0', height = 180, onBarClick }: {
+function HBar({ data, color = COLOR_BLUE_LIGHT, height = 180, onBarClick }: {
  data: { name: string; value: number }[];
  color?: string;
  height?: number;
@@ -257,7 +259,7 @@ function VBar({ data, onBarClick }: {
  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
  <RTooltip formatter={(v: number) => [v, 'created']} contentStyle={{ fontSize: 12 }} />
  <Bar
- dataKey="count" fill="#339af0" radius={[4, 4, 0, 0]} maxBarSize={24}
+ dataKey="count" fill={COLOR_BLUE_LIGHT} radius={[4, 4, 0, 0]} maxBarSize={24}
  cursor={onBarClick ? 'pointer' : undefined}
  onClick={onBarClick ? (entry: { date: string }) => onBarClick(entry.date) : undefined}
  />
@@ -269,12 +271,12 @@ function VBar({ data, onBarClick }: {
 // ── Age Histogram ──────────────────────────────────────────────────────────────
 
 const AGE_BUCKETS = [
- { key: 'today', label: 'Today', color: '#51cf66' },
+ { key: 'today', label: 'Today', color: COLOR_GREEN_LIGHT },
  { key: '1-3d', label: '1–3d', color: '#a9e34b' },
- { key: '4-7d', label: '4–7d', color: '#fab005' },
- { key: '8-14d', label: '8–14d', color: '#fd7e14' },
- { key: '15-30d',label: '15–30d', color: '#fa5252' },
- { key: '30d+', label: '30d+', color: '#c92a2a' },
+ { key: '4-7d', label: '4–7d', color: COLOR_AMBER },
+ { key: '8-14d', label: '8–14d', color: COLOR_ORANGE },
+ { key: '15-30d',label: '15–30d', color: COLOR_ERROR },
+ { key: '30d+', label: '30d+', color: COLOR_ERROR_DEEP },
 ];
 
 // maps bucket label back to the SupportTicket age predicate
@@ -454,7 +456,7 @@ function MonthlyThroughputChart({ months }: { months: number }) {
  });
  }, [data]);
 
- if (isLoading) return <LoadingSpinner variant="table" message="Loading support queue..." />;
+ if (isLoading) return <PageSkeleton variant="table" />;
  if (!chartData.length) return (
  <Center h={180}>
  <Text size="sm" c="dimmed">No data yet — make sure support boards are configured</Text>
@@ -465,10 +467,10 @@ function MonthlyThroughputChart({ months }: { months: number }) {
  const barPairs = data.flatMap((board, i) => {
  const base = CHART_PALETTE[i % CHART_PALETTE.length];
  return [
- <Bar key={`${board.boardName}-created`} dataKey={`${board.boardName} Created`}
+ <Bar animationDuration={600} key={`${board.boardName}-created`} dataKey={`${board.boardName} Created`}
  name={data.length === 1 ? 'Created' : `${board.boardName} Created`}
  fill={base} radius={[3, 3, 0, 0]} maxBarSize={24} />,
- <Bar key={`${board.boardName}-closed`} dataKey={`${board.boardName} Closed`}
+ <Bar animationDuration={600} key={`${board.boardName}-closed`} dataKey={`${board.boardName} Closed`}
  name={data.length === 1 ? 'Closed' : `${board.boardName} Closed`}
  fill={base} fillOpacity={0.4} radius={[3, 3, 0, 0]} maxBarSize={24} />,
  ];
@@ -534,6 +536,7 @@ function MonthlyThroughputChart({ months }: { months: number }) {
 // ── Needs Attention Panel ─────────────────────────────────────────────────────
 
 function NeedsAttentionPanel({ tickets, jiraBaseUrl }: { tickets: SupportTicket[]; jiraBaseUrl?: string }) {
+ const isDark = useDarkMode();
  const urgent = tickets.filter(t => t.stale && URGENT_PRIORITIES.has(t.priority ?? ''));
  if (!urgent.length) return null;
  return (
@@ -549,7 +552,7 @@ function NeedsAttentionPanel({ tickets, jiraBaseUrl }: { tickets: SupportTicket[
  <Stack gap={6}>
  {urgent.map(t => (
  <Group key={t.key} justify="space-between" wrap="nowrap" gap="xs"
- style={{ padding: '6px 8px', borderRadius: 6, background: 'var(--mantine-color-red-0)' }}>
+ style={{ padding: '6px 8px', borderRadius: 6, background: isDark ? 'rgba(239,68,68,0.1)' : 'var(--mantine-color-red-0)' }}>
  <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
  <Badge
  size="xs" variant="filled"
@@ -583,6 +586,7 @@ function NeedsAttentionPanel({ tickets, jiraBaseUrl }: { tickets: SupportTicket[
 function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  ticket: SupportTicket | null; jiraBaseUrl?: string; onClose: () => void;
 }) {
+ const isDark = useDarkMode();
  return (
  <Drawer
  opened={!!ticket}
@@ -615,8 +619,8 @@ function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  <Box>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase">Status</Text>
  <Badge mt={4}
- style={{ background: (STATUS_COLORS[ticket.status ?? ''] ?? '#adb5bd') + '22',
- color: STATUS_COLORS[ticket.status ?? ''] ?? '#adb5bd' }}
+ style={{ background: (STATUS_COLORS[ticket.status ?? ''] ?? GRAY_300) + '22',
+ color: STATUS_COLORS[ticket.status ?? ''] ?? GRAY_300 }}
  variant="light"
  >
  {ticket.status ?? '—'}
@@ -625,8 +629,8 @@ function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  <Box>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase">Priority</Text>
  <Badge mt={4}
- style={{ background: (PRIORITY_COLORS[ticket.priority ?? ''] ?? '#adb5bd') + '22',
- color: PRIORITY_COLORS[ticket.priority ?? ''] ?? '#adb5bd' }}
+ style={{ background: (PRIORITY_COLORS[ticket.priority ?? ''] ?? GRAY_300) + '22',
+ color: PRIORITY_COLORS[ticket.priority ?? ''] ?? GRAY_300 }}
  variant="light"
  >
  {ticket.priority ?? '—'}
@@ -688,7 +692,7 @@ function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  <Text span c="dimmed" fw={400}> · {formatRelative(ticket.lastCommentDate)}</Text>
  )}
  </Text>
- <Paper withBorder p="sm" radius="sm" style={{ background: 'var(--mantine-color-gray-0)' }}>
+ <Paper withBorder p="sm" radius="sm" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'var(--mantine-color-gray-0)' }}>
  <Text size="sm">{ticket.lastCommentSnippet}</Text>
  </Paper>
  </Box>
@@ -767,8 +771,8 @@ function TicketListModal({ title, tickets, jiraBaseUrl, opened, onClose, onOpen 
  <Badge
  size="xs"
  style={{
- backgroundColor: (PRIORITY_COLORS[t.priority ?? ''] ?? '#adb5bd') + '22',
- color: PRIORITY_COLORS[t.priority ?? ''] ?? '#adb5bd',
+ backgroundColor: (PRIORITY_COLORS[t.priority ?? ''] ?? GRAY_300) + '22',
+ color: PRIORITY_COLORS[t.priority ?? ''] ?? GRAY_300,
  }}
  >
  {t.priority ?? '—'}
@@ -778,8 +782,8 @@ function TicketListModal({ title, tickets, jiraBaseUrl, opened, onClose, onOpen 
  <Badge
  size="xs"
  style={{
- backgroundColor: (STATUS_COLORS[t.status ?? ''] ?? '#adb5bd') + '22',
- color: STATUS_COLORS[t.status ?? ''] ?? '#adb5bd',
+ backgroundColor: (STATUS_COLORS[t.status ?? ''] ?? GRAY_300) + '22',
+ color: STATUS_COLORS[t.status ?? ''] ?? GRAY_300,
  }}
  >
  {t.status ?? '—'}
@@ -895,8 +899,8 @@ function TicketRow({ ticket, jiraBaseUrl, onLabelClick, onOpen }: {
 
  <Table.Td>
  <Badge size="sm" variant="light"
- style={{ background: (STATUS_COLORS[ticket.status ?? ''] ?? '#adb5bd') + '22',
- color: STATUS_COLORS[ticket.status ?? ''] ?? '#adb5bd' }}>
+ style={{ background: (STATUS_COLORS[ticket.status ?? ''] ?? GRAY_300) + '22',
+ color: STATUS_COLORS[ticket.status ?? ''] ?? GRAY_300 }}>
  {ticket.status ?? '—'}
  </Badge>
  </Table.Td>
@@ -904,8 +908,8 @@ function TicketRow({ ticket, jiraBaseUrl, onLabelClick, onOpen }: {
  <Table.Td>
  {ticket.priority
  ? <Badge size="sm" variant="light"
- style={{ background: (PRIORITY_COLORS[ticket.priority] ?? '#adb5bd') + '22',
- color: PRIORITY_COLORS[ticket.priority] ?? '#adb5bd' }}>
+ style={{ background: (PRIORITY_COLORS[ticket.priority] ?? GRAY_300) + '22',
+ color: PRIORITY_COLORS[ticket.priority] ?? GRAY_300 }}>
  {ticket.priority}
  </Badge>
  : <Text size="sm" c="dimmed">—</Text>}
@@ -1215,6 +1219,7 @@ function AllTicketsPanel({ snapshot, jiraBaseUrl, days, statusFilter, onStatusFi
 }
 
 export default function JiraSupportPage() {
+ const isDark = useDarkMode();
  const navigate = useNavigate();
  const qc = useQueryClient();
 
@@ -1398,16 +1403,10 @@ export default function JiraSupportPage() {
  onOpen={t => { setKpiModal(null); setDetailTicket(t); }}
  />
 
+ <PPPageLayout title="Jira Support" subtitle="Support board health, SLA tracking and ticket analytics" animate dataUpdatedAt={dataUpdatedAt}>
  <Stack gap="lg" className="page-enter stagger-children">
- {/* ── Header ── */}
- <Group justify="space-between" wrap="nowrap" className="slide-in-left">
- <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY }}>Support Queue</Title>
- <Text size="sm" c="dimmed" mt={2}>
- Open tickets across all configured support boards.
- {dataUpdatedAt ? ` Updated ${formatRelative(new Date(dataUpdatedAt).toISOString())}.` : ''}
- </Text>
- </div>
+ {/* ── Toolbar ── */}
+ <Group justify="flex-end" wrap="nowrap" className="slide-in-left">
  <Group gap="xs" align="center">
  <CsvToolbar
  data={allTickets as unknown as Record<string, unknown>[]}
@@ -1446,7 +1445,7 @@ export default function JiraSupportPage() {
  </Alert>
  )}
 
- {isLoading && <Center py="xl"><Loader /></Center>}
+ {isLoading && <PageSkeleton variant="dashboard" />}
 
  {!isLoading && snapshot && (
  <WidgetGrid pageKey="support">
@@ -1502,7 +1501,7 @@ export default function JiraSupportPage() {
  { name: 'No SLA', value: allTickets.filter(t => getSlaStatus(t).status === 'unknown').length },
  ].filter(d => d.value > 0);
  const slaColorMap: Record<string, string> = {
- Breached: '#fa5252', 'At Risk': '#fd7e14', OK: '#51cf66', 'No SLA': '#adb5bd',
+ Breached: COLOR_ERROR, 'At Risk': COLOR_ORANGE, OK: COLOR_GREEN_LIGHT, 'No SLA': GRAY_300,
  };
  const slaStatusMap: Record<string, string> = {
  Breached: 'breached', 'At Risk': 'at-risk', OK: 'ok', 'No SLA': 'unknown',
@@ -1514,7 +1513,7 @@ export default function JiraSupportPage() {
  <ChartPanel title="Top Labels">
  {labelsData.length === 0
  ? <Center h={180}><Text size="sm" c="dimmed">No labels on open tickets</Text></Center>
- : <HBar data={labelsData.slice(0, 8)} color="#845ef7"
+ : <HBar data={labelsData.slice(0, 8)} color={COLOR_VIOLET_LIGHT}
  height={Math.max(160, labelsData.slice(0, 8).length * 28)}
  onBarClick={name => setKpiModal({ title: `Label: ${name}`, tickets: allTickets.filter(t => t.labels?.includes(name)) })} />}
  </ChartPanel>
@@ -1728,7 +1727,7 @@ export default function JiraSupportPage() {
  </Stack>
  </Group>
  ) : allTicketsLoading ? (
- <Center py="xl"><Loader /></Center>
+ <PageSkeleton variant="table" />
  ) : (
  <AllTicketsPanel
  snapshot={allTicketsSnapshot}
@@ -1746,6 +1745,7 @@ export default function JiraSupportPage() {
  </WidgetGrid>
  )}
  </Stack>
+ </PPPageLayout>
  </>
  );
 }

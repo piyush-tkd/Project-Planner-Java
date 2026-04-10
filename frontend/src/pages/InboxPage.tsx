@@ -1,20 +1,23 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
-  Title, Text, Stack, Paper, Tabs, Badge, Group, Box,
+  Text, Stack, Paper, Tabs, Badge, Group, Box,
   ActionIcon, Anchor, ThemeIcon, Center, Divider, Button,
   Tooltip, ScrollArea,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import {
   IconInbox, IconBell, IconAlertTriangle, IconClock,
   IconCalendar, IconUsers, IconFlame, IconCheck,
   IconExternalLink, IconX, IconCircleCheck,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, FONT_FAMILY, SURFACE_RED_FAINT, BORDER_SOFT, DARK_BORDER, SURFACE_ORANGE, SURFACE_BLUE} from '../brandTokens';
 import { useAlertCounts }          from '../hooks/useAlertCounts';
+import { useDarkMode }             from '../hooks/useDarkMode';
 import { useJiraStatus, SupportTicket } from '../api/jira';
 import { useProjects }             from '../api/projects';
 import { useCapacityDemandSummary } from '../api/reports';
+import { useAllApprovals, usePendingApprovals, describeProposedChange } from '../api/projectApprovals';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 // ── Dismissal persistence ─────────────────────────────────────────────────────
@@ -51,9 +54,9 @@ interface InboxItem {
 // ── Visual helpers ────────────────────────────────────────────────────────────
 
 const SEVERITY: Record<Severity, { border: string; bg: string; badge: string; label: string }> = {
-  critical: { border: '#dc2626', bg: '#fff5f5', badge: 'red',    label: 'Critical' },
-  warning:  { border: '#ea580c', bg: '#fff8f5', badge: 'orange', label: 'Warning'  },
-  info:     { border: '#2563eb', bg: '#f0f6ff', badge: 'blue',   label: 'Info'     },
+  critical: { border: COLOR_ERROR_DARK, bg: SURFACE_RED_FAINT, badge: 'red',    label: 'Critical' },
+  warning:  { border: COLOR_ORANGE_DEEP, bg: SURFACE_ORANGE, badge: 'orange', label: 'Warning'  },
+  info:     { border: COLOR_BLUE_STRONG, bg: SURFACE_BLUE, badge: 'blue',   label: 'Info'     },
 };
 
 function timeAgo(d: Date | null): string {
@@ -98,6 +101,15 @@ export default function InboxPage() {
   const { data: jiraStatus }         = useJiraStatus();
   const { data: projects, isLoading: projLoading }  = useProjects();
   const { data: capacityData }       = useCapacityDemandSummary();
+  const { data: allApprovals = [] }  = useAllApprovals();
+  const { data: pendingApprovals = [] } = usePendingApprovals();
+
+  // Quick lookup: projectId → project name
+  const projectNameMap = useMemo(() => {
+    const m = new Map<number, string>();
+    projects?.forEach(p => m.set(p.id, p.name));
+    return m;
+  }, [projects]);
 
   const today      = useMemo(() => new Date(), []);
   const twoWeeks   = useMemo(() => new Date(today.getTime() + 14 * 86400000), [today]);
@@ -214,13 +226,57 @@ export default function InboxPage() {
       });
     });
 
+    // Pending approvals awaiting review (warning — reviewers need to act)
+    pendingApprovals.forEach(a => {
+      const id = `approval-pending-${a.id}`;
+      if (dismissedPortfolio.has(id)) return;
+      const name = projectNameMap.get(a.projectId) ?? `Project #${a.projectId}`;
+      const change = describeProposedChange(a.proposedChange);
+      items.push({
+        id, source: 'portfolio', severity: 'warning',
+        icon:   <IconBell size={15} />,
+        title:  `Approval needed: ${name}`,
+        detail: change ? change : 'Pending review in the Approval Queue',
+        tag:    'Approval',
+        time:   new Date(a.requestedAt),
+        appUrl: '/approvals',
+      });
+    });
+
+    // Recently decided approvals — notify owner (info — last 7 days)
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 86400000);
+    allApprovals
+      .filter(a => (a.status === 'APPROVED' || a.status === 'REJECTED') && a.reviewedAt)
+      .filter(a => new Date(a.reviewedAt!) >= sevenDaysAgo)
+      .forEach(a => {
+        const id = `approval-decision-${a.id}`;
+        if (dismissedPortfolio.has(id)) return;
+        const name = projectNameMap.get(a.projectId) ?? `Project #${a.projectId}`;
+        const change = describeProposedChange(a.proposedChange);
+        const approved = a.status === 'APPROVED';
+        items.push({
+          id, source: 'portfolio',
+          severity: approved ? 'info' : 'warning',
+          icon:   approved ? <IconCircleCheck size={15} /> : <IconX size={15} />,
+          title:  `${name}: approval ${approved ? 'approved' : 'rejected'}`,
+          detail: [
+            change ?? '',
+            a.reviewedBy ? `by ${a.reviewedBy}` : '',
+            a.reviewComment ? `"${a.reviewComment}"` : '',
+          ].filter(Boolean).join(' · '),
+          tag:    approved ? 'Approved' : 'Rejected',
+          time:   new Date(a.reviewedAt!),
+          appUrl: `/projects/${a.projectId}`,
+        });
+      });
+
     // Sort: critical first, then warning, then info, then newest
     const order: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
     return items.sort((a, b) =>
       order[a.severity] - order[b.severity] ||
       (b.time?.getTime() ?? 0) - (a.time?.getTime() ?? 0)
     );
-  }, [projects, capacityData, today, twoWeeks, dismissedPortfolio]);
+  }, [projects, capacityData, today, twoWeeks, dismissedPortfolio, pendingApprovals, allApprovals, projectNameMap]);
 
   const allItems     = useMemo(() => [...jiraItems, ...portfolioItems], [jiraItems, portfolioItems]);
   const currentItems = tab === 'jira'      ? jiraItems
@@ -230,25 +286,17 @@ export default function InboxPage() {
   if (projLoading) return <LoadingSpinner />;
 
   return (
-    <Stack gap="lg" className="page-enter">
-
-      {/* Header */}
-      <Group justify="space-between" align="flex-end">
-        <Box>
-          <Title order={1} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 800 }}>
-            Inbox
-          </Title>
-          <Text c="dimmed" size="sm" mt={2} style={{ fontFamily: FONT_FAMILY }}>
-            Live alerts from Jira and portfolio monitoring — dismiss to clear, they won't come back until the condition changes
-          </Text>
-        </Box>
-        {allItems.length > 0 && (
-          <Button size="xs" variant="subtle" color="gray" leftSection={<IconCheck size={13} />}
-            onClick={() => dismissAll(allItems)}>
-            Clear all
-          </Button>
-        )}
-      </Group>
+    <PPPageLayout
+      title="Inbox"
+      subtitle="Live alerts from Jira and portfolio monitoring — dismiss to clear, they won't come back until the condition changes"
+      actions={allItems.length > 0 ? (
+        <Button size="xs" variant="subtle" color="gray" leftSection={<IconCheck size={13} />}
+          onClick={() => dismissAll(allItems)}>
+          Clear all
+        </Button>
+      ) : undefined}
+      animate
+    >
 
       {/* Tabs */}
       <Tabs value={tab} onChange={setTab} variant="outline" radius="sm">
@@ -289,7 +337,7 @@ export default function InboxPage() {
         ))}
       </Tabs>
 
-    </Stack>
+    </PPPageLayout>
   );
 }
 
@@ -378,6 +426,7 @@ function ItemRow({
   onDismiss: (item: InboxItem) => void;
   onNavigate: (url: string) => void;
 }) {
+  const isDark = useDarkMode();
   const sev = SEVERITY[item.severity];
   return (
     <Paper
@@ -386,9 +435,9 @@ function ItemRow({
       radius={0}
       style={{
         borderLeft:   `3px solid ${sev.border}`,
-        borderBottom: last ? undefined : '1px solid #f0f4f8',
+        borderBottom: last ? undefined : `1px solid ${isDark ? DARK_BORDER : BORDER_SOFT}`,
         borderTop:    'none',
-        borderRight:  '1px solid #e8ecf0',
+        borderRight:  `1px solid ${isDark ? DARK_BORDER : BORDER_SOFT}`,
         background:   sev.bg,
         borderRadius: last ? '0 0 8px 0' : 0,
       }}

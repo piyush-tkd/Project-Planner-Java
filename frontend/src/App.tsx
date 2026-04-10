@@ -12,6 +12,7 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import LoginPage          from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage  from './pages/ResetPasswordPage';
+import NotFoundPage       from './pages/NotFoundPage';
 
 // ── Lazy-loaded page components ──────────────────────────────────────────────
 const DashboardPage                 = lazy(() => import('./pages/DashboardPage'));
@@ -19,6 +20,8 @@ const ResourcesPage                 = lazy(() => import('./pages/ResourcesPage')
 const PodsPage                      = lazy(() => import('./pages/PodsPage'));
 const ProjectsPage                  = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage             = lazy(() => import('./pages/ProjectDetailPage'));
+const TeamsPage                     = lazy(() => import('./pages/TeamsPage'));
+const TeamDetailPage                = lazy(() => import('./pages/TeamDetailPage'));
 const AvailabilityPage              = lazy(() => import('./pages/AvailabilityPage'));
 const OverridesPage                 = lazy(() => import('./pages/OverridesPage'));
 const UtilizationCenterPage         = lazy(() => import('./pages/reports/UtilizationCenterPage'));
@@ -67,6 +70,7 @@ const ReleaseCalendarPage           = lazy(() => import('./pages/ReleaseCalendar
 const ReleaseNotesPage              = lazy(() => import('./pages/ReleaseNotesPage'));
 const SprintPlanningRecommenderPage = lazy(() => import('./pages/SprintPlanningRecommenderPage'));
 const NlpLandingPage                = lazy(() => import('./pages/NlpLandingPage'));
+const NlpHistoryPage                = lazy(() => import('./pages/NlpHistoryPage'));
 const NlpSettingsPage               = lazy(() => import('./pages/settings/NlpSettingsPage'));
 const NlpOptimizerPage              = lazy(() => import('./pages/settings/NlpOptimizerPage'));
 const FeedbackHubPage               = lazy(() => import('./pages/settings/FeedbackHubPage'));
@@ -96,6 +100,10 @@ const ResourceBookingsPage          = lazy(() => import('./pages/ResourceBooking
 const ProjectTemplatesPage          = lazy(() => import('./pages/ProjectTemplatesPage'));
 const WorkloadChartPage             = lazy(() => import('./pages/WorkloadChartPage'));
 const GanttDependenciesPage         = lazy(() => import('./pages/GanttDependenciesPage'));
+const ResourcePoolsPage             = lazy(() => import('./pages/ResourcePoolsPage'));
+const SupplyDemandPage              = lazy(() => import('./pages/SupplyDemandPage'));
+const EngineeringEconomicsPage      = lazy(() => import('./pages/EngineeringEconomicsPage'));
+const ROICalculatorPage             = lazy(() => import('./pages/ROICalculatorPage'));
 const OrgSettingsPage               = lazy(() => import('./pages/settings/OrgSettingsPage'));
 const SmartMappingPage              = lazy(() => import('./pages/SmartMappingPage'));
 const InboxPage                     = lazy(() => import('./pages/InboxPage'));
@@ -109,10 +117,33 @@ const LeaveHubPage                  = lazy(() => import('./pages/LeaveHubPage'))
 const AutomationEnginePage          = lazy(() => import('./pages/AutomationEnginePage'));
 const SmartInsightsPage             = lazy(() => import('./pages/SmartInsightsPage'));
 const NotificationPreferencesPage   = lazy(() => import('./pages/settings/NotificationPreferencesPage'));
+const WebhookSettingsPage           = lazy(() => import('./pages/settings/WebhookSettingsPage'));
+const EmailTemplatesPage            = lazy(() => import('./pages/settings/EmailTemplatesPage'));
 const CustomDashboardPage           = lazy(() => import('./pages/CustomDashboardPage'));
 const ProjectApprovalPage           = lazy(() => import('./pages/ProjectApprovalPage'));
 const BulkImportPage                = lazy(() => import('./pages/BulkImportPage'));
 const AdvancedTimelinePage          = lazy(() => import('./pages/AdvancedTimelinePage'));
+const SprintBacklogPage             = lazy(() => import('./pages/SprintBacklogPage'));
+const ScheduledReportsPage          = lazy(() => import('./pages/settings/ScheduledReportsPage'));
+const AiContentStudioPage           = lazy(() => import('./pages/AiContentStudioPage'));
+const CostRatesPage                 = lazy(() => import('./pages/settings/CostRatesPage'));
+const SettingsHubPage               = lazy(() => import('./pages/settings/SettingsHubPage'));
+
+// ── DL-9: Tabbed consolidation pages ─────────────────────────────────────────
+const PortfolioHealthTabs  = lazy(() => import('./pages/tabs/PortfolioHealthTabs'));
+const PortfolioTimelineTabs= lazy(() => import('./pages/tabs/PortfolioTimelineTabs'));
+const ResourcesTabs        = lazy(() => import('./pages/tabs/ResourcesTabs'));
+const CapacityTabs         = lazy(() => import('./pages/tabs/CapacityTabs'));
+const PerformanceTabs      = lazy(() => import('./pages/tabs/PerformanceTabs'));
+const ReleasesTabs         = lazy(() => import('./pages/tabs/ReleasesTabs'));
+const JiraDashboardTabs    = lazy(() => import('./pages/tabs/JiraDashboardTabs'));
+const EngineeringHubTabs   = lazy(() => import('./pages/tabs/EngineeringHubTabs'));
+const ScenarioToolsTabs    = lazy(() => import('./pages/tabs/ScenarioToolsTabs'));
+
+// ── Sprint 6, 11, 15: New Pages ─────────────────────────────────────────────
+const DemandForecastPage   = lazy(() => import('./pages/DemandForecastPage'));
+const SkillsMatrixPage     = lazy(() => import('./pages/SkillsMatrixPage'));
+const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanningPage'));
 
 export default function App() {
   return (
@@ -143,6 +174,11 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="projects" />}>
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:id" element={<ProjectDetailPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="teams" />}>
+            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/teams/:id" element={<TeamDetailPage />} />
           </Route>
 
           <Route element={<ProtectedRoute pageKey="availability" />}>
@@ -191,6 +227,25 @@ export default function App() {
             <Route path="/team-calendar" element={<TeamCalendarPage />} />
           </Route>
 
+          {/* ── Sprint 8 Resource Pools ───────────────────────── */}
+          <Route element={<ProtectedRoute pageKey="resource_pools" />}>
+            <Route path="/resource-pools" element={<ResourcePoolsPage />} />
+            <Route path="/resource-pools/:id" element={<ResourcePoolsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="supply_demand" />}>
+            <Route path="/supply-demand" element={<SupplyDemandPage />} />
+          </Route>
+
+          {/* ── Sprint 13 Engineering Economics ───────────────── */}
+          <Route element={<ProtectedRoute pageKey="engineering_economics" />}>
+            <Route path="/engineering-economics" element={<EngineeringEconomicsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="roi_calculator" />}>
+            <Route path="/roi-calculator" element={<ROICalculatorPage />} />
+          </Route>
+
           {/* ── Capacity Reports ─────────────────────────────── */}
           {/* Merged Utilization Center (replaces capacity-gap, utilization, slack-buffer) */}
           <Route element={<ProtectedRoute pageKey="utilization" />}>
@@ -218,6 +273,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="sprint_retro" />}>
             <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="sprint_backlog" />}>
+            <Route path="/sprint-backlog" element={<SprintBacklogPage />} />
           </Route>
 
           <Route element={<ProtectedRoute pageKey="skills_matrix" />}>
@@ -429,6 +488,19 @@ export default function App() {
             <Route path="/simulator/scenario" element={<ScenarioSimulatorPage />} />
           </Route>
 
+          {/* ── Sprint 6, 11, 15: Demand, Skills, Scenario Planning ────────── */}
+          <Route element={<ProtectedRoute pageKey="demand_forecast" />}>
+            <Route path="/demand-forecast" element={<DemandForecastPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="skills_matrix_new" />}>
+            <Route path="/skills-matrix" element={<SkillsMatrixPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="scenario_planning" />}>
+            <Route path="/scenario-planning" element={<ScenarioPlanningPage />} />
+          </Route>
+
           {/* ── Sprint & Release Calendar ───────────────────── */}
           <Route element={<ProtectedRoute pageKey="sprint_calendar" />}>
             <Route path="/sprint-calendar" element={<SprintCalendarPage />} />
@@ -445,6 +517,10 @@ export default function App() {
           {/* ── NLP ──────────────────────────────────────────── */}
           <Route element={<ProtectedRoute pageKey="nlp_landing" />}>
             <Route path="/nlp" element={<NlpLandingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="nlp_history" />}>
+            <Route path="/nlp/history" element={<NlpHistoryPage />} />
           </Route>
 
           <Route element={<ProtectedRoute pageKey="nlp_settings" />}>
@@ -466,6 +542,7 @@ export default function App() {
 
           {/* ── Settings ─────────────────────────────────────── */}
           <Route element={<ProtectedRoute pageKey="settings" />}>
+            <Route path="/settings" element={<SettingsHubPage />} />
             <Route path="/settings/timeline" element={<TimelineSettingsPage />} />
             <Route path="/settings/ref-data" element={<RefDataSettingsPage />} />
             <Route path="/settings/jira" element={<JiraSettingsPage />} />
@@ -488,6 +565,25 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="org_settings" />}>
             <Route path="/settings/org" element={<OrgSettingsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="email_templates" />}>
+            <Route path="/settings/email-templates" element={<EmailTemplatesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute pageKey="webhook_settings" />}>
+            <Route path="/settings/webhooks" element={<WebhookSettingsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="scheduled_reports" />}>
+            <Route path="/settings/scheduled-reports" element={<ScheduledReportsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="cost_rates" />}>
+            <Route path="/settings/cost-rates" element={<CostRatesPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="ai_content_studio" />}>
+            <Route path="/ai-content-studio" element={<AiContentStudioPage />} />
           </Route>
 
           <Route element={<ProtectedRoute pageKey="azure_devops_settings" />}>
@@ -526,8 +622,64 @@ export default function App() {
             <Route path="/settings/tables" element={<TablesPage />} />
           </Route>
 
+          {/* ── DL-9: Consolidated tabbed pages ──────────────────────────────── */}
+          {/* Portfolio Health → tabs: Overview | Project Health | Status Updates  */}
+          <Route element={<ProtectedRoute pageKey="portfolio_health_dashboard" />}>
+            <Route path="/portfolio/health" element={<PortfolioHealthTabs />} />
+          </Route>
+          {/* Portfolio Timeline → tabs: Timeline | Gantt & Dependencies           */}
+          <Route element={<ProtectedRoute pageKey="portfolio_timeline" />}>
+            <Route path="/portfolio/timeline" element={<PortfolioTimelineTabs />} />
+          </Route>
+          {/* Resources → tabs: Directory | Availability | Bookings               */}
+          <Route element={<ProtectedRoute pageKey="resources" />}>
+            <Route path="/people/resources" element={<ResourcesTabs />} />
+          </Route>
+          {/* Capacity → tabs: Capacity | Overrides | Leave                       */}
+          <Route element={<ProtectedRoute pageKey="capacity_hub" />}>
+            <Route path="/people/capacity" element={<CapacityTabs />} />
+          </Route>
+          {/* Performance → tabs: Resource Performance | Resource Intelligence    */}
+          <Route element={<ProtectedRoute pageKey="resource_performance" />}>
+            <Route path="/people/performance" element={<PerformanceTabs />} />
+          </Route>
+          {/* Releases → tabs: Releases | Release Notes                           */}
+          <Route element={<ProtectedRoute pageKey="jira_releases" />}>
+            <Route path="/delivery/releases" element={<ReleasesTabs />} />
+          </Route>
+          {/* Jira Dashboard → tabs: Pods | Actuals | Support | Worklog           */}
+          <Route element={<ProtectedRoute pageKey="jira_pods" />}>
+            <Route path="/delivery/jira" element={<JiraDashboardTabs />} />
+          </Route>
+          {/* Engineering Hub → tabs: Intelligence | DORA | Predictability        */}
+          <Route element={<ProtectedRoute pageKey="engineering_intelligence" />}>
+            <Route path="/engineering/hub" element={<EngineeringHubTabs />} />
+          </Route>
+          {/* Scenario Tools → tabs: Timeline Sim | Scenario Sim                 */}
+          <Route element={<ProtectedRoute pageKey="timeline_simulator" />}>
+            <Route path="/tools/scenarios" element={<ScenarioToolsTabs />} />
+          </Route>
+
+          {/* ── DL-9 backward-compat redirects — keep old bookmarks working ── */}
+          <Route path="/resources"                         element={<Navigate to="/people/resources" replace />} />
+          <Route path="/availability"                      element={<Navigate to="/people/resources?tab=availability" replace />} />
+          <Route path="/resource-bookings"                 element={<Navigate to="/people/resources?tab=bookings" replace />} />
+          <Route path="/capacity"                          element={<Navigate to="/people/capacity" replace />} />
+          <Route path="/reports/portfolio-health-dashboard" element={<Navigate to="/portfolio/health" replace />} />
+          <Route path="/reports/portfolio-timeline"        element={<Navigate to="/portfolio/timeline" replace />} />
+          <Route path="/reports/gantt-dependencies"        element={<Navigate to="/portfolio/timeline?tab=gantt" replace />} />
+          <Route path="/jira-releases"                     element={<Navigate to="/delivery/releases" replace />} />
+          <Route path="/jira-pods"                         element={<Navigate to="/delivery/jira" replace />} />
+          <Route path="/reports/engineering-intelligence"  element={<Navigate to="/engineering/hub" replace />} />
+          <Route path="/simulator/timeline"                element={<Navigate to="/tools/scenarios" replace />} />
+          <Route path="/delivery/sprint-backlog"           element={<Navigate to="/sprint-backlog" replace />} />
+          <Route path="/delivery/sprint-retro"            element={<Navigate to="/reports/sprint-retro" replace />} />
+
         </Route>
       </Route>
-    </Routes>
+
+      {/* ── 404 catch-all — must be last ─────────────────────────────────── */}
+      <Route path="*" element={<NotFoundPage />} />
+      </Routes>
   );
 }

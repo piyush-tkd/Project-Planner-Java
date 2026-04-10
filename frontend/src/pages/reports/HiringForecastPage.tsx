@@ -10,7 +10,7 @@ import ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function HiringForecastPage() {
@@ -51,7 +51,7 @@ export default function HiringForecastPage() {
  }, [filteredData]);
 
  const roleColors: Record<string, string> = {
- DEVELOPER: '#339af0', QA: '#ff922b', BSA: '#51cf66', TECH_LEAD: '#845ef7',
+ DEVELOPER: COLOR_BLUE_LIGHT, QA: '#ff922b', BSA: COLOR_GREEN_LIGHT, TECH_LEAD: COLOR_VIOLET_LIGHT,
  };
 
  const hasFilters = podFilter !== null || roleFilter !== null;
@@ -136,7 +136,7 @@ export default function HiringForecastPage() {
  <Tooltip />
  <Legend />
  {roles.filter(r => !roleFilter || r === roleFilter).map(role => (
- <Bar key={role} dataKey={role} name={formatRole(role)} stackId="a" fill={roleColors[role] ?? '#868e96'} />
+ <Bar animationDuration={600} key={role} dataKey={role} name={formatRole(role)} stackId="a" fill={roleColors[role] ?? TEXT_DIM} />
  ))}
  </BarChart>
  </ResponsiveContainer>

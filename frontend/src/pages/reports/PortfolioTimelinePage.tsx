@@ -57,7 +57,7 @@ export default function PortfolioTimelinePage() {
             borderRadius: 8, padding: '8px 16px', border: 'none',
             color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(12,35,64,0.55)',
             '&[data-active]': {
-              background: dark ? 'rgba(45,204,211,0.14)' : '#ffffff',
+              background: dark ? 'rgba(45,204,211,0.14)' : 'var(--pp-surface-light)',
               color: dark ? AQUA : DEEP_BLUE,
               borderBottom: `2.5px solid ${AQUA}`,
               boxShadow: dark ? 'none' : '0 1px 6px rgba(12,35,64,0.12)',
@@ -78,13 +78,13 @@ export default function PortfolioTimelinePage() {
           </Tabs.Tab>
           <Tabs.Tab
             value="gantt"
-            leftSection={<IconCalendar size={15} color={activeTab === 'gantt' ? '#34d399' : undefined} />}
+            leftSection={<IconCalendar size={15} color={activeTab === 'gantt' ? AQUA : undefined} />}
           >
             Gantt
           </Tabs.Tab>
           <Tabs.Tab
             value="team-calendar"
-            leftSection={<IconCalendarStats size={15} color={activeTab === 'team-calendar' ? '#818cf8' : undefined} />}
+            leftSection={<IconCalendarStats size={15} color={activeTab === 'team-calendar' ? AQUA : undefined} />}
           >
             Team Calendar
           </Tabs.Tab>

@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconCircle } from '@tabler/icons-react';
 import type { ProjectResponse } from '../../types/project';
-import { AQUA, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
 
 /* ── Constants ──────────────────────────────────────────────────────── */
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -18,22 +18,22 @@ const TODAY_YEAR  = new Date().getFullYear();
 
 /* ── Priority / Status color maps ───────────────────────────────────── */
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: '#fa5252',
-  P1: '#fd7e14',
-  P2: '#228be6',
-  P3: '#868e96',
+  P0: COLOR_ERROR,
+  P1: COLOR_ORANGE,
+  P2: COLOR_BLUE_DARK,
+  P3: TEXT_DIM,
 };
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE:       '#40c057',
-  ON_HOLD:      '#fd7e14',
-  NOT_STARTED:  '#868e96',
-  COMPLETED:    '#228be6',
-  CANCELLED:    '#fa5252',
+  ACTIVE:       COLOR_SUCCESS,
+  ON_HOLD:      COLOR_ORANGE,
+  NOT_STARTED:  TEXT_DIM,
+  COMPLETED:    COLOR_BLUE_DARK,
+  CANCELLED:    COLOR_ERROR,
 };
 
 function barColor(project: ProjectResponse, colorBy: 'priority' | 'status'): string {
-  if (colorBy === 'priority') return PRIORITY_COLORS[project.priority] ?? '#228be6';
-  return STATUS_COLORS[project.status] ?? '#228be6';
+  if (colorBy === 'priority') return PRIORITY_COLORS[project.priority] ?? COLOR_BLUE_DARK;
+  return STATUS_COLORS[project.status] ?? COLOR_BLUE_DARK;
 }
 
 /* ── Group-by helpers ────────────────────────────────────────────────── */
@@ -94,7 +94,7 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
       return Object.entries(PRIORITY_COLORS).map(([k, color]) => ({ label: k, color }));
     }
     const statuses = [...new Set(projects.map(p => p.status))];
-    return statuses.map(s => ({ label: s.replace(/_/g, ' '), color: STATUS_COLORS[s] ?? '#228be6' }));
+    return statuses.map(s => ({ label: s.replace(/_/g, ' '), color: STATUS_COLORS[s] ?? COLOR_BLUE_DARK }));
   }, [colorBy, projects]);
 
   const totalTimelineW = VISIBLE_MONTHS * COL_W;

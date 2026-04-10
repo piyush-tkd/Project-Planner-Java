@@ -12,12 +12,13 @@ import {
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer, Legend, LineChart, Line,
 } from 'recharts';
 
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_TEAL, COLOR_VIOLET, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SLATE_700, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 import { useResources }    from '../../api/resources';
 import { useCostRates }    from '../../api/costRates';
+import { useProjects }     from '../../api/projects';
 import { useWorklogReport, WorklogMonthReport } from '../../api/jira';
 import { useProductivityMetrics } from '../../api/reports';
 import { ResourceResponse } from '../../types/resource';
@@ -51,16 +52,16 @@ const MONTH_OPTIONS = Array.from({ length: 6 }, (_, i) => {
 });
 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
-  Story:   '#2563eb',
-  Bug:     '#dc2626',
-  Task:    '#059669',
-  Epic:    '#7c3aed',
+  Story:   COLOR_BLUE_STRONG,
+  Bug:     COLOR_ERROR_DARK,
+  Task:    COLOR_EMERALD,
+  Epic:    COLOR_VIOLET,
   'Sub-task': '#0891b2',
   Spike:   '#b45309',
 };
-const getIssueColor = (t: string) => ISSUE_TYPE_COLORS[t] ?? '#64748b';
+const getIssueColor = (t: string) => ISSUE_TYPE_COLORS[t] ?? TEXT_GRAY;
 
-const ROLE_PALETTE = [AQUA, '#8b5cf6', '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#ec4899', '#64748b'];
+const ROLE_PALETTE = [AQUA, COLOR_VIOLET_ALT, COLOR_WARNING, COLOR_BLUE, COLOR_TEAL, COLOR_ERROR_STRONG, '#ec4899', TEXT_GRAY];
 const ALL_ROLES: string[] = [];
 const getRoleColor = (role: string) => {
   if (!ALL_ROLES.includes(role)) ALL_ROLES.push(role);
@@ -92,10 +93,11 @@ export default function FinancialIntelligencePage() {
 
   const { data: resources,    isLoading: rLoading  } = useResources();
   const { data: costRates,    isLoading: crLoading  } = useCostRates();
+  const { data: projects,     isLoading: pLoading   } = useProjects();
   const { data: worklog,      isLoading: wLoading   } = useWorklogReport(month);
   const { data: metrics,      isLoading: mLoading   } = useProductivityMetrics(6);
 
-  const loading = rLoading || crLoading || wLoading || mLoading;
+  const loading = rLoading || crLoading || pLoading || wLoading || mLoading;
 
   // ── Rate lookup: "role|location" → hourlyRate ──────────────────────────────
   const rateLookup = useMemo(() => {
@@ -205,8 +207,67 @@ export default function FinancialIntelligencePage() {
     ? (totals.loggedCost / teamCapacity.totalMonthlyCost) * 100
     : 0;
 
+  // ── Budget waterfall data ──────────────────────────────────────────────────
+  const budgetWaterfallData = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+    return projects
+      .filter(p => p.estimatedBudget && p.estimatedBudget > 0)
+      .map(p => ({
+        name: p.name,
+        estimated: p.estimatedBudget ?? 0,
+        actual: p.actualCost ?? 0,
+        variance: (p.estimatedBudget ?? 0) - (p.actualCost ?? 0),
+      }))
+      .sort((a, b) => b.estimated - a.estimated)
+      .slice(0, 10);
+  }, [projects]);
+
+  // ── CapEx vs OpEx breakdown ────────────────────────────────────────────────
+  const capexOpexData = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+    const capex = projects.filter(p => p.status === 'CAPEX' || p.defaultPattern === 'CapEx').reduce((s, p) => s + (p.estimatedBudget ?? 0), 0);
+    const opex = projects.filter(p => p.status !== 'CAPEX' && p.defaultPattern !== 'CapEx').reduce((s, p) => s + (p.estimatedBudget ?? 0), 0);
+    return [
+      { name: 'CapEx', value: capex },
+      { name: 'OpEx', value: opex },
+    ].filter(d => d.value > 0);
+  }, [projects]);
+
+  // ── Budget at risk: projects over 90% of estimated budget ────────────────
+  const budgetAtRisk = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+    return projects.filter(p => {
+      const estimated = p.estimatedBudget ?? 0;
+      const actual = p.actualCost ?? 0;
+      return estimated > 0 && actual > estimated * 0.9;
+    }).sort((a, b) => {
+      const aUsage = a.estimatedBudget ? (a.actualCost ?? 0) / a.estimatedBudget : 0;
+      const bUsage = b.estimatedBudget ? (b.actualCost ?? 0) / b.estimatedBudget : 0;
+      return bUsage - aUsage;
+    });
+  }, [projects]);
+
+  // ── Monthly burn estimate ───────────────────────────────────────────────────
+  const monthlyBurnData = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+    const months: Record<string, number> = {};
+    for (const p of projects) {
+      if (p.startDate && p.estimatedBudget && p.estimatedBudget > 0) {
+        const start = new Date(p.startDate);
+        const monthKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+        const monthlyBurn = p.durationMonths > 0 ? p.estimatedBudget / p.durationMonths : p.estimatedBudget;
+        months[monthKey] = (months[monthKey] ?? 0) + monthlyBurn;
+      }
+    }
+    return Object.entries(months)
+      .map(([month, value]) => ({ month, spend: value }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-12);
+  }, [projects]);
+
   const noCostRates = (costRates ?? []).length === 0;
   const noWorklog   = !worklog || worklog.totalHours === 0;
+  const noProjects  = !projects || projects.length === 0;
 
   if (loading) return <LoadingSpinner />;
 
@@ -285,7 +346,7 @@ export default function FinancialIntelligencePage() {
         ].map(k => (
           <Card key={k.label} withBorder radius="lg" p="md">
             <Group justify="space-between" mb={6}>
-              <Text size="xs" tt="uppercase" fw={700} style={{ color: '#94a3b8', letterSpacing: '0.6px', fontFamily: FONT_FAMILY }}>
+              <Text size="xs" tt="uppercase" fw={700} style={{ color: TEXT_SUBTLE, letterSpacing: '0.6px', fontFamily: FONT_FAMILY }}>
                 {k.label}
               </Text>
               <ThemeIcon variant="light" color={k.color} size={32} radius="md">{k.icon}</ThemeIcon>
@@ -303,6 +364,7 @@ export default function FinancialIntelligencePage() {
           <Tabs.Tab value="people"      leftSection={<IconUsers       size={14} />}>By Person</Tabs.Tab>
           <Tabs.Tab value="worktype"    leftSection={<IconBug         size={14} />}>By Work Type</Tabs.Tab>
           <Tabs.Tab value="pod"         leftSection={<IconBolt        size={14} />}>By POD</Tabs.Tab>
+          <Tabs.Tab value="budget"      leftSection={<IconCurrencyDollar size={14} />}>Project Budget</Tabs.Tab>
         </Tabs.List>
 
         {/* ══════════ OVERVIEW ══════════ */}
@@ -320,10 +382,10 @@ export default function FinancialIntelligencePage() {
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={podBreakdown} layout="vertical" margin={{ left: 100, right: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={v => fmt(v)} />
-                    <YAxis dataKey="pod" type="category" tick={{ fontSize: 11, fill: '#334155' }} width={95} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_GRAY }} tickFormatter={v => fmt(v)} />
+                    <YAxis dataKey="pod" type="category" tick={{ fontSize: 11, fill: SLATE_700 }} width={95} />
                     <RechartTooltip formatter={(v: number) => [fmt(v), 'Logged cost']} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="cost" fill={AQUA} radius={[0, 6, 6, 0]} />
+                    <Bar animationDuration={600} dataKey="cost" fill={AQUA_HEX} radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -340,7 +402,7 @@ export default function FinancialIntelligencePage() {
                 <>
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
-                      <Pie data={issueTypeCosts} dataKey="cost" nameKey="type" cx="50%" cy="50%"
+                      <Pie animationDuration={600} data={issueTypeCosts} dataKey="cost" nameKey="type" cx="50%" cy="50%"
                         innerRadius={55} outerRadius={80} paddingAngle={2}>
                         {issueTypeCosts.map((entry) => (
                           <Cell key={entry.type} fill={getIssueColor(entry.type)} />
@@ -450,11 +512,11 @@ export default function FinancialIntelligencePage() {
                       </Badge>
                     </Box>
                     <Text size="xs" c="dimmed" style={{ width: 130, flexShrink: 0 }}>{row.pod}</Text>
-                    <Text size="xs" style={{ width: 90, flexShrink: 0, color: row.ratePerHour ? DEEP_BLUE : '#94a3b8' }}>
+                    <Text size="xs" style={{ width: 90, flexShrink: 0, color: row.ratePerHour ? DEEP_BLUE : TEXT_SUBTLE }}>
                       {row.ratePerHour ? `$${row.ratePerHour}/hr` : '—'}
                     </Text>
                     <Text size="xs" style={{ width: 90, flexShrink: 0, color: DEEP_BLUE }}>{fmtHrs(row.hoursLogged)}</Text>
-                    <Text size="xs" fw={700} style={{ width: 110, flexShrink: 0, color: row.loggedCost ? AQUA : '#94a3b8' }}>
+                    <Text size="xs" fw={700} style={{ width: 110, flexShrink: 0, color: row.loggedCost ? AQUA : TEXT_SUBTLE }}>
                       {row.loggedCost ? fmt(row.loggedCost) : '—'}
                     </Text>
                     <Box style={{ width: 120, flexShrink: 0 }}>
@@ -529,7 +591,7 @@ export default function FinancialIntelligencePage() {
               const unplanned = issueTypeCosts.filter(it => !['Story', 'Epic', 'Task'].includes(it.type)).reduce((s, it) => s + it.cost, 0);
               const unplannedPct = totalIssueTypeCost > 0 ? (unplanned / totalIssueTypeCost) * 100 : 0;
               return (
-                <Paper withBorder p="lg" radius="md" style={{ borderLeft: `4px solid ${unplannedPct > 30 ? '#ef4444' : AQUA}` }}>
+                <Paper withBorder p="lg" radius="md" style={{ borderLeft: `4px solid ${unplannedPct > 30 ? COLOR_ERROR_STRONG : AQUA}` }}>
                   <Group justify="space-between" mb="sm">
                     <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Planned vs Unplanned Work Split</Text>
                     {unplannedPct > 30 && (
@@ -546,7 +608,7 @@ export default function FinancialIntelligencePage() {
                     </Box>
                     <Box>
                       <Text size="xs" c="dimmed" mb={4}>Unplanned (Bugs / Spikes / Other)</Text>
-                      <Text fw={800} size="xl" style={{ color: unplannedPct > 30 ? '#ef4444' : '#64748b' }}>{fmt(unplanned)}</Text>
+                      <Text fw={800} size="xl" style={{ color: unplannedPct > 30 ? COLOR_ERROR_STRONG : TEXT_GRAY }}>{fmt(unplanned)}</Text>
                       <Text size="xs" c="dimmed">{pct(unplanned, totalIssueTypeCost)} of total spend</Text>
                     </Box>
                   </SimpleGrid>
@@ -555,7 +617,7 @@ export default function FinancialIntelligencePage() {
                     <Progress.Section value={(planned / totalIssueTypeCost) * 100} color={AQUA}>
                       <Progress.Label>{`Planned: ${fmt(planned)}`}</Progress.Label>
                     </Progress.Section>
-                    <Progress.Section value={(unplanned / totalIssueTypeCost) * 100} color="#ef4444">
+                    <Progress.Section value={(unplanned / totalIssueTypeCost) * 100} color={COLOR_ERROR_STRONG}>
                       <Progress.Label>{`Unplanned: ${fmt(unplanned)}`}</Progress.Label>
                     </Progress.Section>
                   </Progress.Root>
@@ -583,12 +645,12 @@ export default function FinancialIntelligencePage() {
                     margin={{ left: 70, right: 20 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#334155' }} width={65} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_GRAY }} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: SLATE_700 }} width={65} />
                     <RechartTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                     <Legend />
                     {issueTypeCosts.map(it => (
-                      <Bar key={it.type} dataKey={it.type} stackId="a" fill={getIssueColor(it.type)} />
+                      <Bar animationDuration={600} key={it.type} dataKey={it.type} stackId="a" fill={getIssueColor(it.type)} />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
@@ -656,6 +718,139 @@ export default function FinancialIntelligencePage() {
                 <Text size="sm" c="dimmed">No worklog data for this month.</Text>
               )}
             </SimpleGrid>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ══════════ PROJECT BUDGET ══════════ */}
+        <Tabs.Panel value="budget">
+          <Stack gap="md">
+            {noProjects && (
+              <Alert icon={<IconAlertCircle size={16} />} color="blue" title="No projects with budget data">
+                Add estimated budgets to projects in the Projects page to see budget analysis.
+              </Alert>
+            )}
+
+            {!noProjects && (
+              <>
+                {/* Budget Waterfall */}
+                {budgetWaterfallData.length > 0 && (
+                  <Paper withBorder radius="md" p="lg">
+                    <Text fw={700} size="sm" mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                      Budget Waterfall — Top 10 Projects by Estimated Budget
+                    </Text>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={budgetWaterfallData} margin={{ left: 100, right: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_GRAY }} tickFormatter={v => fmt(v)} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: SLATE_700 }} width={95} />
+                        <RechartTooltip formatter={(v: number) => [fmt(v), '']} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                        <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />
+                        <Bar animationDuration={600} dataKey="estimated" fill={COLOR_BLUE} stackId="a" name="Estimated" />
+                        <Bar animationDuration={600} dataKey="variance" fill={COLOR_EMERALD} stackId="a" name="Variance (Under)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                )}
+
+                {/* Monthly Burn */}
+                {monthlyBurnData.length > 0 && (
+                  <Paper withBorder radius="md" p="lg">
+                    <Text fw={700} size="sm" mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                      Monthly Budget Burn — Last 12 Months
+                    </Text>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={monthlyBurnData} margin={{ left: 50, right: 20, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" />
+                        <XAxis dataKey="month" tick={{ fontSize: 10, fill: TEXT_GRAY }} angle={-45} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 11, fill: TEXT_GRAY }} tickFormatter={v => fmt(v)} />
+                        <RechartTooltip formatter={(v: number) => [fmt(v), 'Monthly Budget']} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                        <Bar animationDuration={600} dataKey="spend" fill={AQUA_HEX} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                )}
+
+                {/* CapEx vs OpEx */}
+                {capexOpexData.length > 0 && (
+                  <Paper withBorder radius="md" p="lg">
+                    <Text fw={700} size="sm" mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                      Capital vs Operating Expenses
+                    </Text>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie animationDuration={600} data={capexOpexData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                          innerRadius={55} outerRadius={80} paddingAngle={2}>
+                          {capexOpexData.map((entry, idx) => (
+                            <Cell key={entry.name} fill={idx === 0 ? COLOR_BLUE : COLOR_VIOLET} />
+                          ))}
+                        </Pie>
+                        <RechartTooltip formatter={(v: number) => [fmt(v), 'Budget']} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <Stack gap="xs" mt="sm">
+                      {capexOpexData.map((d, i) => (
+                        <Group key={d.name} justify="space-between">
+                          <Group gap={6}>
+                            <Box style={{ width: 12, height: 12, borderRadius: 2, background: i === 0 ? COLOR_BLUE : COLOR_VIOLET, flexShrink: 0 }} />
+                            <Text size="xs" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>{d.name}</Text>
+                          </Group>
+                          <Text size="xs" fw={600} style={{ color: DEEP_BLUE }}>{fmt(d.value)}</Text>
+                        </Group>
+                      ))}
+                    </Stack>
+                  </Paper>
+                )}
+
+                {/* Budget at Risk Table */}
+                {budgetAtRisk.length > 0 && (
+                  <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+                    <Box style={{ background: DEEP_BLUE, padding: '10px 16px' }}>
+                      <Text size="sm" fw={700} style={{ color: 'white', fontFamily: FONT_FAMILY }}>
+                        Projects at Risk — Over 90% of Budget
+                      </Text>
+                    </Box>
+                    <Table striped highlightOnHover>
+                      <Table.Thead style={{ background: '#f0f4f8' }}>
+                        <Table.Tr>
+                          <Table.Th style={{ fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 11 }}>Project</Table.Th>
+                          <Table.Th style={{ fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 11 }} ta="right">Estimated</Table.Th>
+                          <Table.Th style={{ fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 11 }} ta="right">Actual</Table.Th>
+                          <Table.Th style={{ fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 11 }} ta="right">% Used</Table.Th>
+                          <Table.Th style={{ fontFamily: FONT_FAMILY, fontWeight: 600, fontSize: 11 }} ta="right">Remaining</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {budgetAtRisk.map((p) => {
+                          const est = p.estimatedBudget ?? 0;
+                          const act = p.actualCost ?? 0;
+                          const pctUsed = est > 0 ? (act / est) * 100 : 0;
+                          const remaining = est - act;
+                          return (
+                            <Table.Tr key={p.id} style={{ opacity: pctUsed > 100 ? 0.9 : 1 }}>
+                              <Table.Td style={{ fontFamily: FONT_FAMILY }}>{p.name}</Table.Td>
+                              <Table.Td ta="right" style={{ fontFamily: FONT_FAMILY }}>{fmt(est)}</Table.Td>
+                              <Table.Td ta="right" style={{ fontFamily: FONT_FAMILY, color: pctUsed > 100 ? COLOR_ERROR_DARK : DEEP_BLUE, fontWeight: 600 }}>{fmt(act)}</Table.Td>
+                              <Table.Td ta="right">
+                                <Badge color={pctUsed > 100 ? 'red' : pctUsed > 95 ? 'orange' : 'yellow'} variant="light">
+                                  {pctUsed.toFixed(1)}%
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td ta="right" style={{ fontFamily: FONT_FAMILY, color: remaining < 0 ? COLOR_ERROR_DARK : DEEP_BLUE }}>
+                                {fmt(remaining)}
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                  </Paper>
+                )}
+
+                {budgetWaterfallData.length === 0 && !noProjects && (
+                  <Text size="sm" c="dimmed">No projects with budget data available.</Text>
+                )}
+              </>
+            )}
           </Stack>
         </Tabs.Panel>
       </Tabs>

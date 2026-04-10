@@ -1,16 +1,18 @@
 package com.portfolioplanner.domain.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Skill tag for a resource with proficiency level.
+ * Table: resource_skill (V91).
+ */
 @Entity
-@Table(name = "resource_skill")
-@Data
+@Table(name = "resource_skill",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"resource_id", "skill_name"}))
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResourceSkill {
@@ -29,14 +31,12 @@ public class ResourceSkill {
     @Column(nullable = false)
     private Short proficiency = 2;
 
-    @Column(name = "years_experience")
+    @Column(name = "years_experience", precision = 4, scale = 1)
     private BigDecimal yearsExperience;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); }
 }

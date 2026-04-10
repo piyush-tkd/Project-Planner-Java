@@ -1,6 +1,6 @@
 import { Card, Text, Group, Slider, Button, SimpleGrid, Box, Divider } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW } from '../../brandTokens';
+import { AQUA, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { SchedulingRulesResponse } from '../../types';
 
@@ -26,9 +26,9 @@ function RuleSlider({ label, value, onChange, min, max, color, marks, suffix = '
     <Box
       p="md"
       style={{
-        background: dark ? 'rgba(255,255,255,0.03)' : '#f8f9fa',
+        background: dark ? 'rgba(255,255,255,0.03)' : SURFACE_SUBTLE,
         borderRadius: 8,
-        border: `1px solid ${dark ? '#373A40' : '#e9ecef'}`,
+        border: `1px solid ${dark ? DARK_BORDER : GRAY_100}`,
       }}
     >
       <Group justify="space-between" mb={12}>

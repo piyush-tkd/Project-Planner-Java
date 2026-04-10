@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
  Box, Title, Text, Group, Stack, Badge, Button, Select, Paper, Table,
- ActionIcon, ThemeIcon, Alert, Loader, Progress, Tooltip,
+ ActionIcon, ThemeIcon, Alert, Loader, Progress, Tooltip, Skeleton,
  SimpleGrid, RingProgress, ScrollArea, Divider, TextInput, Modal,
  SegmentedControl,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/ui';
 import { useDisclosure } from '@mantine/hooks';
@@ -21,7 +22,7 @@ import {
  WorklogUserRow, WorklogIssueEntry,
 } from '../api/jira';
 import ChartCard from '../components/common/ChartCard';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, FONT_FAMILY } from '../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, COLOR_ERROR_DARK, DARK_BG, DEEP_BLUE, FONT_FAMILY, SURFACE_GRAY, SURFACE_SUBTLE } from '../brandTokens';
 
 // Build a colour and icon for each Jira issue type
 const TYPE_META: Record<string, { color: string; hex: string; icon: React.ReactNode }> = {
@@ -170,22 +171,10 @@ export default function JiraWorklogPage() {
  }
 
  return (
- <Box p="md" className="page-enter stagger-children">
- {/* Header */}
- <Group justify="space-between" mb="lg" className="slide-in-left">
- <Group gap="sm">
- <ThemeIcon size={38} radius="md" style={{ backgroundColor: isDark ? '#4a5568' : DEEP_BLUE }}>
- <IconClock size={22} color="white" />
- </ThemeIcon>
- <div>
- <Title order={3} style={{ color: isDark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
- Worklog Breakdown
- </Title>
- <Text size="sm" c="dimmed">
- Hours logged per person · what they worked on · where time was spent
- </Text>
- </div>
- </Group>
+ <PPPageLayout title="Jira Worklog" subtitle="Developer time tracking and worklog analysis" animate>
+ <Box className="page-enter stagger-children">
+ {/* Toolbar */}
+ <Group justify="flex-end" mb="lg" className="slide-in-left">
  <Button
  size="xs"
  variant="light"
@@ -236,9 +225,11 @@ export default function JiraWorklogPage() {
  </Group>
 
  {isLoading ? (
- <Stack align="center" py="xl">
- <Loader />
- <Text size="sm" c="dimmed">Fetching worklogs from Jira…</Text>
+ <Stack gap="sm" py="sm">
+ <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+ {[1,2,3,4].map(i => <Skeleton key={i} height={80} radius="md" />)}
+ </SimpleGrid>
+ <Skeleton height={300} radius="md" />
  </Stack>
  ) : (
  <Stack gap="md">
@@ -378,10 +369,7 @@ export default function JiraWorklogPage() {
  </Group>
 
  {historyLoading ? (
- <Stack align="center" py="xl">
- <Loader size="sm" />
- <Text size="sm" c="dimmed">Loading history…</Text>
- </Stack>
+ <Stack gap="xs" py="sm">{[1,2,3].map(i => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
  ) : !historyData || historyData.months.length === 0 ? (
  <Alert icon={<IconAlertTriangle />} color="gray">
  No worklog history found for {historyAuthor}.
@@ -414,7 +402,7 @@ export default function JiraWorklogPage() {
  <ChartCard title="Hours by Month" minHeight={260}>
  <ResponsiveContainer width="100%" height={240}>
  <BarChart data={historyChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+ <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
  <YAxis tick={{ fontSize: 11 }} unit=" h" />
  <ReTooltip
@@ -433,7 +421,7 @@ export default function JiraWorklogPage() {
  />
  ))
  ) : (
- <Bar dataKey="Total" fill={AQUA} name="Total Hours" />
+ <Bar animationDuration={600} dataKey="Total" fill={AQUA_HEX} name="Total Hours" />
  )}
  </BarChart>
  </ResponsiveContainer>
@@ -481,6 +469,7 @@ export default function JiraWorklogPage() {
  </Stack>
  </Modal>
  </Box>
+ </PPPageLayout>
  );
 }
 
@@ -557,7 +546,7 @@ function UserRows({
  {user.isBuffer ? <IconArrowsLeftRight size={14} /> : <IconUser size={14} />}
  </ThemeIcon>
  <div>
- <Text size="sm" fw={500} style={{ lineHeight: 1.2, color: noHours ? '#dc2626' : fallingBehind ? '#b45309' : undefined }}>{user.author}</Text>
+ <Text size="sm" fw={500} style={{ lineHeight: 1.2, color: noHours ? COLOR_ERROR_DARK : fallingBehind ? '#b45309' : undefined }}>{user.author}</Text>
  {noHours && <Badge size="xs" color="red" variant="light" mt={2}>No hours logged</Badge>}
  {fallingBehind && <Badge size="xs" color="yellow" variant="light" mt={2}>Behind ({user.totalHours}h / {expectedHours}h expected)</Badge>}
  {user.isBuffer && !noHours && !fallingBehind && <Badge size="xs" color="orange" variant="light" mt={2}>BUFFER</Badge>}
@@ -654,7 +643,7 @@ function UserRows({
  {/* Expanded issue list */}
  {expanded && (
  <Table.Tr>
- <Table.Td colSpan={8} style={{ padding: 0, background: isDark ? '#1a1b1e' : '#f8f9fa' }}>
+ <Table.Td colSpan={8} style={{ padding: 0, background: isDark ? DARK_BG : SURFACE_SUBTLE }}>
  <IssueList
  issues={user.issues}
  jiraBaseUrl={jiraBaseUrl}

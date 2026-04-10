@@ -44,7 +44,7 @@ public class NotificationSchedulerConfig implements SchedulingConfigurer {
             () -> {
                 if (notificationScheduleService.load().isDigestEnabled()) {
                     log.info("NotificationSchedulerConfig: running scheduled weekly digest");
-                    weeklyDigestService.sendDigest();
+                    weeklyDigestService.sendWeeklyDigest();
                 } else {
                     log.debug("NotificationSchedulerConfig: weekly digest disabled, skipping");
                 }

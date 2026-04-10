@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import {
  Title, Stack, Group, Button, Table, Badge, Modal, TextInput, Select,
- ActionIcon, Text, Alert, Drawer, Loader, ScrollArea, Anchor, Tooltip,
+ ActionIcon, Text, Alert, Drawer, Skeleton, ScrollArea, Anchor, Tooltip,
  Box, SimpleGrid, SegmentedControl, ThemeIcon,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
@@ -14,35 +15,35 @@ import {
 } from '@tabler/icons-react';
 import { useSprints, useCreateSprint, useUpdateSprint, useDeleteSprint } from '../api/sprints';
 import { useSprintCalendarIssues, useJiraStatus, type ReleaseMetrics, type IssueRow } from '../api/jira';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import type { SprintRequest, SprintResponse } from '../types/project';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 // ── Shared issue-card colours ─────────────────────────────────────────────────
 
 const ISSUE_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
- 'Story': { bg: '#EDE9FE', text: '#7C3AED' },
- 'Bug': { bg: '#FEE2E2', text: '#DC2626' },
- 'Task': { bg: '#DBEAFE', text: '#2563EB' },
- 'Sub-task': { bg: '#F1F5F9', text: '#64748B' },
- 'Subtask': { bg: '#F1F5F9', text: '#64748B' },
- 'Epic': { bg: '#FFEDD5', text: '#EA580C' },
+ 'Story': { bg: SURFACE_VIOLET, text: COLOR_VIOLET },
+ 'Bug': { bg: SURFACE_ERROR_LIGHT, text: COLOR_ERROR_DARK },
+ 'Task': { bg: SURFACE_BLUE_LIGHT, text: COLOR_BLUE_STRONG },
+ 'Sub-task': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Subtask': { bg: SURFACE_LIGHT, text: TEXT_GRAY },
+ 'Epic': { bg: SURFACE_ORANGE, text: COLOR_ORANGE_DEEP },
  'Improvement': { bg: '#CCFBF1', text: '#0D9488' },
  'New Feature': { bg: '#E0F2FE', text: '#0284C7' },
- 'Spike': { bg: '#FEF3C7', text: '#D97706' },
+ 'Spike': { bg: SURFACE_AMBER, text: COLOR_AMBER_DARK },
 };
 const STATUS_CAT_COLOR: Record<string, string> = {
- 'To Do': '#94A3B8', 'In Progress': '#F59E0B', 'Done': '#22C55E',
+ 'To Do': TEXT_SUBTLE, 'In Progress': COLOR_WARNING, 'Done': COLOR_GREEN,
 };
 function issueTypeStyle(t: string) {
- return ISSUE_TYPE_COLORS[t] ?? { bg: '#EFF6FF', text: '#3B82F6' };
+ return ISSUE_TYPE_COLORS[t] ?? { bg: SURFACE_BLUE, text: COLOR_BLUE };
 }
 
 // ── Per-POD issue card ────────────────────────────────────────────────────────
 function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraBaseUrl: string }) {
  const isDark = useDarkMode();
  const [expanded, setExpanded] = useState(true);
- const [filter, setFilter] = useState<'All' | 'Story' | 'Bug' | 'Task'>('All');
+ const [filter, setFilter] = useState<'All' | 'Story' | 'Bug' | 'Task'>('Story');
 
  const stories = metrics.issues.filter(i => i.issueType === 'Story').length;
  const bugs = metrics.issues.filter(i => i.issueType === 'Bug').length;
@@ -68,11 +69,11 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  }
 
  return (
- <Box mb="sm" style={{ border: isDark ? '1px solid #373A40' : '1px solid #e9ecef', borderRadius: 8, overflow: 'hidden' }}>
+ <Box mb="sm" style={{ border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', borderRadius: 8, overflow: 'hidden' }}>
  {/* Header */}
  <Box
  onClick={() => setExpanded(e => !e)}
- style={{ background: isDark ? '#2d2d2d' : DEEP_BLUE, padding: '10px 14px', cursor: 'pointer' }}
+ style={{ background: isDark ? 'rgba(255,255,255,0.08)' : DEEP_BLUE, padding: '10px 14px', cursor: 'pointer' }}
  >
  <Group justify="space-between" wrap="nowrap">
  <Group gap="xs" wrap="nowrap">
@@ -98,7 +99,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  {/* Stats */}
  {expanded && (
  <>
- <SimpleGrid cols={4} p="xs" style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#fafafa' }}>
+ <SimpleGrid cols={4} p="xs" style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
  {[
  { label: 'Total', value: metrics.totalIssues },
  { label: 'SP', value: metrics.totalSP > 0 ? `${metrics.doneSP}/${metrics.totalSP}` : '—' },
@@ -113,7 +114,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  </SimpleGrid>
 
  {/* Filter */}
- <Box px="xs" py={6} style={{ borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef', background: isDark ? '#1a1b1e' : '#fafafa' }}>
+ <Box px="xs" py={6} style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
  <SegmentedControl
  size="xs"
  value={filter}
@@ -145,7 +146,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table.Tbody>
  {visible.map((issue: IssueRow) => {
  const ts = issueTypeStyle(issue.issueType);
- const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? '#94A3B8';
+ const sc = STATUS_CAT_COLOR[issue.statusCategory] ?? TEXT_SUBTLE;
  const done = issue.statusCategory === 'Done';
  return (
  <Table.Tr key={issue.key} style={{ opacity: done ? 0.75 : 1 }}>
@@ -154,7 +155,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Anchor href={`${jiraBaseUrl}/browse/${issue.key}`} target="_blank" fw={600} size="xs">
  {issue.key}
  </Anchor>
- <IconExternalLink size={10} color="#94A3B8" />
+ <IconExternalLink size={10} color={TEXT_SUBTLE} />
  </Group>
  </Table.Td>
  <Table.Td>
@@ -165,7 +166,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table.Td style={{ maxWidth: 380 }}>
  <Tooltip label={issue.summary} disabled={issue.summary.length < 70} withArrow multiline w={360}>
  <Text size="xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>
- {done && <IconCheck size={10} style={{ marginRight: 3, color: '#22C55E', display: 'inline', verticalAlign: 'middle' }} />}
+ {done && <IconCheck size={10} style={{ marginRight: 3, color: COLOR_GREEN, display: 'inline', verticalAlign: 'middle' }} />}
  {issue.summary}
  </Text>
  </Tooltip>
@@ -259,10 +260,7 @@ function SprintIssuesDrawer({
  )}
 
  {jiraStatus?.configured && (isLoading || isFetching) && (
- <Group justify="center" py="xl">
- <Loader size="sm" />
- <Text c="dimmed" size="sm">Searching Jira sprints by date…</Text>
- </Group>
+ <Skeleton height={40} radius="sm" />
  )}
 
  {jiraStatus?.configured && !isLoading && !isFetching && !hasData && (
@@ -455,11 +453,10 @@ export default function SprintCalendarPage() {
 
  return (
  <>
+ <PPPageLayout title="Sprint Calendar" subtitle="Sprint schedule planning and Jira release alignment" animate>
  <Stack className="page-enter stagger-children">
  <Group justify="space-between" className="slide-in-left">
  <Group gap="sm">
- <IconCalendarEvent size={28} />
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Sprint Calendar</Title>
  </Group>
  <Button leftSection={<IconPlus size={16} />} onClick={openAdd}>Add Sprint</Button>
  </Group>
@@ -519,6 +516,7 @@ export default function SprintCalendarPage() {
 
  {/* ── Jira issues drawer ──────────────────────────────────────────── */}
  <SprintIssuesDrawer sprint={viewingSprint} onClose={() => setViewingSprint(null)} />
+ </PPPageLayout>
  </>
  );
 }

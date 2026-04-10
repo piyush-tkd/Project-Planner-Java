@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
   Title, Text, Stack, Group, Badge, Button, Table, Modal, TextInput,
-  Textarea, Select, Switch, ActionIcon, Tooltip, Loader, Center,
+  Textarea, Select, Switch, ActionIcon, Tooltip, Skeleton, Center, Alert, ThemeIcon,
 } from '@mantine/core';
-import { IconPlus, IconEdit, IconTrash, IconEye, IconEyeOff } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconEye, IconEyeOff, IconAlertTriangle, IconNotes } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
@@ -26,7 +26,7 @@ export default function ChangelogAdminPage() {
   const [editing, setEditing] = useState<ChangelogEntry | null>(null);
   const [form,    setForm]    = useState(BLANK);
 
-  const { data: entries = [], isLoading } = useQuery<ChangelogEntry[]>({
+  const { data: entries = [], isLoading, isError } = useQuery<ChangelogEntry[]>({
     queryKey: ['changelog-all'],
     queryFn: async () => { const r = await apiClient.get('/changelog/all'); return r.data; },
   });
@@ -94,7 +94,11 @@ export default function ChangelogAdminPage() {
       </Group>
 
       {isLoading ? (
-        <Center h={200}><Loader /></Center>
+        <Stack gap="xs">{[...Array(4)].map((_, i) => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
+      ) : isError ? (
+        <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />} radius="md">
+          Failed to load changelog entries. Please refresh the page to try again.
+        </Alert>
       ) : (
         <Table withTableBorder withColumnBorders fz="sm">
           <Table.Thead>
@@ -108,6 +112,23 @@ export default function ChangelogAdminPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {entries.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={6}>
+                  <Center py="xl">
+                    <Stack align="center" gap="xs">
+                      <ThemeIcon size={48} radius="xl" variant="light" color="gray">
+                        <IconNotes size={24} />
+                      </ThemeIcon>
+                      <Text fw={600} c="dimmed" size="sm">No changelog entries yet</Text>
+                      <Text c="dimmed" size="xs" ta="center" maw={320}>
+                        Click <strong>+ New Entry</strong> to document a release, feature, or fix — entries will appear in the "What's New" panel for your team.
+                      </Text>
+                    </Stack>
+                  </Center>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {entries.map(e => (
               <Table.Tr key={e.id}>
                 <Table.Td><Badge variant="outline" size="xs">{e.version}</Badge></Table.Td>

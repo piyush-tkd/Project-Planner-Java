@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface ProjectApprovalRepository extends JpaRepository<ProjectApproval, Long> {
     List<ProjectApproval> findByProjectIdOrderByRequestedAtDesc(Long projectId);
     List<ProjectApproval> findByStatusOrderByRequestedAtDesc(ProjectApproval.ApprovalStatus status);
+    List<ProjectApproval> findAllByOrderByRequestedAtDesc();
     Optional<ProjectApproval> findFirstByProjectIdAndStatusOrderByRequestedAtDesc(Long projectId, ProjectApproval.ApprovalStatus status);
 }

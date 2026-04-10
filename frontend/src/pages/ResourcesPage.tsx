@@ -1,22 +1,27 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Title, Button, Group, Table, Modal, TextInput, Select, Switch, NumberInput, Stack, Text, ActionIcon, SimpleGrid,
+  Button, Group, Table, Modal, TextInput, Select, Switch, NumberInput, Stack, Text, ActionIcon, SimpleGrid,
   Badge, Tooltip, Checkbox, ScrollArea, ThemeIcon, Avatar, Popover, SegmentedControl,
 } from '@mantine/core';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { PPPageLayout } from '../components/pp';
+import { AQUA, AQUA_TINTS, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_LIGHT, FONT_FAMILY, TEXT_DIM } from '../brandTokens';
 import { notifications } from '@mantine/notifications';
+import { useToast } from '../hooks/useToast';
 import {
   IconPlus, IconTrash, IconUsers, IconCode, IconTestPipe, IconUserStar, IconMapPin,
   IconAlertTriangle, IconSearch, IconUserOff, IconClock, IconBuildingSkyscraper,
   IconDownload, IconWand, IconColumns, IconPencil, IconCheck, IconX,
+  IconHexagons, IconFlame, IconArrowsShuffle, IconChartInfographic, IconUserPlus,
 } from '@tabler/icons-react';
+import ConnectedPages from '../components/common/ConnectedPages';
 import { useResources, useCreateResource, useDeleteResource, useUpdateResource, useSetAssignment, useAllAvailability } from '../api/resources';
 import { usePods } from '../api/pods';
 import { useJiraUsers, useAutoMatchSuggestions, useApplyAutoMatch } from '../api/jiraBuffer';
 import { Role, Location, formatRole } from '../types';
 import type { ResourceRequest, ResourceResponse } from '../types';
 import SummaryCard from '../components/charts/SummaryCard';
+import { PageInsightCard } from '../components/common/PageInsightCard';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
@@ -61,11 +66,12 @@ const emptyForm: ResourceRequest = {
 };
 
 // Toggleable columns for Resources table
-const RES_ALL_COLS = ['#', 'Jira User', 'Role', 'Location', 'Active', 'Capacity', 'Home POD', 'FTE'] as const;
+const RES_ALL_COLS = ['#', 'Jira User', 'Role', 'Location', 'Active', 'Capacity', 'Home POD', 'FTE', 'Email', 'Jira Display Name', 'Billing Rate'] as const;
 type ResColKey = typeof RES_ALL_COLS[number];
 const RES_DEFAULT_VISIBLE: ResColKey[] = ['#', 'Role', 'Location', 'Active', 'Home POD', 'FTE'];
 
 export default function ResourcesPage() {
+  const toast = useToast();
   const isDark = useDarkMode();
 
   // ── Column visibility (persisted) ────────────────────────────────────
@@ -105,14 +111,25 @@ export default function ResourcesPage() {
 
   // ── Inline editing ────────────────────────────────────────────────────
   const [inlineEditId, setInlineEditId] = useState<number | null>(null);
-  const [inlineForm, setInlineForm] = useState<{ name: string; role: Role; location: Location; active: boolean; capacityFte: number }>({
-    name: '', role: Role.DEVELOPER, location: Location.US, active: true, capacityFte: 1.0,
+  const [inlineForm, setInlineForm] = useState<{ name: string; role: Role; location: Location; active: boolean; capacityFte: number; homePodId: number | null; email: string | null; jiraDisplayName: string | null; countsInCapacity: boolean; actualRate: number | null }>({
+    name: '', role: Role.DEVELOPER, location: Location.US, active: true, capacityFte: 1.0, homePodId: null, email: null, jiraDisplayName: null, countsInCapacity: true, actualRate: null,
   });
 
   const startInlineEdit = (r: ResourceResponse, e: React.MouseEvent) => {
     e.stopPropagation();
     setInlineEditId(r.id);
-    setInlineForm({ name: r.name, role: r.role as Role, location: r.location as Location, active: r.active, capacityFte: r.podAssignment?.capacityFte ?? 1.0 });
+    setInlineForm({
+      name: r.name,
+      role: r.role as Role,
+      location: r.location as Location,
+      active: r.active,
+      capacityFte: r.podAssignment?.capacityFte ?? 1.0,
+      homePodId: r.podAssignment?.podId ?? null,
+      email: r.email ?? null,
+      jiraDisplayName: r.jiraDisplayName ?? null,
+      countsInCapacity: r.countsInCapacity,
+      actualRate: r.actualRate ?? null,
+    });
   };
 
   const cancelInlineEdit = (e: React.MouseEvent) => {
@@ -122,29 +139,33 @@ export default function ResourcesPage() {
 
   const saveInlineEdit = (r: ResourceResponse, e: React.MouseEvent) => {
     e.stopPropagation();
+    const podChanged = inlineForm.homePodId !== (r.podAssignment?.podId ?? null);
     updateMutation.mutate({
       id: r.id,
       data: {
         name: inlineForm.name,
-        email: r.email ?? null,
+        email: inlineForm.email,
         role: inlineForm.role,
         location: inlineForm.location,
         active: inlineForm.active,
-        countsInCapacity: r.countsInCapacity,
-        homePodId: r.podAssignment?.podId ?? null,
+        countsInCapacity: inlineForm.countsInCapacity,
+        homePodId: inlineForm.homePodId,
         capacityFte: inlineForm.capacityFte,
-        jiraDisplayName: r.jiraDisplayName ?? null,
+        jiraDisplayName: inlineForm.jiraDisplayName,
         jiraAccountId: r.jiraAccountId ?? null,
+        actualRate: inlineForm.actualRate,
       },
     }, {
       onSuccess: () => {
-        if (r.podAssignment?.podId && inlineForm.capacityFte !== r.podAssignment.capacityFte) {
-          assignMutation.mutate({ resourceId: r.id, podId: r.podAssignment.podId, capacityFte: inlineForm.capacityFte });
+        // If pod changed OR FTE changed, re-assign to the (new) pod
+        const effectivePodId = inlineForm.homePodId ?? r.podAssignment?.podId;
+        if (effectivePodId && (podChanged || inlineForm.capacityFte !== r.podAssignment?.capacityFte)) {
+          assignMutation.mutate({ resourceId: r.id, podId: effectivePodId, capacityFte: inlineForm.capacityFte });
         }
         setInlineEditId(null);
-        notifications.show({ message: `${inlineForm.name} updated`, color: 'green' });
+        toast.success('Resource updated', `${inlineForm.name} saved`);
       },
-      onError: () => notifications.show({ message: 'Update failed', color: 'red' }),
+      onError: () => toast.error('Update failed', 'Could not save resource changes'),
     });
   };
 
@@ -360,13 +381,13 @@ export default function ResourcesPage() {
           saveAssignment(editId);
           setModalOpen(false);
           setNameError('');
-          notifications.show({ title: 'Updated', message: 'Resource updated', color: 'green' });
+          toast.success('Resource updated', 'Changes saved successfully');
         },
         onError: (error: any) => {
           if (error.response?.status === 409) {
             setNameError('A resource with this name already exists');
           } else {
-            notifications.show({ title: 'Error', message: error.message || 'Failed to update resource', color: 'red' });
+            toast.error('Update failed', error.message || 'Failed to update resource');
           }
         },
       });
@@ -376,13 +397,13 @@ export default function ResourcesPage() {
           saveAssignment(created.id);
           setModalOpen(false);
           setNameError('');
-          notifications.show({ title: 'Created', message: 'Resource created', color: 'green' });
+          toast.success('Resource created', 'New resource added to the directory');
         },
         onError: (error: any) => {
           if (error.response?.status === 409) {
             setNameError('A resource with this name already exists');
           } else {
-            notifications.show({ title: 'Error', message: error.message || 'Failed to create resource', color: 'red' });
+            toast.error('Create failed', error.message || 'Failed to create resource');
           }
         },
       });
@@ -393,7 +414,7 @@ export default function ResourcesPage() {
     deleteMutation.mutate(id, {
       onSuccess: () => {
         setDeleteConfirm(null);
-        notifications.show({ title: 'Deleted', message: 'Resource deleted', color: 'red' });
+        toast.success('Resource deleted', 'Resource removed from directory');
       },
     });
   };
@@ -402,17 +423,17 @@ export default function ResourcesPage() {
   const handleExportSelected = () => {
     const selectedResources = sortedResources.filter(r => selectedIds.has(r.id));
     if (selectedResources.length === 0) {
-      notifications.show({ title: 'No selection', message: 'Please select resources to export', color: 'yellow' });
+      toast.warning('No selection', 'Please select resources to export');
       return;
     }
     downloadCsv(`resources_selected_${Date.now()}`, selectedResources, resourceColumns);
-    notifications.show({ title: 'Exported', message: `${selectedResources.length} resource(s) exported`, color: 'green' });
+    toast.success('Exported', `${selectedResources.length} resource(s) exported`);
   };
 
   const handleDeleteSelected = () => {
     const selectedResources = sortedResources.filter(r => selectedIds.has(r.id));
     if (selectedResources.length === 0) {
-      notifications.show({ title: 'No selection', message: 'Please select resources to delete', color: 'yellow' });
+      toast.warning('No selection', 'Please select resources to delete');
       return;
     }
     // Show confirmation modal with count
@@ -425,11 +446,11 @@ export default function ResourcesPage() {
   const totalOverAlloc = Array.from(overAllocMap.values()).reduce((s, v) => s + v, 0);
 
   return (
-    <Stack className="page-enter stagger-children">
-      <NlpBreadcrumb />
-      <Group justify="space-between" className="slide-in-left">
+    <PPPageLayout
+      title="Resources"
+      animate
+      actions={
         <Group gap="sm">
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Resources</Title>
           {totalOverAlloc > 0 && (
             <Tooltip label={`${overAllocMap.size} resource(s) have availability hours exceeding their FTE capacity`}>
               <Badge color="orange" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
@@ -437,8 +458,6 @@ export default function ResourcesPage() {
               </Badge>
             </Tooltip>
           )}
-        </Group>
-        <Group gap="sm">
           {suggestions && suggestions.length > 0 && (
             <Tooltip label={`${suggestions.length} Jira users can be auto-matched to resources`}>
               <Button
@@ -494,56 +513,58 @@ export default function ResourcesPage() {
           />
           <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>Add Resource</Button>
         </Group>
-      </Group>
-
+      }
+    >
+      <PageInsightCard pageKey="resources" data={resources} />
+      <Stack className="stagger-children">
       {/* ── Stat Cards ─────────────────────────────────────── */}
       <SimpleGrid cols={{ base: 2, sm: 4, lg: 6 }}>
         <SummaryCard
           title="Total"
           value={stats.total}
-          icon={<IconUsers size={20} color="#339af0" />}
+          icon={<IconUsers size={20} color={COLOR_BLUE_LIGHT} />}
           onClick={clearAllFilters}
           active={!hasActiveFilters}
         />
         <SummaryCard
           title="Active"
           value={stats.active}
-          icon={<IconUsers size={20} color="#40c057" />}
+          icon={<IconUsers size={20} color={COLOR_SUCCESS} />}
           onClick={() => toggleCard('ACTIVE')}
           active={activeCard === 'ACTIVE'}
         />
         <SummaryCard
           title="Inactive"
           value={stats.inactive}
-          icon={<IconUserOff size={20} color="#868e96" />}
+          icon={<IconUserOff size={20} color={TEXT_DIM} />}
           onClick={() => toggleCard('INACTIVE')}
           active={activeCard === 'INACTIVE'}
         />
         <SummaryCard
           title="Part-Time"
           value={stats.partTime}
-          icon={<IconClock size={20} color="#fd7e14" />}
+          icon={<IconClock size={20} color={COLOR_ORANGE} />}
           onClick={() => toggleCard('PART_TIME')}
           active={activeCard === 'PART_TIME'}
         />
         <SummaryCard
           title="Over-Allocated"
           value={stats.overAlloc}
-          icon={<IconAlertTriangle size={20} color="#fa5252" />}
+          icon={<IconAlertTriangle size={20} color={COLOR_ERROR} />}
           onClick={() => toggleCard('OVER_ALLOC')}
           active={activeCard === 'OVER_ALLOC'}
         />
         <SummaryCard
           title="Developers"
           value={stats.devs}
-          icon={<IconCode size={20} color="#845ef7" />}
+          icon={<IconCode size={20} color={COLOR_VIOLET_LIGHT} />}
           onClick={() => toggleCard('DEVELOPER')}
           active={activeCard === 'DEVELOPER'}
         />
         <SummaryCard
           title="QA"
           value={stats.qa}
-          icon={<IconTestPipe size={20} color="#fd7e14" />}
+          icon={<IconTestPipe size={20} color={COLOR_ORANGE} />}
           onClick={() => toggleCard('QA')}
           active={activeCard === 'QA'}
         />
@@ -557,14 +578,14 @@ export default function ResourcesPage() {
         <SummaryCard
           title="Tech Lead"
           value={stats.techLead}
-          icon={<IconUserStar size={20} color="#fab005" />}
+          icon={<IconUserStar size={20} color={COLOR_AMBER} />}
           onClick={() => toggleCard('TECH_LEAD')}
           active={activeCard === 'TECH_LEAD'}
         />
         <SummaryCard
           title="US"
           value={stats.us}
-          icon={<IconMapPin size={20} color="#339af0" />}
+          icon={<IconMapPin size={20} color={COLOR_BLUE_LIGHT} />}
           onClick={() => toggleCard('US')}
           active={activeCard === 'US'}
         />
@@ -658,7 +679,7 @@ export default function ResourcesPage() {
             </Tooltip>
           </Popover.Target>
           <Popover.Dropdown>
-            <Text size="xs" fw={600} mb="xs" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Visible Columns</Text>
+            <Text size="xs" fw={600} mb="xs" style={{ color: 'var(--pp-text)', fontFamily: FONT_FAMILY }}>Visible Columns</Text>
             <Stack gap={6}>
               {RES_ALL_COLS.map(col => (
                 <Switch
@@ -752,6 +773,9 @@ export default function ResourcesPage() {
               {visibleCols.has('Capacity') && <Table.Th>Counts in Capacity</Table.Th>}
               {visibleCols.has('Home POD') && <SortableHeader sortKey="podAssignment.podName" currentKey={sortKey} dir={sortDir} onSort={onSort}>Home POD</SortableHeader>}
               {visibleCols.has('FTE') && <SortableHeader sortKey="podAssignment.capacityFte" currentKey={sortKey} dir={sortDir} onSort={onSort}>Capacity FTE</SortableHeader>}
+              {visibleCols.has('Email') && <Table.Th>Email</Table.Th>}
+              {visibleCols.has('Jira Display Name') && <Table.Th>Jira Display Name</Table.Th>}
+              {visibleCols.has('Billing Rate') && <Table.Th>Billing Rate</Table.Th>}
               <Table.Th>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -903,16 +927,38 @@ export default function ResourcesPage() {
                     </Table.Td>
                   )}
                   {visibleCols.has('Capacity') && (
-                    <Table.Td>
-                      {r.countsInCapacity
-                        ? <Badge size="xs" color="green" variant="light">Yes</Badge>
-                        : <Badge size="xs" color="gray" variant="light">No</Badge>
-                      }
+                    <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                      {inlineEditId === r.id ? (
+                        <Switch
+                          size="xs"
+                          checked={inlineForm.countsInCapacity}
+                          onChange={e => setInlineForm(f => ({ ...f, countsInCapacity: e.currentTarget.checked }))}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        r.countsInCapacity
+                          ? <Badge size="xs" color="green" variant="light">Yes</Badge>
+                          : <Badge size="xs" color="gray" variant="light">No</Badge>
+                      )}
                     </Table.Td>
                   )}
                   {visibleCols.has('Home POD') && (
-                    <Table.Td>
-                      <Text size="xs">{r.podAssignment?.podName ?? <Text span size="xs" c="dimmed">—</Text>}</Text>
+                    <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                      {inlineEditId === r.id ? (
+                        <Select
+                          size="xs"
+                          placeholder="Assign POD…"
+                          data={podOptions}
+                          value={inlineForm.homePodId ? String(inlineForm.homePodId) : null}
+                          onChange={v => setInlineForm(f => ({ ...f, homePodId: v ? Number(v) : null }))}
+                          clearable
+                          searchable
+                          style={{ minWidth: 130 }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <Text size="xs">{r.podAssignment?.podName ?? <Text span size="xs" c="dimmed">—</Text>}</Text>
+                      )}
                     </Table.Td>
                   )}
                   {visibleCols.has('FTE') && (
@@ -931,6 +977,61 @@ export default function ResourcesPage() {
                           {isPartTime ? `${Math.round(fte * 100)}%` : '100%'}
                         </Badge>
                       ) : '-'}
+                    </Table.Td>
+                  )}
+                  {visibleCols.has('Email') && (
+                    <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                      {inlineEditId === r.id ? (
+                        <TextInput
+                          size="xs"
+                          type="email"
+                          value={inlineForm.email ?? ''}
+                          onChange={e => setInlineForm(f => ({ ...f, email: e.target.value || null }))}
+                          placeholder="email@example.com"
+                          style={{ width: 150 }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <Text size="xs" c={r.email ? 'inherit' : 'dimmed'}>{r.email ?? '—'}</Text>
+                      )}
+                    </Table.Td>
+                  )}
+                  {visibleCols.has('Jira Display Name') && (
+                    <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                      {inlineEditId === r.id ? (
+                        <TextInput
+                          size="xs"
+                          value={inlineForm.jiraDisplayName ?? ''}
+                          onChange={e => setInlineForm(f => ({ ...f, jiraDisplayName: e.target.value || null }))}
+                          placeholder="jira-username"
+                          style={{ width: 140 }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <Text size="xs" c={r.jiraDisplayName ? 'inherit' : 'dimmed'}>{r.jiraDisplayName ?? '—'}</Text>
+                      )}
+                    </Table.Td>
+                  )}
+                  {visibleCols.has('Billing Rate') && (
+                    <Table.Td onClick={e => inlineEditId === r.id && e.stopPropagation()}>
+                      {inlineEditId === r.id ? (
+                        <NumberInput
+                          size="xs"
+                          value={inlineForm.actualRate ?? ''}
+                          onChange={v => setInlineForm(f => ({ ...f, actualRate: v ? Number(v) : null }))}
+                          placeholder="0.00"
+                          prefix="$"
+                          suffix="/hr"
+                          style={{ width: 110 }}
+                          onClick={e => e.stopPropagation()}
+                          decimalScale={2}
+                          min={0}
+                        />
+                      ) : (
+                        <Text size="xs" c={r.actualRate ? 'inherit' : 'dimmed'}>
+                          {r.actualRate ? `$${r.actualRate.toFixed(2)}/hr` : '—'}
+                        </Text>
+                      )}
                     </Table.Td>
                   )}
                   <Table.Td onClick={e => e.stopPropagation()}>
@@ -1091,6 +1192,17 @@ export default function ResourcesPage() {
           )}
         </Stack>
       </Modal>
-    </Stack>
+
+      <ConnectedPages pages={[
+        { label: 'Overrides',         path: '/people/resources?tab=overrides', icon: <IconArrowsShuffle size={16} />, color: 'pink',   description: 'Temporary cross-POD allocations and capacity adjustments' },
+        { label: 'Capacity Hub',      path: '/people/capacity',                icon: <IconFlame size={16} />,          color: 'orange', description: 'Demand planning, leave, and overall capacity view' },
+        { label: 'PODs',              path: '/pods',                           icon: <IconHexagons size={16} />,       color: 'teal',   description: 'Manage POD teams and their complexity multipliers' },
+        { label: 'Workload Chart',    path: '/reports/workload-chart',         icon: <IconChartInfographic size={16} />, color: 'violet', description: 'Per-resource workload and allocation heatmap' },
+        { label: 'Hiring Forecast',   path: '/reports/hiring-forecast',        icon: <IconUserPlus size={16} />,       color: 'blue',   description: 'Projected hiring needs based on capacity gaps' },
+        { label: 'Availability',      path: '/people/resources?tab=availability', icon: <IconClock size={16} />,      color: 'green',  description: 'Monthly availability and over-allocation view' },
+      ]} />
+
+      </Stack>
+    </PPPageLayout>
   );
 }

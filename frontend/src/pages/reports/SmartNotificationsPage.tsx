@@ -18,7 +18,7 @@ import {
   Accordion,
   Button,
   ActionIcon,
-  Loader,
+  Skeleton,
   Center,
 } from '@mantine/core';
 import { notifications as notif } from '@mantine/notifications';
@@ -37,7 +37,7 @@ import {
   IconBrain,
 } from '@tabler/icons-react';
 import apiClient from '../../api/client';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, CHART_COLORS, AQUA_TINTS, DEEP_BLUE_TINTS } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, BORDER_SOFT, CHART_COLORS, COLOR_AMBER, COLOR_ERROR, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, DARK_MUTED, DARK_TEXT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_300, GRAY_400, SHADOW, SURFACE_BLUE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -330,11 +330,11 @@ const SmartNotificationsPage: React.FC = () => {
 
   const getAlertColor = (color: string) => {
     const colorMap: Record<string, string> = {
-      red: CHART_COLORS[0] || '#FF6B6B',
+      red: CHART_COLORS[0] || COLOR_ERROR_LIGHT,
       orange: CHART_COLORS[1] || '#FFA94D',
       yellow: CHART_COLORS[2] || '#FFD93D',
       blue: DEEP_BLUE,
-      green: CHART_COLORS[3] || '#51CF66',
+      green: CHART_COLORS[3] || COLOR_GREEN_LIGHT,
     };
     return colorMap[color] || DEEP_BLUE;
   };
@@ -346,7 +346,7 @@ const SmartNotificationsPage: React.FC = () => {
         <Title order={1} style={{ color: isDark ? '#fff' : DEEP_BLUE, fontSize: '28px', fontWeight: 700 }}>
           Smart Notifications
         </Title>
-        <Text size="md" style={{ color: isDark ? '#adb5bd' : '#666', marginTop: '8px' }}>
+        <Text size="md" style={{ color: isDark ? GRAY_300 : '#666', marginTop: '8px' }}>
           Automated alerts, weekly digest, and portfolio health monitoring
         </Text>
       </div>
@@ -356,12 +356,12 @@ const SmartNotificationsPage: React.FC = () => {
         p="lg"
         radius="md"
         style={{
-          backgroundColor: isDark ? '#1f2937' : '#fff',
-          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          backgroundColor: isDark ? DARK_TEXT : '#fff',
+          border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
           boxShadow: SHADOW.card,
         }}
       >
-        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}>
+        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}` }}>
           <Group justify="space-between">
             <Group gap="sm">
               <ThemeIcon color="violet" variant="light" size="lg" radius="md">
@@ -391,7 +391,7 @@ const SmartNotificationsPage: React.FC = () => {
         </Card.Section>
         <Card.Section inheritPadding py="md">
           {insightsLoading ? (
-            <Center py="md"><Loader size="sm" color="violet" /></Center>
+            <Skeleton height={120} radius="sm" />
           ) : insights.length === 0 ? (
             <Alert icon={<IconChecklist size={16} />} title="No active insights" color="teal">
               All clear! Run the detector to scan for new signals.
@@ -404,9 +404,9 @@ const SmartNotificationsPage: React.FC = () => {
                   p="sm"
                   radius="sm"
                   style={{
-                    backgroundColor: isDark ? '#374151' : '#f9fafb',
-                    border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                    borderLeft: `4px solid ${ins.severity === 'HIGH' ? '#fa5252' : ins.severity === 'MEDIUM' ? '#ff922b' : '#fab005'}`,
+                    backgroundColor: isDark ? DARK_MUTED : '#f9fafb',
+                    border: `1px solid ${isDark ? '#4b5563' : BORDER_SOFT}`,
+                    borderLeft: `4px solid ${ins.severity === 'HIGH' ? COLOR_ERROR : ins.severity === 'MEDIUM' ? '#ff922b' : COLOR_AMBER}`,
                   }}
                 >
                   <Group justify="space-between" align="flex-start" wrap="nowrap">
@@ -420,7 +420,7 @@ const SmartNotificationsPage: React.FC = () => {
                           <Text size="xs" c="dimmed" truncate>{ins.entityName}</Text>
                         )}
                       </Group>
-                      <Text size="sm" fw={600} style={{ color: isDark ? '#e5e7eb' : '#1f2937' }}>
+                      <Text size="sm" fw={600} style={{ color: isDark ? BORDER_SOFT : DARK_TEXT }}>
                         {ins.title}
                       </Text>
                       {ins.description && (
@@ -453,22 +453,22 @@ const SmartNotificationsPage: React.FC = () => {
           p="lg"
           radius="md"
           style={{
-            backgroundColor: isDark ? '#1f2937' : '#fff',
-            border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+            backgroundColor: isDark ? DARK_TEXT : '#fff',
+            border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
             boxShadow: SHADOW.card,
           }}
         >
           <Group justify="space-between" align="flex-start" mb="sm">
             <div>
-              <Text size="sm" style={{ color: isDark ? '#9ca3af' : '#666', fontWeight: 500 }}>
+              <Text size="sm" style={{ color: isDark ? GRAY_400 : '#666', fontWeight: 500 }}>
                 Critical Alerts
               </Text>
-              <Title order={2} style={{ fontSize: '32px', fontWeight: 700, color: '#FF6B6B', marginTop: '8px' }}>
+              <Title order={2} style={{ fontSize: '32px', fontWeight: 700, color: COLOR_ERROR_LIGHT, marginTop: '8px' }}>
                 {criticalCount}
               </Title>
             </div>
             <ThemeIcon radius="md" size="lg" style={{ backgroundColor: '#ffe0e0' }}>
-              <IconAlertTriangle size={20} color="#FF6B6B" />
+              <IconAlertTriangle size={20} color={COLOR_ERROR_LIGHT} />
             </ThemeIcon>
           </Group>
           <Text size="xs" style={{ color: isDark ? '#6b7280' : '#999' }}>
@@ -481,14 +481,14 @@ const SmartNotificationsPage: React.FC = () => {
           p="lg"
           radius="md"
           style={{
-            backgroundColor: isDark ? '#1f2937' : '#fff',
-            border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+            backgroundColor: isDark ? DARK_TEXT : '#fff',
+            border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
             boxShadow: SHADOW.card,
           }}
         >
           <Group justify="space-between" align="flex-start" mb="sm">
             <div>
-              <Text size="sm" style={{ color: isDark ? '#9ca3af' : '#666', fontWeight: 500 }}>
+              <Text size="sm" style={{ color: isDark ? GRAY_400 : '#666', fontWeight: 500 }}>
                 Warnings
               </Text>
               <Title order={2} style={{ fontSize: '32px', fontWeight: 700, color: '#FFA94D', marginTop: '8px' }}>
@@ -509,14 +509,14 @@ const SmartNotificationsPage: React.FC = () => {
           p="lg"
           radius="md"
           style={{
-            backgroundColor: isDark ? '#1f2937' : '#fff',
-            border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+            backgroundColor: isDark ? DARK_TEXT : '#fff',
+            border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
             boxShadow: SHADOW.card,
           }}
         >
           <Group justify="space-between" align="flex-start" mb="sm">
             <div>
-              <Text size="sm" style={{ color: isDark ? '#9ca3af' : '#666', fontWeight: 500 }}>
+              <Text size="sm" style={{ color: isDark ? GRAY_400 : '#666', fontWeight: 500 }}>
                 Upcoming Deadlines
               </Text>
               <Title order={2} style={{ fontSize: '32px', fontWeight: 700, color: DEEP_BLUE, marginTop: '8px' }}>
@@ -538,12 +538,12 @@ const SmartNotificationsPage: React.FC = () => {
         p="lg"
         radius="md"
         style={{
-          backgroundColor: isDark ? '#1f2937' : '#fff',
-          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          backgroundColor: isDark ? DARK_TEXT : '#fff',
+          border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
           boxShadow: SHADOW.card,
         }}
       >
-        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}>
+        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}` }}>
           <Group justify="space-between">
             <Title order={3} style={{ fontSize: '18px', fontWeight: 600, color: isDark ? '#fff' : DEEP_BLUE }}>
               Active Alerts
@@ -569,7 +569,7 @@ const SmartNotificationsPage: React.FC = () => {
                     </ThemeIcon>
                   }
                 >
-                  <Text style={{ color: isDark ? '#e5e7eb' : '#1f2937', fontWeight: 500 }}>{alert.message}</Text>
+                  <Text style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, fontWeight: 500 }}>{alert.message}</Text>
                 </Timeline.Item>
               ))}
             </Timeline>
@@ -582,12 +582,12 @@ const SmartNotificationsPage: React.FC = () => {
         p="lg"
         radius="md"
         style={{
-          backgroundColor: isDark ? '#1f2937' : '#fff',
-          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          backgroundColor: isDark ? DARK_TEXT : '#fff',
+          border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
           boxShadow: SHADOW.card,
         }}
       >
-        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}>
+        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}` }}>
           <Title order={3} style={{ fontSize: '18px', fontWeight: 600, color: isDark ? '#fff' : DEEP_BLUE }}>
             Weekly Digest
           </Title>
@@ -617,7 +617,7 @@ const SmartNotificationsPage: React.FC = () => {
               <Accordion.Panel>
               <ScrollArea>
                 <Table striped highlightOnHover style={{ fontSize: '14px' }}>
-                  <Table.Thead style={{ backgroundColor: isDark ? '#374151' : '#f3f4f6' }}>
+                  <Table.Thead style={{ backgroundColor: isDark ? DARK_MUTED : '#f3f4f6' }}>
                     <Table.Tr>
                       <Table.Th style={{ color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 600 }}>Project</Table.Th>
                       <Table.Th style={{ color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 600 }}>Priority</Table.Th>
@@ -636,7 +636,7 @@ const SmartNotificationsPage: React.FC = () => {
                       .slice(0, 10)
                       .map((project, idx) => (
                         <Table.Tr key={idx}>
-                          <Table.Td style={{ color: isDark ? '#e5e7eb' : '#1f2937' }}>
+                          <Table.Td style={{ color: isDark ? BORDER_SOFT : DARK_TEXT }}>
                             {project.name}
                           </Table.Td>
                           <Table.Td>
@@ -677,7 +677,7 @@ const SmartNotificationsPage: React.FC = () => {
               <Accordion.Panel>
               <Stack gap="sm">
                 {riskItems.length === 0 ? (
-                  <Text style={{ color: isDark ? '#9ca3af' : '#999' }}>No risk items detected.</Text>
+                  <Text style={{ color: isDark ? GRAY_400 : '#999' }}>No risk items detected.</Text>
                 ) : (
                   riskItems.slice(0, 15).map((project, idx) => (
                     <Paper
@@ -685,12 +685,12 @@ const SmartNotificationsPage: React.FC = () => {
                       p="sm"
                       radius="sm"
                       style={{
-                        backgroundColor: isDark ? '#374151' : '#f9fafb',
-                        border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
+                        backgroundColor: isDark ? DARK_MUTED : '#f9fafb',
+                        border: `1px solid ${isDark ? '#4b5563' : BORDER_SOFT}`,
                       }}
                     >
                       <Group justify="space-between" mb="xs">
-                        <Text style={{ fontWeight: 600, color: isDark ? '#fff' : '#1f2937' }}>
+                        <Text style={{ fontWeight: 600, color: isDark ? '#fff' : DARK_TEXT }}>
                           {project.name}
                         </Text>
                         <Badge
@@ -731,7 +731,7 @@ const SmartNotificationsPage: React.FC = () => {
                     p="sm"
                     radius="sm"
                     style={{
-                      backgroundColor: isDark ? '#374151' : '#eff6ff',
+                      backgroundColor: isDark ? DARK_MUTED : SURFACE_BLUE,
                       border: `1px solid ${isDark ? '#4b5563' : '#bfdbfe'}`,
                       borderLeft: `4px solid ${DEEP_BLUE}`,
                     }}
@@ -740,7 +740,7 @@ const SmartNotificationsPage: React.FC = () => {
                       <ThemeIcon color="blue" variant="light" size="lg" radius="md">
                         <IconRocket size={16} />
                       </ThemeIcon>
-                      <Text style={{ color: isDark ? '#e5e7eb' : '#1f2937', flex: 1 }}>
+                      <Text style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, flex: 1 }}>
                         {rec}
                       </Text>
                     </Group>
@@ -758,12 +758,12 @@ const SmartNotificationsPage: React.FC = () => {
         p="lg"
         radius="md"
         style={{
-          backgroundColor: isDark ? '#1f2937' : '#fff',
-          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          backgroundColor: isDark ? DARK_TEXT : '#fff',
+          border: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}`,
           boxShadow: SHADOW.card,
         }}
       >
-        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}` }}>
+        <Card.Section inheritPadding py="md" style={{ borderBottom: `1px solid ${isDark ? DARK_MUTED : BORDER_SOFT}` }}>
           <Title order={3} style={{ fontSize: '18px', fontWeight: 600, color: isDark ? '#fff' : DEEP_BLUE }}>
             Threshold Settings
           </Title>
@@ -771,7 +771,7 @@ const SmartNotificationsPage: React.FC = () => {
         <Card.Section inheritPadding py="md">
           <ScrollArea>
             <Table striped style={{ fontSize: '14px' }}>
-              <Table.Thead style={{ backgroundColor: isDark ? '#374151' : '#f3f4f6' }}>
+              <Table.Thead style={{ backgroundColor: isDark ? DARK_MUTED : '#f3f4f6' }}>
                 <Table.Tr>
                   <Table.Th style={{ color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 600 }}>Alert Type</Table.Th>
                   <Table.Th style={{ color: isDark ? '#fff' : DEEP_BLUE, fontWeight: 600 }}>Threshold</Table.Th>
@@ -780,7 +780,7 @@ const SmartNotificationsPage: React.FC = () => {
               </Table.Thead>
               <Table.Tbody>
                 <Table.Tr>
-                  <Table.Td style={{ color: isDark ? '#e5e7eb' : '#1f2937', fontWeight: 500 }}>Overdue</Table.Td>
+                  <Table.Td style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, fontWeight: 500 }}>Overdue</Table.Td>
                   <Table.Td style={{ color: isDark ? '#d1d5db' : '#666' }}>targetDate &lt; today</Table.Td>
                   <Table.Td>
                     <Badge size="sm" variant="light" color={thresholdStats.overdueCount > 0 ? 'red' : 'green'}>
@@ -789,7 +789,7 @@ const SmartNotificationsPage: React.FC = () => {
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td style={{ color: isDark ? '#e5e7eb' : '#1f2937', fontWeight: 500 }}>Stale</Table.Td>
+                  <Table.Td style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, fontWeight: 500 }}>Stale</Table.Td>
                   <Table.Td style={{ color: isDark ? '#d1d5db' : '#666' }}>Active &gt; 90 days</Table.Td>
                   <Table.Td>
                     <Badge size="sm" variant="light" color={thresholdStats.staleCount > 0 ? 'yellow' : 'green'}>
@@ -798,7 +798,7 @@ const SmartNotificationsPage: React.FC = () => {
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td style={{ color: isDark ? '#e5e7eb' : '#1f2937', fontWeight: 500 }}>Capacity</Table.Td>
+                  <Table.Td style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, fontWeight: 500 }}>Capacity</Table.Td>
                   <Table.Td style={{ color: isDark ? '#d1d5db' : '#666' }}>gap &lt; 0</Table.Td>
                   <Table.Td>
                     <Badge size="sm" variant="light" color={thresholdStats.capacityDeficitMonths > 0 ? 'orange' : 'green'}>
@@ -807,7 +807,7 @@ const SmartNotificationsPage: React.FC = () => {
                   </Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td style={{ color: isDark ? '#e5e7eb' : '#1f2937', fontWeight: 500 }}>P0 Active</Table.Td>
+                  <Table.Td style={{ color: isDark ? BORDER_SOFT : DARK_TEXT, fontWeight: 500 }}>P0 Active</Table.Td>
                   <Table.Td style={{ color: isDark ? '#d1d5db' : '#666' }}>P0 + ACTIVE</Table.Td>
                   <Table.Td>
                     <Badge size="sm" variant="light" color={thresholdStats.p0Active > 3 ? 'orange' : 'green'}>

@@ -4,13 +4,23 @@
  *
  * These tokens are the single source of truth for all brand colours,
  * typography, spacing, and shadow definitions across the application.
+ *
+ * S3.3 — DEEP_BLUE and AQUA now use CSS custom properties that
+ * automatically adapt to dark/light mode via global.css :root overrides.
+ * Raw hex values (_HEX suffix) are kept for Mantine theme registration
+ * in main.tsx and for chart/canvas contexts that can't use CSS vars.
  */
 
+/* ── Raw hex (for theme registration + chart rendering) ───────────── */
+export const DEEP_BLUE_HEX = '#0C2340';   // Primary navy — raw hex
+export const AQUA_HEX      = '#2DCCD3';   // Primary teal — raw hex
+
 /* ── Primary Palette ──────────────────────────────────────────────── */
-export const DEEP_BLUE     = '#0C2340';   // Primary navy
-export const DEEP_BLUE_85  = '#30445D';   // 85% tint
-export const AQUA          = '#2DCCD3';   // Primary teal (replaces legacy sky blue)
-export const AQUA_75       = '#61D9DE';   // 75% tint
+// CSS-var versions: auto-switch between dark/light mode via global.css
+export const DEEP_BLUE     = 'var(--pp-primary)';   // #0C2340 light / #7dd3fc dark
+export const DEEP_BLUE_85  = '#30445D';              // 85% tint (static — mid-range)
+export const AQUA          = 'var(--pp-accent)';    // #1FA8AE light / #2DCCD3 dark
+export const AQUA_75       = '#61D9DE';              // 75% tint (static)
 
 /* ── Secondary Palette ────────────────────────────────────────────── */
 export const LEGACY_BLUE   = '#002F6C';
@@ -101,6 +111,7 @@ export const RADIUS = {
 } as const;
 
 /* ── Shadows ──────────────────────────────────────────────────────── */
+// Shadows use hardcoded rgba values (not CSS vars) for cross-browser shadow support
 export const SHADOW = {
   sm:   '0 1px 3px rgba(12, 35, 64, 0.06), 0 1px 2px rgba(12, 35, 64, 0.04)',
   md:   '0 4px 12px rgba(12, 35, 64, 0.08), 0 2px 4px rgba(12, 35, 64, 0.04)',
@@ -114,9 +125,10 @@ export const SHADOW = {
 /* ── Data Visualization Palette ───────────────────────────────────── */
 // For charts, use this ordered sequence of colours.
 // On dark backgrounds, use the "light" variants.
+// S3.3 — CHART_COLORS keeps raw hex so recharts/d3 can interpolate colors
 export const CHART_COLORS = [
-  DEEP_BLUE,          // #0C2340
-  AQUA,               // #2DCCD3
+  DEEP_BLUE_HEX,      // #0C2340
+  AQUA_HEX,           // #2DCCD3
   LEGACY_BLUE,        // #002F6C
   AQUA_75,            // #61D9DE
   DEEP_BLUE_85,       // #30445D
@@ -152,4 +164,146 @@ export const STATUS_ON_HOLD     = { bg: '#fef3c7', text: '#d97706', border: '#fd
 export const STATUS_NOT_STARTED = { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' };
 export const STATUS_COMPLETED   = { bg: '#f0fdf4', text: '#15803d', border: '#86efac' };
 export const STATUS_CANCELLED   = { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
+
+/* ── Extended Grays (second-pass additions) ───────────────────────── */
+export const SLATE_700          = '#334155';   // slate-700
+export const GRAY_400           = '#9ca3af';   // tailwind gray-400
+export const GRAY_200           = '#e0e0e0';   // light gray
+export const GRAY_BORDER        = '#dee2e6';   // mantine gray.3
+export const SIDEBAR_INACTIVE   = '#8b8fa3';   // old inactive nav text
+
+/* ── Extended Green / Emerald ─────────────────────────────────────── */
+export const COLOR_GREEN_DARK   = '#2f9e44';   // mantine green-8
+export const COLOR_GREEN_STRONG = '#16a34a';   // tailwind green-600
+export const COLOR_EMERALD      = '#059669';   // tailwind emerald-600
+export const COLOR_VIOLET_ALT   = '#8b5cf6';   // tailwind violet-500
+
+/* ── Extended Surfaces (second-pass) ─────────────────────────────── */
+export const SURFACE_BLUE_LIGHT = '#dbeafe';   // blue-100
+export const SURFACE_VIOLET     = '#ede9fe';   // violet-100
+export const SURFACE_ORANGE     = '#ffedd5';   // orange-100
+export const SURFACE_RED_FAINT  = '#fff5f5';   // very light red
+
+/* ── Extended Text Colours ────────────────────────────────────────── */
+export const TEXT_SUBTLE        = '#94a3b8';   // slate-400  — dimmed labels
+export const TEXT_GRAY          = '#64748b';   // slate-500  — secondary text
+export const TEXT_DIM           = '#868e96';   // mantine gray.6
+export const GRAY_300           = '#adb5bd';   // mantine gray.4
+export const GRAY_100           = '#e9ecef';   // mantine gray.2 — light border
+
+/* ── Semantic Colour Palette ──────────────────────────────────────── */
+// Errors / Danger
+export const COLOR_ERROR        = '#fa5252';   // mantine red.6
+export const COLOR_ERROR_STRONG = '#ef4444';   // tailwind red-500
+export const COLOR_ERROR_DARK   = '#dc2626';   // tailwind red-600
+export const COLOR_ERROR_DEEP   = '#c92a2a';   // darker red
+export const COLOR_ERROR_LIGHT  = '#ff6b6b';   // soft red
+
+// Warnings / Amber
+export const COLOR_WARNING      = '#f59e0b';   // amber-400
+export const COLOR_AMBER        = '#fab005';   // mantine yellow
+export const COLOR_AMBER_DARK   = '#d97706';   // amber-600
+export const COLOR_ORANGE_DARK  = '#e67700';   // dark orange
+
+// Oranges
+export const COLOR_ORANGE       = '#fd7e14';   // mantine orange
+export const COLOR_ORANGE_ALT   = '#f97316';   // tailwind orange-500
+export const COLOR_ORANGE_DEEP  = '#ea580c';   // tailwind orange-600
+
+// Greens / Success
+export const COLOR_SUCCESS      = '#40c057';   // mantine green.6
+export const COLOR_GREEN        = '#22c55e';   // tailwind green-500
+export const COLOR_GREEN_LIGHT  = '#51cf66';   // mantine green.4
+export const COLOR_TEAL         = '#10b981';   // tailwind emerald-500
+
+// Blues / Info
+export const COLOR_BLUE         = '#3b82f6';   // tailwind blue-500
+export const COLOR_BLUE_STRONG  = '#2563eb';   // tailwind blue-600
+export const COLOR_BLUE_LIGHT   = '#339af0';   // mantine blue.5
+export const COLOR_BLUE_DARK    = '#228be6';   // mantine blue.6
+
+// Violet / Purple
+export const COLOR_VIOLET       = '#7c3aed';   // violet-600
+export const COLOR_VIOLET_LIGHT = '#845ef7';   // mantine violet.5
+
+/* ── Light Surfaces ───────────────────────────────────────────────── */
+export const SURFACE_SUBTLE     = '#f8f9fa';   // near-white — mantine gray.0
+export const SURFACE_LIGHT      = '#f1f5f9';   // slate-100
+export const SURFACE_FAINT      = '#f8fafc';   // slate-50
+export const SURFACE_GRAY       = '#f0f0f0';   // neutral gray
+export const SURFACE_BLUE       = '#eff6ff';   // blue-50
+export const SURFACE_SUCCESS_LIGHT = '#f0fdf4'; // green-50
+export const SURFACE_SUCCESS    = '#d3f9d8';   // mantine green tint
+export const SURFACE_WARNING    = '#fff3bf';   // amber-50
+export const SURFACE_AMBER      = '#fef3c7';   // amber-100
+export const SURFACE_ERROR      = '#ffe3e3';   // red tint
+export const SURFACE_ERROR_LIGHT = '#fee2e2';  // red-100
+
+/* ── Extended Borders ─────────────────────────────────────────────── */
+export const BORDER_STRONG      = '#e2e8f0';   // slate-200
+export const BORDER_SOFT        = '#e5e7eb';   // tailwind gray-200
+
+/* ── Dark Mode Surfaces ───────────────────────────────────────────── */
+export const DARK_BG            = '#1a1b1e';   // darkest background
+export const DARK_SURFACE       = '#25262b';   // card / paper surface
+export const DARK_SURFACE_ALT   = '#242836';   // alternate dark surface
+export const DARK_ELEMENT       = '#2e3346';   // elevated element bg
+export const DARK_BORDER        = '#373a40';   // border in dark mode
+export const DARK_SIDEBAR       = '#1a1d27';   // sidebar bg in dark mode
+export const DARK_TEXT          = '#1f2937';   // text region bg in dark
+export const DARK_TEXT_PRIMARY  = '#1e293b';   // dark mode text primary
+export const DARK_MUTED         = '#374151';   // muted dark element
+
+/* ── S2 Design System: 8px Spacing Scale ─────────────────────────────── */
+// Use these instead of magic numbers for all margin/padding/gap values.
+export const SPACING = {
+  2:  2,
+  4:  4,
+  6:  6,
+  8:  8,
+  12: 12,
+  16: 16,
+  20: 20,
+  24: 24,
+  32: 32,
+  40: 40,
+  48: 48,
+  64: 64,
+  80: 80,
+} as const;
+
+/* ── Table row height tokens ──────────────────────────────────────────── */
+export const TABLE_ROW_HEIGHT = {
+  compact:   32,   // compact density (user preference)
+  default:   44,   // standard — Wrike-inspired generous rows
+  spacious:  56,   // spacious density
+} as const;
+
+/* ── Card / Paper standardized tokens ────────────────────────────────── */
+export const CARD_PADDING   = 24;   // px — standard card inner padding
+export const CARD_RADIUS    = 12;   // px — standard card border-radius
+export const CARD_RADIUS_SM = 8;    // px — small cards / inline panels
+export const CARD_RADIUS_LG = 16;   // px — large modal panels
+
+/* ── Typography scale ─────────────────────────────────────────────────── */
+export const TEXT_SIZE = {
+  label:   10,   // section label (uppercase, tracked)
+  caption: 11,   // caption, meta info
+  small:   12,   // table cell secondary text
+  body:    13,   // default body
+  md:      14,   // card body text
+  lg:      16,   // card title
+  xl:      20,   // page sub-heading
+  h3:      22,   // section heading
+  h2:      26,   // page heading
+  h1:      32,   // hero / KPI number
+} as const;
+
+/* ── Standard section label style (use with Text component) ───────────── */
+export const SECTION_LABEL_STYLE = {
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.08em',
+} as const;
 

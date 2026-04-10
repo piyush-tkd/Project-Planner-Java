@@ -24,7 +24,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
 
 interface ResourceAllocationData {
  resourceId: number;
@@ -39,11 +39,11 @@ interface ResourceAllocationData {
 
 type SortBy = 'name' | 'peakUtil';
 
-const getUtilizationColor = (pct: number) => {
- if (pct <= 50) return '#51CF66'; // green
- if (pct <= 80) return '#FFD43B'; // yellow
+const getUtilizationColor = (pct: number, dark = false) => {
+ if (pct <= 50) return COLOR_GREEN_LIGHT; // green
+ if (pct <= 80) return dark ? '#FFD43B' : '#FFD43B'; // yellow (neutral)
  if (pct <= 95) return '#FFA94D'; // orange
- return '#FF6B6B'; // red
+ return COLOR_ERROR_LIGHT; // red
 };
 
 const getUtilizationLevel = (pct: number) => {
@@ -154,7 +154,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  position: 'sticky',
  left: 0,
- backgroundColor: DEEP_BLUE,
+ backgroundColor: dark ? 'rgba(30,41,59,0.9)' : DEEP_BLUE,
  color: 'white',
  fontWeight: 600,
  zIndex: 1,
@@ -179,7 +179,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  position: 'sticky',
  left: '140px',
- backgroundColor: DEEP_BLUE,
+ backgroundColor: dark ? 'rgba(30,41,59,0.9)' : DEEP_BLUE,
  color: 'white',
  fontWeight: 600,
  zIndex: 1,
@@ -192,7 +192,7 @@ export default function ResourcePodMatrixPage() {
  const monthIdx = i + 1;
  const data = getMonthData(resource.resourceId, monthIdx);
  const isCurrentMonth = monthIdx === currentMonthIndex;
- const bgColor = isCurrentMonth ? AQUA : 'white';
+ const bgColor = isCurrentMonth ? AQUA : (dark ? 'transparent' : 'white');
 
  if (!data || data.utilizationPct === 0) {
  return (
@@ -201,7 +201,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  backgroundColor: bgColor,
  textAlign: 'center',
- color: '#999',
+ color: dark ? 'rgba(255,255,255,0.5)' : '#999',
  minWidth: '80px',
  }}
  >
@@ -210,7 +210,7 @@ export default function ResourcePodMatrixPage() {
  );
  }
 
- const cellColor = getUtilizationColor(data.utilizationPct);
+ const cellColor = getUtilizationColor(data.utilizationPct, dark);
 
  return (
  <Table.Td
@@ -304,7 +304,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  position: 'sticky',
  left: 0,
- backgroundColor: DEEP_BLUE,
+ backgroundColor: dark ? 'rgba(30,41,59,0.95)' : DEEP_BLUE,
  color: 'white',
  zIndex: 2,
  minWidth: '140px',
@@ -316,7 +316,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  position: 'sticky',
  left: '140px',
- backgroundColor: DEEP_BLUE,
+ backgroundColor: dark ? 'rgba(30,41,59,0.95)' : DEEP_BLUE,
  color: 'white',
  zIndex: 2,
  minWidth: '100px',
@@ -331,7 +331,7 @@ export default function ResourcePodMatrixPage() {
  <Table.Th
  key={i}
  style={{
- backgroundColor: isCurrentMonth ? AQUA : DEEP_BLUE,
+ backgroundColor: isCurrentMonth ? AQUA : (dark ? 'rgba(30,41,59,0.95)' : DEEP_BLUE),
  color: 'white',
  textAlign: 'center',
  minWidth: '80px',
@@ -378,7 +378,7 @@ export default function ResourcePodMatrixPage() {
  Utilization
  </Text>
  <Text fw={600}>{selectedCell.utilizationPct}%</Text>
- <Text size="sm" c={getUtilizationColor(selectedCell.utilizationPct)}>
+ <Text size="sm" c={getUtilizationColor(selectedCell.utilizationPct, dark)}>
  {getUtilizationLevel(selectedCell.utilizationPct)}
  </Text>
  </div>
@@ -391,7 +391,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  display: 'flex',
  height: '20px',
- backgroundColor: '#e9ecef',
+ backgroundColor: GRAY_100,
  borderRadius: '4px',
  overflow: 'hidden',
  }}
@@ -399,7 +399,7 @@ export default function ResourcePodMatrixPage() {
  <Box
  style={{
  width: `${selectedCell.utilizationPct}%`,
- backgroundColor: getUtilizationColor(selectedCell.utilizationPct),
+ backgroundColor: getUtilizationColor(selectedCell.utilizationPct, dark),
  }}
  />
  </Box>

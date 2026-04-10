@@ -2,7 +2,7 @@ import { Card, Text, Group } from '@mantine/core';
 import { type ReactNode } from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { IconArrowUp, IconArrowDown } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, AQUA_HEX, COLOR_ERROR, COLOR_GREEN_LIGHT, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 interface SummaryCardProps {
   title: string;
@@ -23,7 +23,7 @@ export default function SummaryCard({
   title, value, icon, color, onClick, active, sparkData, trend,
 }: SummaryCardProps) {
   const clickable = !!onClick;
-  const trendColor = trend?.startsWith('+') ? '#51cf66' : '#fa5252';
+  const trendColor = trend?.startsWith('+') ? COLOR_GREEN_LIGHT : COLOR_ERROR;
 
   return (
     <Card
@@ -119,7 +119,7 @@ export default function SummaryCard({
                   <Line
                     type="monotone"
                     dataKey="y"
-                    stroke={AQUA}
+                    stroke={AQUA_HEX}
                     dot={false}
                     strokeWidth={2}
                     isAnimationActive={true}
@@ -133,7 +133,7 @@ export default function SummaryCard({
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                backgroundColor: sparkData[sparkData.length - 1] >= sparkData[0] ? '#51cf66' : '#fa5252',
+                backgroundColor: sparkData[sparkData.length - 1] >= sparkData[0] ? COLOR_GREEN_LIGHT : COLOR_ERROR,
                 flexShrink: 0,
                 boxShadow: `0 0 6px ${sparkData[sparkData.length - 1] >= sparkData[0] ? '#51cf6660' : '#fa525260'}`,
                 animation: 'pulse-dot 2s ease-in-out infinite',

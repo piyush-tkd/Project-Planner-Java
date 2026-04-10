@@ -19,8 +19,10 @@ import {
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_BORDER} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { useInlineEdit } from '../../hooks/useInlineEdit';
+import { InlineSelectCell, InlineSelectOption } from '../../components/common/InlineCell';
 
 type FilterTab = 'all' | 'mapped' | 'unmapped' | 'auto' | 'manual';
 
@@ -66,6 +68,7 @@ export default function JiraResourceMappingPage() {
   const clearMut = useClearResourceMapping();
   const bulkAcceptMut = useBulkAcceptMappings();
   const syncAvatarsMut = useSyncAvatars();
+  const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
 
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<FilterTab>('all');
@@ -116,6 +119,24 @@ export default function JiraResourceMappingPage() {
         label: `${m.jiraDisplayName}${m.jiraAccountId ? ` (${m.jiraAccountId.substring(0, 12)}...)` : ''}`,
       }));
   }, [mappings]);
+
+  // Resource options for inline select (mapped resource column)
+  const resourceOptions = useMemo<InlineSelectOption[]>(() => {
+    if (!resources) return [];
+    return resources
+      .filter(r => r.active)
+      .map(r => ({
+        value: String(r.id),
+        label: r.name,
+      }));
+  }, [resources]);
+
+  // Confidence level options
+  const confidenceOptions = useMemo<InlineSelectOption[]>(() => [
+    { value: 'HIGH', label: 'HIGH (0.85+)' },
+    { value: 'MEDIUM', label: 'MEDIUM (0.60-0.84)' },
+    { value: 'LOW', label: 'LOW (<0.60)' },
+  ], []);
 
   // Buffer rows: Jira users in configured PODs who aren't mapped to any resource
   const bufferRows = useMemo(() => {
@@ -291,7 +312,7 @@ export default function JiraResourceMappingPage() {
       </Alert>
 
       {/* Filter Tabs */}
-      <Group gap={0} style={{ borderBottom: `2px solid ${isDark ? '#373A40' : '#dee2e6'}` }}>
+      <Group gap={0} style={{ borderBottom: `2px solid ${isDark ? DARK_BORDER : GRAY_BORDER}` }}>
         {([
           ['all', 'All Resources', totalResources, 'gray'],
           ['mapped', 'Mapped', mappedCount, 'green'],
@@ -352,7 +373,8 @@ export default function JiraResourceMappingPage() {
               <Table.Th style={{ width: 40 }}>#</Table.Th>
               <Table.Th style={{ minWidth: 200 }}>Resource Name</Table.Th>
               <Table.Th style={{ width: 30 }}></Table.Th>
-              <Table.Th style={{ minWidth: 220 }}>Smart Map from Jira</Table.Th>
+              <Table.Th style={{ minWidth: 220 }}>Jira User (Read-Only)</Table.Th>
+              <Table.Th style={{ minWidth: 180 }}>Mapped Resource</Table.Th>
               <Table.Th style={{ width: 100 }}>Confidence</Table.Th>
               <Table.Th style={{ width: 100 }}>Status</Table.Th>
               <Table.Th style={{ width: 130 }}>Actions</Table.Th>
@@ -360,7 +382,10 @@ export default function JiraResourceMappingPage() {
           </Table.Thead>
           <Table.Tbody>
             {filtered.map((row, idx) => {
-              const isEditing = editingRow === row.resourceId;
+              const isEditingRow = editingRow === row.resourceId;
+              const isEditingJiraUser = isEditing(row.resourceId, 'jiraUser');
+              const isEditingMappedResource = isEditing(row.resourceId, 'mappedResource');
+
               return (
                 <Table.Tr key={row.resourceId} style={{
                   background: !row.jiraDisplayName
@@ -401,20 +426,9 @@ export default function JiraResourceMappingPage() {
                     <IconArrowRight size={14} color={row.jiraDisplayName ? 'var(--mantine-color-green-5)' : 'var(--mantine-color-red-5)'} />
                   </Table.Td>
 
-                  {/* Smart Map from Jira */}
+                  {/* Jira User (Read-Only Display) */}
                   <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        data={jiraNameOptions}
-                        value={editJiraName}
-                        onChange={setEditJiraName}
-                        placeholder="Search Jira user..."
-                        searchable
-                        clearable
-                        style={{ minWidth: 220 }}
-                      />
-                    ) : row.jiraDisplayName ? (
+                    {row.jiraDisplayName ? (
                       <Group gap="xs" wrap="nowrap">
                         <ThemeIcon size={22} radius="xl" color="teal" variant="light">
                           <Text size="xs" fw={700}>{initials(row.jiraDisplayName)}</Text>
@@ -432,8 +446,31 @@ export default function JiraResourceMappingPage() {
                         </div>
                       </Group>
                     ) : (
-                      <Text size="xs" c="dimmed" fs="italic">No Jira user matched</Text>
+                      <Text size="xs" c="dimmed" fs="italic">—</Text>
                     )}
+                  </Table.Td>
+
+                  {/* Mapped Resource - Inline Editable */}
+                  <Table.Td>
+                    <InlineSelectCell
+                      value={row.resourceId ? String(row.resourceId) : null}
+                      options={resourceOptions}
+                      isEditing={isEditingMappedResource}
+                      onStartEdit={() => startEdit(row.resourceId, 'mappedResource')}
+                      onCancel={() => stopEdit()}
+                      onSave={async (resourceIdStr) => {
+                        const newResourceId = resourceIdStr ? parseInt(resourceIdStr, 10) : null;
+                        await saveMut.mutateAsync({
+                          jiraDisplayName: row.jiraDisplayName || '',
+                          resourceId: newResourceId,
+                          mappingType: 'MANUAL',
+                        });
+                        stopEdit();
+                        refetchStats();
+                        notifications.show({ title: 'Saved', message: 'Resource mapping updated', color: 'green' });
+                      }}
+                      placeholder="No resource"
+                    />
                   </Table.Td>
 
                   {/* Confidence */}
@@ -444,7 +481,7 @@ export default function JiraResourceMappingPage() {
                       <Group gap={4} wrap="nowrap">
                         <div style={{
                           width: 40, height: 5, borderRadius: 3,
-                          background: isDark ? '#2c2e33' : '#e9ecef',
+                          background: isDark ? '#2c2e33' : GRAY_100,
                           overflow: 'hidden',
                         }}>
                           <div style={{
@@ -469,7 +506,7 @@ export default function JiraResourceMappingPage() {
                   {/* Actions */}
                   <Table.Td>
                     <Group gap={4}>
-                      {isEditing ? (
+                      {isEditingRow ? (
                         <>
                           <Tooltip label={editJiraName ? 'Save mapping' : 'Save as unmapped'}>
                             <ActionIcon
@@ -561,7 +598,7 @@ export default function JiraResourceMappingPage() {
             })}
             {filtered.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={7}>
+                <Table.Td colSpan={8}>
                   <Text ta="center" c="dimmed" py="xl">
                     {resourceRows.length === 0
                       ? 'No active resources found — add resources in the Resources page first'

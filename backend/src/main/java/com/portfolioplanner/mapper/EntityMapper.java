@@ -92,7 +92,9 @@ public interface EntityMapper {
                 project.getJiraBoardId(),
                 project.getJiraLastSyncedAt(),
                 project.isJiraSyncError(),
-                project.isArchived()
+                project.isArchived(),
+                project.getEstimatedBudget(),
+                project.getActualCost()
         );
     }
 

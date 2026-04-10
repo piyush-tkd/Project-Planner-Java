@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Card, Text, Group, Stack, Badge, ThemeIcon, Tooltip, Box, SimpleGrid } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconUsers, IconClock, IconTrendingUp } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, AQUA_TINTS } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ERROR_DEEP, COLOR_SUCCESS, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_RED_FAINT, SURFACE_SUBTLE, TEXT_DIM} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { ProjectPodPlanningResponse, SchedulingRulesResponse } from '../../types';
 
@@ -144,8 +144,8 @@ export default function CapacityPanel({ plannings, rules, projectStartDate, proj
   if (analyses.length === 0) return null;
 
   const PHASE_COLORS: Record<string, string> = {
-    DEV: '#228be6',
-    QA: '#40c057',
+    DEV: COLOR_BLUE_DARK,
+    QA: COLOR_SUCCESS,
     UAT: '#e64980',
   };
 
@@ -185,17 +185,17 @@ export default function CapacityPanel({ plannings, rules, projectStartDate, proj
         <Box
           mt="lg" p="md"
           style={{
-            background: dark ? 'rgba(250,82,82,0.08)' : '#fff5f5',
+            background: dark ? 'rgba(250,82,82,0.08)' : SURFACE_RED_FAINT,
             borderRadius: 8,
-            border: `1px solid ${dark ? '#c92a2a' : '#ffc9c9'}`,
+            border: `1px solid ${dark ? COLOR_ERROR_DEEP : '#ffc9c9'}`,
           }}
         >
           <Group gap="xs" mb="xs">
-            <IconAlertTriangle size={16} color="#fa5252" />
+            <IconAlertTriangle size={16} color={COLOR_ERROR} />
             <Text size="sm" fw={700} c="red">Cannot meet deadline</Text>
           </Group>
           {impossibles.map((a, i) => (
-            <Text key={i} size="xs" c={dark ? '#ffa8a8' : '#c92a2a'} mb={2}>
+            <Text key={i} size="xs" c={dark ? '#ffa8a8' : COLOR_ERROR_DEEP} mb={2}>
               {a.podName} · {a.phase}: {a.totalHours}h of work with only {a.parallelPct}% parallelizable
               — sequential portion alone takes {Math.ceil(a.sequentialDays)}d but only {a.availableDays}d available.
               Adding more people won't help.
@@ -209,9 +209,9 @@ export default function CapacityPanel({ plannings, rules, projectStartDate, proj
 
 function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boolean }) {
   const PHASE_COLORS: Record<string, string> = {
-    DEV: '#228be6', QA: '#40c057', UAT: '#e64980',
+    DEV: COLOR_BLUE_DARK, QA: COLOR_SUCCESS, UAT: '#e64980',
   };
-  const color = PHASE_COLORS[a.phase] || '#868e96';
+  const color = PHASE_COLORS[a.phase] || TEXT_DIM;
 
   const statusColor = a.impossible ? 'red' : !a.feasible ? 'orange' : 'green';
   const statusIcon = a.impossible ? <IconAlertTriangle size={14} /> : !a.feasible ? <IconAlertTriangle size={14} /> : <IconCheck size={14} />;
@@ -221,9 +221,9 @@ function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boole
     <Box
       p="md"
       style={{
-        background: dark ? 'rgba(255,255,255,0.03)' : '#f8f9fa',
+        background: dark ? 'rgba(255,255,255,0.03)' : SURFACE_SUBTLE,
         borderRadius: 8,
-        border: `1px solid ${a.impossible ? (dark ? '#c92a2a' : '#ffc9c9') : !a.feasible ? (dark ? '#e8590c' : '#ffe8cc') : (dark ? '#373A40' : '#e9ecef')}`,
+        border: `1px solid ${a.impossible ? (dark ? COLOR_ERROR_DEEP : '#ffc9c9') : !a.feasible ? (dark ? '#e8590c' : '#ffe8cc') : (dark ? DARK_BORDER : GRAY_100)}`,
       }}
     >
       {/* Header */}
@@ -263,7 +263,7 @@ function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boole
         <Box
           mt={4} p="xs"
           style={{
-            background: dark ? 'rgba(255,255,255,0.02)' : '#fff',
+            background: dark ? 'rgba(255,255,255,0.02)' : SURFACE_SUBTLE,
             borderRadius: 6,
             border: `1px solid ${dark ? '#2C2E33' : '#f1f3f5'}`,
           }}
@@ -288,7 +288,7 @@ function PhaseCard({ analysis: a, dark }: { analysis: PhaseAnalysis; dark: boole
             p="xs"
             style={{
               background: a.impossible
-                ? (dark ? 'rgba(250,82,82,0.06)' : '#fff5f5')
+                ? (dark ? 'rgba(250,82,82,0.06)' : SURFACE_RED_FAINT)
                 : !a.feasible
                 ? (dark ? 'rgba(232,89,12,0.06)' : '#fff4e6')
                 : (dark ? 'rgba(64,192,87,0.06)' : '#ebfbee'),

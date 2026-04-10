@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import {
-  Box, Title, Text, Group, Button, Badge, Card, Stack, Switch,
+  Box, Text, Group, Button, Badge, Card, Stack, Switch,
   Modal, TextInput, Textarea, Select, SimpleGrid, Paper, Tooltip,
   ActionIcon, ThemeIcon, Divider, Tabs, ScrollArea, Loader, Center,
   Alert,
 } from '@mantine/core';
+import { PPPageLayout } from '../components/pp';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconTrash, IconEdit, IconPlayerPlay, IconBolt,
@@ -20,7 +21,7 @@ import {
 } from '../api/automationRules';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { AQUA, COLOR_BLUE, COLOR_GREEN, COLOR_ORANGE_ALT, DEEP_BLUE, FONT_FAMILY, SURFACE_LIGHT, TEXT_SUBTLE } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ function RuleCard({
       p={0}
       style={{
         opacity: rule.enabled ? 1 : 0.55,
-        borderLeft: `4px solid ${rule.enabled ? AQUA : '#94a3b8'}`,
+        borderLeft: `4px solid ${rule.enabled ? AQUA : TEXT_SUBTLE}`,
         transition: 'opacity 0.2s',
       }}
     >
@@ -188,7 +189,7 @@ function RuleCard({
           )}
         </Paper>
 
-        <IconChevronRight size={14} color="#94a3b8" style={{ flexShrink: 0 }} />
+        <IconChevronRight size={14} color={TEXT_SUBTLE} style={{ flexShrink: 0 }} />
 
         {/* Condition (optional) */}
         {rule.conditionField ? (
@@ -212,7 +213,7 @@ function RuleCard({
                 {labelOf(CONDITION_OPERATORS, rule.conditionOperator)} {rule.conditionValue}
               </Text>
             </Paper>
-            <IconChevronRight size={14} color="#94a3b8" style={{ flexShrink: 0 }} />
+            <IconChevronRight size={14} color={TEXT_SUBTLE} style={{ flexShrink: 0 }} />
           </>
         ) : null}
 
@@ -230,7 +231,7 @@ function RuleCard({
             THEN
           </Text>
           <Group gap={4}>
-            <span style={{ color: ACTION_COLOR[rule.actionType] === 'blue' ? '#3b82f6' : '#f97316' }}>
+            <span style={{ color: ACTION_COLOR[rule.actionType] === 'blue' ? COLOR_BLUE : COLOR_ORANGE_ALT }}>
               {ACTION_ICON[rule.actionType]}
             </span>
             <Text size="xs" fw={600} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
@@ -244,7 +245,7 @@ function RuleCard({
       <Box
         px="md"
         pb="xs"
-        style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}` }}
+        style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : SURFACE_LIGHT}` }}
       >
         <Group gap="lg" mt="xs">
           <Text size="xs" c="dimmed">
@@ -644,22 +645,8 @@ export default function AutomationEnginePage() {
   if (isError)   return <PageError context="Loading automation rules" />;
 
   return (
-    <Box style={{ fontFamily: FONT_FAMILY, paddingBottom: 40 }}>
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start" mb="xl" wrap="wrap" gap="sm">
-        <Box>
-          <Group gap="sm" mb={4}>
-            <ThemeIcon size={40} radius="md" style={{ background: `linear-gradient(135deg, ${DEEP_BLUE}, #1e40af)` }}>
-              <IconBolt size={22} color={AQUA} />
-            </ThemeIcon>
-            <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
-              Automation Engine
-            </Title>
-          </Group>
-          <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
-            Define trigger → condition → action rules that run automatically as your portfolio evolves
-          </Text>
-        </Box>
+    <PPPageLayout title="Automation Engine" subtitle="Create and manage workflow automation rules" animate
+      actions={
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={openCreate}
@@ -667,14 +654,16 @@ export default function AutomationEnginePage() {
         >
           New Rule
         </Button>
-      </Group>
+      }
+    >
+      <Box style={{ fontFamily: FONT_FAMILY, paddingBottom: 40 }}>
 
       {/* ── KPI strip ──────────────────────────────────────────────────────── */}
       <SimpleGrid cols={{ base: 2, sm: 4 }} mb="xl">
         {[
           { label: 'Total rules',      value: rules?.length ?? 0, color: DEEP_BLUE },
-          { label: 'Active',           value: enabledCount,        color: '#22c55e' },
-          { label: 'Inactive',         value: disabledCount,       color: '#94a3b8' },
+          { label: 'Active',           value: enabledCount,        color: COLOR_GREEN },
+          { label: 'Inactive',         value: disabledCount,       color: TEXT_SUBTLE },
           { label: 'Total executions', value: totalFires,          color: AQUA },
         ].map(({ label, value, color }) => (
           <Paper key={label} withBorder p="md" radius="md">
@@ -779,6 +768,7 @@ export default function AutomationEnginePage() {
           </Group>
         </Stack>
       </Modal>
-    </Box>
+      </Box>
+    </PPPageLayout>
   );
 }

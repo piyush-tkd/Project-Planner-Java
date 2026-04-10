@@ -146,13 +146,18 @@ public class NlpConversationService {
 
         NlpConversationMessage savedAssistantMessage = messageRepo.save(assistantMessage);
 
-        // Update conversation metadata
+        // Update conversation metadata and save context
         conversation.setMessageCount(conversation.getMessageCount() + 2);  // user + assistant
         conversation.setLastMessageAt(Instant.now());
         // Auto-title from first message if still default
         if ("[New Conversation]".equals(conversation.getTitle())) {
             conversation.setTitle(generateTitle(messageText));
         }
+
+        // Serialize session context to JSON for persistence
+        String contextJson = serializeSessionContext(conversationId);
+        conversation.setContextJson(contextJson);
+
         conversationRepo.save(conversation);
 
         log.info("Sent message in conversation {} for user {}: intent={} resolvedBy={}",
@@ -187,6 +192,15 @@ public class NlpConversationService {
     }
 
     /**
+     * Get conversation context JSON for restoring session memory.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<String> getContext(Long conversationId, String username) {
+        return conversationRepo.findByIdAndUsername(conversationId, username)
+                .map(NlpConversation::getContextJson);
+    }
+
+    /**
      * Build conversation context from the last N messages.
      * Formats as: "Previous conversation:\nUser: ...\nAssistant: ...\n..."
      */
@@ -213,6 +227,37 @@ public class NlpConversationService {
         }
 
         return context.toString();
+    }
+
+    /**
+     * Serialize conversation messages to JSON context array.
+     * Format: [ { "q": "...", "a": "...", "intent": "..." }, ... ]
+     */
+    private String serializeSessionContext(Long conversationId) {
+        List<NlpConversationMessage> messages = messageRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        List<Map<String, Object>> contextArray = new ArrayList<>();
+
+        for (int i = 0; i < messages.size(); i += 2) {
+            if (i + 1 < messages.size()) {
+                NlpConversationMessage userMsg = messages.get(i);
+                NlpConversationMessage assistantMsg = messages.get(i + 1);
+
+                if ("user".equals(userMsg.getRole()) && "assistant".equals(assistantMsg.getRole())) {
+                    Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("q", userMsg.getContent());
+                    item.put("a", assistantMsg.getContent());
+                    item.put("intent", assistantMsg.getIntent());
+                    contextArray.add(item);
+                }
+            }
+        }
+
+        try {
+            return objectMapper.writeValueAsString(contextArray);
+        } catch (Exception e) {
+            log.warn("Failed to serialize session context: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**

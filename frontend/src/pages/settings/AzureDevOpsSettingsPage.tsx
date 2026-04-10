@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Paper, TextInput, PasswordInput,
   Button, Badge, ThemeIcon, Alert, Divider, Anchor, Box,
-  TagsInput, Loader,
+  TagsInput, Loader, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -72,7 +72,15 @@ export default function AzureDevOpsSettingsPage() {
     }
   }
 
-  if (isLoading) return <Loader size="sm" />;
+  if (isLoading) return (
+    <Stack gap="md" p="md">
+      <Skeleton height={40} radius="sm" />
+      <Skeleton height={56} radius="sm" />
+      <Skeleton height={56} radius="sm" />
+      <Skeleton height={56} radius="sm" />
+      <Skeleton height={40} radius="sm" w={160} />
+    </Stack>
+  );
 
   const configured = status?.configured ?? settings?.configured ?? false;
 

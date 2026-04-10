@@ -24,6 +24,9 @@ export interface ProjectResponse {
   jiraLastSyncedAt: string | null;
   jiraSyncError: boolean;
   archived: boolean;
+  // ── Budget tracking ─────────────────────────────────────────────────────
+  estimatedBudget: number | null;
+  actualCost: number | null;
 }
 
 export interface ProjectRequest {
@@ -38,6 +41,8 @@ export interface ProjectRequest {
   startDate?: string | null;
   targetDate?: string | null;
   client?: string | null;
+  estimatedBudget?: number | null;
+  actualCost?: number | null;
 }
 
 export interface ProjectPodPlanningResponse {

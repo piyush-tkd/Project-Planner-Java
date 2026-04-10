@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Text, Group, Stack } from '@mantine/core';
 import { IconTrendingUp, IconTrendingDown, IconMinus } from '@tabler/icons-react';
-import { FONT_FAMILY, TEXT_SECONDARY } from '../../brandTokens';
+import { BORDER_SOFT, COLOR_ERROR_DARK, COLOR_GREEN_STRONG, FONT_FAMILY, GRAY_200, GRAY_400, TEXT_SECONDARY} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface KpiCardProps {
@@ -13,9 +13,9 @@ interface KpiCardProps {
 }
 
 const TREND_CONFIG = {
-  up:   { Icon: IconTrendingUp,   color: '#16a34a' }, // green-600
-  down: { Icon: IconTrendingDown, color: '#dc2626' }, // red-600
-  flat: { Icon: IconMinus,        color: '#9ca3af' }, // gray-400
+  up:   { Icon: IconTrendingUp,   color: COLOR_GREEN_STRONG }, // green-600
+  down: { Icon: IconTrendingDown, color: COLOR_ERROR_DARK }, // red-600
+  flat: { Icon: IconMinus,        color: GRAY_400 }, // gray-400
 };
 
 export default function KpiCard({
@@ -35,7 +35,7 @@ export default function KpiCard({
       withBorder
       style={{
         background: dark ? 'rgba(255,255,255,0.04)' : '#ffffff',
-        borderColor: dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+        borderColor: dark ? 'rgba(255,255,255,0.08)' : BORDER_SOFT,
       }}
     >
       <Stack gap={6}>
@@ -44,7 +44,7 @@ export default function KpiCard({
           fw={500}
           tt="uppercase"
           style={{
-            color: dark ? '#9ca3af' : TEXT_SECONDARY,
+            color: dark ? GRAY_400 : TEXT_SECONDARY,
             fontFamily: FONT_FAMILY,
             letterSpacing: '0.05em',
           }}
@@ -58,7 +58,7 @@ export default function KpiCard({
             fw={700}
             style={{
               fontFamily: FONT_FAMILY,
-              color: dark ? '#e0e0e0' : '#111827',
+              color: dark ? GRAY_200 : '#111827',
               lineHeight: 1,
             }}
           >

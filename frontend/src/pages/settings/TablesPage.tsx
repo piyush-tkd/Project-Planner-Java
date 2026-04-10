@@ -18,7 +18,7 @@ import {
  type DbColumnSchema, type QueryResult, type SavedQuery,
 } from '../../api/dbBrowser';
 import { useQueryClient } from '@tanstack/react-query';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_BORDER, SURFACE_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
@@ -115,6 +115,7 @@ function SchemaPanel({ tableName }: { tableName: string }) {
 
 // ── Data panel ────────────────────────────────────────────────────────────────
 function DataPanel({ tableName }: { tableName: string }) {
+ const isDark = useDarkMode();
  const [page, setPage] = useState(1);
  const [pageSize, setPageSize] = useState('50');
  const [search, setSearch] = useState('');
@@ -184,7 +185,7 @@ function DataPanel({ tableName }: { tableName: string }) {
  <ScrollArea type="auto" style={{ flex: 1, minHeight: 0 }}>
  <Table fz="xs" withColumnBorders withTableBorder highlightOnHover
  style={{ whiteSpace: 'nowrap', minWidth: columns.length * 120 }}>
- <Table.Thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+ <Table.Thead style={{ position: 'sticky', top: 0, background: isDark ? DARK_BG : '#fff', zIndex: 1 }}>
  <Table.Tr>
  {columns.map(col => (
  <Table.Th
@@ -371,8 +372,8 @@ function QueryPanel() {
              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
              fontSize: 13,
              lineHeight: 1.5,
-             background: isDark ? '#1a1b1e' : '#f8f9fa',
-             border: `1px solid ${isDark ? '#373A40' : '#dee2e6'}`,
+             background: isDark ? DARK_BG : SURFACE_SUBTLE,
+             border: `1px solid ${isDark ? DARK_BORDER : GRAY_BORDER}`,
            },
          }}
        />
@@ -508,7 +509,7 @@ function QueryPanel() {
        <ScrollArea type="auto" style={{ flex: 1, minHeight: 0 }}>
          <Table fz="xs" withColumnBorders withTableBorder highlightOnHover
            style={{ whiteSpace: 'nowrap', minWidth: resultColumns.length * 120 }}>
-           <Table.Thead style={{ position: 'sticky', top: 0, background: isDark ? '#1a1b1e' : '#fff', zIndex: 1 }}>
+           <Table.Thead style={{ position: 'sticky', top: 0, background: isDark ? DARK_BG : '#fff', zIndex: 1 }}>
              <Table.Tr>
                <Table.Th style={{ width: 40, textAlign: 'center' }}>
                  <Text size="xs" c="dimmed">#</Text>

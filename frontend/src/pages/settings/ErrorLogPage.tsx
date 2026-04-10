@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
  Container, Title, Text, Paper, Group, Stack, Badge, Button,
- Table, ActionIcon, Tooltip, Tabs, Box, Loader, ScrollArea,
+ Table, ActionIcon, Tooltip, Tabs, Box, Skeleton, ScrollArea,
  Modal, Code, SimpleGrid, ThemeIcon, Select, useMantineColorScheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -13,7 +13,7 @@ import {
  useErrorLogs, useResolveError, useDeleteErrorLog, useClearResolvedErrors,
  AppErrorLog,
 } from '../../api/errorLogs';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, GRAY_200, SURFACE_RED_FAINT} from '../../brandTokens';
 
 const SOURCE_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
  FRONTEND: { icon: <IconDeviceDesktop size={14} />, color: 'blue', label: 'Frontend' },
@@ -36,7 +36,7 @@ export default function ErrorLogPage() {
  const [detailModal, setDetailModal] = useState<AppErrorLog | null>(null);
  const { colorScheme } = useMantineColorScheme();
  const isDark = colorScheme === 'dark';
- const headingColor = isDark ? '#e0e0e0' : DEEP_BLUE;
+ const headingColor = isDark ? GRAY_200 : DEEP_BLUE;
 
  const filtered = logs?.filter(log => {
  if (activeTab === 'all') return true;
@@ -107,11 +107,11 @@ export default function ErrorLogPage() {
  {/* ── Summary Cards ── */}
  <SimpleGrid cols={{ base: 2, sm: 4, md: 7 }} mb="lg">
  <SummaryCard label="Total" value={counts.all} color={DEEP_BLUE} icon={<IconAlertTriangle size={18} />} />
- <SummaryCard label="Unresolved" value={counts.unresolved} color="#c92a2a" icon={<IconBug size={18} />} />
+ <SummaryCard label="Unresolved" value={counts.unresolved} color={COLOR_ERROR_DEEP} icon={<IconBug size={18} />} />
  <SummaryCard label="Frontend" value={counts.frontend} color="#1c7ed6" icon={<IconDeviceDesktop size={18} />} />
- <SummaryCard label="Backend" value={counts.backend} color="#e67700" icon={<IconServer size={18} />} />
- <SummaryCard label="Errors" value={counts.errors} color="#c92a2a" icon={<IconAlertTriangle size={18} />} />
- <SummaryCard label="Warnings" value={counts.warnings} color="#e67700" icon={<IconAlertTriangle size={18} />} />
+ <SummaryCard label="Backend" value={counts.backend} color={COLOR_ORANGE_DARK} icon={<IconServer size={18} />} />
+ <SummaryCard label="Errors" value={counts.errors} color={COLOR_ERROR_DEEP} icon={<IconAlertTriangle size={18} />} />
+ <SummaryCard label="Warnings" value={counts.warnings} color={COLOR_ORANGE_DARK} icon={<IconAlertTriangle size={18} />} />
  <SummaryCard label="Resolved" value={counts.resolved} color="#2b8a3e" icon={<IconCheck size={18} />} />
  </SimpleGrid>
 
@@ -137,7 +137,7 @@ export default function ErrorLogPage() {
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={560}>
  {isLoading ? (
- <Box p="xl" ta="center"><Loader color={AQUA} /></Box>
+ <Skeleton height={200} radius="sm" />
  ) : filtered.length === 0 ? (
  <Box p="xl" ta="center">
  <ThemeIcon size={48} radius="xl" variant="light" color="teal" mx="auto" mb="sm">
@@ -244,7 +244,7 @@ export default function ErrorLogPage() {
  onClose={() => setDetailModal(null)}
  title={
  <Group gap={8}>
- <IconAlertTriangle size={20} color="#c92a2a" />
+ <IconAlertTriangle size={20} color={COLOR_ERROR_DEEP} />
  <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: headingColor }}>Error Detail</Text>
  </Group>
  }
@@ -277,8 +277,8 @@ export default function ErrorLogPage() {
 
  <div>
  <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Message</Text>
- <Paper withBorder p="sm" radius="md" style={{ backgroundColor: isDark ? 'rgba(200, 42, 42, 0.1)' : '#fff5f5' }}>
- <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: isDark ? '#e0e0e0' : undefined }}>{detailModal.message}</Text>
+ <Paper withBorder p="sm" radius="md" style={{ backgroundColor: isDark ? 'rgba(200, 42, 42, 0.1)' : SURFACE_RED_FAINT }}>
+ <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: isDark ? GRAY_200 : undefined }}>{detailModal.message}</Text>
  </Paper>
  </div>
 

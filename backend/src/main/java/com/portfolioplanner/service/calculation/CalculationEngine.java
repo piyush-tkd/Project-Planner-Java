@@ -46,7 +46,7 @@ public class CalculationEngine {
     private final HolidayCalendarRepository holidayCalendarRepository;
     private final LeaveEntryRepository leaveEntryRepository;
 
-    @Cacheable("calculations")
+    @Cacheable(value = "calculations", sync = true)
     public CalculationSnapshot compute() {
         log.info("Starting calculation engine compute...");
         // Load all data

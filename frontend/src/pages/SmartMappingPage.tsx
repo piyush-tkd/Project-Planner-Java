@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Title, Text, Stack, Group, Button, Card, Badge, Table,
   Progress, Tooltip, Alert, ActionIcon, Select, Loader, Center,
-  Divider,
+  Divider, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -11,9 +11,9 @@ import {
   IconCheck, IconExternalLink, IconChartBar,
 } from '@tabler/icons-react';
 import apiClient from '../api/client';
-import { DEEP_BLUE, FONT_FAMILY, AQUA } from '../brandTokens';
+import { AQUA, BORDER_STRONG, DEEP_BLUE, FONT_FAMILY, SURFACE_FAINT } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
-import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
+import { PPPageLayout } from '../components/pp';
 
 interface SuggestionDto {
   id: number;
@@ -120,19 +120,10 @@ export default function SmartMappingPage() {
   const ignoredCount = suggestions.filter(s => s.resolution === 'IGNORED').length;
 
   return (
-    <Stack className="page-enter stagger-children">
-      <NlpBreadcrumb />
-
+    <PPPageLayout title="Smart Mapping" subtitle="AI-assisted Jira project to portfolio mapping suggestions" animate>
       {/* Header */}
       <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
-            Smart Mapping
-          </Title>
-          <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-            AI-powered duplicate detection between Portfolio Planner projects and Jira epics
-          </Text>
-        </div>
+        <div></div>
         <Button
           leftSection={<IconRefresh size={14} />}
           variant="light"
@@ -194,7 +185,7 @@ export default function SmartMappingPage() {
 
       {/* Table */}
       {isLoading ? (
-        <Center py="xl"><Loader size="sm" color="teal" /></Center>
+        <Stack gap="xs">{[1,2,3,4,5].map(i => <Skeleton key={i} height={48} radius="sm" />)}</Stack>
       ) : filtered.length === 0 ? (
         <Card withBorder padding="xl">
           <Center>
@@ -241,7 +232,7 @@ export default function SmartMappingPage() {
                   onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
                 >
                   {/* PP Project */}
-                  <Table.Td fw={600} style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
+                  <Table.Td fw={600} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
                     <Stack gap={2}>
                       <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>{s.ppProject.name}</Text>
                       {s.ppProject.owner && (
@@ -355,7 +346,7 @@ export default function SmartMappingPage() {
                 {/* Expanded score breakdown */}
                 {expandedId === s.id && (
                   <Table.Tr key={`${s.id}-expanded`}>
-                    <Table.Td colSpan={6} style={{ background: isDark ? '#1e2a3a' : '#f8fafc' }}>
+                    <Table.Td colSpan={6} style={{ background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT }}>
                       <Stack gap="xs" p="sm">
                         <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
                           Score Breakdown
@@ -396,6 +387,6 @@ export default function SmartMappingPage() {
           </Table.Tbody>
         </Table>
       )}
-    </Stack>
+    </PPPageLayout>
   );
 }

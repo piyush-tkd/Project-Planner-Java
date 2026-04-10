@@ -1,0 +1,170 @@
+/* ===== PPPageLayout — DL-3 ===== */
+
+/* Page fade-in on mount */
+.pageContainer {
+  animation: pageEnter 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+  padding: 24px 28px;
+  min-height: 100%;
+}
+
+.pageContainer.noAnimate {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────────── */
+.breadcrumb {
+  margin-bottom: 16px;
+}
+
+.breadcrumbLink {
+  font-size: 13px;
+  color: var(--pp-text-muted, #8b8fa3);
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.breadcrumbLink:hover {
+  color: var(--pp-accent, #2DCCD3);
+}
+
+.breadcrumbCurrent {
+  font-size: 13px;
+  color: var(--pp-text-secondary, #b0b3c1);
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Title + star button row */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--pp-text, #e2e4eb);
+  margin: 0;
+}
+
+/* S2-02: Light mode title/subtitle colour fix */
+[data-mantine-color-scheme="light"] .title {
+  color: #0C2340 !important;
+}
+[data-mantine-color-scheme="light"] .subtitle {
+  color: #6D7B8C !important;
+}
+[data-mantine-color-scheme="light"] .breadcrumbCurrent {
+  color: #6D7B8C !important;
+}
+
+/* Star button — hidden until hover, always visible when starred */
+.starBtn {
+  flex-shrink: 0;
+  opacity: 0.25;
+  transition: opacity 150ms, color 150ms, transform 150ms;
+}
+.titleRow:hover .starBtn,
+.starBtn[aria-label="Unstar page"] {
+  opacity: 1 !important;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--pp-text-muted, #8b8fa3);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────── */
+.tabs {
+  margin-bottom: 0;
+}
+
+/* ── Filter bar ────────────────────────────────────────────────────── */
+.filterBar {
+  margin-top: 12px;
+}
+
+/* ── Content ───────────────────────────────────────────────────────── */
+.content {
+  margin-top: 24px;
+}
+
+/* ── Loading skeleton ──────────────────────────────────────────────── */
+.skeletonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--pp-shimmer-from, #1a1d27) 25%,
+    var(--pp-shimmer-mid,  #242836) 50%,
+    var(--pp-shimmer-from, #1a1d27) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonTitle {
+  width: 200px;
+  height: 28px;
+}
+
+.skeletonSubtitle {
+  width: 300px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeletonRow {
+  width: 100%;
+  height: 48px;
+}
