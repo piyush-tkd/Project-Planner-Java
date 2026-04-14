@@ -23,8 +23,10 @@ import com.portfolioplanner.exception.DuplicateNameException;
 import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
+import com.portfolioplanner.service.ai.ProjectChangedEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class ProjectService {
     private final WebhookService webhookService;
     private final OrgSettingsRepository orgSettingsRepository;
     private final ProjectApprovalRepository approvalRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final ApprovalNotificationService approvalNotificationService;
 
     public List<ProjectResponse> getAll(String status) {
@@ -118,6 +121,7 @@ public class ProjectService {
         project = projectRepository.save(project);
         auditLogService.log("Project", project.getId(), project.getName(), "CREATE",
                 projectSnapshot(project));
+        eventPublisher.publishEvent(new ProjectChangedEvent(project.getId()));
         return mapper.toProjectResponse(project);
     }
 
@@ -216,6 +220,7 @@ public class ProjectService {
         project = projectRepository.save(project);
         auditLogService.log("Project", project.getId(), project.getName(), "UPDATE",
                 projectDiff(beforeDetails, projectSnapshot(project)));
+        eventPublisher.publishEvent(new ProjectChangedEvent(project.getId()));
         return mapper.toProjectResponse(project);
     }
 
@@ -255,6 +260,7 @@ public class ProjectService {
                 "status: " + before + " → " + project.getStatus());
         webhookService.fireProjectStatusChanged(
                 project.getId(), project.getName(), before, project.getStatus());
+        eventPublisher.publishEvent(new ProjectChangedEvent(project.getId()));
         return mapper.toProjectResponse(project);
     }
 

@@ -1,0 +1,12 @@
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/AiApplication.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/api/AiHubController.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/api/dto/QueryRequest.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/api/dto/QueryResponse.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/api/dto/SourceReference.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/chunking/ChunkingScheduler.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/chunking/ChunkingService.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/config/AppConfig.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/config/VectorStoreConfig.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/data/ProjectDataRepository.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/rag/RagService.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/sync/SyncController.java

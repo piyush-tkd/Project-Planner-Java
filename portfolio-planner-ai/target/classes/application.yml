@@ -1,0 +1,66 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: portfolio-planner-ai
+
+  # ── Database (same Postgres as main app, read-only on public schema)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/portfolio_planner
+    username: ${DB_USERNAME:piyushbaheti}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      pool-name: ai-pool
+
+  # ── Flyway: manages only the 'ai' schema tables
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: public          # Flyway metadata stays in public
+    default-schema: public
+
+  # ── Spring AI: Ollama
+  ai:
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_CHAT_MODEL:qwen2.5:14b}
+        options:
+          temperature: 0.1        # low temp for factual portfolio answers
+          num-ctx: 4096
+      embedding:
+        model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
+
+    # ── pgvector store (uses same DB, ai schema)
+    vectorstore:
+      pgvector:
+        dimensions: 768           # nomic-embed-text output dimension
+        distance-type: cosine_distance
+        index-type: hnsw
+        schema-name: ai
+        table-name: vector_store
+        initialize-schema: false  # Flyway owns the schema
+
+# ── Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ── AI service config
+ai:
+  sync:
+    # Nightly full re-index (2 AM every day)
+    cron: "0 0 2 * * *"
+    # Chunk size for text splitting
+    max-chunk-chars: 1200
+  rag:
+    top-k: 8                      # chunks retrieved per query
+    min-score: 0.0                # lowered for testing — raise to 0.4 once confirmed working

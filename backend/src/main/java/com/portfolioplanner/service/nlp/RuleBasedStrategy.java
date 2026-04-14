@@ -981,7 +981,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     "I couldn't find issue " + issueKey + " in our synced data. "
                             + "It may not have been synced yet, or the key might be incorrect.",
                     null, null, null, "/reports/jira-analytics",
-                    List.of("Search for similar issues", "Check Jira sync status", "Show open issues", null)
+                    List.of("Search for similar issues", "Check Jira sync status", "Show open issues")
             , null);
         }
 
@@ -1099,7 +1099,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (route != null) {
                     String title = getPageTitle(route);
                     return new NlpResult("NAVIGATE", 0.92, "Opening " + title + "…",
-                            route, null, null, null, List.of("What does " + title + " show?", null), null);
+                            route, null, null, null, List.of("What does " + title + " show?"), null);
                 }
             }
         }
@@ -1112,7 +1112,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         if (bareRoute != null) {
             String title = getPageTitle(bareRoute);
             return new NlpResult("NAVIGATE", 0.90, "Opening " + title + "…",
-                    bareRoute, null, null, null, List.of("What does " + title + " show?", null), null);
+                    bareRoute, null, null, null, List.of("What does " + title + " show?"), null);
         }
 
         return null;
@@ -1273,7 +1273,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "Ready to export " + label + " data. Click the download button below.",
                         null, null, data, null,
-                        List.of("Show " + label + " report", null), null);
+                        List.of("Show " + label + " report"), null);
             }
         }
         return null;
@@ -1984,7 +1984,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATION", 0.88,
                         "Opening the Jira Support Queue dashboard where you can see open tickets, stale tickets, and support trends.",
                         "/jira-support", null, data, null,
-                        List.of("Show Jira POD dashboard", "Show project health", null), null);
+                        List.of("Show Jira POD dashboard", "Show project health"), null);
             }
         }
         return null;
@@ -2233,7 +2233,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("NAVIGATE", 0.88,
                             "Opening the Jira Support Queue — you'll see tickets sorted by priority there.",
                             "/jira-support", null, data, null,
-                            List.of("Show Jira POD dashboard", "Show sprint planner", null), null);
+                            List.of("Show Jira POD dashboard", "Show sprint planner"), null);
                 }
 
                 // General risk health check
@@ -2278,7 +2278,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 return new NlpResult("INSIGHT", 0.85, summary,
                         null, null, data, "/reports/project-health",
-                        List.of("Show project health", "Show capacity gap", "Show hiring forecast", null), null);
+                        List.of("Show project health", "Show capacity gap", "Show hiring forecast"), null);
             }
         }
         return null;
@@ -2465,7 +2465,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     }
                     return new NlpResult("INSIGHT", 0.82, "Checking for over-capacity PODs…",
                             null, null, data, "/reports/capacity-gap",
-                            List.of("Show capacity gap report", "Open sprint planner", null), null);
+                            List.of("Show capacity gap report", "Open sprint planner"), null);
                 }
 
                 // ── Under-utilized PODs ──
@@ -2540,7 +2540,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                                     + totalMembers + " total members handling " + totalProjects + " projects.";
                         return new NlpResult("INSIGHT", 0.88, msg,
                                 null, null, data, "/reports/capacity-gap",
-                                List.of("Show " + projName + " details", "Show capacity gap report", "Show hiring forecast", null), null);
+                                List.of("Show " + projName + " details", "Show capacity gap report", "Show hiring forecast"), null);
                     } else {
                         // ── General hiring needs ──
                         if (catalog.podDetails() != null) {
@@ -2558,7 +2558,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         return new NlpResult("INSIGHT", 0.85,
                                 "Here's the hiring needs analysis based on project-to-member ratios.",
                                 null, null, data, "/reports/hiring-forecast",
-                                List.of("Show hiring forecast", "Show all PODs", null), null);
+                                List.of("Show hiring forecast", "Show all PODs"), null);
                     }
                 }
 
@@ -2615,11 +2615,11 @@ public class RuleBasedStrategy implements NlpStrategy {
                             "System health: " + p0 + " P0 active, " + highLoad + " high-load PODs, "
                                     + onHold + " projects on hold.",
                             null, null, data, "/reports/capacity-gap",
-                            List.of("Show capacity gap report", "Show hiring forecast", "Show project health", null), null);
+                            List.of("Show capacity gap report", "Show hiring forecast", "Show project health"), null);
                 }
                 return new NlpResult("INSIGHT", 0.75, "Analyzing system health…",
                         null, null, data, "/reports/capacity-gap",
-                        List.of("Show capacity gap report", "Open sprint planner", null), null);
+                        List.of("Show capacity gap report", "Open sprint planner"), null);
             }
         }
         return null;
@@ -2641,7 +2641,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (query.toLowerCase().contains("budget") || query.toLowerCase().contains("cost")) drillDown = "/reports/budget";
                 else if (query.toLowerCase().contains("utilization")) drillDown = "/reports/utilization";
                 return new NlpResult("DATA_QUERY", 0.70, "Let me look that up for you…",
-                        null, null, context, drillDown, List.of("Show full report", null), null);
+                        null, null, context, drillDown, List.of("Show full report"), null);
             }
         }
         return null;
@@ -2708,12 +2708,12 @@ public class RuleBasedStrategy implements NlpStrategy {
                 if (lower.startsWith("thank") || lower.startsWith("thx") || lower.startsWith("cheers") || lower.startsWith("appreciate")) {
                     return new NlpResult("HELP", 0.95, "You're welcome! Let me know if there's anything else I can help you with.",
                             null, null, null, null,
-                            List.of("Show dashboard", "What can you do?", null), null);
+                            List.of("Show dashboard", "What can you do?"), null);
                 }
                 return new NlpResult("HELP", 0.95,
                         "Hello! I'm your Portfolio Planner AI assistant. I can help you navigate pages, look up resources/projects/pods, check sprints & releases, run risk checks, export data, and much more. What would you like to do?",
                         null, null, null, null,
-                        List.of("What can you do?", "Show dashboard", "Any red flags?", "Current sprint", null), null);
+                        List.of("What can you do?", "Show dashboard", "Any red flags?", "Current sprint"), null);
             }
         }
         return null;
@@ -2747,7 +2747,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("HELP", 0.95,
                         "Here's what I can help you with — try any of the example queries below!",
                         null, null, data, null,
-                        List.of("Any red flags?", "Current sprint", "Show dashboard", "How many active projects?", null), null);
+                        List.of("Any red flags?", "Current sprint", "Show dashboard", "How many active projects?"), null);
             }
         }
         return null;
@@ -2918,7 +2918,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "BAU breakdown by POD:",
                         null, null, data, "/pods",
-                        List.of("Show all PODs", "What is BAU?", null), null);
+                        List.of("Show all PODs", "What is BAU?"), null);
             }
         }
         return null;
@@ -2962,7 +2962,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     return new NlpResult("DATA_QUERY", 0.80,
                             "Could not find contributor data for " + issueKey + ". The issue may not be synced yet.",
                             null, null, null, null,
-                            List.of("Look up " + issueKey, "Check Jira sync status", null), null);
+                            List.of("Look up " + issueKey, "Check Jira sync status"), null);
                 }
             }
         }
@@ -2982,7 +2982,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening Jira Analytics where you can see the bug summary including open bugs by priority, creation trend, and resolution time.",
                         "/reports/jira-analytics", null, data, null,
-                        List.of("Show Jira sprint health", "Show support queue", "Show project health", null), null);
+                        List.of("Show Jira sprint health", "Show support queue", "Show project health"), null);
             }
         }
         return null;
@@ -3001,7 +3001,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Sprint Planning Recommender where you can see sprint health metrics including completion rate, velocity, blocked stories, and burndown.",
                         "/sprint-planner", null, data, null,
-                        List.of("Show Jira analytics", "Show bug summary", "Show sprint calendar", null), null);
+                        List.of("Show Jira analytics", "Show bug summary", "Show sprint calendar"), null);
             }
         }
         return null;
@@ -3020,7 +3020,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening Jira Analytics where you can see workload distribution — who has the most tickets, in-progress items, and story points assigned.",
                         "/reports/jira-analytics", null, data, null,
-                        List.of("Show Jira bug summary", "Show sprint health", "Show resource allocation", null), null);
+                        List.of("Show Jira bug summary", "Show sprint health", "Show resource allocation"), null);
             }
         }
         return null;
@@ -3039,7 +3039,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Jira Analytics dashboard where you can see issue trends, created vs resolved, cycle time, and more.",
                         "/reports/jira-analytics", null, data, null,
-                        List.of("Show bug summary", "Show workload", "Show sprint health", null), null);
+                        List.of("Show bug summary", "Show workload", "Show sprint health"), null);
             }
         }
         return null;
@@ -3058,7 +3058,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.90,
                         "Opening the DORA Metrics dashboard — Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Recovery.",
                         "/reports/dora-metrics", null, data, null,
-                        List.of("What are DORA metrics?", "Show Jira analytics", "Show project health", null), null);
+                        List.of("What are DORA metrics?", "Show Jira analytics", "Show project health"), null);
             }
         }
         return null;
@@ -3077,7 +3077,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Utilization Heatmap — see who is over or under-utilized by pod, role, and month.",
                         "/reports/utilization", null, data, null,
-                        List.of("Show capacity gap", "Show hiring forecast", "Show resource allocation", null), null);
+                        List.of("Show capacity gap", "Show hiring forecast", "Show resource allocation"), null);
             }
         }
         return null;
@@ -3096,7 +3096,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Capacity vs Demand report — see supply, demand, and gaps across pods and months.",
                         "/reports/capacity-demand", null, data, null,
-                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast", null), null);
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast"), null);
             }
         }
         return null;
@@ -3115,7 +3115,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Hiring Forecast — see upcoming capacity shortfalls by role and location, with recommendations on when and what to hire.",
                         "/reports/hiring-forecast", null, data, null,
-                        List.of("Show capacity gap", "Show utilization heatmap", "Do we need to hire?", null), null);
+                        List.of("Show capacity gap", "Show utilization heatmap", "Do we need to hire?"), null);
             }
         }
         return null;
@@ -3134,7 +3134,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Concurrency Risk report — see which pods or resources are double-booked or have conflicting allocations.",
                         "/reports/concurrency", null, data, null,
-                        List.of("Show resource allocation", "Show capacity demand", "Show project dependencies", null), null);
+                        List.of("Show resource allocation", "Show capacity demand", "Show project dependencies"), null);
             }
         }
         return null;
@@ -3153,7 +3153,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.90,
                         "Opening the Project Gantt Chart — a visual timeline of all projects showing start dates, durations, and overlaps.",
                         "/reports/gantt", null, data, null,
-                        List.of("Show project health", "Show cross-pod dependencies", "Show deadline gap", null), null);
+                        List.of("Show project health", "Show cross-pod dependencies", "Show deadline gap"), null);
             }
         }
         return null;
@@ -3172,7 +3172,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Owner Demand report — see how project demand is distributed across project owners.",
                         "/reports/owner-demand", null, data, null,
-                        List.of("Show project health", "List all projects", "Show capacity demand", null), null);
+                        List.of("Show project health", "List all projects", "Show capacity demand"), null);
             }
         }
         return null;
@@ -3191,7 +3191,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Slack/Buffer Analysis — see how much breathing room each pod has between capacity and demand.",
                         "/reports/slack-buffer", null, data, null,
-                        List.of("Show capacity gap", "Show utilization heatmap", "Show pod capacity", null), null);
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show pod capacity"), null);
             }
         }
         return null;
@@ -3210,7 +3210,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the CapEx/OpEx report — see how Jira work hours are classified as capital vs operating expenditure.",
                         "/jira-capex", null, data, null,
-                        List.of("What is CapEx?", "Show budget report", "Show Jira worklog", null), null);
+                        List.of("What is CapEx?", "Show budget report", "Show Jira worklog"), null);
             }
         }
         return null;
@@ -3229,7 +3229,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.88,
                         "Opening the Pod Capacity report — see which pods are over or under capacity.",
                         "/reports/pod-capacity", null, data, null,
-                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast", null), null);
+                        List.of("Show capacity gap", "Show utilization heatmap", "Show hiring forecast"), null);
             }
         }
         return null;
@@ -3248,7 +3248,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.85,
                         "Opening the Dashboard — your central hub for portfolio overview, key metrics, and quick navigation.",
                         "/", null, data, null,
-                        List.of("Show project health", "Show capacity gap", "Any risks?", null), null);
+                        List.of("Show project health", "Show capacity gap", "Any risks?"), null);
             }
         }
         return null;
@@ -3266,7 +3266,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.85,
                         "Opening the Temporary Overrides page — you can view and manage temp allocations there.",
                         "/overrides", null, data, null,
-                        List.of("Show resources", "Show availability grid", null), null);
+                        List.of("Show resources", "Show availability grid"), null);
             }
         }
         return null;
@@ -3303,7 +3303,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("NAVIGATE", 0.85,
                         "Opening the Budget & Cost report — it shows project costs by pod, role, and month.",
                         "/reports/budget", null, data, null,
-                        List.of("Show project health", "Export budget as CSV", null), null);
+                        List.of("Show project health", "Export budget as CSV"), null);
             }
         }
         return null;
@@ -3354,7 +3354,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                     return new NlpResult("DATA_QUERY", 0.88, summary,
                             null, null, data, "/settings/ref-data",
-                            List.of("Show all cost rates", "Show resource ROI", null), null);
+                            List.of("Show all cost rates", "Show resource ROI"), null);
                 }
 
                 // General: "show all cost rates" / "rate card"
@@ -3367,7 +3367,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 return new NlpResult("DATA_QUERY", 0.85,
                         "Here are all configured billing rates:",
                         null, null, data, "/settings/ref-data",
-                        List.of("Show resource ROI", "Average billing of developers", null), null);
+                        List.of("Show resource ROI", "Average billing of developers"), null);
             }
         }
         return null;

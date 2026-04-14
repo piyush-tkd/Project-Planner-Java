@@ -1,8 +1,12 @@
 package com.portfolioplanner.service.nlp;
 
 import com.portfolioplanner.domain.model.AppUser;
+import com.portfolioplanner.domain.model.NlpConversation;
+import com.portfolioplanner.domain.model.NlpConversationMessage;
 import com.portfolioplanner.domain.model.NlpQueryLog;
 import com.portfolioplanner.domain.repository.AppUserRepository;
+import com.portfolioplanner.domain.repository.NlpConversationMessageRepository;
+import com.portfolioplanner.domain.repository.NlpConversationRepository;
 import com.portfolioplanner.domain.repository.NlpQueryLogRepository;
 import com.portfolioplanner.dto.response.NlpCatalogResponse;
 import com.portfolioplanner.dto.response.NlpQueryResponse;
@@ -15,6 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +49,9 @@ public class NlpService {
     private final NlpSessionContextCache sessionContextCache;
     private final FollowUpResolver followUpResolver;
     private final AppUserRepository userRepo;
+    private final AiRagFallbackService ragFallback;
+    private final NlpConversationRepository conversationRepo;
+    private final NlpConversationMessageRepository conversationMessageRepo;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -114,6 +122,15 @@ public class NlpService {
                 } else {
                     // Process through strategy chain (use preprocessed query)
                     response = engine.process(processedQuery, catalog);
+                }
+            }
+
+            // ── RAG fallback: if still UNKNOWN or very low confidence, ask the AI service ──
+            if ("UNKNOWN".equals(response.intent()) || response.confidence() < AiRagFallbackService.RAG_FALLBACK_THRESHOLD) {
+                NlpQueryResponse ragResponse = ragFallback.query(queryText);
+                if (ragResponse != null) {
+                    response = ragResponse;
+                    log.info("NLP query answered via RAG fallback for '{}'", queryText);
                 }
             }
 
@@ -296,6 +313,16 @@ public class NlpService {
                     // Phase 4: Strategy chain
                     sendPhase(emitter, "analyzing", "Running analysis...", "Processing through the strategy chain");
                     response = engine.process(processedQuery, catalog);
+
+                    // Phase 4.5: RAG fallback if still UNKNOWN
+                    if ("UNKNOWN".equals(response.intent()) || response.confidence() < AiRagFallbackService.RAG_FALLBACK_THRESHOLD) {
+                        sendPhase(emitter, "searching", "Searching your portfolio data...", "Querying AI knowledge base");
+                        NlpQueryResponse ragResponse = ragFallback.query(queryText);
+                        if (ragResponse != null) {
+                            response = ragResponse;
+                            log.info("Streaming query answered via RAG fallback for '{}'", queryText);
+                        }
+                    }
                 }
             }
 
@@ -307,6 +334,9 @@ public class NlpService {
             tryAutoLearn(queryText, response);
             Long logId = saveQueryLog(userId, queryText, response, (int) elapsed);
             NlpQueryResponse finalResponse = response.withLogId(logId);
+
+            // Auto-save to conversation history (fire-and-forget, never block the stream)
+            try { autoSaveConversation(userId, queryText, finalResponse); } catch (Exception ignored) {}
 
             // Send final result
             emitter.send(SseEmitter.event()
@@ -421,6 +451,63 @@ public class NlpService {
             log.debug("RBAC routing catalog check failed (non-critical): {}", e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * Auto-saves query + result to nlp_conversation so the history page is populated.
+     * Creates a new conversation per calendar day per user, or reuses today's if one exists.
+     * Never throws — wrapped in try/catch at call site.
+     */
+    private void autoSaveConversation(Long userId, String queryText, NlpQueryResponse response) {
+        if (userId == null) return;
+        // Skip saving UNKNOWN, ERROR, or rate-limit responses
+        if (response.intent() == null || "UNKNOWN".equals(response.intent()) || "ERROR".equals(response.intent())) return;
+
+        String username = userRepo.findById(userId).map(AppUser::getUsername).orElse(null);
+        if (username == null) return;
+
+        // Find today's auto-conversation or create one
+        String todayTitle = "Session " + java.time.LocalDate.now();
+        NlpConversation conversation = conversationRepo
+                .findByUsernameOrderByUpdatedAtDesc(username)
+                .stream()
+                .filter(c -> todayTitle.equals(c.getTitle()))
+                .findFirst()
+                .orElseGet(() -> {
+                    NlpConversation c = new NlpConversation();
+                    c.setUsername(username);
+                    c.setTitle(todayTitle);
+                    c.setPinned(false);
+                    c.setMessageCount(0);
+                    c.setCreatedAt(Instant.now());
+                    c.setUpdatedAt(Instant.now());
+                    return conversationRepo.save(c);
+                });
+
+        // Save user message
+        NlpConversationMessage userMsg = new NlpConversationMessage();
+        userMsg.setConversationId(conversation.getId());
+        userMsg.setRole("user");
+        userMsg.setContent(queryText);
+        conversationMessageRepo.save(userMsg);
+
+        // Save assistant response
+        String assistantContent = response.response() != null && response.response().message() != null
+                ? response.response().message() : response.intent();
+        NlpConversationMessage assistantMsg = new NlpConversationMessage();
+        assistantMsg.setConversationId(conversation.getId());
+        assistantMsg.setRole("assistant");
+        assistantMsg.setContent(assistantContent);
+        assistantMsg.setIntent(response.intent());
+        assistantMsg.setConfidence(response.confidence());
+        assistantMsg.setResolvedBy(response.resolvedBy());
+        conversationMessageRepo.save(assistantMsg);
+
+        // Update conversation metadata
+        conversation.setMessageCount(conversation.getMessageCount() + 2);
+        conversation.setUpdatedAt(Instant.now());
+        conversationRepo.save(conversation);
+        log.debug("Auto-saved query to conversation {} for user {}", conversation.getId(), username);
     }
 
     private Long saveQueryLog(Long userId, String queryText, NlpQueryResponse response, int responseMs) {
