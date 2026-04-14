@@ -16,10 +16,12 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/resources")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ResourceController {
 
     private final ResourceService resourceService;

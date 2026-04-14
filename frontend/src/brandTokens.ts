@@ -125,18 +125,22 @@ export const SHADOW = {
 /* ── Data Visualization Palette ───────────────────────────────────── */
 // For charts, use this ordered sequence of colours.
 // On dark backgrounds, use the "light" variants.
-// S3.3 — CHART_COLORS keeps raw hex so recharts/d3 can interpolate colors
+// Raw hex required — recharts/d3 SVG attributes cannot use CSS custom properties.
+// Palette aligned to Slate design system (v29.0):
+//   Primary: Aqua/teal family (brand identity)
+//   Secondary: Indigo/violet (Slate accent)
+//   Tertiary: Amber/rose (status/alert colours)
 export const CHART_COLORS = [
-  DEEP_BLUE_HEX,      // #0C2340
-  AQUA_HEX,           // #2DCCD3
-  LEGACY_BLUE,        // #002F6C
-  AQUA_75,            // #61D9DE
-  DEEP_BLUE_85,       // #30445D
-  MAUVE,              // #D7A9E3
-  BEIGE,              // #F1E6B2
-  DEEP_BLUE_TINTS[60],// #6D7B8C
-  AQUA_TINTS[50],     // #96E5E9
-  LEGACY_BLUE_TINTS[50], // #808EB4
+  '#2DCCD3',  // Aqua         — pp-accent, primary series
+  '#38BDF8',  // Sky-400      — Slate primary light, second series
+  '#6366F1',  // Indigo-500   — Slate accent, third series
+  '#22C55E',  // Green-500    — success / positive trend
+  '#F59E0B',  // Amber-500    — warning / budget
+  '#EC4899',  // Pink-500     — sixth series
+  '#8B5CF6',  // Violet-500   — seventh series
+  '#0EA5E9',  // Sky-500      — eighth series
+  '#14B8A6',  // Teal-500     — ninth series
+  '#F43F5E',  // Rose-500     — tenth series / alerts
 ] as const;
 
 // Alternate row fill for tables (brand spec: Deep Blue 10% tint)

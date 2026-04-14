@@ -9,6 +9,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Proxies Jira avatar image requests through the backend so the browser
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/jira")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class JiraAvatarProxyController {
 
     private final JiraCredentialsService creds;

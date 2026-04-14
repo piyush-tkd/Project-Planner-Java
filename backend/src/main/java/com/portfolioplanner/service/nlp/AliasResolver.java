@@ -20,10 +20,13 @@ public class AliasResolver {
     // ── Priority aliases ──
     private static final Map<Pattern, String> PRIORITY_ALIASES = new LinkedHashMap<>();
     static {
-        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:highest\\s+priority|critical|p[\\-\\s_]?zero|p[\\-\\s_]?0|priority\\s*0)\\b"), "P0");
-        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:high\\s+priority|p[\\-\\s_]?one|p[\\-\\s_]?1|priority\\s*1)\\b"), "P1");
-        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:medium\\s+priority|p[\\-\\s_]?two|p[\\-\\s_]?2|priority\\s*2)\\b"), "P2");
-        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:low\\s+priority|p[\\-\\s_]?three|p[\\-\\s_]?3|priority\\s*3)\\b"), "P3");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:blocker|blocking|blocked)\\b"), "BLOCKER");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:highest\\s+priority|critical|p[\\-\\s_]?zero|p[\\-\\s_]?0|priority\\s*0)\\b"), "HIGHEST");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:high\\s+priority|p[\\-\\s_]?one|p[\\-\\s_]?1|priority\\s*1)\\b"), "HIGH");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:medium\\s+priority|p[\\-\\s_]?two|p[\\-\\s_]?2|priority\\s*2|medium)\\b"), "MEDIUM");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:low\\s+priority|p[\\-\\s_]?three|p[\\-\\s_]?3|priority\\s*3)\\b"), "LOW");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:lowest\\s+priority|trivial|minor\\s+priority)\\b"), "LOWEST");
+        PRIORITY_ALIASES.put(Pattern.compile("(?i)\\b(?:minor)\\b"), "MINOR");
     }
 
     // ── Status aliases ──
@@ -64,7 +67,7 @@ public class AliasResolver {
 
     /**
      * Resolve all known aliases in the query text and return the normalized form.
-     * For example: "high priority" → "P1", "paused" → "ON_HOLD", "squad" → "pod"
+     * For example: "high priority" → "HIGH", "paused" → "ON_HOLD", "squad" → "pod"
      */
     public String resolve(String query) {
         if (query == null || query.isBlank()) return query;
@@ -106,8 +109,19 @@ public class AliasResolver {
                 return entry.getValue();
             }
         }
-        // Direct P0-P3 match
-        Matcher directMatch = Pattern.compile("(?i)\\b(P[0-3])\\b").matcher(query);
+        // Direct Px legacy match — map to new names
+        Matcher legacyMatch = Pattern.compile("(?i)\\b(P[0-3])\\b").matcher(query);
+        if (legacyMatch.find()) {
+            return switch (legacyMatch.group(1).toUpperCase()) {
+                case "P0" -> "HIGHEST";
+                case "P1" -> "HIGH";
+                case "P2" -> "MEDIUM";
+                case "P3" -> "LOW";
+                default -> legacyMatch.group(1).toUpperCase();
+            };
+        }
+        // Direct new-name match
+        Matcher directMatch = Pattern.compile("(?i)\\b(HIGHEST|HIGH|MEDIUM|LOW|LOWEST|BLOCKER|MINOR)\\b").matcher(query);
         if (directMatch.find()) {
             return directMatch.group(1).toUpperCase();
         }
@@ -209,7 +223,7 @@ public class AliasResolver {
 
     /**
      * Smart match specifically for priority field.
-     * Resolves aliases (e.g., "critical" → "P0") before comparing.
+     * Resolves aliases (e.g., "critical" → "HIGHEST") before comparing.
      */
     public boolean matchesPriority(String fieldValue, String searchValue) {
         if (fieldValue == null || searchValue == null) return false;

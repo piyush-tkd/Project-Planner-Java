@@ -131,12 +131,15 @@ public class BulkImportController {
     }
 
     private Priority normalisePriority(String raw) {
-        if (raw == null) return Priority.P2;
+        if (raw == null) return Priority.MEDIUM;
         return switch (raw.trim().toUpperCase()) {
-            case "P0", "CRITICAL" -> Priority.P0;
-            case "P1", "HIGH"     -> Priority.P1;
-            case "P3", "LOW"      -> Priority.P3;
-            default               -> Priority.P2;
+            case "P0", "CRITICAL", "HIGHEST" -> Priority.HIGHEST;
+            case "P1", "HIGH"                -> Priority.HIGH;
+            case "P3", "LOW"                 -> Priority.LOW;
+            case "LOWEST"                    -> Priority.LOWEST;
+            case "BLOCKER"                   -> Priority.BLOCKER;
+            case "MINOR"                     -> Priority.MINOR;
+            default                          -> Priority.MEDIUM;
         };
     }
 

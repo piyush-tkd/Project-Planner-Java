@@ -72,7 +72,7 @@ class DemandCalculatorTest {
         Project p = new Project();
         p.setId(id);
         p.setName("Test Project");
-        p.setPriority(Priority.P1);
+        p.setPriority(Priority.HIGH);
         p.setStatus("ACTIVE");
         p.setStartMonth(start);
         p.setDurationMonths(duration);

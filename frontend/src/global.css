@@ -87,7 +87,27 @@
    DL-2 — Global Reset & Transitions
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Smooth scrolling */
+/* ── B-01: Constrain viewport so only AppShell.Main scrolls ──────────── */
+/* html/body fill the viewport but do not themselves scroll.                    */
+/* AppShell.Main gets overflow-y:auto so page content scrolls within bounds.    */
+/* Header + Navbar are position:fixed by Mantine and stay on screen always.     */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Give the AppShell main content area its own scroll so pages scroll correctly */
+.mantine-AppShell-main {
+  overflow-y: auto !important;
+  /* Height = full viewport minus the fixed header */
+  height: calc(100vh - var(--app-shell-header-height, 56px)) !important;
+}
+
+/* Smooth scrolling (applies to ScrollArea containers, not the body) */
 html {
   scroll-behavior: smooth;
 }
@@ -3180,4 +3200,22 @@ h4.mantine-Title-root { font-weight: 600 !important; }
 
 /* ══════════════════════════════════════════════════════════════════════
    SPRINT 2 — END S2-08/S2-09
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   PP-13: UX Navigation — keyboard shortcut hint hover reveals
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Reveal G+key shortcut badge when hovering a nav item */
+.mantine-NavLink-root:hover .nav-kbd-hint {
+  opacity: 0.65 !important;
+}
+
+/* Star button brightens fully on hover (base opacity controlled by inline style) */
+.mantine-NavLink-root:hover .nav-star-btn {
+  opacity: 0.8 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PP-13: UX Navigation — END
    ══════════════════════════════════════════════════════════════════════ */

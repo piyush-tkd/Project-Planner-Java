@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Stores and retrieves per-user widget layout preferences (order + visibility)
@@ -35,6 +36,7 @@ import java.util.Map;
 @RequestMapping("/api/widget-preferences")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class UserWidgetPreferenceController {
 
     private final UserWidgetPreferenceRepository repo;

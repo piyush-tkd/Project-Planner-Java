@@ -34,10 +34,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/nlp")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class NlpController {
 
     private final NlpService nlpService;

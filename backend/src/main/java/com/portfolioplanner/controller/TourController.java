@@ -12,10 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/tour")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TourController {
 
     private final TourConfigRepository tourConfigRepository;

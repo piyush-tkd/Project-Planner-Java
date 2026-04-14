@@ -153,9 +153,9 @@ public class NlpInsightService {
 
         long activeCount = catalog.projectDetails().stream()
                 .filter(p -> "ACTIVE".equalsIgnoreCase(p.status())).count();
-        // Exclude COMPLETED and CANCELLED — match what "Show me P0 projects" query actually returns
+        // Exclude COMPLETED and CANCELLED — critical = HIGHEST or BLOCKER
         long p0Count = catalog.projectDetails().stream()
-                .filter(p -> "P0".equalsIgnoreCase(p.priority())
+                .filter(p -> ("HIGHEST".equalsIgnoreCase(p.priority()) || "BLOCKER".equalsIgnoreCase(p.priority()))
                         && !"COMPLETED".equalsIgnoreCase(p.status())
                         && !"CANCELLED".equalsIgnoreCase(p.status()))
                 .count();
@@ -167,12 +167,12 @@ public class NlpInsightService {
                     "p0-projects",
                     "alert-triangle",
                     "red",
-                    p0Count + " critical (P0) project" + (p0Count == 1 ? "" : "s") + " active",
+                    p0Count + " critical (Highest) project" + (p0Count == 1 ? "" : "s") + " active",
                     "These need priority resource allocation. Verify they're on track.",
-                    "Show me P0 projects",
+                    "Show me highest priority projects",
                     "list_projects",
-                    Map.of("priority", "P0"),
-                    Map.of("priority", "P0"),
+                    Map.of("priority", "HIGHEST"),
+                    Map.of("priority", "HIGHEST"),
                     "/projects"
             ));
         }

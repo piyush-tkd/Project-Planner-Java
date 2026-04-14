@@ -18,10 +18,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/jira")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraController {
 
     private final JiraActualsService actualsService;
@@ -30,6 +32,7 @@ public class JiraController {
     private final JiraPodRepository podRepo;
     private final ProjectRepository projectRepo;
     private final JiraCredentialsService creds;
+    private final com.portfolioplanner.service.jira.JiraSyncScheduler jiraSyncScheduler;
 
     /** Check whether Jira credentials are configured */
     @GetMapping("/status")
@@ -160,6 +163,114 @@ public class JiraController {
     @GetMapping("/projects/all-simple")
     public ResponseEntity<List<SimpleProject>> getAllProjectsSimple() {
         return ResponseEntity.ok(actualsService.getAllSimpleProjects());
+    }
+
+    /**
+     * Executes a Jira JQL search and returns results shaped for the
+     * "Import Initiatives" modal.  The caller supplies the full JQL so
+     * they can target any issue type (Initiative, Epic, custom).
+     *
+     * Query param: jql — default finds issues of type "Initiative".
+     *
+     * Response shape per item:
+     *   { key, name, status, startDate, dueDate, assignee, issueType }
+     */
+    @SuppressWarnings("unchecked")
+    @GetMapping("/initiatives")
+    public ResponseEntity<List<Map<String, Object>>> getInitiatives(
+            @RequestParam(defaultValue = "issuetype = \"Initiative\" ORDER BY created DESC") String jql) {
+        if (!creds.isConfigured()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<Map<String, Object>> raw;
+        try {
+            raw = jiraClient.searchByJql(jql);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(List.of(
+                Map.of("error", e.getMessage() != null ? e.getMessage() : "JQL search failed")
+            ));
+        }
+        List<Map<String, Object>> result = raw.stream().map(issue -> {
+            Map<String, Object> out = new java.util.LinkedHashMap<>();
+            out.put("key", issue.getOrDefault("key", ""));
+            Object fieldsRaw = issue.get("fields");
+            if (fieldsRaw instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> f = (Map<String, Object>) fieldsRaw;
+                out.put("name", f.getOrDefault("summary", ""));
+                // Status — return both name and category so the frontend can map it
+                Object statusObj = f.get("status");
+                if (statusObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> s = (Map<String, Object>) statusObj;
+                    out.put("status", s.getOrDefault("name", ""));
+                    Object cat = s.get("statusCategory");
+                    if (cat instanceof Map<?,?> catMap) {
+                        Object keyVal = catMap.get("key");
+                        out.put("statusCategory", keyVal instanceof String ? keyVal : "");
+                    }
+                } else {
+                    out.put("status", "");
+                }
+                // Priority — name only (Highest / High / Medium / Low / Lowest)
+                Object priorityObj = f.get("priority");
+                if (priorityObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> p = (Map<String, Object>) priorityObj;
+                    out.put("priority", p.getOrDefault("name", "Medium"));
+                } else {
+                    out.put("priority", "Medium");
+                }
+                // Start date (Jira Cloud: customfield_10015)
+                out.put("startDate", f.getOrDefault("customfield_10015", null));
+                // Due date
+                out.put("dueDate", f.getOrDefault("duedate", null));
+                // Assignee
+                Object assigneeObj = f.get("assignee");
+                if (assigneeObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> a = (Map<String, Object>) assigneeObj;
+                    out.put("assignee", a.getOrDefault("displayName", ""));
+                } else {
+                    out.put("assignee", "");
+                }
+                // Issue type name (so UI can show it)
+                Object itObj = f.get("issuetype");
+                if (itObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> it = (Map<String, Object>) itObj;
+                    out.put("issueType", it.getOrDefault("name", ""));
+                } else {
+                    out.put("issueType", "");
+                }
+            } else {
+                out.put("name", "");
+                out.put("status", "");
+                out.put("priority", "Medium");
+                out.put("startDate", null);
+                out.put("dueDate", null);
+                out.put("assignee", "");
+                out.put("issueType", "");
+            }
+            return out;
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Manually trigger a sync of all JIRA_SYNCED projects against live Jira data.
+     * Updates name, startDate, and targetDate from Jira. User-managed fields
+     * (priority, notes, budget, owner) are never overwritten.
+     */
+    @PostMapping("/sync/projects")
+    public ResponseEntity<Map<String, Object>> syncProjects() {
+        com.portfolioplanner.service.jira.JiraSyncScheduler.SyncResult result =
+                jiraSyncScheduler.syncJiraProjects();
+        return ResponseEntity.ok(Map.of(
+                "updated", result.updated(),
+                "errors",  result.errors(),
+                "skipped", result.skipped()
+        ));
     }
 
     /**

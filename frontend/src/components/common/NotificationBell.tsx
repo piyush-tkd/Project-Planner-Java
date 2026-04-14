@@ -128,11 +128,15 @@ export default function NotificationBell() {
         {/* Ticket list */}
         <ScrollArea.Autosize mah={360}>
           {count === 0 ? (
-            <Stack align="center" gap="xs" py="xl">
-              <ThemeIcon size={40} variant="light" color="green" radius="xl">
-                <IconCheck size={20} />
+            /* PP-13 §7: consistent empty state for notification bell */
+            <Stack align="center" gap="sm" py="xl" px="md">
+              <ThemeIcon size={48} variant="light" color="green" radius="xl">
+                <IconCheck size={24} />
               </ThemeIcon>
-              <Text size="sm" c="dimmed">All clear — no critical tickets</Text>
+              <Text size="sm" fw={500} c="dimmed">All caught up!</Text>
+              <Text size="xs" c="dimmed" ta="center" style={{ lineHeight: 1.5 }}>
+                No critical or blocker tickets right now. You're on top of things.
+              </Text>
             </Stack>
           ) : (
             <Stack gap={0}>

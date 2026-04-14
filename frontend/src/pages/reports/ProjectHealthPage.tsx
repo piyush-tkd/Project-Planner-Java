@@ -23,6 +23,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
 import { IconAlertTriangle, IconCheck, IconHeartRateMonitor } from '@tabler/icons-react';
 import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_ORANGE, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
+import { normaliseProjectStatus } from '../../utils/formatting';
 
 interface ProjectResponse {
  id: number;
@@ -38,6 +39,8 @@ interface ProjectResponse {
  blockedById: number | null;
  targetDate: string | null;
  startDate: string | null;
+ jiraStatusCategory?: string | null;
+ sourceType?: string | null;
 }
 
 interface PodMonthUtilization {
@@ -105,15 +108,28 @@ export default function ProjectHealthPage() {
  projects.forEach((project) => {
  statusSet.add(project.status);
 
- const isInCurrentMonth =
- currentMonthIndex >= (project.startMonth ?? 0) &&
- currentMonthIndex < (project.startMonth ?? 0) + project.durationMonths;
+ // Determine if this project spans the current month.
+ // Prefer actual ISO dates over month-index fields (Jira projects may only have dates).
+ let isInCurrentMonth: boolean;
+ const now = new Date();
+ if (project.startDate || project.targetDate) {
+   const start = project.startDate ? new Date(project.startDate) : null;
+   const end   = project.targetDate ? new Date(project.targetDate) : null;
+   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+   isInCurrentMonth = (!start || start <= monthEnd) && (!end || end >= monthStart);
+ } else {
+   isInCurrentMonth =
+     currentMonthIndex >= (project.startMonth ?? 0) &&
+     currentMonthIndex < (project.startMonth ?? 0) + project.durationMonths;
+ }
 
  let score = 0;
  const riskFactors: string[] = [];
 
- // +40 if status=ACTIVE
- if (project.status.toUpperCase() === 'ACTIVE') {
+ // +40 if status=ACTIVE (handles both PP enum and Jira-synced projects)
+ const normStatus = normaliseProjectStatus(project.status, project.jiraStatusCategory, project.sourceType);
+ if (normStatus === 'ACTIVE') {
  score += 40;
  } else {
  riskFactors.push('Inactive');

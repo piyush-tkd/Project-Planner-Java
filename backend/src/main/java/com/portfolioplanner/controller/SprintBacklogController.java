@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Sprint Backlog — returns per-POD sprint + backlog data from local DB cache.
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/backlog")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class SprintBacklogController {
 
     private final JiraPodRepository             podRepo;

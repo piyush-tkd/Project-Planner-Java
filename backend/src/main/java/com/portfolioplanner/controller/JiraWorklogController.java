@@ -5,6 +5,7 @@ import com.portfolioplanner.service.jira.JiraWorklogService.WorklogMonthReport;
 import com.portfolioplanner.service.jira.JiraWorklogService.UserHistoryReport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Exposes monthly worklog reports — who worked on what and for how long.
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/jira/worklog")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraWorklogController {
 
     private final JiraWorklogService worklogService;

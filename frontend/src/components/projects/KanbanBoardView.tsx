@@ -50,14 +50,17 @@ const CUSTOM_COLUMN_COLORS = [
 ];
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  'P0': { label: 'P0', color: COLOR_ERROR_DARK, bg: '#fef2f2' },
-  'P1': { label: 'P1', color: COLOR_ORANGE_DEEP, bg: '#fff7ed' },
-  'P2': { label: 'P2', color: COLOR_BLUE_STRONG, bg: SURFACE_BLUE },
-  'P3': { label: 'P3', color: COLOR_GREEN_STRONG, bg: SURFACE_SUCCESS_LIGHT },
+  'HIGHEST': { label: 'Highest', color: '#ef4444', bg: '#fef2f2' },
+  'HIGH':    { label: 'High',    color: COLOR_ORANGE_DEEP, bg: '#fff7ed' },
+  'MEDIUM':  { label: 'Medium',  color: COLOR_BLUE_STRONG, bg: SURFACE_BLUE },
+  'LOW':     { label: 'Low',     color: '#6366f1', bg: '#eef2ff' },
+  'LOWEST':  { label: 'Lowest',  color: '#94a3b8', bg: '#f1f5f9' },
+  'BLOCKER': { label: 'Blocker', color: '#dc2626', bg: '#fef2f2' },
+  'MINOR':   { label: 'Minor',   color: TEXT_GRAY, bg: SURFACE_FAINT },
 };
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const cfg = PRIORITY_CONFIG[priority] || { label: priority, color: TEXT_GRAY, bg: SURFACE_FAINT };
+  const cfg = PRIORITY_CONFIG[priority?.toUpperCase()] || { label: priority, color: TEXT_GRAY, bg: SURFACE_FAINT };
   return (
     <Box
       style={{
@@ -75,10 +78,13 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 // Vibrant gradient palettes per priority for the card header strip
 const CARD_PALETTE: Record<string, { gradient: string; accent: string; textColor: string }> = {
-  P0: { gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', accent: '#ee5a24', textColor: '#fff' },
-  P1: { gradient: 'linear-gradient(135deg, #fd9644 0%, #e67e22 100%)', accent: '#e67e22', textColor: '#fff' },
-  P2: { gradient: 'linear-gradient(135deg, #4dabf7 0%, #228be6 100%)', accent: COLOR_BLUE_DARK, textColor: '#fff' },
-  P3: { gradient: 'linear-gradient(135deg, #adb5bd 0%, #868e96 100%)', accent: TEXT_DIM, textColor: '#fff' },
+  HIGHEST: { gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', accent: '#ee5a24', textColor: '#fff' },
+  HIGH:    { gradient: 'linear-gradient(135deg, #fd9644 0%, #e67e22 100%)', accent: '#e67e22', textColor: '#fff' },
+  MEDIUM:  { gradient: 'linear-gradient(135deg, #4dabf7 0%, #228be6 100%)', accent: COLOR_BLUE_DARK, textColor: '#fff' },
+  LOW:     { gradient: 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)', accent: '#6366f1', textColor: '#fff' },
+  LOWEST:  { gradient: 'linear-gradient(135deg, #adb5bd 0%, #868e96 100%)', accent: TEXT_DIM, textColor: '#fff' },
+  BLOCKER: { gradient: 'linear-gradient(135deg, #ff4444 0%, #dc2626 100%)', accent: '#dc2626', textColor: '#fff' },
+  MINOR:   { gradient: 'linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)', accent: '#94a3b8', textColor: '#fff' },
 };
 
 function KanbanCard({
@@ -99,7 +105,7 @@ function KanbanCard({
   const initials = project.owner
     ? project.owner.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
-  const palette = CARD_PALETTE[project.priority] ?? CARD_PALETTE['P3'];
+  const palette = CARD_PALETTE[project.priority?.toUpperCase()] ?? CARD_PALETTE['LOW'];
 
   return (
     <Card

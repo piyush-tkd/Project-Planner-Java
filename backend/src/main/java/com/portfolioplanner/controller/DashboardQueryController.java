@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Generic data query engine for dashboard widgets.
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/dashboards")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DashboardQueryController {
 
     private final ProjectRepository projectRepo;

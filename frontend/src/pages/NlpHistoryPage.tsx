@@ -21,7 +21,7 @@ import {
 } from '../api/nlp';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY,
+  AQUA, AQUA_HEX, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_HEX, DEEP_BLUE_TINTS, FONT_FAMILY,
   BORDER_DEFAULT, TEXT_SECONDARY, TEXT_MUTED,
 } from '../brandTokens';
 
@@ -120,7 +120,7 @@ export default function NlpHistoryPage() {
         <Button
           leftSection={<IconSparkles size={15} />}
           onClick={() => navigate('/nlp')}
-          style={{ backgroundColor: AQUA, color: DEEP_BLUE, fontWeight: 600 }}
+          variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
           size="sm"
         >
           New Conversation
@@ -226,7 +226,7 @@ export default function NlpHistoryPage() {
               <Button
                 leftSection={<IconSparkles size={16} />}
                 onClick={() => navigate('/nlp')}
-                style={{ backgroundColor: AQUA, color: DEEP_BLUE, fontWeight: 600 }}
+                variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
               >
                 Start your first conversation
               </Button>

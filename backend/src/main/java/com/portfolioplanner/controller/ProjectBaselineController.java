@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for project baseline snapshots (planned-vs-actual timeline).
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/projects/{projectId}/baselines")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectBaselineController {
 
     private final ProjectBaselineRepository baselineRepo;

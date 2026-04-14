@@ -123,15 +123,18 @@ describe('getGapCellColor', () => {
 
 // ── Static colour maps ────────────────────────────────────────────────────────
 describe('Priority colour map', () => {
-  it('has entries for P0–P3', () => {
-    expect(priorityColors['P0']).toBeDefined();
-    expect(priorityColors['P1']).toBeDefined();
-    expect(priorityColors['P2']).toBeDefined();
-    expect(priorityColors['P3']).toBeDefined();
+  it('has entries for all Jira-style priorities', () => {
+    expect(priorityColors['HIGHEST']).toBeDefined();
+    expect(priorityColors['HIGH']).toBeDefined();
+    expect(priorityColors['MEDIUM']).toBeDefined();
+    expect(priorityColors['LOW']).toBeDefined();
+    expect(priorityColors['LOWEST']).toBeDefined();
+    expect(priorityColors['BLOCKER']).toBeDefined();
+    expect(priorityColors['MINOR']).toBeDefined();
   });
 
-  it('P0 is the most urgent (red)', () => {
-    expect(priorityColors['P0']).toBe(COLOR_ERROR);
+  it('HIGHEST is the most urgent (red)', () => {
+    expect(priorityColors['HIGHEST']).toBe(COLOR_ERROR);
   });
 });
 

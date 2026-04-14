@@ -1,15 +1,15 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Button, Group, Table, Modal, TextInput, Select, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
-ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popover, Switch, Skeleton,
+  Button, Group, Table, Modal, TextInput, Select, MultiSelect, NumberInput, Textarea, Stack, Text, SegmentedControl, SimpleGrid, ActionIcon, Tooltip,
+ScrollArea, ThemeIcon, Badge, Checkbox, Alert, Loader, Divider, Tabs, Box, Popover, Switch, Skeleton, Collapse,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
-import { AQUA, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, TEXT_SUBTLE} from '../brandTokens';
+import { AQUA, AQUA_HEX, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY, TEXT_SUBTLE} from '../brandTokens';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useToast } from '../hooks/useToast';
-import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash, IconTimeline } from '@tabler/icons-react';
+import { IconPlus, IconBriefcase, IconFlame, IconClock, IconAlertTriangle, IconSearch, IconCopy, IconPlugConnected, IconDownload, IconCheck, IconX, IconLayoutList, IconLayoutKanban, IconChevronRight, IconChevronDown, IconColumns, IconHexagons, IconTicket, IconPencil, IconCloudUpload, IconTrash, IconTimeline, IconRefresh } from '@tabler/icons-react';
 import { useProjects, useCreateProject, useCopyProject, useProjectPodMatrix, useUpdateProject, usePatchProjectStatus, useDeleteProject } from '../api/projects';
 import { useProjectsHealth } from '../api/projectHealth';
 import HealthBadge from '../components/common/HealthBadge';
@@ -19,7 +19,7 @@ import ProjectSourceBadge from '../components/projects/ProjectSourceBadge';
 import ProjectFlagChips from '../components/projects/ProjectFlagChips';
 import type { SourceType } from '../types/project';
 import { useEffortPatterns } from '../api/refData';
-import { useJiraAllProjectsSimple } from '../api/jira';
+import { useJiraInitiatives, DEFAULT_INITIATIVE_JQL, useJiraAllProjectsSimple } from '../api/jira';
 import KanbanBoardView from '../components/projects/KanbanBoardView';
 import GanttView from '../components/projects/GanttView';
 import { Priority, ProjectStatus } from '../types';
@@ -37,19 +37,86 @@ import { useDarkMode } from '../hooks/useDarkMode';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
+import apiClient from '../api/client';
 import TablePagination from '../components/common/TablePagination';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
 import { usePagination } from '../hooks/usePagination';
 import { formatProjectDate } from '../utils/formatting';
+import EmptyState from '../components/common/EmptyState';
+import { IconBriefcase as IconBriefcaseEmpty, IconFilter } from '@tabler/icons-react';
 
-const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
+const PRIORITY_LABELS: Record<string, string> = {
+  HIGHEST: 'Highest', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low',
+  LOWEST: 'Lowest', BLOCKER: 'Blocker', MINOR: 'Minor',
+};
+const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: PRIORITY_LABELS[p] ?? p }));
 // Base enum statuses — custom project statuses discovered from data are appended at runtime
 const BASE_STATUS_OPTIONS = Object.values(ProjectStatus).map(s => ({ value: s, label: s.replace(/_/g, ' ') }));
 
+/**
+ * Classify a project for the status tabs.
+ * Jira-synced projects store the raw Jira status string in `status` and
+ * may have `jiraStatusCategory` set. Older imports may have category=null,
+ * so we fall back to keyword matching on the raw status string.
+ */
+function projectMatchesTab(
+  p: { status: string; jiraStatusCategory?: string | null; sourceType?: string | null },
+  tab: string,
+): boolean {
+  const cat  = p.jiraStatusCategory;
+  const raw  = (p.status ?? '').toUpperCase();
+  const isJira = p.sourceType === 'JIRA_SYNCED' || p.sourceType === 'PUSHED_TO_JIRA';
+
+  switch (tab) {
+    case ProjectStatus.ACTIVE:
+      // PP enum match, Jira category "indeterminate", or Jira raw active patterns
+      return (
+        p.status === ProjectStatus.ACTIVE ||
+        cat === 'indeterminate' ||
+        (isJira && cat == null && /ACTIVE|IN.PROGRESS|IN.DEV|DEVELOPMENT|TESTING|REVIEW|ONGOING|IMPLEMENTATION|WIP|STARTED|PROGRES/.test(raw))
+      );
+
+    case ProjectStatus.COMPLETED:
+      return (
+        p.status === ProjectStatus.COMPLETED ||
+        cat === 'done' ||
+        (isJira && cat == null && /DONE|COMPLET|CLOSED|RELEASED|SHIPPED|RESOLVED|FINISH/.test(raw))
+      );
+
+    case ProjectStatus.NOT_STARTED:
+      return (
+        p.status === ProjectStatus.NOT_STARTED ||
+        cat === 'new' ||
+        (isJira && cat == null && /NOT.START|NEW|BACKLOG|OPEN|TODO|TO.DO|FUNNEL|DRAFT/.test(raw))
+      );
+
+    case ProjectStatus.ON_HOLD:
+      return (
+        p.status === ProjectStatus.ON_HOLD ||
+        /HOLD|PAUSED|BLOCKED|DEFERRED|PARKED|SUSPEND|WAIT/.test(raw)
+      );
+
+    case ProjectStatus.CANCELLED:
+      return (
+        p.status === ProjectStatus.CANCELLED ||
+        /CANCEL|REJECT|ABANDON|SCRAP/.test(raw)
+      );
+
+    case ProjectStatus.IN_DISCOVERY:
+      return (
+        p.status === ProjectStatus.IN_DISCOVERY ||
+        /DISCOVERY|PLANNING|SCOPING|INCEPTION|ASSESS/.test(raw)
+      );
+
+    default:
+      return p.status === tab;
+  }
+}
+
 const emptyForm: ProjectRequest = {
   name: '',
-  priority: Priority.P2,
+  priority: Priority.MEDIUM,
   owner: '',
   startMonth: 1,
   durationMonths: 3,
@@ -140,15 +207,93 @@ export default function ProjectsPage() {
   // Inline add-row state
   const [addRowActive, setAddRowActive] = useState(false);
   const [addRowForm, setAddRowForm] = useState<{ name: string; priority: string; owner: string; status: string; startMonth: number; durationMonths: number; defaultPattern: string }>({
-    name: '', priority: 'P2', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat',
+    name: '', priority: 'MEDIUM', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat',
   });
   const { data: effortPatterns } = useEffortPatterns();
-  const { data: jiraProjects = [], isLoading: jiraProjectsLoading } = useJiraAllProjectsSimple();
   const navigate = useNavigate();
   const { monthLabels } = useMonthLabels();
-  const [viewMode, setViewMode] = useState<'table' | 'board' | 'gantt'>('table');
+  // ── Jira → PP mapping helpers ────────────────────────────────────────────
+  const mapJiraPriorityToPP = (jiraPriority?: string): Priority => {
+    switch ((jiraPriority ?? '').trim().toUpperCase()) {
+      case 'HIGHEST': case 'CRITICAL': case 'BLOCKER': return Priority.HIGHEST;
+      case 'HIGH':    return Priority.HIGH;
+      case 'LOW':     return Priority.LOW;
+      case 'LOWEST':  case 'TRIVIAL': return Priority.LOWEST;
+      default:        return Priority.MEDIUM;
+    }
+  };
+
+  const mapJiraStatusToPP = (statusName?: string, categoryKey?: string): ProjectStatus => {
+    const s = (statusName ?? '').trim().toUpperCase();
+    switch (s) {
+      case 'BACKLOG': case 'FUNNEL': case 'READY': case 'TO DO': case 'TODO':
+      case 'OPEN': case 'SELECTED FOR DEVELOPMENT': case 'READY FOR DEV':
+      case 'READY FOR DEVELOPMENT': case 'READY TO START': case 'PLANNING':
+      case 'PROPOSED': case 'DISCOVERY': case 'IDEATION': case 'DRAFT':
+      case 'NEW': case 'IN SCOPING':
+        return ProjectStatus.NOT_STARTED;
+      case 'IN PROGRESS': case 'IN-PROGRESS': case 'REVIEW': case 'IN DEVELOPMENT':
+      case 'IN REVIEW': case 'IN-REVIEW': case 'CODE REVIEW': case 'TESTING':
+      case 'IN TESTING': case 'QA': case 'IN QA': case 'UAT': case 'ACTIVE':
+      case 'UNDER REVIEW': case 'PEER REVIEW': case 'TECH REVIEW':
+      case 'STEERING COMMITTEE REVIEW': case 'TECHNOLOGY REVIEW':
+      case 'COMPLIANCE REVIEW': case 'ONGOING': case 'DEVELOPMENT':
+      case 'IMPLEMENTATION': case 'READY FOR QA': case 'READY FOR REVIEW':
+        return ProjectStatus.ACTIVE;
+      case 'DONE': case 'CLOSED': case 'RESOLVED': case 'COMPLETED':
+      case 'RELEASED': case 'DEPLOYED': case 'MERGED': case 'FINISHED':
+        return ProjectStatus.COMPLETED;
+      case 'BLOCKED': case 'ON HOLD': case 'ON-HOLD': case 'HOLD':
+      case 'HOLD/PAUSED': case 'ON PAUSE': case 'PAUSED': case 'WAITING':
+      case 'DEFERRED': case 'PARKED': case 'SUSPENDED': case 'PENDING':
+        return ProjectStatus.ON_HOLD;
+      case 'CANCELLED': case 'CANCELED': case 'REJECTED': case 'WONT DO':
+      case 'ABANDONED': case 'WITHDRAWN':
+        return ProjectStatus.CANCELLED;
+      default: break;
+    }
+    // Fall back to category key
+    switch ((categoryKey ?? '').toLowerCase()) {
+      case 'new':  return ProjectStatus.NOT_STARTED;
+      case 'done': return ProjectStatus.COMPLETED;
+      default:     return ProjectStatus.ACTIVE;
+    }
+  };
+
+  // viewMode persisted in URL query param (?view=table|board|gantt) so it survives navigation
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewMode = (searchParams.get('view') as 'table' | 'board' | 'gantt') || 'table';
+  const setViewMode = (v: 'table' | 'board' | 'gantt') =>
+    setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('view', v); return next; }, { replace: true });
   const [modalOpen, setModalOpen] = useState(false);
+  const [jiraSyncing, setJiraSyncing] = useState(false);
+  const handleJiraSync = async () => {
+    setJiraSyncing(true);
+    try {
+      const res = await apiClient.post('/jira-sync/run');
+      const data = res.data as { created?: number; updated?: number; failed?: number };
+      notifications.show({
+        title: 'Jira sync complete',
+        message: `Updated ${data.updated ?? 0} projects, created ${data.created ?? 0} new${data.failed ? `, ${data.failed} failed` : ''}`,
+        color: 'teal',
+      });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      notifications.show({ title: 'Sync failed', message: 'Could not reach Jira — check Settings → Integrations', color: 'red' });
+    } finally {
+      setJiraSyncing(false);
+    }
+  };
   const [jiraImportOpen, setJiraImportOpen] = useState(false);
+  const [jiraImportSearch, setJiraImportSearch] = useState('');
+  const [jiraJql, setJiraJql] = useState(DEFAULT_INITIATIVE_JQL);
+  const [jiraJqlInput, setJiraJqlInput] = useState(DEFAULT_INITIATIVE_JQL);
+  const [jiraSearchEnabled, setJiraSearchEnabled] = useState(true);
+  const [jiraSelectedProjects, setJiraSelectedProjects] = useState<string[]>([]);
+  const [jiraIssueType, setJiraIssueType] = useState('Initiative');
+  const [jiraShowAdvanced, setJiraShowAdvanced] = useState(false);
+  const { data: allJiraProjectsList = [] } = useJiraAllProjectsSimple();
+  const { data: jiraProjects = [], isLoading: jiraProjectsLoading, isError: jiraProjectsError } = useJiraInitiatives(jiraJql, jiraImportOpen && jiraSearchEnabled);
   const [selectedJiraKeys, setSelectedJiraKeys] = useState<Set<string>>(new Set());
   const [importingCount, setImportingCount] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
@@ -212,14 +357,48 @@ export default function ProjectsPage() {
     return '';
   }, [existingNames]);
 
-  // Jira projects not already in portfolio (by name match)
+  // Existing jiraEpicKeys for deduplication (key-based is more reliable than name-based)
+  const existingJiraKeys = useMemo(() => {
+    return new Set((projects ?? []).map(p => p.jiraEpicKey).filter(Boolean) as string[]);
+  }, [projects]);
+
+  // Jira issues not already in portfolio — check by jiraEpicKey first, fallback to name
   const importableJiraProjects = useMemo(() => {
-    return jiraProjects.filter(jp => !existingNames.has(jp.name.toLowerCase()));
-  }, [jiraProjects, existingNames]);
+    return jiraProjects.filter(jp =>
+      !existingJiraKeys.has(jp.key) && !existingNames.has(jp.name.toLowerCase())
+    );
+  }, [jiraProjects, existingJiraKeys, existingNames]);
 
   const alreadyImportedJiraProjects = useMemo(() => {
-    return jiraProjects.filter(jp => existingNames.has(jp.name.toLowerCase()));
-  }, [jiraProjects, existingNames]);
+    return jiraProjects.filter(jp =>
+      existingJiraKeys.has(jp.key) || existingNames.has(jp.name.toLowerCase())
+    );
+  }, [jiraProjects, existingJiraKeys, existingNames]);
+
+  const filteredImportableProjects = useMemo(() => {
+    const q = jiraImportSearch.trim().toLowerCase();
+    if (!q) return importableJiraProjects;
+    return importableJiraProjects.filter(jp =>
+      jp.key.toLowerCase().includes(q) || jp.name.toLowerCase().includes(q)
+    );
+  }, [importableJiraProjects, jiraImportSearch]);
+
+  // Build JQL from project picker + issue type — called when user clicks Search
+  const buildAndRunJql = useCallback((projects: string[], issueType: string, advJql: string) => {
+    const parts: string[] = [];
+    if (issueType.trim()) parts.push(`issuetype = "${issueType.trim()}"`);
+    if (projects.length > 0) {
+      const keys = projects.map(k => `"${k}"`).join(', ');
+      parts.push(`project in (${keys})`);
+    }
+    if (advJql.trim()) parts.push(`(${advJql.trim()})`);
+    const jql = (parts.length > 0 ? parts.join(' AND ') : 'issuetype = "Initiative"') + ' ORDER BY created DESC';
+    setJiraJql(jql);
+    setJiraJqlInput(jql);
+    setJiraSearchEnabled(true);
+    setSelectedJiraKeys(new Set());
+    setJiraImportSearch('');
+  }, []);
 
   const toggleJiraKey = (key: string) => {
     setSelectedJiraKeys(prev => {
@@ -231,10 +410,20 @@ export default function ProjectsPage() {
   };
 
   const toggleAllImportable = () => {
-    if (selectedJiraKeys.size === importableJiraProjects.length) {
-      setSelectedJiraKeys(new Set());
+    const filteredKeys = filteredImportableProjects.map(p => p.key);
+    const allFilteredSelected = filteredKeys.every(k => selectedJiraKeys.has(k));
+    if (allFilteredSelected && filteredKeys.length > 0) {
+      setSelectedJiraKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.delete(k));
+        return next;
+      });
     } else {
-      setSelectedJiraKeys(new Set(importableJiraProjects.map(p => p.key)));
+      setSelectedJiraKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.add(k));
+        return next;
+      });
     }
   };
 
@@ -252,16 +441,20 @@ export default function ProjectsPage() {
       try {
         await createMutation.mutateAsync({
           name: jp.name,
-          priority: Priority.P2,
-          owner: '',
+          priority: mapJiraPriorityToPP(jp.priority),
+          owner: jp.assignee || '',
           startMonth: 1,
           durationMonths: 3,
           defaultPattern: 'Flat',
-          status: ProjectStatus.NOT_STARTED,
-          notes: `Imported from Jira project: ${jp.key}`,
-          startDate: null,
-          targetDate: null,
+          // Store the raw Jira status string so it shows as-is in the UI.
+          // jiraStatusCategory will be populated on the next epic sync.
+          status: jp.status || 'ACTIVE',
+          notes: null,
+          startDate: jp.startDate ?? null,
+          targetDate: jp.dueDate ?? null,
           client: null,
+          sourceType: 'JIRA_SYNCED',
+          jiraEpicKey: jp.key,
         });
         successCount++;
         setImportedCount(prev => prev + 1);
@@ -287,14 +480,15 @@ export default function ProjectsPage() {
       setImportingCount(0);
     }
   };
-  // URL search params — used for both NLP navigation filters and highlight
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Auto-open Add Project modal when navigated here with ?new=true (e.g. from sidebar + button)
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
       setModalOpen(true);
       setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('new'); return next; }, { replace: true });
+    }
+    if (searchParams.get('import') === 'jira') {
+      setJiraImportOpen(true);
+      setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('import'); return next; }, { replace: true });
     }
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -305,7 +499,7 @@ export default function ProjectsPage() {
 
   const [statusFilter, setStatusFilter]   = useState<string>(urlStatus ?? 'ALL');
   const [cardFilter, setCardFilter]       = useState<string | null>(
-    urlPriority === 'P0' || urlPriority === 'P1' ? 'P0P1' : urlStatus && urlStatus !== 'ALL' ? urlStatus : null
+    urlPriority === 'HIGHEST' || urlPriority === 'HIGH' || urlPriority === 'P0' || urlPriority === 'P1' ? 'CRITICAL' : urlStatus && urlStatus !== 'ALL' ? urlStatus : null
   );
   const [search, setSearch]               = useState('');
   const [ownerFilter, setOwnerFilter]     = useState<string | null>(urlOwner ?? null);
@@ -354,7 +548,7 @@ export default function ProjectsPage() {
       if (key === 'ACTIVE' || key === 'ON_HOLD') {
         setStatusFilter(key);
       } else {
-        setStatusFilter('ALL'); // P0P1 is priority-based
+        setStatusFilter('ALL'); // CRITICAL is priority-based
       }
     }
   }
@@ -381,10 +575,11 @@ export default function ProjectsPage() {
         list = list.filter(p => p.sourceType === sourceFilter);
       }
     }
-    if (cardFilter === 'P0P1') {
-      list = list.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1);
+    if (cardFilter === 'CRITICAL') {
+      list = list.filter(p => p.priority === Priority.HIGHEST || p.priority === Priority.HIGH || p.priority === Priority.BLOCKER);
     } else if (statusFilter !== 'ALL') {
-      list = list.filter(p => p.status === statusFilter);
+      // Use the shared classifier so tabs and cards are always consistent
+      list = list.filter(p => projectMatchesTab(p, statusFilter));
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -401,8 +596,8 @@ export default function ProjectsPage() {
   // Only apply search + owner + priority filters so all status columns show correctly.
   const boardProjects = useMemo(() => {
     let list = projects ?? [];
-    if (cardFilter === 'P0P1') {
-      list = list.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1);
+    if (cardFilter === 'CRITICAL') {
+      list = list.filter(p => p.priority === Priority.HIGHEST || p.priority === Priority.HIGH || p.priority === Priority.BLOCKER);
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -445,12 +640,13 @@ export default function ProjectsPage() {
   ], [statusOptions]);
 
   const stats = useMemo(() => {
-    const all = projects ?? [];
-    const active = all.filter(p => p.status === ProjectStatus.ACTIVE).length;
-    const onHold = all.filter(p => p.status === ProjectStatus.ON_HOLD).length;
-    const p0p1 = all.filter(p => p.priority === Priority.P0 || p.priority === Priority.P1).length;
+    // Exclude archived projects — consistent with the table's default view
+    const all = (projects ?? []).filter(p => !p.archived);
+    const active  = all.filter(p => projectMatchesTab(p, ProjectStatus.ACTIVE)).length;
+    const onHold  = all.filter(p => projectMatchesTab(p, ProjectStatus.ON_HOLD)).length;
+    const critical = all.filter(p => p.priority === Priority.HIGHEST || p.priority === Priority.HIGH || p.priority === Priority.BLOCKER).length;
     const avgDuration = all.length > 0 ? Math.round(all.reduce((s, p) => s + p.durationMonths, 0) / all.length * 10) / 10 : 0;
-    return { total: all.length, active, onHold, p0p1, avgDuration };
+    return { total: all.length, active, onHold, p0p1: critical, avgDuration };
   }, [projects]);
 
   // ── Shared approval-required error handler ────────────────────────────
@@ -531,7 +727,7 @@ export default function ProjectsPage() {
       {
         onSuccess: () => {
           setAddRowActive(false);
-          setAddRowForm({ name: '', priority: 'P2', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat' });
+          setAddRowForm({ name: '', priority: 'MEDIUM', owner: '', status: 'ACTIVE', startMonth: 1, durationMonths: 3, defaultPattern: 'Flat' });
           toast.success('Project created', 'New project added to the portfolio');
         },
         onError: (err: any) => toast.error('Create failed', err?.response?.data?.message || 'Failed to create project'),
@@ -600,6 +796,15 @@ export default function ProjectsPage() {
           >
             Import from Jira
           </Button>
+          <Button
+            variant="filled"
+            leftSection={<IconRefresh size={16} />}
+            loading={jiraSyncing}
+            onClick={handleJiraSync}
+            style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
+          >
+            Sync from Jira
+          </Button>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>Add Project</Button>
         </Group>
       }
@@ -613,6 +818,7 @@ export default function ProjectsPage() {
           icon={<IconBriefcase size={20} color={COLOR_BLUE_LIGHT} />}
           onClick={() => { setCardFilter(null); setStatusFilter('ALL'); }}
           active={cardFilter === null && statusFilter === 'ALL'}
+          filterLabel={null}
         />
         <SummaryCard
           title="Active"
@@ -630,12 +836,12 @@ export default function ProjectsPage() {
           active={cardFilter === 'ON_HOLD'}
         />
         <SummaryCard
-          title="P0 / P1"
+          title="Critical"
           value={stats.p0p1}
           icon={<IconFlame size={20} color={COLOR_ERROR} />}
           color={stats.p0p1 > 0 ? 'red' : undefined}
-          onClick={() => applyCardFilter('P0P1')}
-          active={cardFilter === 'P0P1'}
+          onClick={() => applyCardFilter('CRITICAL')}
+          active={cardFilter === 'CRITICAL'}
         />
         <SummaryCard
           title="Avg Duration"
@@ -650,7 +856,7 @@ export default function ProjectsPage() {
           onChange={handleSegmentedChange}
           data={[
             { value: 'ALL', label: 'All' },
-            ...statusOptions,
+            ...BASE_STATUS_OPTIONS,
           ]}
         />
       )}
@@ -795,7 +1001,7 @@ export default function ProjectsPage() {
           ...(ownerFilter ? [{ key: 'owner', label: `Owner: ${ownerFilter}`, color: 'teal', onRemove: () => setOwnerFilter(null) }] : []),
           ...(priorityFilter ? [{ key: 'priority', label: `Priority: ${priorityFilter}`, color: 'orange', onRemove: () => setPriorityFilter(null) }] : []),
           ...(statusFilter !== 'ALL' ? [{ key: 'status', label: `Status: ${statusFilter.replace(/_/g, ' ')}`, color: 'violet', onRemove: () => setStatusFilter('ALL') }] : []),
-          ...(cardFilter === 'P0P1' ? [{ key: 'p0p1', label: 'Priority: P0 / P1', color: 'red', onRemove: () => setCardFilter(null) }] : []),
+          ...(cardFilter === 'CRITICAL' ? [{ key: 'critical', label: 'Priority: Critical (Highest / High / Blocker)', color: 'red', onRemove: () => setCardFilter(null) }] : []),
           ...advFilters.conditions
             .filter(c => Array.isArray(c.value) ? c.value.length > 0 : c.value !== '')
             .map(c => {
@@ -882,8 +1088,48 @@ export default function ProjectsPage() {
               <Table.Tbody>
                 {pagedProjects.length === 0 && (
                   <Table.Tr>
-                    <Table.Td colSpan={13} style={{ textAlign: 'center', padding: '2rem' }}>
-                      <Text size="sm" style={{ color: 'var(--pp-text-muted)' }}>No projects match the current filters.</Text>
+                    <Table.Td colSpan={13} style={{ padding: '0' }}>
+                      {/* PP-13 §7: standardised empty state — distinguishes "no data" from "filtered empty" */}
+                      {(projects ?? []).length === 0 ? (
+                        <EmptyState
+                          icon={<IconBriefcaseEmpty size={40} />}
+                          title="No projects yet"
+                          description="Create your first project to start planning and tracking work across your portfolio."
+                          action={{
+                            label: '+ Create Project',
+                            onClick: () => setModalOpen(true),
+                            variant: 'filled',
+                            color: 'teal',
+                          }}
+                          secondaryAction={{
+                            label: 'Import from Jira',
+                            onClick: () => setJiraImportOpen(true),
+                            variant: 'light',
+                          }}
+                          tips={['Tip: use ⌘K to quickly jump to any project', 'Set up Jira integration to auto-sync epics and sprints']}
+                          size="lg"
+                        />
+                      ) : (
+                        <EmptyState
+                          icon={<IconFilter size={36} />}
+                          title="No projects match your filters"
+                          description="Try adjusting or clearing the filters above."
+                          action={{
+                            label: 'Clear all filters',
+                            onClick: () => {
+                              setSearch('');
+                              setStatusFilter('ALL');
+                              setOwnerFilter(null);
+                              setPriorityFilter(null);
+                              setSourceFilter('ALL');
+                              setAdvFilters(EMPTY_ADV);
+                            },
+                            variant: 'light',
+                            color: 'gray',
+                          }}
+                          size="md"
+                        />
+                      )}
                     </Table.Td>
                   </Table.Tr>
                 )}
@@ -1023,11 +1269,19 @@ export default function ProjectsPage() {
                                 valueFormat="MMM D, YYYY"
                                 popoverProps={{ withinPortal: true }}
                               />
-                            ) : (
-                              <span style={{ color: p.targetDate ? 'inherit' : 'var(--mantine-color-dimmed)' }}>
-                                {formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}
-                              </span>
-                            )}
+                            ) : (() => {
+                              const isPastDue = p.targetDate && new Date(p.targetDate + 'T00:00:00') < new Date() && p.status !== 'COMPLETED' && p.status !== 'CANCELLED';
+                              return (
+                                <span style={{
+                                  color: isPastDue
+                                    ? 'var(--mantine-color-red-6)'
+                                    : p.targetDate ? 'inherit' : 'var(--mantine-color-dimmed)',
+                                  fontWeight: isPastDue ? 600 : undefined,
+                                }}>
+                                  {formatProjectDate(p.targetDate, p.targetEndMonth, monthLabels)}
+                                </span>
+                              );
+                            })()}
                           </Table.Td>
                         )}
                         {visibleCols.has('Duration') && <Table.Td>{p.durationMonths}m</Table.Td>}
@@ -1037,11 +1291,28 @@ export default function ProjectsPage() {
                           <Table.Td onClick={e => { e.stopPropagation(); startEdit(p.id, 'status', p.status); }}>
                             {editingCell?.id === p.id && editingCell.field === 'status' ? (
                               <Select size="xs" data={statusOptions} value={editDraft} autoFocus
-                                onChange={v => { setEditDraft(v ?? p.status); }}
-                                onBlur={() => commitEdit(p)}
+                                onChange={v => {
+                                  const newStatus = v ?? p.status;
+                                  setEditDraft(newStatus);
+                                  // Commit immediately on selection — avoids stale-closure bug with onBlur
+                                  updateMutation.mutate(
+                                    { id: p.id, data: { name: p.name, priority: p.priority, owner: p.owner ?? '', startMonth: p.startMonth ?? 1, durationMonths: p.durationMonths ?? 1, defaultPattern: p.defaultPattern ?? 'Flat', status: newStatus, notes: p.notes ?? null, startDate: p.startDate, targetDate: p.targetDate, client: p.client ?? null } },
+                                    {
+                                      onError: (error: any) => {
+                                        const reason = error?.response?.data?.message ?? error?.response?.data ?? '';
+                                        if (String(reason).includes('APPROVAL_REQUIRED')) {
+                                          toast.warning('Approval required', 'Status change submitted for approval.');
+                                        } else {
+                                          toast.error('Save failed', 'Could not update status');
+                                        }
+                                      },
+                                    }
+                                  );
+                                  setEditingCell(null);
+                                }}
                                 onClick={e => e.stopPropagation()}
                               />
-                            ) : <StatusBadge status={p.status} />}
+                            ) : <StatusBadge status={p.status} jiraStatusCategory={p.jiraStatusCategory} />}
                           </Table.Td>
                         )}
                         {visibleCols.has('Budget') && (
@@ -1238,7 +1509,7 @@ export default function ProjectsPage() {
                     {visibleCols.has('Priority') && (
                       <Table.Td>
                         <Select size="xs" data={priorityOptions} value={addRowForm.priority}
-                          onChange={v => setAddRowForm(f => ({ ...f, priority: v ?? 'P2' }))} style={{ minWidth: 80 }} />
+                          onChange={v => setAddRowForm(f => ({ ...f, priority: v ?? 'MEDIUM' }))} style={{ minWidth: 80 }} />
                       </Table.Td>
                     )}
                     {/* Owner */}
@@ -1390,37 +1661,109 @@ export default function ProjectsPage() {
       {/* ── Import from Jira Modal ── */}
       <Modal
         opened={jiraImportOpen}
-        onClose={() => setJiraImportOpen(false)}
+        onClose={() => { setJiraImportOpen(false); setJiraImportSearch(''); setJiraJqlInput(''); setJiraJql(DEFAULT_INITIATIVE_JQL); setJiraSearchEnabled(true); setJiraSelectedProjects([]); setJiraIssueType('Initiative'); setJiraShowAdvanced(false); }}
         title={
           <Group gap="xs">
             <IconPlugConnected size={20} color="#0052CC" />
-            <Text fw={600}>Import Projects from Jira</Text>
+            <Text fw={600}>Import Initiatives from Jira Roadmap</Text>
           </Group>
         }
-        size="lg"
+        size="xl"
         centered
       >
         <Stack gap="sm">
+          {/* ── Filter controls ── */}
+          <Stack gap="xs">
+            {/* Issue Type + Project picker */}
+            <Group gap="xs" grow>
+              <Select
+                label="Issue type"
+                size="sm"
+                data={['Initiative', 'Epic', 'Story', 'Feature', 'Theme', 'Task']}
+                value={jiraIssueType}
+                onChange={v => setJiraIssueType(v ?? 'Initiative')}
+                allowDeselect={false}
+              />
+              <MultiSelect
+                label="Jira projects (leave empty for all)"
+                size="sm"
+                data={(allJiraProjectsList ?? []).map(p => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
+                value={jiraSelectedProjects}
+                onChange={setJiraSelectedProjects}
+                placeholder="All projects"
+                searchable
+                clearable
+                maxDropdownHeight={220}
+              />
+            </Group>
+
+            {/* Advanced JQL toggle */}
+            <Group gap="xs">
+              <Button
+                size="sm"
+                leftSection={<IconSearch size={14} />}
+                loading={jiraProjectsLoading}
+                onClick={() => buildAndRunJql(jiraSelectedProjects, jiraIssueType, jiraShowAdvanced ? jiraJqlInput : '')}
+              >
+                Search
+              </Button>
+              <Button
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => setJiraShowAdvanced(v => !v)}
+              >
+                {jiraShowAdvanced ? 'Hide advanced JQL' : 'Advanced JQL'}
+              </Button>
+            </Group>
+
+            <Collapse in={jiraShowAdvanced}>
+              <Stack gap={4}>
+                <Text size="xs" c="dimmed">Additional JQL filter (appended with AND). The issue type and project selections above take precedence.</Text>
+                <Group gap="xs">
+                  <TextInput
+                    style={{ flex: 1 }}
+                    size="sm"
+                    ff="monospace"
+                    placeholder='e.g. labels = "portfolio" AND priority = "High"'
+                    value={jiraJqlInput}
+                    onChange={e => setJiraJqlInput(e.currentTarget.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') buildAndRunJql(jiraSelectedProjects, jiraIssueType, jiraJqlInput); }}
+                  />
+                </Group>
+                {jiraJql && (
+                  <Text size="xs" c="dimmed" ff="monospace" style={{ wordBreak: 'break-all' }}>
+                    Running: {jiraJql}
+                  </Text>
+                )}
+              </Stack>
+            </Collapse>
+          </Stack>
+
+          <Divider />
+
           {jiraProjectsLoading ? (
             <Stack gap="xs">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} height={36} radius="sm" />
               ))}
             </Stack>
+          ) : jiraProjectsError ? (
+            <Alert color="red" icon={<IconAlertTriangle size={14} />}>
+              JQL query failed. Check your syntax and try again.
+            </Alert>
           ) : jiraProjects.length === 0 ? (
             <Alert color="orange" icon={<IconAlertTriangle size={14} />}>
-              No Jira projects found. Configure Jira boards in Settings first.
+              No results for this JQL query. Try a different issue type — for example, change{' '}
+              <Text span ff="monospace" size="sm">"Initiative"</Text> to{' '}
+              <Text span ff="monospace" size="sm">"Epic"</Text>.
             </Alert>
           ) : (
             <>
-              <Text size="sm" c="dimmed">
-                Select Jira projects to import as portfolio projects. Projects will be created with default settings (P2 priority, NOT_STARTED status, Flat pattern).
-              </Text>
-
               {/* Stats */}
               <Group gap="xs">
                 <Badge size="sm" color="blue" variant="light">
-                  {jiraProjects.length} Jira projects
+                  {jiraProjects.length} found
                 </Badge>
                 <Badge size="sm" color="teal" variant="light">
                   {importableJiraProjects.length} available to import
@@ -1435,12 +1778,33 @@ export default function ProjectsPage() {
               {importableJiraProjects.length > 0 && (
                 <>
                   <Divider />
+                  {/* Search filter */}
+                  <TextInput
+                    placeholder="Search projects by name or key…"
+                    leftSection={<IconSearch size={14} />}
+                    value={jiraImportSearch}
+                    onChange={e => setJiraImportSearch(e.currentTarget.value)}
+                    size="sm"
+                  />
                   {/* Select all / deselect all */}
                   <Group justify="space-between">
                     <Checkbox
-                      label={<Text size="sm" fw={600}>Select all ({importableJiraProjects.length})</Text>}
-                      checked={selectedJiraKeys.size === importableJiraProjects.length && importableJiraProjects.length > 0}
-                      indeterminate={selectedJiraKeys.size > 0 && selectedJiraKeys.size < importableJiraProjects.length}
+                      label={
+                        <Text size="sm" fw={600}>
+                          Select all
+                          {jiraImportSearch.trim()
+                            ? ` (${filteredImportableProjects.length} of ${importableJiraProjects.length})`
+                            : ` (${importableJiraProjects.length})`}
+                        </Text>
+                      }
+                      checked={
+                        filteredImportableProjects.length > 0 &&
+                        filteredImportableProjects.every(p => selectedJiraKeys.has(p.key))
+                      }
+                      indeterminate={
+                        filteredImportableProjects.some(p => selectedJiraKeys.has(p.key)) &&
+                        !filteredImportableProjects.every(p => selectedJiraKeys.has(p.key))
+                      }
                       onChange={toggleAllImportable}
                     />
                     {selectedJiraKeys.size > 0 && (
@@ -1450,13 +1814,17 @@ export default function ProjectsPage() {
                     )}
                   </Group>
 
-                  {/* Importable project list */}
+                  {/* Importable initiative list */}
                   <ScrollArea.Autosize mah={320}>
                     <Stack gap={4}>
-                      {importableJiraProjects.map(jp => (
-                        <Group
+                      {filteredImportableProjects.length === 0 ? (
+                        <Text size="sm" c="dimmed" ta="center" py="md">
+                          No initiatives match "{jiraImportSearch}"
+                        </Text>
+                      ) : null}
+                      {filteredImportableProjects.map(jp => (
+                        <Box
                           key={jp.key}
-                          gap="sm"
                           p="xs"
                           style={{
                             borderRadius: 6,
@@ -1467,14 +1835,35 @@ export default function ProjectsPage() {
                           }}
                           onClick={() => toggleJiraKey(jp.key)}
                         >
-                          <Checkbox
-                            checked={selectedJiraKeys.has(jp.key)}
-                            onChange={() => toggleJiraKey(jp.key)}
-                            size="sm"
-                          />
-                          <Badge size="sm" variant="light" color="blue" ff="monospace">{jp.key}</Badge>
-                          <Text size="sm">{jp.name}</Text>
-                        </Group>
+                          <Group gap="sm" wrap="nowrap">
+                            <Checkbox
+                              checked={selectedJiraKeys.has(jp.key)}
+                              onChange={() => toggleJiraKey(jp.key)}
+                              size="sm"
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <Badge size="sm" variant="light" color="blue" ff="monospace" style={{ flexShrink: 0 }}>{jp.key}</Badge>
+                            <Box style={{ flex: 1, minWidth: 0 }}>
+                              <Text size="sm" fw={500} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {jp.name}
+                              </Text>
+                              <Group gap={6} mt={2}>
+                                {jp.status && (
+                                  <Badge size="xs" variant="dot" color="gray">{jp.status}</Badge>
+                                )}
+                                {jp.startDate && (
+                                  <Text size="xs" c="dimmed">Start: {jp.startDate}</Text>
+                                )}
+                                {jp.dueDate && (
+                                  <Text size="xs" c="dimmed">Due: {jp.dueDate}</Text>
+                                )}
+                                {jp.assignee && (
+                                  <Text size="xs" c="dimmed">👤 {jp.assignee}</Text>
+                                )}
+                              </Group>
+                            </Box>
+                          </Group>
+                        </Box>
                       ))}
                     </Stack>
                   </ScrollArea.Autosize>
@@ -1521,7 +1910,7 @@ export default function ProjectsPage() {
 
               {/* Action buttons */}
               <Group justify="flex-end">
-                <Button variant="light" onClick={() => setJiraImportOpen(false)} size="sm">
+                <Button variant="light" onClick={() => { setJiraImportOpen(false); setJiraImportSearch(''); setJiraJqlInput(''); setJiraJql(DEFAULT_INITIATIVE_JQL); setJiraSearchEnabled(true); setJiraSelectedProjects([]); setJiraIssueType('Initiative'); setJiraShowAdvanced(false); }} size="sm">
                   Cancel
                 </Button>
                 <Button

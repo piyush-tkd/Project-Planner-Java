@@ -109,7 +109,7 @@ const TOUR_STEPS: TourStep[] = [
     icon: <IconBrain size={32} />,
     title: 'Ask AI — Natural Language Search',
     description:
-      "Type questions in plain English to look up resources, projects, PODs, and more. Ask AI understands queries like 'show me P0 projects' or 'who is John?' and navigates you straight to the answer.",
+      "Type questions in plain English to look up resources, projects, PODs, and more. Ask AI understands queries like 'show me highest priority projects' or 'who is John?' and navigates you straight to the answer.",
     highlights: ['Natural language queries', 'Auto-navigation', 'Entity drill-down'],
     color: AQUA,
     path: '/nlp',

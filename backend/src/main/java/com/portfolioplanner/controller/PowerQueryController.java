@@ -7,6 +7,7 @@ import com.portfolioplanner.service.jira.JiraCustomQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.*;
 @RequestMapping("/api/power-query")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasRole('ADMIN')")
 public class PowerQueryController {
 
     private final PowerQueryService powerQueryService;

@@ -14,10 +14,12 @@ import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/pulse")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TeamPulseController {
 
     private final TeamPulseRepository              pulseRepo;

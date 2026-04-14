@@ -2784,7 +2784,7 @@ function NumberedItemList({ data, onNavigate }: { data: Record<string, unknown>;
  </Group>
  <Group gap={6} style={{ flexShrink: 0 }}>
  {priority && (
- <Badge variant="light" size="xs" radius="sm" color={priority === 'P0' ? 'red' : priority === 'P1' ? 'orange' : 'blue'}
+ <Badge variant="light" size="xs" radius="sm" color={priority === 'HIGHEST' || priority === 'BLOCKER' ? 'red' : priority === 'HIGH' ? 'orange' : 'blue'}
  style={{ fontFamily: FONT_FAMILY }}>
  {priority}
  </Badge>

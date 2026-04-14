@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../api/client';
 import {
   Title, Text, Stack, Group, Badge, Paper, Card, Table,
   Select, SimpleGrid, ThemeIcon, Tabs, Alert, Divider,
@@ -96,6 +98,11 @@ export default function FinancialIntelligencePage() {
   const { data: projects,     isLoading: pLoading   } = useProjects();
   const { data: worklog,      isLoading: wLoading   } = useWorklogReport(month);
   const { data: metrics,      isLoading: mLoading   } = useProductivityMetrics(6);
+  // Fetch all pods so every team appears in the utilization breakdown
+  const { data: allPods } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['pods-all-names'],
+    queryFn: () => apiClient.get('/pods').then(r => r.data),
+  });
 
   const loading = rLoading || crLoading || pLoading || wLoading || mLoading;
 
@@ -170,9 +177,14 @@ export default function FinancialIntelligencePage() {
     return { loggedCost, loggedHours, matchedRows, unmatchedRows };
   }, [personRows]);
 
-  // ── POD breakdown ─────────────────────────────────────────────────────────
+  // ── POD breakdown — all pods, even those with no worklog activity ────────
   const podBreakdown = useMemo(() => {
     const map: Record<string, { hours: number; cost: number; people: number; byRole: Record<string, number> }> = {};
+    // Seed every registered pod with zero values so they all appear
+    for (const p of allPods ?? []) {
+      map[p.name] = { hours: 0, cost: 0, people: 0, byRole: {} };
+    }
+    // Fill in actual worklog data
     for (const row of personRows) {
       if (!map[row.pod]) map[row.pod] = { hours: 0, cost: 0, people: 0, byRole: {} };
       map[row.pod].hours  += row.hoursLogged;
@@ -183,7 +195,7 @@ export default function FinancialIntelligencePage() {
     return Object.entries(map)
       .map(([pod, d]) => ({ pod, ...d }))
       .sort((a, b) => b.cost - a.cost);
-  }, [personRows]);
+  }, [personRows, allPods]);
 
   // ── Issue-type cost attribution ────────────────────────────────────────────
   const issueTypeCosts = useMemo(() => {

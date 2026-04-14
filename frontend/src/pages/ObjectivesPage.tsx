@@ -39,7 +39,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { PPPageLayout } from '../components/pp';
 import apiClient from '../api/client';
-import { AQUA, DEEP_BLUE, SURFACE_BG } from '../brandTokens';
+import { AQUA, AQUA_HEX, DEEP_BLUE, DEEP_BLUE_HEX, SURFACE_BG } from '../brandTokens';
 
 interface LinkedProject {
   projectId: number;
@@ -541,9 +541,9 @@ export default function ObjectivesPage() {
       {/* Header with Button */}
       <Group justify="flex-end" mb="lg">
         <Button
-          color={AQUA}
+          variant="filled"
           onClick={openCreateModal}
-          styles={{ root: { backgroundColor: AQUA, color: DEEP_BLUE, fontWeight: 600 } }}
+          style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
         >
           New Objective
         </Button>

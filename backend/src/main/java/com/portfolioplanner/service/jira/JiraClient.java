@@ -116,6 +116,42 @@ public class JiraClient {
     }
 
     /**
+     * Executes an arbitrary JQL query and returns matching issues.
+     * Used by the "Import from Jira Roadmap" modal so users can search
+     * for any issue type (Initiative, Epic, custom) using standard JQL.
+     *
+     * Result is NOT cached so every call hits Jira live (user is actively
+     * searching and expects fresh results).
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> searchByJql(String jql) {
+        if (!creds.isConfigured()) return List.of();
+        List<String> fields = List.of(
+            "summary", "status", "duedate", "customfield_10015",
+            "assignee", "priority", "issuetype"
+        );
+        try {
+            List<Map<String, Object>> issues = searchIssuesPost(jql, fields, 500);
+            log.info("searchByJql: '{}' → {} results", jql, issues.size());
+            return issues;
+        } catch (Exception e) {
+            log.warn("searchByJql failed for jql='{}': {}", jql, e.getMessage());
+            throw new RuntimeException("Jira JQL search failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Returns all Jira issues of the specified issue type (default "Initiative")
+     * across all projects visible to the configured account.
+     * These are the top-level items in Jira Advanced Roadmaps / Plans.
+     */
+    @SuppressWarnings("unchecked")
+    @Cacheable(value = "jira-initiatives", key = "#issueType")
+    public List<Map<String, Object>> getInitiatives(String issueType) {
+        return searchByJql("issuetype = \"" + issueType + "\" ORDER BY created DESC");
+    }
+
+    /**
      * Uses the Agile board's dedicated /epic endpoint which is the most reliable
      * way to list epics on Jira Cloud.
      */
@@ -141,6 +177,40 @@ public class JiraClient {
             if (isLast || batch.isEmpty()) break;
         }
         return all;
+    }
+
+    /**
+     * Fetches full issue details (priority, status, summary) for a batch of issue keys
+     * using a single JQL query. Returns a map of issueKey → issue fields map.
+     * Used to enrich the minimal epic objects returned by the agile board /epic endpoint.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Map<String, Object>> getIssueFieldsByKeys(List<String> keys) {
+        if (keys == null || keys.isEmpty()) return Map.of();
+
+        // JQL: key in (K1, K2, ...) — batch up to 100 keys per call
+        Map<String, Map<String, Object>> result = new java.util.LinkedHashMap<>();
+        int batchSize = 100;
+        for (int i = 0; i < keys.size(); i += batchSize) {
+            List<String> batch = keys.subList(i, Math.min(i + batchSize, keys.size()));
+            String keyList = batch.stream()
+                    .map(k -> "\"" + k + "\"")
+                    .collect(java.util.stream.Collectors.joining(","));
+            String jql = "key in (" + keyList + ")";
+            try {
+                List<Map<String, Object>> issues = searchIssuesPost(
+                        jql, List.of("priority", "status", "summary"), batch.size());
+                for (Map<String, Object> issue : issues) {
+                    Object key = issue.get("key");
+                    if (key instanceof String k) {
+                        result.put(k, issue);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("getIssueFieldsByKeys batch JQL failed: {}", e.getMessage());
+            }
+        }
+        return result;
     }
 
     // ── Labels ────────────────────────────────────────────────────────
@@ -399,6 +469,36 @@ public class JiraClient {
     // ── Agile (Scrum/Kanban) API ──────────────────────────────────────
 
     /**
+     * Returns ALL Scrum/Kanban boards visible to the configured account,
+     * paginating through the full /rest/agile/1.0/board list.
+     * This is the correct method for the epic sync — do NOT confuse with
+     * getAllBoards() which fetches JSM service desks.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getAllAgileBoards() {
+        List<Map<String, Object>> all = new ArrayList<>();
+        int startAt = 0;
+        while (true) {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(creds.getBaseUrl() + "/rest/agile/1.0/board")
+                    .queryParam("maxResults", 50)
+                    .queryParam("startAt", startAt)
+                    .toUriString();
+            Map<String, Object> resp = get(url, Map.class);
+            if (resp == null) break;
+            Object values = resp.get("values");
+            if (!(values instanceof List)) break;
+            List<Map<String, Object>> batch = (List<Map<String, Object>>) values;
+            all.addAll(batch);
+            boolean isLast = Boolean.TRUE.equals(resp.get("isLast"));
+            startAt += batch.size();
+            if (isLast || batch.isEmpty()) break;
+        }
+        log.info("getAllAgileBoards: found {} boards", all.size());
+        return all;
+    }
+
+    /**
      * Returns all Scrum/Kanban boards for a Jira project.
      * Uses the Agile REST API at /rest/agile/1.0/
      */
@@ -447,7 +547,18 @@ public class JiraClient {
                     .queryParam("maxResults", 50)
                     .queryParam("startAt", startAt)
                     .toUriString();
-            Map<String, Object> resp = get(url, Map.class);
+            Map<String, Object> resp;
+            try {
+                resp = get(url, Map.class);
+            } catch (RuntimeException e) {
+                // Kanban/non-scrum boards return 400 "The board does not support sprints"
+                // Treat this as an empty sprint list rather than a hard error
+                if (e.getMessage() != null && e.getMessage().contains("does not support sprints")) {
+                    log.debug("Board {} does not support sprints (likely Kanban) — skipping sprint sync", boardId);
+                    return List.of();
+                }
+                throw e;
+            }
             if (resp == null) break;
             Object values = resp.get("values");
             if (!(values instanceof List)) break;
@@ -469,7 +580,16 @@ public class JiraClient {
                 .queryParam("state", "closed")
                 .queryParam("maxResults", count)
                 .toUriString();
-        Map<String, Object> resp = get(url, Map.class);
+        Map<String, Object> resp;
+        try {
+            resp = get(url, Map.class);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("does not support sprints")) {
+                log.debug("Board {} does not support sprints (likely Kanban) — skipping closed sprint fetch", boardId);
+                return List.of();
+            }
+            throw e;
+        }
         if (resp == null) return List.of();
         Object values = resp.get("values");
         if (!(values instanceof List)) return List.of();
@@ -953,6 +1073,7 @@ public class JiraClient {
         @CacheEvict(value = "jira-release-issues",    allEntries = true),
         @CacheEvict(value = "jira-all-boards",        allEntries = true),
         @CacheEvict(value = "jira-support-issues",    allEntries = true),
+        @CacheEvict(value = "jira-initiatives",       allEntries = true),
     })
     public void evictAllCaches() {
         log.info("All Jira caches evicted");

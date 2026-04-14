@@ -29,7 +29,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
 import { PageInsightCard } from '../components/common/PageInsightCard';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SURFACE_FAINT, SURFACE_BG, COLOR_ERROR_DARK, UX_WARNING, COLOR_ORANGE_DARK, DEEP_BLUE_TINTS } from '../brandTokens';
+import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SURFACE_FAINT, SURFACE_BG, COLOR_ERROR_DARK, UX_WARNING, COLOR_ORANGE_DARK, DEEP_BLUE_TINTS } from '../brandTokens';
 
 interface Risk {
   id: string;
@@ -115,6 +115,7 @@ export default function RiskRegisterPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['risks'] });
       queryClient.invalidateQueries({ queryKey: ['risks-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['risks-all'] });
       notifications.show({
         color: 'green',
         title: 'Success',
@@ -142,6 +143,7 @@ export default function RiskRegisterPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['risks'] });
       queryClient.invalidateQueries({ queryKey: ['risks-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['risks-all'] });
       notifications.show({
         color: 'green',
         title: 'Success',
@@ -168,6 +170,7 @@ export default function RiskRegisterPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['risks'] });
       queryClient.invalidateQueries({ queryKey: ['risks-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['risks-all'] });
     },
     onError: (err: any) => {
       notifications.show({
@@ -186,6 +189,7 @@ export default function RiskRegisterPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['risks'] });
       queryClient.invalidateQueries({ queryKey: ['risks-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['risks-all'] });
       notifications.show({
         color: 'green',
         title: 'Success',
@@ -296,9 +300,8 @@ export default function RiskRegisterPage() {
       animate
       actions={
         <Button
-          color={AQUA}
           onClick={openCreateModal}
-          styles={{ root: { backgroundColor: AQUA, color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+          variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontFamily: FONT_FAMILY, fontWeight: 600 }}
         >
           Log Risk
         </Button>

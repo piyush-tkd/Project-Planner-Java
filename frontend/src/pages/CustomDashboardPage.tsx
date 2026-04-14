@@ -481,10 +481,10 @@ function useWidgetData(widgetDef: WidgetDef, projects: any[], resources: any[], 
 
     // Chart widgets - priority distribution
     if (type === 'chart_priority_dist') {
-      const PRIORITY = ['P0', 'P1', 'P2', 'P3'];
-      const PCOLOR: Record<string, string> = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'gray' };
+      const PRIORITY = ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST', 'BLOCKER', 'MINOR'];
+      const PCOLOR: Record<string, string> = { HIGHEST: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'indigo', LOWEST: 'gray', BLOCKER: 'red', MINOR: 'gray' };
       const map: Record<string, number> = {};
-      projects.forEach(p => { const pri = p.priority || 'P2'; map[pri] = (map[pri] || 0) + 1; });
+      projects.forEach(p => { const pri = p.priority || 'MEDIUM'; map[pri] = (map[pri] || 0) + 1; });
       const total = projects.length || 1;
       const rows = PRIORITY.map(p => ({
         label: p,

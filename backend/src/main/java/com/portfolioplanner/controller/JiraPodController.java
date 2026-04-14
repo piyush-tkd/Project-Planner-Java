@@ -15,10 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/jira/pods")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraPodController {
 
     private final JiraPodService         podService;

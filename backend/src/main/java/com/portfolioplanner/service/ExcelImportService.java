@@ -705,8 +705,8 @@ public class ExcelImportService {
 
             Priority priority = mapPriority(priorityStr);
             if (priority == null) {
-                warnings.add("Projects row " + (i + 1) + ": unknown priority '" + priorityStr + "', defaulting to P3");
-                priority = Priority.P3;
+                warnings.add("Projects row " + (i + 1) + ": unknown priority '" + priorityStr + "', defaulting to LOW");
+                priority = Priority.LOW;
             }
 
             String status = mapStatus(statusStr);

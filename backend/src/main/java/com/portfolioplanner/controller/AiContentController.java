@@ -4,6 +4,7 @@ import com.portfolioplanner.service.UserAiKeyService;
 import com.portfolioplanner.service.nlp.CloudLlmStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AiContentController {
 
     private final CloudLlmStrategy cloudLlm;

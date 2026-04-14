@@ -18,10 +18,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/reports/exec-dashboard")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ExecSummaryController {
 
     private final ProjectRepository              projectRepository;

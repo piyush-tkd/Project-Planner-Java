@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/reports/resource-performance")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ResourcePerformanceController {
 
     private final ResourcePerformanceService performanceService;

@@ -78,8 +78,8 @@ const RESOURCE_FIELDS = [
 // ── CSV template strings ───────────────────────────────────────────────────
 
 const PROJECT_TEMPLATE = `name,status,priority,owner,startDate,targetDate
-Alpha Project,ACTIVE,P1,alice@co.com,2025-01-01,2025-06-30
-Beta Initiative,NOT_STARTED,P2,bob@co.com,2025-03-01,2025-12-31`;
+Alpha Project,ACTIVE,HIGH,alice@co.com,2025-01-01,2025-06-30
+Beta Initiative,NOT_STARTED,MEDIUM,bob@co.com,2025-03-01,2025-12-31`;
 
 const RESOURCE_TEMPLATE = `name,email,role,location,fte
 Alice Johnson,alice@co.com,Engineer,New York,1.0

@@ -23,6 +23,10 @@ public record ProjectRequest(
         String capacityNote,
         String client,
         BigDecimal estimatedBudget,
-        BigDecimal actualCost
+        BigDecimal actualCost,
+        /** Optional: "MANUAL" | "JIRA_SYNCED" | "PUSHED_TO_JIRA". Defaults to MANUAL if absent. */
+        String sourceType,
+        /** Jira issue key (e.g. "PMO-1234") linked to this project. */
+        String jiraEpicKey
 ) {
 }

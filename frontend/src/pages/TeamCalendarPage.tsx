@@ -7,8 +7,10 @@ import {
  IconCalendarEvent, IconCircleFilled, IconExternalLink, IconCalendarStats,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useUtilizationHeatmap } from '../api/reports';
 import { useProjectPodMatrix } from '../api/projects';
+import apiClient from '../api/client';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTimeline } from '../api/timeline';
 import { useSprints } from '../api/sprints';
@@ -42,7 +44,7 @@ const LEGEND: { label: string; bg: string; text: string }[] = [
 
 // ── Priority / status badge colours ──────────────────────────────────────────
 const PRIORITY_COLOR: Record<string, string> = {
- P0: 'red', P1: 'orange', P2: 'blue', P3: 'gray',
+  HIGHEST: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'indigo', LOWEST: 'gray', BLOCKER: 'red', MINOR: 'gray',
 };
 const STATUS_COLOR: Record<string, string> = {
  ACTIVE: 'green', ON_HOLD: 'yellow', COMPLETED: 'blue', CANCELLED: 'gray',
@@ -103,6 +105,11 @@ export default function TeamCalendarPage() {
  const isDark = useDarkMode();
  const { data: utilData, isLoading: utilLoading } = useUtilizationHeatmap();
  const { data: matrixData, isLoading: matrixLoading } = useProjectPodMatrix();
+ // Fetch ALL pods so every team (even with no bookings) appears as a row
+ const { data: allPods } = useQuery<{ id: number; name: string }[]>({
+   queryKey: ['pods-all-names'],
+   queryFn: () => apiClient.get('/pods').then(r => r.data),
+ });
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const { data: timeline } = useTimeline();
  const { data: sprints, isLoading: sprintsLoading } = useSprints();
@@ -120,11 +127,12 @@ export default function TeamCalendarPage() {
  [],
  );
 
- // ── All POD names for filter ──────────────────────────────────────────────
+ // ── All POD names for filter — union of heatmap data + every registered pod ──
  const allPodNames = useMemo(() => {
- if (!utilData) return [];
- return [...new Set(utilData.map(u => u.podName))].sort();
- }, [utilData]);
+   const fromUtil = (utilData ?? []).map(u => u.podName);
+   const fromPods = (allPods ?? []).map(p => p.name);
+   return [...new Set([...fromUtil, ...fromPods])].sort();
+ }, [utilData, allPods]);
 
  // ── Utilization lookup: podName → monthIndex → pct ───────────────────────
  const utilMap = useMemo(() => {

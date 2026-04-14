@@ -57,7 +57,13 @@ const STATUS_COLOR: Record<string, { fill: string; stroke: string; label: string
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
-  P0: '#ef4444', P1: '#f97316', P2: '#3b82f6', P3: '#22c55e',
+  HIGHEST: '#ef4444',
+  HIGH:    '#f97316',
+  MEDIUM:  '#3b82f6',
+  LOW:     '#6366f1',
+  LOWEST:  '#94a3b8',
+  BLOCKER: '#dc2626',
+  MINOR:   '#9ca3af',
 };
 
 const POD_PALETTE = [
@@ -90,8 +96,8 @@ function buildEdges(nodes: DagNode[]): DagEdge[] {
     }
   }
 
-  // Cross-pod blocking: P0/P1 projects feed into the next project in a different pod
-  const criticals = sorted.filter(n => n.priority === 'P0' || n.priority === 'P1');
+  // Cross-pod blocking: HIGHEST/HIGH/BLOCKER projects feed into the next project in a different pod
+  const criticals = sorted.filter(n => n.priority === 'HIGHEST' || n.priority === 'HIGH' || n.priority === 'BLOCKER');
   for (const src of criticals) {
     const target = sorted.find(
       t => t.id !== src.id &&
@@ -258,7 +264,7 @@ export default function DependencyDagTab() {
         id: p.id,
         name: p.name,
         status: STATUS_MAP[rawStatus] ?? rawStatus,
-        priority: p.priority ?? 'P2',
+        priority: p.priority ?? 'MEDIUM',
         pod,
         startWeek,
         x: 0, y: 0, layer: 0,

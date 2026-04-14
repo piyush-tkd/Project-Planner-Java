@@ -64,7 +64,7 @@ function toGanttProject(
     id:            proj.id,
     name:          proj.name,
     status:        STATUS_NORM[proj.status] ?? proj.status,
-    priority:      proj.priority ?? 'P2',
+    priority:      proj.priority ?? 'MEDIUM',
     startWeek,
     durationWeeks: Math.min(durationWeeks, TOTAL_WEEKS),
     pod:           primaryRow?.podName ?? 'Unassigned',

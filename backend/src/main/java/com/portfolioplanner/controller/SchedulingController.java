@@ -11,10 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/scheduling")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class SchedulingController {
 
     private final SchedulingService schedulingService;

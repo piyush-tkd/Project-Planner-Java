@@ -19,7 +19,7 @@ import {
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { AQUA, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_BORDER} from '../../brandTokens';
+import { AQUA, AQUA_HEX, DARK_BORDER, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY, GRAY_100, GRAY_BORDER} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useInlineEdit } from '../../hooks/useInlineEdit';
 import { InlineSelectCell, InlineSelectOption } from '../../components/common/InlineCell';
@@ -252,7 +252,7 @@ export default function JiraResourceMappingPage() {
             leftSection={<IconWand size={14} />}
             loading={autoMatchMut.isPending}
             onClick={handleAutoMatch}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+            variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
           >
             Smart Match All
           </Button>

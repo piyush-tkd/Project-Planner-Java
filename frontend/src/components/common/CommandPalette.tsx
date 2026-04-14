@@ -18,6 +18,7 @@ import {
 } from '@tabler/icons-react';
 import { NAV_ITEMS, NAV_GROUPS } from '../../utils/navRegistry';
 import { AQUA, DEEP_BLUE } from '../../brandTokens';
+import apiClient from '../../api/client';
 
 // ── Local recent pages ─────────────────────────────────────────────────────
 const RECENT_KEY = 'pp_cmd_recent';
@@ -209,17 +210,31 @@ interface CommandPaletteProps {
   onClose: () => void;
 }
 
+// Minimal project type for search results
+interface ProjectSearchHit {
+  id: number;
+  name: string;
+  status: string;
+}
+
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [recent, setRecent] = useState(loadRecent);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allProjects, setAllProjects] = useState<ProjectSearchHit[]>([]);
 
-  // Refresh recent list when palette opens
+  // Refresh recent list and pre-fetch projects when palette opens
   useEffect(() => {
     if (open) {
       setRecent(loadRecent());
+      setSearchQuery('');
       setTimeout(() => inputRef.current?.focus(), 20);
+      // Fetch project list for search (lightweight: just id, name, status)
+      apiClient.get<ProjectSearchHit[]>('/projects?size=500&fields=id,name,status')
+        .then(r => setAllProjects(r.data ?? []))
+        .catch(() => { /* suppress — search degrades gracefully */ });
     }
   }, [open]);
 
@@ -246,15 +261,23 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             <IconSearch size={16} color="#4a4a64" />
             <Command.Input
               ref={inputRef}
-              placeholder="Search pages, actions, settings…"
+              placeholder="Search pages, projects, actions…"
+              onValueChange={setSearchQuery}
               style={inputStyle}
               onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
             />
           </div>
 
           <Command.List style={listStyle}>
-            <Command.Empty style={{ padding: '24px', textAlign: 'center', color: '#4a4a64', fontSize: '13px' }}>
-              No results found.
+            {/* PP-13 §7: informative no-results state */}
+            <Command.Empty style={{ padding: '32px 24px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <IconSearch size={28} color="#6b7280" strokeWidth={1.5} />
+                <div style={{ fontSize: 14, fontWeight: 500, color: '#4a4a64' }}>No results found</div>
+                <div style={{ fontSize: 12, color: '#8b9ab3', lineHeight: 1.5, maxWidth: 280 }}>
+                  Try different keywords, or use <strong>G+letter</strong> shortcuts to navigate directly.
+                </div>
+              </div>
             </Command.Empty>
 
             {/* Recent pages */}
@@ -293,6 +316,35 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#3a3a52' }}>⌘K+AI</span>
               </Command.Item>
             </Command.Group>
+
+            {/* Projects — shown when user types a query */}
+            {searchQuery.trim().length >= 1 && (() => {
+              const q = searchQuery.trim().toLowerCase();
+              const hits = allProjects
+                .filter(p => p.name.toLowerCase().includes(q))
+                .slice(0, 8);
+              if (hits.length === 0) return null;
+              return (
+                <Command.Group heading={<span style={groupHeadStyle}>Projects</span>}>
+                  {hits.map(proj => (
+                    <Command.Item
+                      key={`proj-${proj.id}`}
+                      value={`project ${proj.name} ${proj.id}`}
+                      onSelect={() => goTo(`/projects/${proj.id}`, proj.name)}
+                      style={itemStyle}
+                    >
+                      <IconBriefcase size={14} color={AQUA} />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proj.name}
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#4a4a64', flexShrink: 0 }}>
+                        {proj.status?.replace(/_/g, ' ')}
+                      </span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              );
+            })()}
 
             {/* Quick actions */}
             <Command.Group heading={<span style={groupHeadStyle}>Quick Actions</span>}>
@@ -374,8 +426,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             <span><kbd style={kbdStyle}>↑↓</kbd> navigate</span>
             <span><kbd style={kbdStyle}>↵</kbd> open</span>
             <span><kbd style={kbdStyle}>Esc</kbd> close</span>
-            <span style={{ marginLeft: 'auto' }}>
-              <span style={{ color: AQUA, fontWeight: 600 }}>Portfolio Planner</span>
+            <span style={{ marginLeft: 'auto', color: '#3a3a52', fontSize: '10px' }}>
+              Type to search pages &amp; projects
             </span>
           </div>
         </Command>

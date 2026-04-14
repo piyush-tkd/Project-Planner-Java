@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Provides AI impact analytics for the Engineering Intelligence dashboard.
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/reports/ai-impact")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AiImpactController {
 
     private final AiImpactMetricRepository repo;

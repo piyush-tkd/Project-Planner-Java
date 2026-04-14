@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for CapEx / OpEx (IDS vs NON-IDS) monthly reporting.
@@ -23,6 +24,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/jira/capex")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraCapexController {
 
     private final JiraCapexService       capexService;

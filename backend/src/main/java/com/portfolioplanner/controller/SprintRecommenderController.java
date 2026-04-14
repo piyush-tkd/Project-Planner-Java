@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Sprint Planning Recommender — POST /api/sprints/recommend
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/sprints")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class SprintRecommenderController {
 
     private final JiraSyncedSprintRepository sprintRepo;

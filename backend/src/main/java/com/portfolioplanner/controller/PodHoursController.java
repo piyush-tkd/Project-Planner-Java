@@ -8,10 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/reports/pod-hours")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class PodHoursController {
 
     private final PodHoursService podHoursService;

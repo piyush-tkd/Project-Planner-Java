@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * CRUD for custom Jira analytics dashboards.
@@ -20,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/jira/dashboards")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class JiraDashboardController {
 
     private final JiraDashboardRepository repo;

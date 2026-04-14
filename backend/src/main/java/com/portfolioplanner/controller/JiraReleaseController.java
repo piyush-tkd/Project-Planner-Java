@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for the Releases tracking feature.
@@ -24,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/jira/releases")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraReleaseController {
 
     private final JiraReleaseService releaseService;

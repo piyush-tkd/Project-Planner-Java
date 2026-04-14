@@ -15,7 +15,7 @@ import {
   IconPlus, IconPencil, IconTrash, IconAlertTriangle, IconCheck, IconX,
 } from '@tabler/icons-react';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY, SHADOW, AQUA, COLOR_ERROR, COLOR_TEAL, COLOR_WARNING } from '../../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SHADOW, AQUA, AQUA_HEX, DEEP_BLUE_HEX, COLOR_ERROR, COLOR_TEAL, COLOR_WARNING } from '../../brandTokens';
 import apiClient from '../../api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -217,8 +217,8 @@ export default function ResourceAllocationDrawer({
         {/* ── Allocations Table ── */}
         <Group justify="space-between">
           <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>Team Allocations</Text>
-          <Button size="xs" leftSection={<IconPlus size={13} />} onClick={() => { resetForm(); openAdd(); }}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE }} disabled={available === 0}>
+          <Button size="xs" variant="filled" leftSection={<IconPlus size={13} />} onClick={() => { resetForm(); openAdd(); }}
+            style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }} disabled={available === 0}>
             Add Allocation
           </Button>
         </Group>
@@ -361,8 +361,9 @@ export default function ResourceAllocationDrawer({
                 </Button>
                 <Button
                   size="xs"
+                  variant="filled"
                   leftSection={<IconCheck size={13} />}
-                  style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+                  style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
                   loading={saving}
                   onClick={handleSave}
                 >

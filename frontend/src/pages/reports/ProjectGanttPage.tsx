@@ -28,7 +28,7 @@ const STATUS_STYLE: Record<string, { opacity: number; stripes?: boolean; label: 
   CANCELLED:    { opacity: 0.20, stripes: false, label: 'Cancelled',    chipColor: 'red' },
 };
 
-const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+const PRIORITIES = ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST', 'BLOCKER', 'MINOR'];
 const ALL_STATUSES = Object.keys(STATUS_STYLE);
 const DEFAULT_STATUSES = ['NOT_STARTED', 'IN_DISCOVERY', 'ACTIVE', 'ON_HOLD'];
 
@@ -84,9 +84,9 @@ export default function ProjectGanttPage() {
             <Group gap={6}>
               {PRIORITIES.map(pri => (
                 <Chip key={pri} value={pri} size="xs" variant="filled" color={
-                  pri === 'P0' ? 'red' : pri === 'P1' ? 'orange' : pri === 'P2' ? 'blue' : 'gray'
+                  pri === 'HIGHEST' || pri === 'BLOCKER' ? 'red' : pri === 'HIGH' ? 'orange' : pri === 'MEDIUM' ? 'blue' : pri === 'LOW' ? 'indigo' : 'gray'
                 }>
-                  {pri}
+                  {pri.charAt(0) + pri.slice(1).toLowerCase()}
                 </Chip>
               ))}
             </Group>

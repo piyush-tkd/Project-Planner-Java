@@ -97,6 +97,8 @@ export function PPPreferencesPanel({ opened, onClose }: PPPreferencesPanelProps)
       }
       position="right"
       size={360}
+      zIndex={300}
+      lockScroll={false}
       styles={{
         root:    {},
         content: { background: DARK_SIDEBAR, borderLeft: '1px solid #2e3346' },

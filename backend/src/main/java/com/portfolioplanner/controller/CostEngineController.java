@@ -6,6 +6,7 @@ import com.portfolioplanner.domain.repository.ProjectValueMetricRepository;
 import com.portfolioplanner.domain.repository.ResourceCostRateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/cost-engine")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class CostEngineController {
 
     private final ResourceCostRateRepository costRateRepository;
@@ -33,11 +35,13 @@ public class CostEngineController {
     }
 
     @PostMapping("/rates")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResourceCostRate createRate(@RequestBody ResourceCostRate rate) {
         return costRateRepository.save(rate);
     }
 
     @PutMapping("/rates/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<ResourceCostRate> updateRate(@PathVariable Long id,
                                                         @RequestBody ResourceCostRate updated) {
         return costRateRepository.findById(id)
@@ -53,6 +57,7 @@ public class CostEngineController {
     }
 
     @DeleteMapping("/rates/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<Void> deleteRate(@PathVariable Long id) {
         if (!costRateRepository.existsById(id)) return ResponseEntity.notFound().build();
         costRateRepository.deleteById(id);
@@ -72,11 +77,13 @@ public class CostEngineController {
     }
 
     @PostMapping("/metrics")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ProjectValueMetric createMetric(@RequestBody ProjectValueMetric metric) {
         return projectValueMetricRepository.save(metric);
     }
 
     @PutMapping("/metrics/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<ProjectValueMetric> updateMetric(@PathVariable Long id,
                                                             @RequestBody ProjectValueMetric updated) {
         return projectValueMetricRepository.findById(id)
@@ -94,6 +101,7 @@ public class CostEngineController {
     }
 
     @DeleteMapping("/metrics/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<Void> deleteMetric(@PathVariable Long id) {
         if (!projectValueMetricRepository.existsById(id)) return ResponseEntity.notFound().build();
         projectValueMetricRepository.deleteById(id);

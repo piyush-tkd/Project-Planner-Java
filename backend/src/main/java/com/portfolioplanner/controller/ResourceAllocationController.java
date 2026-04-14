@@ -14,11 +14,13 @@ import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/allocations")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@PreAuthorize("isAuthenticated()")
 public class ResourceAllocationController {
 
     private final ResourceAllocationRepository allocationRepo;

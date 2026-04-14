@@ -680,6 +680,11 @@ export default function App() {
           <Route path="/delivery/sprint-backlog"           element={<Navigate to="/sprint-backlog" replace />} />
           <Route path="/delivery/sprint-retro"            element={<Navigate to="/reports/sprint-retro" replace />} />
 
+          {/* ── F-03: Common URL aliases / shortcuts ────────────────────── */}
+          <Route path="/risks"                            element={<Navigate to="/risk-register" replace />} />
+          <Route path="/risk"                             element={<Navigate to="/risk-register" replace />} />
+          <Route path="/health"                           element={<Navigate to="/reports/portfolio-health" replace />} />
+
         </Route>
       </Route>
 

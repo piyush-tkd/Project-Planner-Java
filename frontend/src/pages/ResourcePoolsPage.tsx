@@ -2,19 +2,33 @@
  * ResourcePoolsPage — Sprint 8, PP-801
  * Overview grid of all resource pools with utilization cards
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Stack, Group, Title, Text, SimpleGrid, Paper, Badge, Progress,
   ActionIcon, Button, Alert, RingProgress, Center, ThemeIcon, Skeleton,
+  Modal, TextInput, NumberInput, Select, Textarea,
 } from '@mantine/core';
 import {
   IconUsers, IconCode, IconBug, IconBriefcase, IconTarget, IconChartBar,
   IconPlus, IconRefresh, IconAlertCircle,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, COLOR_TEAL } from '../brandTokens';
+import { notifications } from '@mantine/notifications';
+import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import apiClient from '../api/client';
+
+const ROLE_TYPE_OPTIONS = [
+  { value: 'Developer',  label: 'Developer' },
+  { value: 'QA',         label: 'QA' },
+  { value: 'BSA',        label: 'BSA' },
+  { value: 'SM',         label: 'Scrum Master' },
+  { value: 'Tech Lead',  label: 'Tech Lead' },
+  { value: 'DevOps',     label: 'DevOps' },
+  { value: 'Designer',   label: 'Designer' },
+  { value: 'Other',      label: 'Other' },
+];
 
 interface PoolSummary {
   poolId: number;
@@ -43,6 +57,43 @@ function utilizationColor(pct: number): string {
 export default function ResourcePoolsPage() {
   const dark = useDarkMode();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // ── Create modal state ──────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName]             = useState('');
+  const [newRoleType, setNewRoleType]     = useState<string | null>(null);
+  const [newSpecialization, setNewSpec]   = useState('');
+  const [newTargetHC, setNewTargetHC]     = useState<number | string>('');
+  const [newDescription, setNewDesc]      = useState('');
+
+  const openCreate = () => {
+    setNewName(''); setNewRoleType(null); setNewSpec('');
+    setNewTargetHC(''); setNewDesc('');
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    if (!newName.trim() || !newRoleType) return;
+    setCreating(true);
+    try {
+      await apiClient.post('/resource-pools', {
+        name: newName.trim(),
+        roleType: newRoleType,
+        specialization: newSpecialization.trim() || null,
+        targetHeadcount: newTargetHC !== '' ? Number(newTargetHC) : null,
+        description: newDescription.trim() || null,
+      });
+      notifications.show({ title: 'Pool created', message: `"${newName.trim()}" is ready`, color: 'teal' });
+      setCreateOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['resource-pools-supply-summary'] });
+    } catch (err: any) {
+      notifications.show({ title: 'Error', message: err?.response?.data?.message ?? 'Failed to create pool', color: 'red' });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const { data, isLoading, isError, refetch } = useQuery<PoolSummary[]>({
     queryKey: ['resource-pools-supply-summary'],
@@ -65,8 +116,9 @@ export default function ResourcePoolsPage() {
           <ActionIcon variant="subtle" onClick={() => refetch()} aria-label="Refresh pools">
             <IconRefresh size={18} />
           </ActionIcon>
-          <Button size="sm" leftSection={<IconPlus size={14} />}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE }}>
+          <Button size="sm" variant="filled" leftSection={<IconPlus size={14} />}
+            style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
+            onClick={openCreate}>
             New Pool
           </Button>
         </Group>
@@ -207,6 +259,64 @@ export default function ResourcePoolsPage() {
           })}
         </SimpleGrid>
       )}
+      {/* ── Create Pool Modal ── */}
+      <Modal
+        opened={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title={<Text fw={700} style={{ fontFamily: FONT_FAMILY }}>Create Resource Pool</Text>}
+        size="md"
+      >
+        <Stack gap="sm">
+          <TextInput
+            label="Pool name"
+            placeholder="e.g. Backend Dev Pool"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            required
+          />
+          <Select
+            label="Role type"
+            placeholder="Select role"
+            data={ROLE_TYPE_OPTIONS}
+            value={newRoleType}
+            onChange={setNewRoleType}
+            required
+          />
+          <TextInput
+            label="Specialization"
+            placeholder="e.g. React, Java, Cloud (optional)"
+            value={newSpecialization}
+            onChange={e => setNewSpec(e.target.value)}
+          />
+          <NumberInput
+            label="Target headcount"
+            placeholder="e.g. 10"
+            min={1}
+            value={newTargetHC}
+            onChange={setNewTargetHC}
+          />
+          <Textarea
+            label="Description"
+            placeholder="Optional notes about this pool"
+            value={newDescription}
+            onChange={e => setNewDesc(e.target.value)}
+            rows={3}
+          />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="subtle" color="gray" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
+              onClick={submitCreate}
+              loading={creating}
+              disabled={!newName.trim() || !newRoleType}
+            >
+              Create Pool
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

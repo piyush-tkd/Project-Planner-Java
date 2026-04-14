@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock, IconMessageCircle, IconTarget } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock, IconMessageCircle, IconTarget, IconRefresh } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
@@ -32,7 +32,7 @@ import ProjectCommentSection from '../components/projects/ProjectCommentSection'
 import ProjectApprovalSection from '../components/projects/ProjectApprovalSection';
 import { formatProjectDate } from '../utils/formatting';
 import { useMonthLabels } from '../hooks/useMonthLabels';
-import { AQUA, BORDER_SOFT, COLOR_ERROR_STRONG, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, GRAY_400} from '../brandTokens';
+import { AQUA, AQUA_HEX, BORDER_SOFT, COLOR_ERROR_STRONG, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY, GRAY_400} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 const priorityOptions = Object.values(Priority).map(p => ({ value: p, label: p }));
@@ -127,10 +127,35 @@ export default function ProjectDetailPage() {
  const { data: plannings, isLoading: planningsLoading } = useProjectPodPlannings(projectId);
  const { data: pods } = usePods();
  const { data: releases } = useReleases();
+ const queryClient = useQueryClient();
  const updateProject = useUpdateProject();
  const updatePlannings = useUpdatePodPlannings();
  const deleteProject = useDeleteProject();
  const copyProject = useCopyProject();
+
+ // ── Jira Sync (single-epic only — does NOT trigger a full sync) ────────
+ const [syncing, setSyncing] = useState(false);
+ const triggerJiraSync = async () => {
+   if (!project?.jiraEpicKey) return;
+   setSyncing(true);
+   try {
+     const res = await apiClient.post(`/jira-sync/epic/${project.jiraEpicKey}`);
+     const data = res.data as { result?: string; message?: string };
+     await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+     if (data.result === 'error') {
+       notifications.show({ title: 'Sync failed', message: data.message ?? 'Jira returned an error', color: 'red' });
+     } else if (data.result === 'not_found') {
+       notifications.show({ title: 'Not found in Jira', message: data.message ?? `${project.jiraEpicKey} not found`, color: 'yellow' });
+     } else {
+       notifications.show({ title: 'Sync complete', message: `${project.jiraEpicKey} refreshed from Jira`, color: 'teal' });
+     }
+   } catch (err: any) {
+     const msg = err?.response?.data?.message ?? err?.message ?? 'Could not reach server';
+     notifications.show({ title: 'Sync failed', message: msg, color: 'red' });
+   } finally {
+     setSyncing(false);
+   }
+ };
 
  // ── Phase Scheduling ──────────────────────────────────────────────────
  const { data: phaseSchedules } = usePhaseSchedules(projectId);
@@ -304,7 +329,7 @@ export default function ProjectDetailPage() {
  const [editModal, setEditModal] = useState(false);
  const [pushJiraOpen, setPushJiraOpen] = useState(false);
  const [editForm, setEditForm] = useState<ProjectRequest>({
- name: '', priority: Priority.P2, owner: '', startMonth: 1, durationMonths: 3,
+ name: '', priority: Priority.MEDIUM, owner: '', startMonth: 1, durationMonths: 3,
  defaultPattern: 'Flat', status: ProjectStatus.ACTIVE, notes: null,
  startDate: null, targetDate: null, client: null,
  estimatedBudget: null, actualCost: null,
@@ -521,7 +546,7 @@ export default function ProjectDetailPage() {
  <Group className="detail-header">
  <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>{project.name}</Title>
  <PriorityBadge priority={project.priority} />
- <StatusBadge status={project.status} />
+ <StatusBadge status={project.status} jiraStatusCategory={project.jiraStatusCategory} />
  <ProjectSourceBadge sourceType={project.sourceType ?? 'MANUAL'} jiraEpicKey={project.jiraEpicKey} size="sm" />
  {project.jiraEpicKey && (
    <Tooltip label={`Open ${project.jiraEpicKey} in Jira`} withArrow>
@@ -610,9 +635,21 @@ export default function ProjectDetailPage() {
    </Text>
  )}
  {project.sourceType === 'JIRA_SYNCED' && (
-   <Group mt="xs" gap={4}>
-     <IconLock size={12} color="gray" />
-     <Text size="xs" c="dimmed">Name and status are managed by Jira</Text>
+   <Group mt="xs" gap="sm" align="center">
+     <Group gap={4}>
+       <IconLock size={12} color="gray" />
+       <Text size="xs" c="dimmed">Name, status and priority are managed by Jira</Text>
+     </Group>
+     <Button
+       size="xs"
+       variant="filled"
+       leftSection={<IconRefresh size={13} />}
+       loading={syncing}
+       onClick={triggerJiraSync}
+       style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
+     >
+       Sync from Jira
+     </Button>
    </Group>
  )}
  </Card>
@@ -698,12 +735,13 @@ export default function ProjectDetailPage() {
    </Card>
  )}
 
- <Group justify="space-between">
+ <Group justify="space-between" mt="lg" mb="xs">
  <Title order={3}>POD Assignments</Title>
- <Button leftSection={<IconPlus size={16} />} size="sm"
-   style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700, paddingLeft: 16, paddingRight: 16 }}
+ <Button leftSection={<IconPlus size={15} />} size="sm" variant="filled"
+   px="md"
+   style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 700 }}
    onClick={() => { setNewPlan(emptyPlan()); setAddModal(true); }}>
- + Add POD
+   Add POD
  </Button>
  </Group>
 
@@ -949,7 +987,7 @@ export default function ProjectDetailPage() {
    <Tabs.Panel value="raci" pt="md">
      <Group justify="space-between" mb="md">
        <Text fw={600} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Responsibility Assignment Matrix</Text>
-       <Button size="xs" style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }} leftSection={<IconPlus size={14} />}
+       <Button size="xs" variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 700 }} leftSection={<IconPlus size={14} />}
          onClick={() => { setNewRoleName(''); setRaciModalOpen(true); }}>
          Add Role
        </Button>
@@ -1008,7 +1046,7 @@ export default function ProjectDetailPage() {
        />
        <Group justify="flex-end">
          <Button variant="light" onClick={() => setRaciModalOpen(false)}>Cancel</Button>
-         <Button style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}
+         <Button variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 700 }}
            disabled={!newRoleName.trim()}
            onClick={() => {
              if (!newRoleName.trim()) return;
@@ -1057,24 +1095,34 @@ export default function ProjectDetailPage() {
      <Paper withBorder p="lg" radius="md" style={{ background: `${AQUA}06` }}>
        <Title order={5} mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Health Signals</Title>
        {[
-         { label: 'All PODs assigned and staffed', status: (plannings?.length ?? 0) > 0 ? 'pass' : 'warn', icon: <IconCheck size={14} /> },
-         { label: 'Target date is set', status: project.targetDate ? 'pass' : 'fail', icon: project.targetDate ? <IconCheck size={14} /> : <IconAlertTriangle size={14} /> },
-         { label: 'Owner is defined', status: project.owner ? 'pass' : 'fail', icon: project.owner ? <IconCheck size={14} /> : <IconAlertTriangle size={14} /> },
-         { label: 'Budget configured', status: 'warn', icon: <IconAlertTriangle size={14} /> },
-         { label: 'RACI matrix populated', status: 'warn', icon: <IconAlertTriangle size={14} /> },
-       ].map(signal => (
-         <Group key={signal.label} gap="sm" mb={6}>
-           <span style={{ color: signal.status === 'pass' ? COLOR_TEAL : signal.status === 'fail' ? COLOR_ERROR_STRONG : COLOR_WARNING }}>
-             {signal.icon}
-           </span>
-           <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: signal.status === 'fail' ? COLOR_ERROR_STRONG : DEEP_BLUE }}>
-             {signal.label}
-           </Text>
-           <Badge size="xs" variant="light" color={signal.status === 'pass' ? 'green' : signal.status === 'fail' ? 'red' : 'yellow'} ml="auto">
-             {signal.status === 'pass' ? 'OK' : signal.status === 'fail' ? 'Missing' : 'Attention'}
-           </Badge>
-         </Group>
-       ))}
+         { label: 'All PODs assigned and staffed', status: (plannings?.length ?? 0) > 0 ? 'pass' : 'warn' },
+         { label: 'Target date is set', status: project.targetDate ? 'pass' : 'fail' },
+         { label: 'Owner is defined', status: project.owner ? 'pass' : 'fail' },
+         { label: 'Budget configured', status: (project as any).estimatedBudget ? 'pass' : 'warn' },
+         { label: 'RACI matrix populated', status: raciRows.length > 0 ? 'pass' : 'warn' },
+       ].map(signal => {
+         const icon = signal.status === 'pass'
+           ? <IconCheck size={14} />
+           : signal.status === 'fail'
+             ? <IconAlertTriangle size={14} />
+             : <IconAlertTriangle size={14} />;
+         const iconColor = signal.status === 'pass' ? COLOR_TEAL : signal.status === 'fail' ? COLOR_ERROR_STRONG : COLOR_WARNING;
+         const badgeColor = signal.status === 'pass' ? 'green' : signal.status === 'fail' ? 'red' : 'yellow';
+         const badgeLabel = signal.status === 'pass' ? 'OK' : signal.status === 'fail' ? 'Missing' : 'Attention';
+         return (
+           <Group key={signal.label} gap="sm" mb={6} align="center">
+             <span style={{ color: iconColor, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+               {icon}
+             </span>
+             <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: signal.status === 'fail' ? COLOR_ERROR_STRONG : undefined, flex: 1 }}>
+               {signal.label}
+             </Text>
+             <Badge size="sm" variant="light" color={badgeColor} radius="sm" style={{ textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
+               {badgeLabel}
+             </Badge>
+           </Group>
+         );
+       })}
      </Paper>
    </Tabs.Panel>
 

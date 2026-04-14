@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/custom-fields")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class CustomFieldController {
 
     private final CustomFieldDefinitionRepository defRepo;

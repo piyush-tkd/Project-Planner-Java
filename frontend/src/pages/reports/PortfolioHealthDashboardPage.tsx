@@ -97,15 +97,33 @@ interface OwnerWorkloadData {
 
 // ── Helper Functions ──
 
+/** Normalise a project's status to one of the PP enum keys, accounting for
+ *  Jira-synced projects where p.status is a raw Jira string and
+ *  jiraStatusCategory drives the actual lifecycle phase.             */
+const normaliseStatus = (p: ProjectResponse): string => {
+  // PP-native projects always have the enum value already
+  const isJira = p.sourceType === 'JIRA_SYNCED' || p.sourceType === 'PUSHED_TO_JIRA';
+  if (!isJira) return p.status?.toUpperCase() ?? 'UNKNOWN';
+
+  const cat = p.jiraStatusCategory;
+  const raw = (p.status ?? '').toUpperCase();
+
+  if (cat === 'indeterminate' || /ACTIVE|IN.PROGRESS|IN.DEV|DEVELOPMENT|TESTING|REVIEW|ONGOING|IMPLEMENTATION|WIP|STARTED|PROGRES/.test(raw)) return 'ACTIVE';
+  if (cat === 'done'          || /DONE|COMPLET|CLOSED|RELEASED|SHIPPED|RESOLVED|FINISH/.test(raw)) return 'COMPLETED';
+  if (cat === 'new'           || /NOT.START|NEW|BACKLOG|OPEN|TODO|TO.DO|FUNNEL|DRAFT/.test(raw))  return 'NOT_STARTED';
+  if (/HOLD|PAUSED|BLOCKED|DEFERRED|PARKED|SUSPEND|WAIT/.test(raw)) return 'ON_HOLD';
+  if (/CANCEL|REJECT|ABANDON|SCRAP/.test(raw)) return 'CANCELLED';
+  if (/DISCOVERY|PLANNING|SCOPING|INCEPTION|ASSESS/.test(raw)) return 'IN_DISCOVERY';
+  return p.status?.toUpperCase() ?? 'UNKNOWN';
+};
+
 const getProjectsCount = (
   projects: ProjectResponse[] | undefined,
   status?: string
 ): number => {
   if (!projects) return 0;
   if (!status) return projects.length;
-  return projects.filter(
-    (p) => p.status.toUpperCase() === status.toUpperCase()
-  ).length;
+  return projects.filter(p => normaliseStatus(p) === status.toUpperCase()).length;
 };
 
 const isProjectAtRisk = (project: ProjectResponse): boolean => {
@@ -118,7 +136,7 @@ const isProjectAtRisk = (project: ProjectResponse): boolean => {
     if (targetDate < today) return true;
   }
 
-  if (project.priority?.toUpperCase() === 'P0') return true;
+  if (project.priority?.toUpperCase() === 'HIGHEST' || project.priority?.toUpperCase() === 'BLOCKER') return true;
 
   return false;
 };
@@ -133,7 +151,7 @@ const getRiskReason = (project: ProjectResponse): string => {
     if (targetDate < today) return 'Past target date';
   }
 
-  if (project.priority?.toUpperCase() === 'P0') return 'Critical priority';
+  if (project.priority?.toUpperCase() === 'HIGHEST' || project.priority?.toUpperCase() === 'BLOCKER') return 'Critical priority';
 
   return 'Unknown risk';
 };
@@ -188,7 +206,7 @@ export default function PortfolioHealthDashboardPage() {
 
     const statusMap: Record<string, number> = {};
     projects.forEach((p) => {
-      const status = p.status?.toUpperCase() || 'UNKNOWN';
+      const status = normaliseStatus(p);
       statusMap[status] = (statusMap[status] || 0) + 1;
     });
 
@@ -271,7 +289,7 @@ export default function PortfolioHealthDashboardPage() {
 
     const ownerMap: Record<string, number> = {};
     projects.forEach((p) => {
-      if (p.status?.toUpperCase() === 'ACTIVE') {
+      if (normaliseStatus(p) === 'ACTIVE') {
         const owner = p.owner || 'Unassigned';
         ownerMap[owner] = (ownerMap[owner] || 0) + 1;
       }

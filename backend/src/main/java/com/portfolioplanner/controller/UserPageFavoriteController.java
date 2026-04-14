@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for per-user page favorites (starred pages).
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/favorites")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class UserPageFavoriteController {
 
     private final UserPageFavoriteRepository repo;

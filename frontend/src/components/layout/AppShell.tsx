@@ -18,6 +18,7 @@ import {
   AppShell as MantineAppShell,
   Burger,
   Group,
+  Box,
   NavLink,
   ScrollArea,
   Text,
@@ -113,6 +114,7 @@ import {
   IconCalendarTime,
   IconTableOptions,
   IconWand,
+  IconHelp,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import NotificationBell from '../common/NotificationBell';
@@ -129,11 +131,13 @@ import { AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER_DARK, COLOR_ERROR, COLOR_
 interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string; featureFlag?: string; children?: NavItem[] }
 interface NavGroup { label: string; items: NavItem[] }
 
-// ── DL-9: Consolidated navigation (7 groups, ~35 items) ─────────────────────
+// ── PP-13: Consolidated navigation (6-section model per UX Architecture spec) ────────────────
+// Sections: Overview | Portfolio | Teams | Finance | Delivery | Admin
+// Rule: group labels map to PP-13 mental model; no pages removed, only regrouped.
 const navGroups: NavGroup[] = [
-  // ── HOME (always visible, not collapsible) ─────────────────────────────────
+  // ── OVERVIEW (always visible, not collapsible) ─────────────────────────────
   {
-    label: 'Home',
+    label: 'Overview',
     items: [
       { label: 'Dashboard', path: '/',      icon: <IconDashboard size={14} />, pageKey: 'dashboard' },
       { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={14} />,     pageKey: 'inbox' },
@@ -158,9 +162,9 @@ const navGroups: NavGroup[] = [
       { label: 'Executive Summary',       path: '/reports/executive-summary',         icon: <IconLayoutDashboard size={14} />, pageKey: 'exec_summary' },
     ],
   },
-  // ── PEOPLE ─────────────────────────────────────────────────────────────────
+  // ── TEAMS (was: People) ────────────────────────────────────────────────────
   {
-    label: 'People',
+    label: 'Teams',
     items: [
       { label: 'Resources',             path: '/people/resources',              icon: <IconUsers size={14} />,           pageKey: 'resources' },
       { label: 'Core Teams',            path: '/teams?type=core',               icon: <IconUsersGroup size={14} />,      pageKey: 'core_teams' },
@@ -196,18 +200,18 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'PODs',             path: '/pods',              icon: <IconHexagons size={14} />,        pageKey: 'pods' },
       { label: 'Ideas Board',      path: '/ideas',             icon: <IconBulb size={14} />,            pageKey: 'ideas_board' },
-      { label: 'Budget & CapEx',   path: '/reports/budget-capex', icon: <IconCurrencyDollar size={14} />, pageKey: 'budget_capex', featureFlag: 'financials' },
       { label: 'Smart Insights',   path: '/smart-insights',    icon: <IconSparkles size={14} />,        pageKey: 'smart_insights' },
       { label: 'Engineering Hub',  path: '/engineering/hub',   icon: <IconReportMoney size={14} />,     pageKey: 'engineering_intelligence', featureFlag: 'engineering' },
     ],
   },
-  // ── ECONOMICS (Sprint 13) ─────────────────────────────────────────────────
+  // ── FINANCE (was: Economics) — all cost, budget & financial intelligence ──
   {
-    label: 'Economics',
+    label: 'Finance',
     items: [
-      { label: 'Engineering Economics', path: '/engineering-economics', icon: <IconCoin size={14} />,      pageKey: 'engineering_economics' },
-      { label: 'ROI Calculator',        path: '/roi-calculator',        icon: <IconChartPie size={14} />,    pageKey: 'roi_calculator' },
-      { label: 'Scenario Planning',     path: '/scenario-planning',     icon: <IconAdjustments size={14} />, pageKey: 'scenario_planning' },
+      { label: 'Budget & CapEx',        path: '/reports/budget-capex',    icon: <IconCurrencyDollar size={14} />, pageKey: 'budget_capex',             featureFlag: 'financials' },
+      { label: 'Engineering Economics', path: '/engineering-economics',   icon: <IconCoin size={14} />,           pageKey: 'engineering_economics' },
+      { label: 'ROI Calculator',        path: '/roi-calculator',          icon: <IconChartPie size={14} />,       pageKey: 'roi_calculator' },
+      { label: 'Scenario Planning',     path: '/scenario-planning',       icon: <IconAdjustments size={14} />,    pageKey: 'scenario_planning' },
     ],
   },
   // ── JIRA ──────────────────────────────────────────────────────────────────
@@ -247,6 +251,20 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+// PP-13 §4: G+key shortcut hints shown on nav items — teaches keyboard navigation
+// Keys match useKeyboardNav.ts SHORTCUTS map
+const NAV_SHORTCUTS: Record<string, string> = {
+  '/':                      'G+D',
+  '/projects':              'G+P',
+  '/people/resources':      'G+R',
+  '/pods':                  'G+O',
+  '/people/capacity':       'G+C',
+  '/financial-intelligence':'G+B',
+  '/settings/org':          'G+S',
+  '/nlp':                   'G+I',
+  '/engineering/hub':       'G+E',
+};
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN: { label: 'Super Admin', color: 'violet' },
@@ -431,7 +449,7 @@ export default function AppShellLayout() {
   }, []);
 
   function isGroupCollapsed(group: typeof visibleGroups[0]): boolean {
-    if (group.label === 'Home') return false;
+    if (group.label === 'Overview') return false;
     // If the user has explicitly toggled this group, respect that preference
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
     // Default: collapse all groups except the one containing the current route
@@ -501,6 +519,47 @@ export default function AppShellLayout() {
             </Text>
           </Group>
 
+          {/* Center: ⌘K search bar — PP-13 §3: persistent, always-visible affordance */}
+          <Box visibleFrom="sm" style={{ flex: 1, maxWidth: 320, padding: '0 12px' }}>
+            <UnstyledButton
+              onClick={() => setPaletteOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                cursor: 'pointer',
+                transition: 'background 150ms ease, border-color 150ms ease',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(45,204,211,0.18)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(45,204,211,0.5)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.10)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.18)';
+              }}
+            >
+              <IconSearch size={14} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
+              <Text style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: FONT_FAMILY }}>
+                Search pages, projects, people…
+              </Text>
+              <Kbd style={{
+                fontSize: 10,
+                padding: '1px 6px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.5)',
+                borderRadius: 4,
+                flexShrink: 0,
+              }}>⌘K</Kbd>
+            </UnstyledButton>
+          </Box>
+
           {/* Right: actions + user menu */}
           <Group gap={6}>
             <NotificationBell />
@@ -538,7 +597,7 @@ export default function AppShellLayout() {
               </div>
             </Tooltip>
 
-            <Tooltip label={isDark ? 'Light mode' : 'Dark mode'} position="bottom">
+            <Tooltip label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'} position="bottom">
               <ActionIcon
                 variant="subtle"
                 size="lg"
@@ -932,12 +991,33 @@ export default function AppShellLayout() {
                   });
 
                   const isFav = favorites.has(item.path);
+                  // PP-13 §4: G+key shortcut hint shown at low opacity beside nav label
+                  const navShortcut = NAV_SHORTCUTS[item.path];
                   return (
                     <NavLink
                       key={item.path}
                       label={
                         <Group gap={6} justify="space-between" wrap="nowrap">
-                          <span>{item.label}</span>
+                          <Group gap={5} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                            {navShortcut && (
+                              <Kbd
+                                className="nav-kbd-hint"
+                                style={{
+                                  fontSize: 8,
+                                  padding: '0 3px',
+                                  lineHeight: '14px',
+                                  opacity: 0.35,
+                                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
+                                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.15)',
+                                  color: isDark ? '#6b7280' : TEXT_SUBTLE,
+                                  borderRadius: 3,
+                                  flexShrink: 0,
+                                  transition: 'opacity 150ms ease',
+                                }}
+                              >{navShortcut}</Kbd>
+                            )}
+                          </Group>
                           {alertCount > 0 && (
                             <Badge size="xs" variant="gradient"
                               gradient={{ from: item.alertKey === 'supportStale' ? 'orange' : 'red', to: item.alertKey === 'supportStale' ? 'yellow' : 'pink' }}
@@ -1027,37 +1107,57 @@ export default function AppShellLayout() {
             borderTop: isDark ? '1px solid #1a1d27' : `1px solid ${BORDER_DEFAULT}`,
             background: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(12, 35, 64, 0.02)',
           }}>
-            {/* ⌘K search hint */}
-            <Tooltip label="Search or jump to any page (⌘K)" withArrow position="top">
-              <UnstyledButton
-                onClick={() => setPaletteOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  width: '100%',
-                  padding: '7px 10px',
-                  borderRadius: 8,
-                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',
-                  marginBottom: 6,
-                  transition: 'background 150ms ease, border-color 150ms ease',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(45,204,211,0.1)' : 'rgba(45,204,211,0.08)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(45,204,211,0.3)' : 'rgba(45,204,211,0.4)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
-                }}
-              >
-                <IconSearch size={13} color={isDark ? '#6b7280' : TEXT_SUBTLE} />
-                <Text style={{ flex: 1, fontSize: 12, color: isDark ? '#8b9ab3' : TEXT_GRAY, fontFamily: FONT_FAMILY }}>Search...</Text>
-                <Kbd style={{ fontSize: 9, padding: '1px 5px', background: isDark ? 'rgba(46,51,70,0.8)' : 'rgba(0,0,0,0.06)', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)', color: isDark ? '#6b7280' : TEXT_SUBTLE }}>⌘K</Kbd>
-              </UnstyledButton>
-            </Tooltip>
+            {/* Footer row: ⌘K search hint + ? shortcuts button — PP-13 §3 §4 */}
+            <Group gap={6} mb={6} wrap="nowrap">
+              <Tooltip label="Search or jump to any page (⌘K)" withArrow position="top" style={{ flex: 1 }}>
+                <UnstyledButton
+                  onClick={() => setPaletteOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flex: 1,
+                    padding: '7px 10px',
+                    borderRadius: 8,
+                    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',
+                    transition: 'background 150ms ease, border-color 150ms ease',
+                    cursor: 'pointer',
+                    minWidth: 0,
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(45,204,211,0.1)' : 'rgba(45,204,211,0.08)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(45,204,211,0.3)' : 'rgba(45,204,211,0.4)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+                  }}
+                >
+                  <IconSearch size={13} color={isDark ? '#6b7280' : TEXT_SUBTLE} />
+                  <Text style={{ flex: 1, fontSize: 12, color: isDark ? '#8b9ab3' : TEXT_GRAY, fontFamily: FONT_FAMILY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Search…</Text>
+                  <Kbd style={{ fontSize: 9, padding: '1px 5px', background: isDark ? 'rgba(46,51,70,0.8)' : 'rgba(0,0,0,0.06)', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)', color: isDark ? '#6b7280' : TEXT_SUBTLE, flexShrink: 0 }}>⌘K</Kbd>
+                </UnstyledButton>
+              </Tooltip>
+
+              {/* PP-13 §4: ? shortcut button — teaches keyboard shortcuts panel */}
+              <Tooltip label={<><strong>Keyboard shortcuts</strong> — press <Kbd size="xs">?</Kbd> anywhere</>} withArrow position="top">
+                <ActionIcon
+                  variant="default"
+                  size={32}
+                  radius={8}
+                  onClick={() => setShowShortcutsModal(true)}
+                  style={{
+                    flexShrink: 0,
+                    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',
+                    color: isDark ? '#6b7280' : TEXT_SUBTLE,
+                  }}
+                >
+                  <IconHelp size={15} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
             {/* Version */}
             <Text size="xs" c="dimmed" style={{
               fontFamily: FONT_FAMILY,
@@ -1071,7 +1171,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: isDark ? undefined : 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v28.8
+              Portfolio Planner v30.0
             </Text>
           </div>
         </MantineAppShell.Section>

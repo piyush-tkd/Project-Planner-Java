@@ -23,6 +23,8 @@ export interface ProjectResponse {
   jiraBoardId: number | null;
   jiraLastSyncedAt: string | null;
   jiraSyncError: boolean;
+  /** Raw Jira statusCategory.key: "new" / "indeterminate" / "done". Null for non-Jira projects. */
+  jiraStatusCategory: string | null;
   archived: boolean;
   // ── Budget tracking ─────────────────────────────────────────────────────
   estimatedBudget: number | null;
@@ -43,6 +45,10 @@ export interface ProjectRequest {
   client?: string | null;
   estimatedBudget?: number | null;
   actualCost?: number | null;
+  /** Set to 'JIRA_SYNCED' when importing from Jira */
+  sourceType?: 'MANUAL' | 'JIRA_SYNCED' | 'PUSHED_TO_JIRA';
+  /** Jira issue key (e.g. "PMO-1234") */
+  jiraEpicKey?: string | null;
 }
 
 export interface ProjectPodPlanningResponse {

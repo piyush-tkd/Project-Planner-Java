@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for fetching Jira issues that fall within a calendar sprint's date window.
@@ -23,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/jira/sprint-issues")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class JiraSprintController {
 
     private final JiraSprintIssueService sprintIssueService;

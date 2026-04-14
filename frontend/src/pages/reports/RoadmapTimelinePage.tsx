@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import {
   Title, Stack, SimpleGrid, Card, Text, Group, Badge, Select,
   Tooltip, ScrollArea, SegmentedControl, ActionIcon, ThemeIcon, Divider,
@@ -91,27 +91,57 @@ const RoadmapTimelinePage: React.FC = () => {
     if (filters.priorityFilter) setPriorityFilter(filters.priorityFilter ?? 'all');
   };
 
+  /* ref for auto-scroll to today */
+  const ganttViewportRef = useRef<HTMLDivElement>(null);
+
   /* drag-to-reorder */
   const draggingRowRef = React.useRef<number | null>(null);
   const [draggingRowId, setDraggingRowId] = React.useState<number | null>(null);
   const [rowOrders,     setRowOrders]     = React.useState<Record<string, number[]>>({});
   const [insertAfterRow,setInsertAfterRow]= React.useState<{ groupName: string; afterId: number | null } | null>(null);
 
-  /* date range */
+  /* ── Absolute-month helpers (months since year 2000) ──────────────────
+   * This lets us handle cross-year date ranges (e.g. Dec 2025 → May 2026)
+   * without being locked to a single calendar year.
+   * absMonth(2026, 0) = 312,  absMonth(2025, 11) = 311, etc.
+   */
+  const REF_YEAR = 2000;
+  const toAbsMonth = (year: number, month0: number) => (year - REF_YEAR) * 12 + month0;
+
+  /* date range — driven by actual startDate/targetDate first, month indices as fallback */
   const dateRange = useMemo(() => {
-    if (!projects?.length) {
-      const year = new Date().getFullYear();
-      return { startMonth: 0, endMonth: 11, year, monthCount: 12 };
-    }
-    let minMonth = 0, maxMonth = 11;
-    const year = new Date().getFullYear();
-    projects.forEach(p => {
-      if (p.startMonth    != null) minMonth = Math.min(minMonth, p.startMonth - 1);
-      if (p.targetEndMonth != null) maxMonth = Math.max(maxMonth, p.targetEndMonth - 1);
+    const refYear = new Date().getFullYear();
+    let minAbs = toAbsMonth(refYear, 0);   // Jan of current year (default)
+    let maxAbs = toAbsMonth(refYear, 11);  // Dec of current year (default)
+
+    projects?.forEach(p => {
+      if (p.startDate) {
+        const d = new Date(p.startDate);
+        minAbs = Math.min(minAbs, toAbsMonth(d.getFullYear(), d.getMonth()));
+      } else if (p.startMonth != null) {
+        minAbs = Math.min(minAbs, toAbsMonth(refYear, p.startMonth - 1));
+      }
+      if (p.targetDate) {
+        const d = new Date(p.targetDate);
+        maxAbs = Math.max(maxAbs, toAbsMonth(d.getFullYear(), d.getMonth()));
+      } else if (p.targetEndMonth != null) {
+        maxAbs = Math.max(maxAbs, toAbsMonth(refYear, p.targetEndMonth - 1));
+      }
     });
-    const s = Math.max(0, minMonth), e = Math.min(11, maxMonth);
-    return { startMonth: s, endMonth: e, year, monthCount: e - s + 1 };
-  }, [projects]);
+
+    return { minAbs, maxAbs, refYear, monthCount: maxAbs - minAbs + 1 };
+  }, [projects]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Convert an absolute month + optional fractional day (0–1) to a pixel X offset */
+  const absToX = (abs: number, frac = 0) => (abs - dateRange.minAbs + frac) * COL_W;
+
+  /** Convert a date string to a pixel X position (day-accurate) */
+  const dateToX = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const abs = toAbsMonth(d.getFullYear(), d.getMonth());
+    const daysInMo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return absToX(abs, (d.getDate() - 1) / daysInMo);
+  };
 
   /* filter + group */
   const filteredAndGrouped = useMemo(() => {
@@ -175,17 +205,37 @@ const RoadmapTimelinePage: React.FC = () => {
   const borderColor = dark ? DARK_BORDER  : GRAY_100;
   const hdrBg       = dark ? DARK_SURFACE : SURFACE_SUBTLE;
 
-  const monthLabels: string[] = [];
-  for (let i = dateRange.startMonth; i <= dateRange.endMonth; i++) monthLabels.push(MONTHS[i]);
-
   const COL_W   = 80;
   const ROW_H   = 52;
   const LABEL_W = 220;
-  const totalW  = monthLabels.length * COL_W;
 
-  const today      = new Date();
-  const todayPx    = today.getMonth() >= dateRange.startMonth && today.getMonth() <= dateRange.endMonth
-    ? (today.getMonth() - dateRange.startMonth) * COL_W + COL_W / 2 : -999;
+  // Build column headers — show "Jan '26" style when range spans multiple years
+  const spansMultipleYears = (dateRange.maxAbs - dateRange.minAbs) >= 12;
+  const monthLabels: Array<{ label: string; absMonth: number }> = [];
+  for (let abs = dateRange.minAbs; abs <= dateRange.maxAbs; abs++) {
+    const mo   = ((abs % 12) + 12) % 12;
+    const yr   = REF_YEAR + Math.floor(abs / 12);
+    const label = spansMultipleYears ? `${MONTHS[mo]} '${String(yr).slice(2)}` : MONTHS[mo];
+    monthLabels.push({ label, absMonth: abs });
+  }
+  const totalW = monthLabels.length * COL_W;
+
+  // Today marker
+  const today   = new Date();
+  const todayAbs = toAbsMonth(today.getFullYear(), today.getMonth());
+  const todayFrac = today.getDate() / new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const todayPx = (todayAbs >= dateRange.minAbs && todayAbs <= dateRange.maxAbs)
+    ? absToX(todayAbs, todayFrac) : -999;
+
+  // B-02: Auto-scroll the Gantt to show the current month centred in the viewport
+  useEffect(() => {
+    if (todayPx > 0 && ganttViewportRef.current) {
+      const viewportWidth = ganttViewportRef.current.clientWidth;
+      const scrollTarget = Math.max(0, todayPx - viewportWidth / 2 + LABEL_W);
+      ganttViewportRef.current.scrollLeft = scrollTarget;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayPx]);
 
   return (
     <Stack gap="xl" style={{ fontFamily: FONT_FAMILY }}>
@@ -285,11 +335,14 @@ const RoadmapTimelinePage: React.FC = () => {
               value={priorityFilter}
               onChange={(v) => setPriorityFilter(v || 'all')}
               data={[
-                { value: 'all', label: 'All Priorities' },
-                { value: 'P0',  label: '🔴  P0 – Critical' },
-                { value: 'P1',  label: '🟠  P1 – High' },
-                { value: 'P2',  label: '🔵  P2 – Medium' },
-                { value: 'P3',  label: '⚪  P3 – Low' },
+                { value: 'all',     label: 'All Priorities' },
+                { value: 'HIGHEST', label: '🔴  Highest' },
+                { value: 'HIGH',    label: '🟠  High' },
+                { value: 'MEDIUM',  label: '🔵  Medium' },
+                { value: 'LOW',     label: '🟣  Low' },
+                { value: 'LOWEST',  label: '⚪  Lowest' },
+                { value: 'BLOCKER', label: '🔴  Blocker' },
+                { value: 'MINOR',   label: '⚫  Minor' },
               ]}
               styles={{ input: { fontWeight: 500 } }}
             />
@@ -323,7 +376,7 @@ const RoadmapTimelinePage: React.FC = () => {
 
       {/* ── Gantt Chart ──────────────────────────────────────────────────── */}
       <ChartCard title="Project Timeline">
-        <ScrollArea>
+        <ScrollArea viewportRef={ganttViewportRef}>
           <div style={{ position: 'relative', backgroundColor: bgColor, borderRadius: 8, border: `1px solid ${borderColor}`, overflow: 'hidden', minWidth: LABEL_W + totalW }}>
 
             {/* Header row */}
@@ -335,17 +388,24 @@ const RoadmapTimelinePage: React.FC = () => {
               }}>
                 Project
               </div>
-              {monthLabels.map((m, i) => (
-                <div key={i} style={{
-                  width: COL_W, minWidth: COL_W, padding: '10px 4px',
-                  textAlign: 'center', borderRight: `1px solid ${borderColor}`,
-                  fontSize: 11, fontWeight: 700, color: textColor,
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                  backgroundColor: i % 2 === 0 ? 'transparent' : (dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.012)'),
-                }}>
-                  {m}
-                </div>
-              ))}
+              {monthLabels.map(({ label, absMonth }, i) => {
+                const isToday = absMonth === todayAbs;
+                return (
+                  <div key={absMonth} style={{
+                    width: COL_W, minWidth: COL_W, padding: '10px 4px',
+                    textAlign: 'center', borderRight: `1px solid ${borderColor}`,
+                    fontSize: 11, fontWeight: isToday ? 800 : 700,
+                    color: isToday ? AQUA : textColor,
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                    backgroundColor: isToday
+                      ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.10)')
+                      : (i % 2 === 0 ? 'transparent' : (dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.012)')),
+                    borderBottom: isToday ? `2px solid ${AQUA}` : undefined,
+                  }}>
+                    {label}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Today line */}
@@ -413,10 +473,39 @@ const RoadmapTimelinePage: React.FC = () => {
                   )}
 
                   {ordered.map((project: ProjectResponse) => {
-                    const startCol  = (project.startMonth     || 1)  - 1 - dateRange.startMonth;
-                    const endCol    = (project.targetEndMonth || 12) - 1 - dateRange.startMonth;
-                    const barLeft   = Math.max(0, startCol) * COL_W;
-                    const barWidth  = Math.max(1, (endCol - Math.max(0, startCol) + 1)) * COL_W;
+                    // ── Bar position: prefer actual dates, fall back to month indices ──
+                    let barLeft: number;
+                    let barRight: number;
+                    const { refYear } = dateRange;
+
+                    if (project.startDate) {
+                      barLeft = Math.max(0, dateToX(project.startDate));
+                    } else {
+                      barLeft = Math.max(0, absToX(toAbsMonth(refYear, (project.startMonth || 1) - 1)));
+                    }
+
+                    if (project.targetDate) {
+                      // end of target date's month column
+                      const d = new Date(project.targetDate);
+                      barRight = absToX(toAbsMonth(d.getFullYear(), d.getMonth()) + 1);
+                    } else if (project.targetEndMonth) {
+                      barRight = absToX(toAbsMonth(refYear, project.targetEndMonth - 1) + 1);
+                    } else {
+                      barRight = barLeft + (project.durationMonths || 1) * COL_W;
+                    }
+
+                    const barWidth = Math.max(24, barRight - barLeft);
+
+                    // ── Duration label: calculate from dates if available ──────────
+                    const durationLabel = (() => {
+                      if (project.startDate && project.targetDate) {
+                        const ms = new Date(project.targetDate).getTime() - new Date(project.startDate).getTime();
+                        const mo = Math.round(ms / (1000 * 60 * 60 * 24 * 30.44));
+                        return mo > 0 ? `${mo}mo` : null;
+                      }
+                      return project.durationMonths > 0 ? `${project.durationMonths}mo` : null;
+                    })();
+
                     const barColor  = STATUS_COLORS[project.status] || TEXT_DIM;
                     const isInsertBelow = insertAfterRow?.groupName === groupName && insertAfterRow.afterId === project.id;
                     const isInsertTop   = insertAfterRow?.groupName === groupName && insertAfterRow.afterId === null && ordered[0]?.id === project.id;
@@ -483,7 +572,7 @@ const RoadmapTimelinePage: React.FC = () => {
                                   {project.targetDate && <Text size="xs">⏹ Target: {new Date(project.targetDate).toLocaleDateString()}</Text>}
                                   {project.owner      && <Text size="xs">👤 {project.owner}</Text>}
                                   <Text size="xs" style={{ color: barColor }}>● {STATUS_LABELS[project.status] || project.status}</Text>
-                                  {project.durationMonths > 0 && <Text size="xs">⏱ {project.durationMonths}mo duration</Text>}
+                                  {durationLabel && <Text size="xs">⏱ {durationLabel} duration</Text>}
                                 </Stack>
                               }
                               position="top"

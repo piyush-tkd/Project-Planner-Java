@@ -8,6 +8,9 @@ import { notifications } from '@mantine/notifications';
 import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import apiClient from '../api/client';
+import EmptyState from '../components/common/EmptyState';
+import { IconStars, IconPlugConnected } from '@tabler/icons-react';
+import { useNavigate } from 'react-router-dom';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ function getProficiencyLabel(level: number): string {
 
 export default function SkillsMatrixPage() {
   const isDark = useDarkMode();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -137,10 +141,17 @@ export default function SkillsMatrixPage() {
       </Group>
 
       {matrixRows.length === 0 && (
-        <Alert color="blue" mb="md">
-          No skill data yet. Use "Add Skill" to start building the matrix, or add skills via
-          each resource's profile.
-        </Alert>
+        /* PP-13 §7: standardised empty state */
+        <EmptyState
+          icon={<IconStars size={40} />}
+          title="Skills matrix is empty"
+          description="Import skills from Jira or manually add team members and their expertise to start building your skills profile."
+          action={{ label: '+ Add Skill', onClick: () => setAddOpen(true), variant: 'filled', color: 'teal' }}
+          secondaryAction={{ label: 'Go to Resources', onClick: () => navigate('/people/resources'), variant: 'light' }}
+          tips={['Skills are added per resource — navigate to a resource profile to add skills there too', 'Use categories (Backend, Frontend, Cloud…) to organise the matrix']}
+          size="lg"
+          color="teal"
+        />
       )}
 
       {/* Category filter */}

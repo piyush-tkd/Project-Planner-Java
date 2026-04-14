@@ -87,7 +87,7 @@ export function makeProject(overrides: Partial<ProjectResponse> = {}): ProjectRe
   return {
     id: 1,
     name: 'Test Project',
-    priority: 'P1',
+    priority: 'HIGH',
     owner: 'owner@test.com',
     startMonth: 1,
     targetEndMonth: 6,
@@ -106,6 +106,7 @@ export function makeProject(overrides: Partial<ProjectResponse> = {}): ProjectRe
     jiraBoardId: null,
     jiraLastSyncedAt: null,
     jiraSyncError: false,
+    jiraStatusCategory: null,
     archived: false,
     estimatedBudget: null,
     actualCost: null,

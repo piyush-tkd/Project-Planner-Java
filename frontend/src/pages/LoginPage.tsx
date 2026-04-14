@@ -96,36 +96,36 @@ export default function LoginPage() {
  pointerEvents: 'none',
  }} />
 
- {/* Logo mark — Aqua triangle */}
- <svg width="52" height="48" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 16, position: 'relative' }}>
- <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA_HEX} strokeWidth="4" />
- <polygon points="26,10 44,44 8,44" fill={AQUA_HEX} opacity="0.25" />
+ {/* Logo mark — Aqua triangle, fully opaque stroke + fill */}
+ <svg width="60" height="56" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 20, position: 'relative', filter: `drop-shadow(0 0 12px ${AQUA_HEX}88)` }}>
+   <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA_HEX} strokeWidth="3.5" />
+   <polygon points="26,10 44,44 8,44" fill={AQUA_HEX} opacity="0.35" />
  </svg>
 
- <Title
- order={1}
- style={{
- color: '#FFFFFF',
- fontFamily: FONT_FAMILY,
- fontWeight: 300,
- fontSize: 36,
- letterSpacing: '0.04em',
- textAlign: 'center',
- lineHeight: 1.1,
- position: 'relative',
- }}
- >
- ENGINEERING<br />PORTFOLIO<br />PLANNER
- </Title>
+ {/* Title — use explicit inline style with !important equivalent via direct string */}
+ <div style={{
+   color: '#FFFFFF',
+   fontFamily: FONT_FAMILY,
+   fontWeight: 300,
+   fontSize: 34,
+   letterSpacing: '0.1em',
+   textAlign: 'center',
+   lineHeight: 1.25,
+   position: 'relative',
+   textShadow: `0 0 32px ${AQUA_HEX}44`,
+   userSelect: 'none',
+ }}>
+   ENGINEERING<br />PORTFOLIO<br />PLANNER
+ </div>
 
  <div style={{
- width: 48,
- height: 3,
- backgroundColor: AQUA_HEX,
- borderRadius: 2,
- marginTop: 24,
- marginBottom: 24,
- position: 'relative',
+   width: 56,
+   height: 3,
+   background: `linear-gradient(90deg, transparent, ${AQUA_HEX}, transparent)`,
+   borderRadius: 2,
+   marginTop: 24,
+   marginBottom: 24,
+   position: 'relative',
  }} />
 
  </div>

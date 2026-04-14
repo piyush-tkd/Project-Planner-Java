@@ -159,7 +159,7 @@ export default function InboxPage() {
     projects?.forEach(p => {
       const id = `p0-${p.id}`;
       if (dismissedPortfolio.has(id)) return;
-      if (p.priority !== 'P0' || p.status === 'COMPLETED' || p.status === 'CANCELLED') return;
+      if ((p.priority !== 'HIGHEST' && p.priority !== 'BLOCKER') || p.status === 'COMPLETED' || p.status === 'CANCELLED') return;
       items.push({
         id, source: 'portfolio', severity: 'warning',
         icon:   <IconFlame size={15} />,

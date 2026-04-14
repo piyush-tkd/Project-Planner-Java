@@ -15,7 +15,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { InlineTextCell, InlineDateCell, InlineSelectCell } from '../../components/common/InlineCell';
 import { useInlineEdit } from '../../hooks/useInlineEdit';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const MONTHS = [
@@ -229,7 +229,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
           <Button
             size="xs"
             leftSection={<IconPlus size={14} />}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+            variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
             onClick={openAdd}
           >
             Add Holiday
@@ -412,7 +412,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
               leftSection={<IconCheck size={14} />}
               loading={saveMut.isPending || updateMut.isPending}
               onClick={handleSave}
-              style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+              variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
             >
               Save
             </Button>

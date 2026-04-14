@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Engineering Productivity Metrics Controller.
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/reports/productivity")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProductivityMetricsController {
 
     private final ProjectRepository projectRepo;

@@ -12,10 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/azure-devops")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AzureDevOpsController {
 
     private final AzureDevOpsSettingsService settingsService;

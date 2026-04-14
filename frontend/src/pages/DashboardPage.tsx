@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery }  from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/client';
 import {
   Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge, Title,
@@ -352,8 +352,8 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
                   <Box style={{
                     display: 'inline-block', fontSize: 11, fontWeight: 700,
                     padding: '2px 8px', borderRadius: 12,
-                    background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : SURFACE_SUCCESS_LIGHT,
-                    color: p.priority === 'P0' ? COLOR_ERROR_DARK : p.priority === 'P1' ? COLOR_ORANGE_DEEP : COLOR_GREEN_STRONG,
+                    background: p.priority === 'HIGHEST' || p.priority === 'BLOCKER' ? '#fef2f2' : p.priority === 'HIGH' ? '#fff7ed' : SURFACE_SUCCESS_LIGHT,
+                    color: p.priority === 'HIGHEST' || p.priority === 'BLOCKER' ? COLOR_ERROR_DARK : p.priority === 'HIGH' ? COLOR_ORANGE_DEEP : COLOR_GREEN_STRONG,
                   }}>
                     {p.priority}
                   </Box>
@@ -582,8 +582,8 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles, 
                 const healthScore = p.status === 'COMPLETED' ? 5
                   : p.status === 'CANCELLED' ? 1
                   : p.status === 'ON_HOLD' ? 2
-                  : p.priority === 'P0' ? 2.5
-                  : p.priority === 'P1' ? 3.5
+                  : p.priority === 'HIGHEST' || p.priority === 'BLOCKER' ? 2.5
+                  : p.priority === 'HIGH' ? 3.5
                   : 4.0;
                 const dot = getHealthDot(healthScore);
                 return (
@@ -596,8 +596,8 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles, 
                       <Box style={{
                         display: 'inline-block', fontSize: 11, fontWeight: 700,
                         padding: '2px 8px', borderRadius: 12,
-                        background: p.priority === 'P0' ? '#fef2f2' : p.priority === 'P1' ? '#fff7ed' : p.priority === 'P2' ? SURFACE_BLUE : SURFACE_FAINT,
-                        color: p.priority === 'P0' ? COLOR_ERROR_DARK : p.priority === 'P1' ? COLOR_ORANGE_DEEP : p.priority === 'P2' ? COLOR_BLUE : TEXT_GRAY,
+                        background: p.priority === 'HIGHEST' || p.priority === 'BLOCKER' ? '#fef2f2' : p.priority === 'HIGH' ? '#fff7ed' : p.priority === 'MEDIUM' ? SURFACE_BLUE : SURFACE_FAINT,
+                        color: p.priority === 'HIGHEST' || p.priority === 'BLOCKER' ? COLOR_ERROR_DARK : p.priority === 'HIGH' ? COLOR_ORANGE_DEEP : p.priority === 'MEDIUM' ? COLOR_BLUE : TEXT_GRAY,
                       }}>
                         {p.priority}
                       </Box>
@@ -844,7 +844,15 @@ function AiInsightsBar() {
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [activeBoard, setActiveBoard] = useState<string>('team');
+  // U-01: sync active tab to URL param so back-button and deep-linking work
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_BOARDS = ['team', 'executive', 'analyst'];
+  const rawBoard = searchParams.get('board') ?? 'team';
+  const activeBoard = VALID_BOARDS.includes(rawBoard) ? rawBoard : 'team';
+  const setActiveBoard = (board: string | null) => {
+    const next = board && VALID_BOARDS.includes(board) ? board : 'team';
+    setSearchParams(next === 'team' ? {} : { board: next }, { replace: false });
+  };
 
   // ── AI Insights summary ───────────────────────────────────────────────────
   const [insightCounts, setInsightCounts] = useState<{

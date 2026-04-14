@@ -9,11 +9,13 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/resource-pools")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@PreAuthorize("isAuthenticated()")
 public class ResourcePoolController {
 
     private final ResourcePoolRepository poolRepo;

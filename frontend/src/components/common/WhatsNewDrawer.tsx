@@ -51,6 +51,9 @@ export default function WhatsNewDrawer({ opened, onClose }: Props) {
       position="right"
       size="md"
       padding="lg"
+      zIndex={300}
+      lockScroll={false}
+      withCloseButton
     >
       <ScrollArea h="calc(100vh - 80px)">
         {isLoading ? (

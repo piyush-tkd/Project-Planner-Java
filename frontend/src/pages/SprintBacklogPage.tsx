@@ -21,6 +21,8 @@ import SprintKanbanBoard from '../components/projects/SprintKanbanBoard';
 import SavedViews from '../components/common/SavedViews';
 import { AQUA, BORDER_STRONG, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, DARK_BG, DEEP_BLUE, FONT_FAMILY, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
+import EmptyState from '../components/common/EmptyState';
+import { useNavigate } from 'react-router-dom';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -692,6 +694,7 @@ function BacklogSection({ backlog, search, isDark }: { backlog: BacklogGroup; se
 
 export default function SprintBacklogPage() {
   const isDark = useDarkMode();
+  const navigate = useNavigate();
   const [activePod, setActivePod] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string | null>('Story');
@@ -757,15 +760,16 @@ export default function SprintBacklogPage() {
 
   if (podList.length === 0) return (
     <PPPageLayout title="Sprint Backlog" subtitle="Jira board backlog view per configured POD" animate>
-      <Center py={80}>
-        <Stack align="center" gap="sm">
-          <ThemeIcon size={64} radius="md" variant="light" color="gray">
-            <IconUsersGroup size={32} stroke={1.5} />
-          </ThemeIcon>
-          <Text fw={600} c="dimmed">No boards configured</Text>
-          <Text size="sm" c="dimmed">Configure Jira PODs in Settings → Jira to see the backlog.</Text>
-        </Stack>
-      </Center>
+      {/* PP-13 §7: standardised empty state */}
+      <EmptyState
+        icon={<IconUsersGroup size={40} />}
+        title="No Jira boards configured"
+        description="Connect Jira and configure PODs to see your sprint backlog, stories, and epics synced here."
+        action={{ label: 'Go to Jira Settings', onClick: () => navigate('/settings/org?tab=jira'), variant: 'filled', color: 'teal' }}
+        secondaryAction={{ label: 'View PODs', onClick: () => navigate('/pods'), variant: 'light' }}
+        tips={['PODs represent Jira boards — configure one per team', 'Once connected, stories and epics sync automatically']}
+        size="lg"
+      />
     </PPPageLayout>
   );
 
@@ -897,16 +901,15 @@ export default function SprintBacklogPage() {
           <Stack gap="sm">
             {/* Sprint sections */}
             {backlogData.sprints.length === 0 ? (
-              <Paper withBorder radius="md" p="xl">
-                <Center>
-                  <Stack align="center" gap="xs">
-                    <ThemeIcon size={48} radius="md" variant="light" color="gray">
-                      <IconCalendar size={24} stroke={1.5} />
-                    </ThemeIcon>
-                    <Text size="sm" c="dimmed">No active or upcoming sprints found</Text>
-                  </Stack>
-                </Center>
-              </Paper>
+              /* PP-13 §7: standardised empty state for no active sprints */
+              <EmptyState
+                icon={<IconCalendar size={36} />}
+                title="No active or upcoming sprints"
+                description="There are no active or upcoming sprints in this board. Start a sprint in Jira or wait for the next sync."
+                action={{ label: 'Refresh', onClick: () => window.location.reload(), variant: 'light', color: 'teal' }}
+                size="md"
+                color="teal"
+              />
             ) : (
               backlogData.sprints.map((sprint, idx) => (
                 <SprintSection

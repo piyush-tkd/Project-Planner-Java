@@ -8,7 +8,7 @@
  *   4. Meeting Notes → Actions — paste notes, extract action items + owners
  *
  * Calls POST /api/ai/generate  { type, context }  → { output: string }
- * Falls back to templated mock output when backend not available.
+ * Requires an AI key (org-level or personal) — configure in Settings → My AI Settings.
  */
 import { useState, useMemo } from 'react';
 import {
@@ -25,6 +25,7 @@ import { useComputedColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
 import { useProjects } from '../api/projects';
+import { useAiStatus } from '../api/userAiConfig';
 import { PPPageLayout } from '../components/pp';
 import {
   AQUA, AQUA_TINTS, COLOR_VIOLET, DEEP_BLUE, DEEP_BLUE_TINTS,
@@ -87,133 +88,11 @@ const TABS: Array<{
   },
 ];
 
-// ── Mock outputs ──────────────────────────────────────────────────────────────
-
-function mockStatusEmail(project: ProjectResponse | null): string {
-  if (!project) return '';
-  const status   = project.status ?? 'ACTIVE';
-  const priority = project.priority ?? 'P1';
-  const today    = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `Subject: ${project.name} — Status Update ${today}
-
-Hi Team,
-
-I wanted to share a quick update on **${project.name}** (${priority}).
-
-**Current Status:** ${status.replace(/_/g, ' ')}
-${project.targetDate ? `**Target Completion:** ${new Date(project.targetDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
-
-**Progress this week:**
-- Core feature development is progressing as planned
-- Engineering team has been working through the backlog items
-- No critical blockers identified at this time
-
-**Risks & watch items:**
-${status === 'AT_RISK' ? '⚠️  Timeline risk — target date is approaching and scope may need adjustment' : '✅  No major risks to report this week'}
-
-**Next steps:**
-- Continue sprint execution
-- Stakeholder review scheduled for next week
-- Will update this report following the next planning session
-
-Please reach out if you have any questions or concerns.
-
-Best regards,
-Portfolio Planning Team`.trim();
-}
-
-function mockRetroSummary(notes: string): string {
-  if (!notes.trim()) return '';
-  return `## Sprint Retrospective Summary
-Generated: ${new Date().toLocaleDateString('en-GB')}
-
-### 🟢 What went well
-- Team collaboration and communication were strong throughout the sprint
-- Delivery against sprint goals exceeded expectations (based on velocity trends)
-- Reduced time spent in refinement meetings — better pre-grooming paid off
-
-### 🔴 What needs improvement
-- Several story points carried over due to unclear acceptance criteria at sprint start
-- Cross-team dependency on the platform team caused a 2-day delay mid-sprint
-- Test coverage slipped on two components — needs attention next sprint
-
-### ⚡ Action items
-| # | Action | Owner | Due |
-|---|--------|-------|-----|
-| 1 | Define clear AC template for all P0/P1 stories | Scrum Master | Next planning |
-| 2 | Schedule dependency alignment call with Platform team | EM | This week |
-| 3 | Add unit test coverage for auth and dashboard modules | Dev Lead | Sprint +1 |
-| 4 | Share velocity chart with stakeholders before next demo | PM | End of week |
-
-### 💡 Team mood
-Overall sentiment: **Positive** · Energy level: **Medium-high**
-The team feels the workload is sustainable. Main frustration is external blockers.`.trim();
-}
-
-function mockRiskBrief(projectIds: string): string {
-  return `## Engineering Portfolio — Risk Brief
-${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-
-### Executive Summary
-The portfolio contains ${projectIds ? projectIds.split(',').length : 'several'} active initiatives.
-Two items require immediate attention; overall portfolio health is **Amber**.
-
-### 🔴 Critical Risks (Action Required)
-1. **Capacity Bottleneck — Platform POD**
-   Three projects are competing for the same platform engineering resources in Q2.
-   Recommended: Stagger start dates by 3–4 weeks or hire one additional backend engineer.
-
-2. **Deadline Risk — Core Product Rework**
-   Target date in 6 weeks with 40% of scope still unestimated.
-   Recommended: Scope reduction or timeline extension — bring to steering committee.
-
-### 🟡 Watch Items
-- **Third-party API integration** — vendor SLA response time averaging 4 days. Mitigation: build internal mock layer.
-- **Compliance review** — security sign-off not yet scheduled. Must complete 2 weeks before release.
-
-### 🟢 On Track
-- Data infrastructure migration: 80% complete, on schedule
-- Developer tooling improvements: delivered ahead of plan
-
-### Recommended Actions
-1. Schedule a capacity planning session with POD leads this week
-2. Escalate deadline risk to steering committee before next sprint
-3. Assign compliance review owner immediately`.trim();
-}
-
-function mockMeetingActions(notes: string): string {
-  if (!notes.trim()) return '';
-  return `## Extracted Action Items
-${new Date().toLocaleDateString('en-GB')} — AI-generated from meeting notes
-
-| # | Action Item | Owner | Priority | Due Date |
-|---|-------------|-------|----------|----------|
-| 1 | Share updated project timeline with stakeholders | PM | High | EOW |
-| 2 | Investigate performance regression on dashboard load | Dev Lead | High | Next sprint |
-| 3 | Set up recurring sync with Design team | EM | Medium | This week |
-| 4 | Review and merge pending PRs before code freeze | Dev team | High | Tomorrow |
-| 5 | Update Confluence documentation for new API endpoints | Dev Lead | Low | Sprint +1 |
-| 6 | Prepare demo environment for client walkthrough | QA Lead | High | Next Monday |
-
-### Decisions Made
-- ✅ Agreed to push release by 1 week to incorporate QA feedback
-- ✅ Platform team will own the migration scripts
-- ✅ Weekly stakeholder update email to continue through Q2
-
-### Open Questions
-- ❓ Budget approval for additional infrastructure — pending finance review
-- ❓ Which team owns the post-launch monitoring dashboard?`.trim();
-}
-
 // ── API call ──────────────────────────────────────────────────────────────────
 
 async function callGenerateApi(req: GenerateRequest): Promise<string> {
-  try {
-    const res = await apiClient.post<{ output: string }>('/ai/generate', req);
-    return res.data.output;
-  } catch {
-    throw new Error('MOCK_FALLBACK');
-  }
+  const res = await apiClient.post<{ output: string }>('/ai/generate', req);
+  return res.data.output;
 }
 
 // ── Tone options ──────────────────────────────────────────────────────────────
@@ -231,6 +110,8 @@ export default function AiContentStudioPage() {
   const colorScheme = useComputedColorScheme('light');
   const isDark = colorScheme === 'dark';
   const { data: projects = [] } = useProjects();
+  const { data: aiStatus } = useAiStatus();
+  const aiKeyMissing = aiStatus?.source === 'NONE';
 
   const [activeTab, setActiveTab] = useState('status-email');
 
@@ -277,20 +158,25 @@ export default function AiContentStudioPage() {
     try {
       const out = await callGenerateApi({ type, context, projectId: selectedProject?.id, tone: emailTone });
       onDone(out);
-    } catch {
-      // AI backend unavailable — show user a warning and use template fallback
-      notifications.show({
-        title: 'AI service unavailable',
-        message: 'Using a template preview. Connect the AI backend (/api/ai/generate) for live generation.',
-        color: 'orange',
-        autoClose: 6000,
-      });
-      let mock = '';
-      if (type === 'status_email')    mock = mockStatusEmail(selectedProject);
-      if (type === 'retro_summary')   mock = mockRetroSummary(context);
-      if (type === 'risk_brief')      mock = mockRiskBrief(projectOptions.map(p => p.value).join(','));
-      if (type === 'meeting_actions') mock = mockMeetingActions(context);
-      onDone(mock);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.error as string | undefined;
+      if (status === 503) {
+        notifications.show({
+          title: 'No AI key configured',
+          message: 'Go to Settings → My AI Settings to add your personal API key, or ask your admin to configure an org-level key.',
+          color: 'orange',
+          autoClose: 10000,
+        });
+      } else {
+        notifications.show({
+          title: 'AI generation failed',
+          message: serverMsg || 'An unexpected error occurred. Please try again.',
+          color: 'red',
+          autoClose: 6000,
+        });
+      }
+      onDone('');
     } finally {
       setLoading(null);
     }
@@ -497,22 +383,53 @@ export default function AiContentStudioPage() {
     >
       <Stack gap="md">
 
+        {/* No-key warning banner */}
+        {aiKeyMissing && (
+          <Alert
+            variant="light"
+            color="orange"
+            radius="md"
+            icon={<IconAlertTriangle size={16} />}
+            styles={{ root: { border: '1px solid rgba(245,159,0,0.4)' } }}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>
+                No AI key configured. Add your personal key or ask your admin to set an org-level key to use this feature.
+              </Text>
+              <Button
+                component="a"
+                href="/settings/my-ai"
+                size="xs"
+                variant="outline"
+                color="orange"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                Configure key →
+              </Button>
+            </Group>
+          </Alert>
+        )}
+
         {/* Info banner */}
-        <Alert
-          variant="light"
-          color="teal"
-          radius="md"
-          icon={<IconBrain size={16} color={AQUA} />}
-          styles={{
-            root: { background: isDark ? AQUA + '15' : AQUA_TINTS[10], border: `1px solid ${AQUA}40` },
-            message: { color: textPrimary },
-          }}
-        >
-          <Text size="sm" style={{ color: textPrimary, fontFamily: FONT_FAMILY }}>
-            AI drafts are generated from live project data and your inputs.
-            Always review before sending — outputs are editable and copy-paste ready.
-          </Text>
-        </Alert>
+        {!aiKeyMissing && (
+          <Alert
+            variant="light"
+            color="teal"
+            radius="md"
+            icon={<IconBrain size={16} color={AQUA} />}
+            styles={{
+              root: { background: isDark ? AQUA + '15' : AQUA_TINTS[10], border: `1px solid ${AQUA}40` },
+              message: { color: textPrimary },
+            }}
+          >
+            <Text size="sm" style={{ color: textPrimary, fontFamily: FONT_FAMILY }}>
+              AI drafts are generated from live project data and your inputs.
+              Always review before sending — outputs are editable and copy-paste ready.
+              {aiStatus?.source === 'ORG' && <> Using <strong>org API key</strong>.</>}
+              {aiStatus?.source === 'USER' && <> Using your <strong>personal API key</strong>.</>}
+            </Text>
+          </Alert>
+        )}
 
         {/* Tab selector */}
         <TabSelector />

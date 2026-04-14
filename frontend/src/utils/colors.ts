@@ -7,10 +7,13 @@ export const utilizationColors = {
 };
 
 export const priorityColors: Record<string, string> = {
-  P0: COLOR_ERROR,
-  P1: COLOR_ORANGE,
-  P2: COLOR_BLUE_LIGHT,
-  P3: GRAY_300,
+  HIGHEST: COLOR_ERROR,
+  HIGH:    COLOR_ORANGE,
+  MEDIUM:  COLOR_BLUE_LIGHT,
+  LOW:     '#818cf8',  // indigo-400
+  LOWEST:  GRAY_300,
+  BLOCKER: COLOR_ERROR,
+  MINOR:   GRAY_300,
 };
 
 export const statusColors: Record<string, string> = {

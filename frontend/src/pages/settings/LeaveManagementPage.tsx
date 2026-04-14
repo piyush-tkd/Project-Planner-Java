@@ -13,7 +13,7 @@ import { useLeaveEntries, useImportLeave, useDeleteLeaveEntry } from '../../api/
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SURFACE_FAINT, BORDER_DEFAULT } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY, SURFACE_FAINT, BORDER_DEFAULT } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const MONTHS = [
@@ -133,7 +133,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
           <Button
             size="xs"
             leftSection={<IconUpload size={14} />}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+            variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
             onClick={() => setImportModalOpen(true)}
           >
             Import Leave Planner
@@ -305,7 +305,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
               loading={importMut.isPending}
               disabled={!selectedFile}
               onClick={handleImport}
-              style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+              variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
             >
               Import
             </Button>

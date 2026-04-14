@@ -10,7 +10,7 @@ import {
   ActionIcon, Tooltip, Alert, Divider, Avatar, Skeleton,
 } from '@mantine/core';
 import { IconArrowLeft, IconUsers, IconPlus, IconPencil, IconTrash, IconAlertCircle } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_WARNING, COLOR_ERROR } from '../brandTokens';
+import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_WARNING, COLOR_ERROR } from '../brandTokens';
 import apiClient from '../api/client';
 import { useDarkMode } from '../hooks/useDarkMode';
 import TeamTypeBadge from '../components/teams/TeamTypeBadge';
@@ -143,7 +143,7 @@ export default function TeamDetailPage() {
               Team Members ({members.length})
             </Text>
           </Group>
-          <Button size="xs" leftSection={<IconPlus size={13} />} style={{ backgroundColor: AQUA, color: DEEP_BLUE }}>
+          <Button size="xs" variant="filled" leftSection={<IconPlus size={13} />} style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}>
             Add Member
           </Button>
         </Group>

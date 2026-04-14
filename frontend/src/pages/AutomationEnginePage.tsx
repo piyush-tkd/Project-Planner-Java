@@ -52,7 +52,7 @@ const ACTION_COLOR: Record<string, string> = {
 };
 
 const PROJECT_STATUSES = ['NOT_STARTED', 'IN_DISCOVERY', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
-const PRIORITIES       = ['P0', 'P1', 'P2', 'P3'];
+const PRIORITIES       = ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST', 'BLOCKER', 'MINOR'];
 const FLAG_COLORS      = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
 const SEVERITIES       = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const RECIPIENT_OPTS   = [

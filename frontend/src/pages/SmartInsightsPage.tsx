@@ -61,8 +61,8 @@ function computeHealthScore(p: ProjectResponse, today: Date): number {
     penalty += 10; // no target date = untracked
   }
 
-  // 3. Priority — P0/P1 under-delivery
-  if ((p.priority === 'P0' || p.priority === 'CRITICAL') && p.status !== 'COMPLETED') {
+  // 3. Priority — HIGHEST/BLOCKER under-delivery
+  if ((p.priority === 'HIGHEST' || p.priority === 'BLOCKER') && p.status !== 'COMPLETED') {
     penalty += 10;
   }
 
@@ -147,8 +147,8 @@ export default function SmartInsightsPage() {
       : 0;
 
     // Priority distribution
-    const p0 = scored.filter(p => p.priority === 'P0' || p.priority === 'CRITICAL').length;
-    const p1 = scored.filter(p => p.priority === 'P1' || p.priority === 'HIGH').length;
+    const p0 = scored.filter(p => p.priority === 'HIGHEST' || p.priority === 'BLOCKER').length;
+    const p1 = scored.filter(p => p.priority === 'HIGH').length;
 
     // Status distribution
     const byStatus: Record<string, number> = {};

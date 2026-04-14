@@ -208,7 +208,7 @@ class CostRateAndActualsControllerTest extends BaseControllerTest {
     private Project seedProject(String name) {
         Project p = new Project();
         p.setName(name);
-        p.setPriority(Priority.P1);
+        p.setPriority(Priority.HIGH);
         p.setStatus("ACTIVE");
         return projectRepository.save(p);
     }

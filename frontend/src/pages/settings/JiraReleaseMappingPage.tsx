@@ -16,7 +16,7 @@ import {
 } from '../../api/jiraReleaseMapping';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function JiraReleaseMappingPage() {
@@ -125,7 +125,7 @@ export default function JiraReleaseMappingPage() {
  leftSection={<IconWand size={14} />}
  loading={autoMatchMut.isPending}
  onClick={handleAutoMatch}
- style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+ variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
  >
  Auto-Match
  </Button>
@@ -294,7 +294,7 @@ export default function JiraReleaseMappingPage() {
  leftSection={<IconDeviceFloppy size={14} />}
  onClick={handleSaveBulk}
  loading={bulkSaveMut.isPending}
- style={{ backgroundColor: AQUA, color: DEEP_BLUE }}
+ variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
  >
  Save Links
  </Button>

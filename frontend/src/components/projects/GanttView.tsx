@@ -18,10 +18,13 @@ const TODAY_YEAR  = new Date().getFullYear();
 
 /* ── Priority / Status color maps ───────────────────────────────────── */
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: COLOR_ERROR,
-  P1: COLOR_ORANGE,
-  P2: COLOR_BLUE_DARK,
-  P3: TEXT_DIM,
+  HIGHEST: COLOR_ERROR,
+  HIGH:    COLOR_ORANGE,
+  MEDIUM:  COLOR_BLUE_DARK,
+  LOW:     '#6366f1',
+  LOWEST:  TEXT_DIM,
+  BLOCKER: '#dc2626',
+  MINOR:   TEXT_DIM,
 };
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE:       COLOR_SUCCESS,

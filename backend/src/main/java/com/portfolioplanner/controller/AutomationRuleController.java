@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * CRUD for user-defined automation rules.
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/automation-rules")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AutomationRuleController {
 
     private final AutomationRuleRepository repo;

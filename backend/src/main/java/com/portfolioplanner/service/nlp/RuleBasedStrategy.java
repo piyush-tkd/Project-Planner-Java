@@ -643,7 +643,7 @@ public class RuleBasedStrategy implements NlpStrategy {
         HELP_TOPICS.put("concurrency", "Concurrency risk measures how many projects a POD is working on simultaneously. High concurrency increases context-switching costs and delivery risk.");
         HELP_TOPICS.put("utilization", "Utilization is the ratio of demand to capacity (Demand / Capacity). Under 65% = under-utilized, 65-100% = healthy, over 100% = over-capacity.");
         HELP_TOPICS.put("pod", "A POD is a cross-functional team (developers, QAs, BSAs, tech leads) that works together on a set of projects. Each pod has its own capacity and BAU allocation.");
-        HELP_TOPICS.put("priority", "Projects are prioritized P0 through P3. P0 = Critical (must-do), P1 = High, P2 = Medium, P3 = Low/Nice-to-have.");
+        HELP_TOPICS.put("priority", "Projects use Jira-style priorities: HIGHEST (critical/must-do), HIGH, MEDIUM, LOW, LOWEST, BLOCKER, MINOR.");
         HELP_TOPICS.put("roi", "Resource ROI shows the return on investment per resource or role, comparing their billing cost against the value delivered through project work.");
         HELP_TOPICS.put("gantt", "The Gantt chart provides a visual timeline view of all projects showing start dates, durations, and overlaps to help plan and identify scheduling conflicts.");
         HELP_TOPICS.put("budget", "The Budget report shows project costs calculated from resource hours × billing rates, broken down by pod, role, and month.");
@@ -2242,7 +2242,7 @@ public class RuleBasedStrategy implements NlpStrategy {
 
                 // Count P0 projects
                 long p0Count = catalog.projectDetails().stream()
-                        .filter(p2 -> "P0".equalsIgnoreCase(p2.priority()) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
+                        .filter(p2 -> ("HIGHEST".equalsIgnoreCase(p2.priority()) || "BLOCKER".equalsIgnoreCase(p2.priority())) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
                         .count();
 
                 // Count overloaded pods (many projects, few members)
@@ -2369,7 +2369,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 // "list all P0 projects"
                 if (subject.contains("p0") || subject.contains("highest priority") || subject.contains("critical")) {
                     List<NlpCatalogResponse.ProjectInfo> p0s = catalog.projectDetails().stream()
-                            .filter(p2 -> "P0".equalsIgnoreCase(p2.priority()) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
+                            .filter(p2 -> ("HIGHEST".equalsIgnoreCase(p2.priority()) || "BLOCKER".equalsIgnoreCase(p2.priority())) && !"COMPLETED".equalsIgnoreCase(p2.status()) && !"CANCELLED".equalsIgnoreCase(p2.status()))
                             .toList();
                     data.put("_type", "LIST");
                     data.put("listType", "PROJECTS");
@@ -2568,7 +2568,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                     data.put("_type", "RISK_SUMMARY");
                     if (catalog.projectDetails() != null) {
                         long p0Active = catalog.projectDetails().stream()
-                                .filter(proj -> "P0".equalsIgnoreCase(proj.priority()) && "ACTIVE".equalsIgnoreCase(proj.status()))
+                                .filter(proj -> ("HIGHEST".equalsIgnoreCase(proj.priority()) || "BLOCKER".equalsIgnoreCase(proj.priority())) && "ACTIVE".equalsIgnoreCase(proj.status()))
                                 .count();
                         long onHold = catalog.projectDetails().stream()
                                 .filter(proj -> "ON_HOLD".equalsIgnoreCase(proj.status()))
@@ -2581,7 +2581,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                         data.put("Total Active Projects", String.valueOf(totalActive));
                         // List P0 and On-Hold projects
                         var riskProjects = catalog.projectDetails().stream()
-                                .filter(proj -> "P0".equalsIgnoreCase(proj.priority()) || "ON_HOLD".equalsIgnoreCase(proj.status()))
+                                .filter(proj -> ("HIGHEST".equalsIgnoreCase(proj.priority()) || "BLOCKER".equalsIgnoreCase(proj.priority())) || "ON_HOLD".equalsIgnoreCase(proj.status()))
                                 .toList();
                         for (int i = 0; i < riskProjects.size(); i++) {
                             var proj = riskProjects.get(i);
@@ -2599,7 +2599,7 @@ public class RuleBasedStrategy implements NlpStrategy {
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("_type", "RISK_SUMMARY");
                 if (catalog.projectDetails() != null && catalog.podDetails() != null) {
-                    long p0 = catalog.projectDetails().stream().filter(proj -> "P0".equalsIgnoreCase(proj.priority()) && "ACTIVE".equalsIgnoreCase(proj.status())).count();
+                    long p0 = catalog.projectDetails().stream().filter(proj -> ("HIGHEST".equalsIgnoreCase(proj.priority()) || "BLOCKER".equalsIgnoreCase(proj.priority())) && "ACTIVE".equalsIgnoreCase(proj.status())).count();
                     long onHold = catalog.projectDetails().stream().filter(proj -> "ON_HOLD".equalsIgnoreCase(proj.status())).count();
                     long totalActive = catalog.projectDetails().stream().filter(proj -> "ACTIVE".equalsIgnoreCase(proj.status())).count();
                     long highLoad = catalog.podDetails().stream().filter(pod -> pod.active() && pod.memberCount() > 0
@@ -4240,9 +4240,20 @@ public class RuleBasedStrategy implements NlpStrategy {
     private Map<String, Object> extractFormFields(String text, String entityType, NlpCatalogResponse catalog) {
         Map<String, Object> fields = new LinkedHashMap<>();
 
-        // ── Priority (P0–P3) ──
-        Matcher pMatcher = Pattern.compile("(?i)\\b(p[0-3])\\b").matcher(text);
-        if (pMatcher.find()) fields.put("priority", pMatcher.group(1).toUpperCase());
+        // ── Priority (Jira-style: HIGHEST, HIGH, MEDIUM, LOW, LOWEST, BLOCKER, MINOR) ──
+        Matcher pMatcher = Pattern.compile("(?i)\\b(HIGHEST|HIGH|MEDIUM|LOW|LOWEST|BLOCKER|MINOR|p[0-3])\\b").matcher(text);
+        if (pMatcher.find()) {
+            String raw = pMatcher.group(1).toUpperCase();
+            // Map legacy Px to new names
+            String mapped = switch (raw) {
+                case "P0" -> "HIGHEST";
+                case "P1" -> "HIGH";
+                case "P2" -> "MEDIUM";
+                case "P3" -> "LOW";
+                default -> raw;
+            };
+            fields.put("priority", mapped);
+        }
 
         // ── Name extraction (multiple patterns) ──
         // Pattern 1: "called X" / "named X"

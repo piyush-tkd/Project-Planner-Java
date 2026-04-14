@@ -22,10 +22,13 @@ export enum Location {
 }
 
 export enum Priority {
-  P0 = 'P0',
-  P1 = 'P1',
-  P2 = 'P2',
-  P3 = 'P3',
+  HIGHEST = 'HIGHEST',
+  HIGH    = 'HIGH',
+  MEDIUM  = 'MEDIUM',
+  LOW     = 'LOW',
+  LOWEST  = 'LOWEST',
+  BLOCKER = 'BLOCKER',
+  MINOR   = 'MINOR',
 }
 
 export enum ProjectStatus {

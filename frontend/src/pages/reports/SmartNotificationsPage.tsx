@@ -109,7 +109,7 @@ const SmartNotificationsPage: React.FC = () => {
 
     // P0 still active (orange)
     projects.forEach((project: ProjectResponse) => {
-      if (project.priority === 'P0' && project.status !== 'COMPLETED' && project.status !== 'CANCELLED') {
+      if ((project.priority === 'HIGHEST' || project.priority === 'BLOCKER') && project.status !== 'COMPLETED' && project.status !== 'CANCELLED') {
         allAlerts.push({
           type: 'warning',
           message: `⚠️ Critical project '${project.name}' still in ${project.status} (Owner: ${project.owner || 'Unassigned'})`,
@@ -221,7 +221,7 @@ const SmartNotificationsPage: React.FC = () => {
     if (portfolioSummary.rate < 50) {
       recs.push('Consider reviewing project scoping — completion rate is below 50%');
     }
-    const p0Count = projects?.filter((p: ProjectResponse) => p.priority === 'P0' && p.status !== 'COMPLETED').length || 0;
+    const p0Count = projects?.filter((p: ProjectResponse) => (p.priority === 'HIGHEST' || p.priority === 'BLOCKER') && p.status !== 'COMPLETED').length || 0;
     if (p0Count > 3) {
       recs.push('Multiple critical projects in flight — consider priority triage');
     }
@@ -304,7 +304,7 @@ const SmartNotificationsPage: React.FC = () => {
         (today.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24) > 90
     ).length || 0;
     const capacityDeficitMonths = capacityData ? capacityData.filter((d: any) => d.gap !== undefined && d.gap < 0).length : 0;
-    const p0Active = projects?.filter((p: ProjectResponse) => p.priority === 'P0' && p.status !== 'COMPLETED').length || 0;
+    const p0Active = projects?.filter((p: ProjectResponse) => (p.priority === 'HIGHEST' || p.priority === 'BLOCKER') && p.status !== 'COMPLETED').length || 0;
 
     return { overdueCount, staleCount, capacityDeficitMonths, p0Active };
   }, [projects, capacityData, today]);
@@ -630,7 +630,7 @@ const SmartNotificationsPage: React.FC = () => {
                     {projects
                       ?.filter(
                         (p) =>
-                          (p.priority === 'P0' || p.priority === 'P1') &&
+                          (p.priority === 'HIGHEST' || p.priority === 'HIGH' || p.priority === 'BLOCKER') &&
                           p.status === 'ACTIVE'
                       )
                       .slice(0, 10)
@@ -642,7 +642,7 @@ const SmartNotificationsPage: React.FC = () => {
                           <Table.Td>
                             <Badge
                               size="sm"
-                              color={project.priority === 'P0' ? 'red' : 'orange'}
+                              color={project.priority === 'HIGHEST' || project.priority === 'BLOCKER' ? 'red' : 'orange'}
                               variant="light"
                             >
                               {project.priority}

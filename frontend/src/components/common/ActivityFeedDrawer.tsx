@@ -159,6 +159,9 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
       position="right"
       size="md"
       padding="lg"
+      zIndex={300}
+      lockScroll={false}
+      withCloseButton
       title={
         <Group gap="xs" justify="space-between" style={{ width: '100%' }}>
           <Group gap="xs">

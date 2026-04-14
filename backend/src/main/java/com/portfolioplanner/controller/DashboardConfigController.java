@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for managing named dashboard configurations.
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/dashboards")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DashboardConfigController {
 
     private final DashboardConfigRepository repo;

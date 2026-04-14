@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * DORA Metrics Controller.
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/reports/dora")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DoraMetricsController {
 
     private final ReleaseCalendarRepository releaseRepo;

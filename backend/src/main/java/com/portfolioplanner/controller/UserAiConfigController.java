@@ -5,6 +5,7 @@ import com.portfolioplanner.domain.repository.UserAiConfigRepository;
 import com.portfolioplanner.service.UserAiKeyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/user/ai-config")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class UserAiConfigController {
 
     private final UserAiConfigRepository repo;

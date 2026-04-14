@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Stack, Title, Text, Button, Group, Box } from '@mantine/core';
 import { IconHome, IconArrowLeft } from '@tabler/icons-react';
-import { AQUA, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { AQUA, AQUA_HEX, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY } from '../brandTokens';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ export default function NotFoundPage() {
           </Button>
           <Button
             leftSection={<IconHome size={15} />}
-            style={{ backgroundColor: AQUA, color: DEEP_BLUE, fontWeight: 600 }}
+            variant="filled" style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
             onClick={() => navigate('/')}
           >
             Dashboard

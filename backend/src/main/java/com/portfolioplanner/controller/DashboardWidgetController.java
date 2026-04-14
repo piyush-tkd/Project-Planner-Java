@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for per-user custom dashboard layouts.
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/dashboard-widgets")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class DashboardWidgetController {
 
     private final DashboardWidgetRepository repo;

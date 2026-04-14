@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Jira Analytics dashboard — aggregated data across all enabled PODs,
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/jira/analytics")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class JiraAnalyticsController {
 
     private final JiraAnalyticsService analyticsService;

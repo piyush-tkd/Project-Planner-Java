@@ -31,6 +31,8 @@ public record ProjectResponse(
         Long jiraBoardId,
         OffsetDateTime jiraLastSyncedAt,
         boolean jiraSyncError,
+        /** Raw Jira statusCategory.key: "new" / "indeterminate" / "done". Null for non-Jira projects. */
+        String jiraStatusCategory,
         boolean archived,
         // ── Budget tracking ───────────────────────────────────────────────────
         BigDecimal estimatedBudget,

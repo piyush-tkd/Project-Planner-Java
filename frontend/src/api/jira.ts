@@ -407,6 +407,46 @@ export function useJiraAllProjectsSimple() {
   });
 }
 
+// ── Initiatives (Jira Advanced Roadmaps / Plans top-level items) ──────
+
+export interface JiraInitiative {
+  key: string;
+  name: string;
+  status: string;
+  statusCategory?: string;
+  priority?: string;
+  startDate: string | null;
+  dueDate: string | null;
+  assignee: string;
+  issueType: string;
+  error?: string;
+}
+
+const DEFAULT_INITIATIVE_JQL = 'issuetype = "Initiative" ORDER BY created DESC';
+
+export { DEFAULT_INITIATIVE_JQL };
+
+/**
+ * Fetches Jira issues matching the given JQL.
+ * Used by the "Import from Jira Roadmap" modal — callers supply the full
+ * JQL so any issue type (Initiative, Epic, custom) can be targeted.
+ *
+ * Pass `enabled: false` to suppress the query until the user clicks Search.
+ */
+export function useJiraInitiatives(jql: string, enabled = true) {
+  return useQuery<JiraInitiative[]>({
+    queryKey: ['jira', 'initiatives', jql],
+    queryFn: () =>
+      apiClient
+        .get('/jira/initiatives', { params: { jql } })
+        .then(r => r.data),
+    enabled,
+    staleTime: 0,          // always re-fetch when JQL changes
+    gcTime: 0,
+    retry: false,
+  });
+}
+
 // ── Release tracking types ─────────────────────────────────────────────
 
 export interface IssueRow {

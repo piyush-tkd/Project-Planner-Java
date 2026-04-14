@@ -36,6 +36,28 @@ export function formatResourceName(name: string): string {
     .replace(/DEVELOPER/g, 'Developer');
 }
 
+/** Normalise a project's status to a PP enum key (ACTIVE, COMPLETED, etc.)
+ *  handling both PP-native projects and Jira-synced ones that carry a raw Jira
+ *  status string + jiraStatusCategory instead of a PP enum value.           */
+export function normaliseProjectStatus(
+  status: string | undefined | null,
+  jiraStatusCategory: string | undefined | null,
+  sourceType: string | undefined | null,
+): string {
+  const isJira = sourceType === 'JIRA_SYNCED' || sourceType === 'PUSHED_TO_JIRA';
+  if (!isJira) return status?.toUpperCase() ?? 'UNKNOWN';
+
+  const raw = (status ?? '').toUpperCase();
+
+  if (jiraStatusCategory === 'indeterminate' || /ACTIVE|IN.PROGRESS|IN.DEV|DEVELOPMENT|TESTING|REVIEW|ONGOING|IMPLEMENTATION|WIP|STARTED|PROGRES/.test(raw)) return 'ACTIVE';
+  if (jiraStatusCategory === 'done'          || /DONE|COMPLET|CLOSED|RELEASED|SHIPPED|RESOLVED|FINISH/.test(raw)) return 'COMPLETED';
+  if (jiraStatusCategory === 'new'           || /NOT.START|NEW|BACKLOG|OPEN|TODO|TO.DO|FUNNEL|DRAFT/.test(raw))  return 'NOT_STARTED';
+  if (/HOLD|PAUSED|BLOCKED|DEFERRED|PARKED|SUSPEND|WAIT/.test(raw)) return 'ON_HOLD';
+  if (/CANCEL|REJECT|ABANDON|SCRAP/.test(raw)) return 'CANCELLED';
+  if (/DISCOVERY|PLANNING|SCOPING|INCEPTION|ASSESS/.test(raw)) return 'IN_DISCOVERY';
+  return status?.toUpperCase() ?? 'UNKNOWN';
+}
+
 /** Format a project date for display, falling back to month label if no date.
  * Returns "TBD" when both isoDate and monthIndex are absent. */
 export function formatProjectDate(

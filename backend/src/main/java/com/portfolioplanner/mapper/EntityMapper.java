@@ -15,8 +15,18 @@ import java.util.List;
 public interface EntityMapper {
 
     // Resource mappings
+    @Mapping(target = "id",             ignore = true)
+    @Mapping(target = "avatarUrl",      ignore = true)
+    @Mapping(target = "actualRate",     ignore = true)
+    @Mapping(target = "createdAt",      ignore = true)
+    @Mapping(target = "updatedAt",      ignore = true)
     Resource toEntity(ResourceRequest request);
 
+    @Mapping(target = "id",             ignore = true)
+    @Mapping(target = "avatarUrl",      ignore = true)
+    @Mapping(target = "actualRate",     ignore = true)
+    @Mapping(target = "createdAt",      ignore = true)
+    @Mapping(target = "updatedAt",      ignore = true)
     void updateEntity(ResourceRequest request, @MappingTarget Resource entity);
 
     default ResourceResponse toResourceResponse(Resource resource, ResourcePodAssignment assignment) {
@@ -50,22 +60,36 @@ public interface EntityMapper {
     List<PodResponse> toPodResponseList(List<Pod> pods);
 
     // Project mappings
-    @Mapping(target = "blockedBy",        ignore = true)
-    @Mapping(target = "sourceType",       ignore = true)
-    @Mapping(target = "jiraEpicKey",      ignore = true)
-    @Mapping(target = "jiraBoardId",      ignore = true)
-    @Mapping(target = "jiraLastSyncedAt", ignore = true)
-    @Mapping(target = "jiraSyncError",    ignore = true)
-    @Mapping(target = "archived",         ignore = true)
+    @Mapping(target = "blockedBy",              ignore = true)
+    @Mapping(target = "sourceType",             ignore = true)
+    @Mapping(target = "jiraEpicKey",            ignore = true)
+    @Mapping(target = "jiraBoardId",            ignore = true)
+    @Mapping(target = "jiraLastSyncedAt",       ignore = true)
+    @Mapping(target = "jiraSyncError",          ignore = true)
+    @Mapping(target = "jiraStatusCategory",     ignore = true)
+    @Mapping(target = "archived",               ignore = true)
+    @Mapping(target = "e2eStartDate",           ignore = true)
+    @Mapping(target = "e2eEndDate",             ignore = true)
+    @Mapping(target = "codeFreezeDateMilestone",ignore = true)
+    @Mapping(target = "releaseDateMilestone",   ignore = true)
+    @Mapping(target = "createdAt",              ignore = true)
+    @Mapping(target = "updatedAt",              ignore = true)
     Project toEntity(ProjectRequest request);
 
-    @Mapping(target = "blockedBy",        ignore = true)
-    @Mapping(target = "sourceType",       ignore = true)
-    @Mapping(target = "jiraEpicKey",      ignore = true)
-    @Mapping(target = "jiraBoardId",      ignore = true)
-    @Mapping(target = "jiraLastSyncedAt", ignore = true)
-    @Mapping(target = "jiraSyncError",    ignore = true)
-    @Mapping(target = "archived",         ignore = true)
+    @Mapping(target = "blockedBy",              ignore = true)
+    @Mapping(target = "sourceType",             ignore = true)
+    @Mapping(target = "jiraEpicKey",            ignore = true)
+    @Mapping(target = "jiraBoardId",            ignore = true)
+    @Mapping(target = "jiraLastSyncedAt",       ignore = true)
+    @Mapping(target = "jiraSyncError",          ignore = true)
+    @Mapping(target = "jiraStatusCategory",     ignore = true)
+    @Mapping(target = "archived",               ignore = true)
+    @Mapping(target = "e2eStartDate",           ignore = true)
+    @Mapping(target = "e2eEndDate",             ignore = true)
+    @Mapping(target = "codeFreezeDateMilestone",ignore = true)
+    @Mapping(target = "releaseDateMilestone",   ignore = true)
+    @Mapping(target = "createdAt",              ignore = true)
+    @Mapping(target = "updatedAt",              ignore = true)
     void updateEntity(ProjectRequest request, @MappingTarget Project entity);
 
     default ProjectResponse toProjectResponse(Project project) {
@@ -92,6 +116,7 @@ public interface EntityMapper {
                 project.getJiraBoardId(),
                 project.getJiraLastSyncedAt(),
                 project.isJiraSyncError(),
+                project.getJiraStatusCategory(),
                 project.isArchived(),
                 project.getEstimatedBudget(),
                 project.getActualCost()

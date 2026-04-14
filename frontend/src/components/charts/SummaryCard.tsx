@@ -17,10 +17,12 @@ interface SummaryCardProps {
   sparkData?: number[];
   /** Trend indicator: positive or negative percentage change */
   trend?: string;
+  /** Override the label shown when active (default: '✓ Filtered'). Pass null to suppress. */
+  filterLabel?: string | null;
 }
 
 export default function SummaryCard({
-  title, value, icon, color, onClick, active, sparkData, trend,
+  title, value, icon, color, onClick, active, sparkData, trend, filterLabel,
 }: SummaryCardProps) {
   const clickable = !!onClick;
   const trendColor = trend?.startsWith('+') ? COLOR_GREEN_LIGHT : COLOR_ERROR;
@@ -142,7 +144,7 @@ export default function SummaryCard({
           </div>
         )}
       </Group>
-      {clickable && (
+      {clickable && filterLabel !== null && (
         <Text
           size="xs"
           mt={8}
@@ -156,7 +158,7 @@ export default function SummaryCard({
             transition: 'color 0.2s',
           }}
         >
-          {active ? '✓ Filtered' : 'Click to filter'}
+          {active ? (filterLabel ?? '✓ Filtered') : 'Click to filter'}
         </Text>
       )}
     </Card>

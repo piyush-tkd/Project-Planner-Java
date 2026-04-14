@@ -96,6 +96,14 @@ public class Project {
     @Column(name = "jira_sync_error", nullable = false)
     private boolean jiraSyncError = false;
 
+    /**
+     * Raw Jira statusCategory.key for JIRA_SYNCED projects: "new", "indeterminate", or "done".
+     * Used for business logic (summary cards, grouping) without re-mapping the raw status name.
+     * NULL for MANUAL and PUSHED_TO_JIRA projects.
+     */
+    @Column(name = "jira_status_category", length = 20)
+    private String jiraStatusCategory;
+
     /** Soft-delete flag. Archived projects are hidden from normal views. */
     @Column(name = "archived", nullable = false)
     private boolean archived = false;

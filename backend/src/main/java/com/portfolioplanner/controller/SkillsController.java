@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Skills taxonomy management — categories and skill definitions.
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/skills")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class SkillsController {
 
     private final SkillCategoryRepository categoryRepository;

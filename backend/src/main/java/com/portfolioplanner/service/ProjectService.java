@@ -79,13 +79,36 @@ public class ProjectService {
     @Transactional
     @CacheEvict(value = "calculations", allEntries = true)
     public ProjectResponse create(ProjectRequest request) {
+        // For JIRA_SYNCED projects: deduplicate by jiraEpicKey first, then by name
+        if (request.jiraEpicKey() != null && !request.jiraEpicKey().isBlank()) {
+            projectRepository.findByJiraEpicKey(request.jiraEpicKey()).ifPresent(existing -> {
+                throw new DuplicateNameException("A project linked to Jira key " + request.jiraEpicKey() + " already exists: " + existing.getName());
+            });
+        }
         // Check for duplicate name
         if (projectRepository.findByNameIgnoreCase(request.name()).isPresent()) {
             throw new DuplicateNameException("A project with this name already exists");
         }
 
         Project project = mapper.toEntity(request);
-        if (project.getStatus() == null) project.setStatus("ACTIVE");
+        if (project.getStatus() == null) project.setStatus("NOT_STARTED");
+
+        // Apply source type from request (defaults to MANUAL via entity default)
+        if (request.sourceType() != null && !request.sourceType().isBlank()) {
+            try {
+                project.setSourceType(com.portfolioplanner.domain.model.enums.SourceType.valueOf(request.sourceType().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
+                // unknown value → keep default MANUAL
+            }
+        }
+        // Apply jiraEpicKey from request
+        if (request.jiraEpicKey() != null && !request.jiraEpicKey().isBlank()) {
+            project.setJiraEpicKey(request.jiraEpicKey());
+            if (project.getSourceType() == com.portfolioplanner.domain.model.enums.SourceType.MANUAL) {
+                project.setSourceType(com.portfolioplanner.domain.model.enums.SourceType.JIRA_SYNCED);
+            }
+        }
+
         if (request.blockedById() != null) {
             Project blockedBy = projectRepository.findById(request.blockedById())
                     .orElseThrow(() -> new ResourceNotFoundException("Project", request.blockedById()));

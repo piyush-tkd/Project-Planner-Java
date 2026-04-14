@@ -5,6 +5,7 @@ import com.portfolioplanner.domain.repository.ProjectTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/project-templates")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectTemplateController {
 
     private final ProjectTemplateRepository repo;

@@ -334,10 +334,10 @@ export default function EngineeringProductivityPage() {
  >
  {priorityPieData.map((entry, i) => (
  <Cell key={i} fill={
- entry.name === 'P0' ? COLOR_ERROR_LIGHT :
- entry.name === 'P1' ? COLOR_AMBER :
- entry.name === 'P2' ? COLOR_BLUE_LIGHT :
- entry.name === 'P3' ? TEXT_DIM :
+ entry.name === 'HIGHEST' || entry.name === 'BLOCKER' ? COLOR_ERROR_LIGHT :
+ entry.name === 'HIGH' ? COLOR_AMBER :
+ entry.name === 'MEDIUM' ? COLOR_BLUE_LIGHT :
+ entry.name === 'LOW' || entry.name === 'LOWEST' ? TEXT_DIM :
  PIE_COLORS[i % PIE_COLORS.length]
  } />
  ))}

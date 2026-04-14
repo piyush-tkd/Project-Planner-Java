@@ -11,16 +11,16 @@ import { PPSkeleton } from './PPSkeleton';
 import styles from './PPChart.module.css';
 import { AQUA, SIDEBAR_INACTIVE } from '../../brandTokens';
 
-/** PP chart colour palette — optimised for dark backgrounds */
+/** PP chart colour palette — Slate design system (v29.0), optimised for both light and dark */
 export const PP_CHART_COLORS = [
-  AQUA, // accent teal
-  '#7C4DFF', // violet
-  '#FF8F00', // amber
-  '#2E7D32', // green
-  '#1565C0', // blue
-  '#D32F2F', // red
-  '#FF6D00', // orange
-  SIDEBAR_INACTIVE, // gray
+  '#2DCCD3',  // Aqua         — brand primary
+  '#38BDF8',  // Sky-400      — Slate blue
+  '#6366F1',  // Indigo-500   — Slate accent
+  '#22C55E',  // Green-500    — positive / success
+  '#F59E0B',  // Amber-500    — warning / budget
+  '#EC4899',  // Pink-500     — sixth series
+  '#8B5CF6',  // Violet-500   — seventh series
+  '#F43F5E',  // Rose-500     — alerts / risk
 ] as const;
 
 export interface PPChartProps {

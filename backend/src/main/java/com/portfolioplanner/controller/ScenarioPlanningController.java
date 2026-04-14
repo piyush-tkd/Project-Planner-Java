@@ -4,12 +4,14 @@ import com.portfolioplanner.domain.model.*;
 import com.portfolioplanner.domain.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/scenarios")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
 public class ScenarioPlanningController {
     private final ScenarioRepository scenarioRepository;
     private final ScenarioChangeRepository changeRepository;
