@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+import java.time.Instant;
 
 /**
  * Many-to-many join between sprints and issues.
@@ -24,6 +25,15 @@ public class JiraSprintIssue {
 
     @Column(name = "issue_key", nullable = false)
     private String issueKey;
+
+    /** When this issue was first observed in this sprint by the sync service. */
+    @Column(name = "added_at", nullable = false, updatable = false)
+    private Instant addedAt;
+
+    @PrePersist
+    void prePersist() {
+        if (addedAt == null) addedAt = Instant.now();
+    }
 
     public JiraSprintIssue(Long sprintJiraId, String issueKey) {
         this.sprintJiraId = sprintJiraId;

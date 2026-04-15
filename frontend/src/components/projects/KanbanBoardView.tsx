@@ -12,6 +12,35 @@ import { AQUA, BORDER_STRONG, COLOR_BLUE, COLOR_BLUE_DARK, COLOR_BLUE_STRONG, CO
 const CUSTOM_LANES_KEY = 'pp_kanban_custom_lanes';
 const HIDDEN_LANES_KEY = 'pp_kanban_hidden_lanes';
 
+/**
+ * Maps any status string (PP-native or Jira-synced) to a canonical board column key.
+ * Jira projects use human-readable statuses like "In Progress", "Backlog", "Done".
+ * PP-native projects use enum values like "ACTIVE", "NOT_STARTED", "COMPLETED".
+ */
+function normaliseKanbanStatus(status: string | undefined | null): string {
+  const s = (status || 'NOT_STARTED').toUpperCase().replace(/[\s-]+/g, '_');
+
+  if (['ACTIVE', 'IN_PROGRESS', 'IN_FLIGHT', 'IN_DEVELOPMENT',
+       'IN_REVIEW', 'EXECUTING', 'TESTING', 'OPEN'].includes(s)) return 'ACTIVE';
+
+  if (['NOT_STARTED', 'BACKLOG', 'TO_DO', 'TODO', 'PLANNED',
+       'NEW', 'READY', 'PENDING', 'SELECTED_FOR_DEVELOPMENT'].includes(s)) return 'NOT_STARTED';
+
+  if (['COMPLETED', 'DONE', 'CLOSED', 'RESOLVED',
+       'DELIVERED', 'RELEASED', 'FINISHED'].includes(s)) return 'COMPLETED';
+
+  if (['IN_DISCOVERY', 'DISCOVERY', 'ANALYSIS',
+       'PLANNING', 'REQUIREMENTS', 'DESIGN'].includes(s)) return 'IN_DISCOVERY';
+
+  if (['ON_HOLD', 'ON_HOLD', 'PAUSED', 'BLOCKED',
+       'PARKED', 'DEFERRED', 'WAITING'].includes(s)) return 'ON_HOLD';
+
+  if (['CANCELLED', 'CANCELED', 'ABANDONED',
+       'REJECTED', 'WONT_DO', 'WONT_FIX'].includes(s)) return 'CANCELLED';
+
+  return s; // unmapped status becomes its own column
+}
+
 interface Project {
   id: number;
   name: string;
@@ -267,7 +296,7 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
     const visibleDefaults = DEFAULT_COLUMNS.filter(c => !hiddenDefaultLanes.has(c.key));
     const knownKeys = new Set([...DEFAULT_COLUMNS.map(c => c.key), ...customLanes.map(c => c.key)]);
     const extraStatuses = projects
-      .map(p => (p.status || 'NOT_STARTED').toUpperCase())
+      .map(p => normaliseKanbanStatus(p.status))
       .filter(s => !knownKeys.has(s) && !hiddenDefaultLanes.has(s));
     const uniqueExtra = [...new Set(extraStatuses)];
 
@@ -283,8 +312,8 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
   const columns = useMemo(() => {
     return allColumns.map(col => {
       const rawItems = projects.filter(p => {
-        const s = optimisticStatus[p.id] ?? (p.status || 'NOT_STARTED');
-        return s.toUpperCase() === col.key;
+        const s = optimisticStatus[p.id] ?? p.status;
+        return normaliseKanbanStatus(s) === col.key;
       });
       // Apply within-column order override if present
       const order = columnOrders[col.key];

@@ -50,7 +50,8 @@ public class SprintBacklogController {
         String fixVersionName,      // first fix version (may be null)
         Boolean subtask,
         String parentKey,
-        List<IssueRow> subtasks   // nested subtask rows; empty for subtasks themselves
+        List<IssueRow> subtasks,    // nested subtask rows; empty for subtasks themselves
+        String createdAt            // ISO date — Jira issue creation date (scope creep detection)
     ) {}
 
     public record SprintGroup(
@@ -96,9 +97,18 @@ public class SprintBacklogController {
         return ResponseEntity.ok(result);
     }
 
-    /** Full backlog for one POD: active & future sprints with issues + backlog bucket */
+    /**
+     * Full backlog for one POD.
+     * @param view  active (default) | future | closed | all
+     *              active  = currently running sprints only
+     *              future  = active + upcoming sprints
+     *              closed  = recently completed sprints (last 90 days)
+     *              all     = active + future + closed
+     */
     @GetMapping("/{podId}")
-    public ResponseEntity<BacklogResponse> getBacklog(@PathVariable Long podId) {
+    public ResponseEntity<BacklogResponse> getBacklog(
+            @PathVariable Long podId,
+            @RequestParam(defaultValue = "future") String view) {
         JiraPod pod = podRepo.findById(podId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "POD not found"));
 
@@ -112,25 +122,35 @@ public class SprintBacklogController {
                 new BacklogGroup(0, List.of()), null));
         }
 
-        // ── Active and future sprints ──────────────────────────────────────────
+        // ── Sprint selection based on view param ──────────────────────────────
         List<JiraSyncedSprint> activeSprints = sprintRepo.findByProjectKeyInAndState(keys, "active");
         List<JiraSyncedSprint> futureSprints = sprintRepo.findByProjectKeyInAndState(keys, "future");
+        List<JiraSyncedSprint> closedSprints = new ArrayList<>();
 
-        // Safety guard: if a sprint is still marked "active" but its end date is more than
-        // 30 days in the past, its state is almost certainly stale in our DB (the Jira board
-        // that owns it may not be returned by getBoards for this project key, so the state
-        // never gets updated to "closed").  Hide these from the sprint backlog view so users
-        // don't see old, completed sprints with historical issues mixed into the active view.
-        LocalDateTime staleCutoff = LocalDateTime.now().minusDays(30);
+        // Tighten staleness guard to 7 days (only truly recent stale-active sprints shown)
+        LocalDateTime staleCutoff = LocalDateTime.now().minusDays(7);
         activeSprints = activeSprints.stream()
             .filter(s -> s.getEndDate() == null || s.getEndDate().isAfter(staleCutoff))
             .collect(Collectors.toList());
 
-        // Combine: active first, then future ordered by start date
+        if ("closed".equals(view) || "all".equals(view)) {
+            LocalDateTime closedCutoff = LocalDateTime.now().minusDays(90);
+            closedSprints = sprintRepo.findByProjectKeyInAndState(keys, "closed").stream()
+                .filter(s -> s.getEndDate() == null || s.getEndDate().isAfter(closedCutoff))
+                .sorted(Comparator.comparing(
+                    (JiraSyncedSprint s) -> s.getEndDate() != null ? s.getEndDate() : LocalDateTime.MIN)
+                    .reversed())
+                .collect(Collectors.toList());
+        }
+
+        // Combine based on view: active first, then future, then closed (most recent first)
         futureSprints.sort(Comparator.comparing(
             s -> s.getStartDate() != null ? s.getStartDate() : LocalDateTime.MAX));
-        List<JiraSyncedSprint> allSprints = new ArrayList<>(activeSprints);
-        allSprints.addAll(futureSprints);
+
+        List<JiraSyncedSprint> allSprints = new ArrayList<>();
+        if (!"closed".equals(view))           allSprints.addAll(activeSprints);
+        if ("future".equals(view) || "all".equals(view)) allSprints.addAll(futureSprints);
+        if ("closed".equals(view) || "all".equals(view)) allSprints.addAll(closedSprints);
 
         // Collect sprint IDs
         List<Long> sprintIds = allSprints.stream()
@@ -255,21 +275,13 @@ public class SprintBacklogController {
     /** Basic row — no subtasks attached (used for subtask entries themselves). */
     private IssueRow toRow(JiraSyncedIssue i, Map<String, String> fvByKey) {
         return new IssueRow(
-            i.getIssueKey(),
-            i.getSummary(),
-            i.getIssueType(),
-            i.getStatusName(),
-            i.getStatusCategory(),
-            i.getPriorityName(),
-            i.getAssigneeDisplayName(),
-            i.getAssigneeAvatarUrl(),
-            i.getStoryPoints(),
-            i.getEpicName(),
-            i.getEpicKey(),
+            i.getIssueKey(), i.getSummary(), i.getIssueType(),
+            i.getStatusName(), i.getStatusCategory(), i.getPriorityName(),
+            i.getAssigneeDisplayName(), i.getAssigneeAvatarUrl(),
+            i.getStoryPoints(), i.getEpicName(), i.getEpicKey(),
             fvByKey.get(i.getIssueKey()),
-            i.getSubtask(),
-            i.getParentKey(),
-            List.of()
+            i.getSubtask(), i.getParentKey(), List.of(),
+            i.getCreatedAt() != null ? i.getCreatedAt().toLocalDate().toString() : null
         );
     }
 
@@ -277,21 +289,14 @@ public class SprintBacklogController {
     private IssueRow toRowWithSubtasks(JiraSyncedIssue i, Map<String, List<IssueRow>> subtasksByParent,
                                         Map<String, String> fvByKey) {
         return new IssueRow(
-            i.getIssueKey(),
-            i.getSummary(),
-            i.getIssueType(),
-            i.getStatusName(),
-            i.getStatusCategory(),
-            i.getPriorityName(),
-            i.getAssigneeDisplayName(),
-            i.getAssigneeAvatarUrl(),
-            i.getStoryPoints(),
-            i.getEpicName(),
-            i.getEpicKey(),
+            i.getIssueKey(), i.getSummary(), i.getIssueType(),
+            i.getStatusName(), i.getStatusCategory(), i.getPriorityName(),
+            i.getAssigneeDisplayName(), i.getAssigneeAvatarUrl(),
+            i.getStoryPoints(), i.getEpicName(), i.getEpicKey(),
             fvByKey.get(i.getIssueKey()),
-            i.getSubtask(),
-            i.getParentKey(),
-            subtasksByParent.getOrDefault(i.getIssueKey(), List.of())
+            i.getSubtask(), i.getParentKey(),
+            subtasksByParent.getOrDefault(i.getIssueKey(), List.of()),
+            i.getCreatedAt() != null ? i.getCreatedAt().toLocalDate().toString() : null
         );
     }
 

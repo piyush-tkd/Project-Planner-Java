@@ -320,7 +320,7 @@ public class CalculationEngine {
 
         int totalResources = resources.size();
         int activeProjects = (int) projects.stream()
-                .filter(p -> "ACTIVE".equalsIgnoreCase(p.getStatus())).count();
+                .filter(p -> isActiveProjectStatus(p.getStatus())).count();
         int totalPods = pods.size();
 
         // Overall utilization: weighted average by capacity hours (demand / capacity * 100)
@@ -425,5 +425,27 @@ public class CalculationEngine {
         }
 
         return summary;
+    }
+
+    /**
+     * Returns true for any status that represents an in-flight / active project,
+     * handling both PP-native enum values and Jira-synced human-readable strings.
+     */
+    private static boolean isActiveProjectStatus(String status) {
+        if (status == null) return false;
+        String norm = status.toUpperCase().replace(" ", "_").replace("-", "_");
+        return norm.equals("ACTIVE")
+                || norm.equals("IN_PROGRESS")
+                || norm.equals("IN_DISCOVERY")
+                || norm.equals("NOT_STARTED")
+                || norm.equals("TO_DO")
+                || norm.equals("BACKLOG")
+                || norm.equals("OPEN")
+                || norm.equals("IN_DEVELOPMENT")
+                || norm.equals("IN_REVIEW")
+                || norm.equals("TESTING")
+                || norm.equals("SELECTED_FOR_DEVELOPMENT")
+                || norm.equals("IN_FLIGHT")
+                || norm.equals("PLANNING");
     }
 }

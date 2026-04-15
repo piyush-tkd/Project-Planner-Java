@@ -32,16 +32,49 @@ public class ExecSummaryController {
     private final SprintRetroRepository          retroRepository;
     private final CalculationEngine              calculationEngine;
 
-    // ── Active statuses considered "in-flight" ────────────────────────────────
+    // ── Active statuses considered "in-flight" (PP-native + Jira-synced variants)
     private static final Set<String> ACTIVE_STATUSES = Set.of(
-            "ACTIVE", "IN_PROGRESS", "IN_DISCOVERY", "NOT_STARTED"
+            "ACTIVE", "IN_PROGRESS", "IN_DISCOVERY", "NOT_STARTED",
+            // Jira-synced human-readable statuses
+            "In Progress", "In Discovery", "To Do", "Backlog", "Open",
+            "In Development", "In Review", "Testing", "Selected for Development"
     );
     private static final Set<String> COMPLETED_STATUSES = Set.of(
-            "COMPLETED", "DONE", "CLOSED"
+            "COMPLETED", "DONE", "CLOSED",
+            // Jira-synced
+            "Done", "Closed", "Resolved", "Released", "Delivered"
     );
     private static final Set<String> AT_RISK_STATUSES = Set.of(
-            "BLOCKED", "AT_RISK", "ON_HOLD"
+            "BLOCKED", "AT_RISK", "ON_HOLD",
+            // Jira-synced
+            "On Hold", "Blocked", "Impediment", "Deferred"
     );
+
+    /** Normalise status for set lookups — handles case + underscore/space variants. */
+    private boolean isActiveStatus(String status) {
+        if (status == null) return false;
+        if (ACTIVE_STATUSES.contains(status)) return true;
+        String upper = status.toUpperCase().replace(" ", "_").replace("-", "_");
+        return upper.equals("ACTIVE") || upper.equals("IN_PROGRESS") || upper.equals("IN_DISCOVERY")
+                || upper.equals("NOT_STARTED") || upper.equals("TO_DO") || upper.equals("BACKLOG")
+                || upper.equals("OPEN") || upper.equals("IN_DEVELOPMENT") || upper.equals("IN_REVIEW");
+    }
+
+    private boolean isCompletedStatus(String status) {
+        if (status == null) return false;
+        if (COMPLETED_STATUSES.contains(status)) return true;
+        String upper = status.toUpperCase().replace(" ", "_").replace("-", "_");
+        return upper.equals("COMPLETED") || upper.equals("DONE") || upper.equals("CLOSED")
+                || upper.equals("RESOLVED") || upper.equals("RELEASED") || upper.equals("DELIVERED");
+    }
+
+    private boolean isAtRiskStatus(String status) {
+        if (status == null) return false;
+        if (AT_RISK_STATUSES.contains(status)) return true;
+        String upper = status.toUpperCase().replace(" ", "_").replace("-", "_");
+        return upper.equals("BLOCKED") || upper.equals("AT_RISK") || upper.equals("ON_HOLD")
+                || upper.equals("IMPEDIMENT") || upper.equals("DEFERRED");
+    }
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getExecDashboard() {
@@ -49,9 +82,9 @@ public class ExecSummaryController {
         // ── 1. Portfolio ──────────────────────────────────────────────────────
         List<Project> allProjects = projectRepository.findAll();
         long totalProjects    = allProjects.size();
-        long activeProjects   = allProjects.stream().filter(p -> ACTIVE_STATUSES.contains(p.getStatus())).count();
-        long completedProjects= allProjects.stream().filter(p -> COMPLETED_STATUSES.contains(p.getStatus())).count();
-        long atRiskProjects   = allProjects.stream().filter(p -> AT_RISK_STATUSES.contains(p.getStatus())).count();
+        long activeProjects   = allProjects.stream().filter(p -> isActiveStatus(p.getStatus())).count();
+        long completedProjects= allProjects.stream().filter(p -> isCompletedStatus(p.getStatus())).count();
+        long atRiskProjects   = allProjects.stream().filter(p -> isAtRiskStatus(p.getStatus())).count();
         double onTrackPct     = totalProjects == 0 ? 0.0
                 : round((double)(activeProjects - atRiskProjects) / totalProjects * 100, 1);
         double atRiskPct      = totalProjects == 0 ? 0.0

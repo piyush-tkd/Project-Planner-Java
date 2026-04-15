@@ -31,6 +31,7 @@ const BudgetPage                    = lazy(() => import('./pages/reports/BudgetP
 const CapacityDemandPage            = lazy(() => import('./pages/reports/CapacityDemandPage'));
 const CapacityForecastPage          = lazy(() => import('./pages/reports/CapacityForecastPage'));
 const SprintRetroPage               = lazy(() => import('./pages/reports/SprintRetroPage'));
+const SprintQualityPage             = lazy(() => import('./pages/reports/SprintQualityPage'));
 const ResourceSkillsMatrixPage      = lazy(() => import('./pages/reports/ResourceSkillsMatrixPage'));
 const RiskHeatmapPage               = lazy(() => import('./pages/reports/RiskHeatmapPage'));
 const ExecSummaryPage               = lazy(() => import('./pages/reports/ExecSummaryPage'));
@@ -74,6 +75,7 @@ const NlpHistoryPage                = lazy(() => import('./pages/NlpHistoryPage'
 const NlpSettingsPage               = lazy(() => import('./pages/settings/NlpSettingsPage'));
 const NlpOptimizerPage              = lazy(() => import('./pages/settings/NlpOptimizerPage'));
 const UserAiSettingsPage            = lazy(() => import('./pages/settings/UserAiSettingsPage'));
+const QualityConfigPage             = lazy(() => import('./pages/settings/QualityConfigPage'));
 const FeedbackHubPage               = lazy(() => import('./pages/settings/FeedbackHubPage'));
 const ErrorLogPage                  = lazy(() => import('./pages/settings/ErrorLogPage'));
 const DoraMetricsPage               = lazy(() => import('./pages/reports/DoraMetricsPage'));
@@ -81,7 +83,10 @@ const JiraAnalyticsPage             = lazy(() => import('./pages/reports/JiraAna
 const JiraDashboardBuilderPage      = lazy(() => import('./pages/reports/JiraDashboardBuilderPage'));
 const EngineeringProductivityPage   = lazy(() => import('./pages/reports/EngineeringProductivityPage'));
 const EngineeringIntelligencePage   = lazy(() => import('./pages/reports/EngineeringIntelligencePage'));
+const EngineeringAnalyticsPage      = lazy(() => import('./pages/reports/EngineeringAnalyticsPage'));
+const PowerDashboardPage            = lazy(() => import('./pages/reports/PowerDashboardPage'));
 const SidebarOrderPage              = lazy(() => import('./pages/settings/SidebarOrderPage'));
+const SitemapPage                   = lazy(() => import('./pages/settings/SitemapPage'));
 const HolidayCalendarPage           = lazy(() => import('./pages/settings/HolidayCalendarPage'));
 const LeaveManagementPage           = lazy(() => import('./pages/settings/LeaveManagementPage'));
 const JiraResourceMappingPage       = lazy(() => import('./pages/settings/JiraResourceMappingPage'));
@@ -275,6 +280,12 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="sprint_retro" />}>
             <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
           </Route>
+          <Route element={<ProtectedRoute pageKey="sprint_quality" />}>
+            <Route path="/reports/sprint-quality" element={<SprintQualityPage />} />
+          </Route>
+          <Route element={<ProtectedRoute pageKey="quality_config" />}>
+            <Route path="/settings/quality-config" element={<QualityConfigPage />} />
+          </Route>
 
           <Route element={<ProtectedRoute pageKey="sprint_backlog" />}>
             <Route path="/sprint-backlog" element={<SprintBacklogPage />} />
@@ -428,6 +439,14 @@ export default function App() {
           <Route element={<ProtectedRoute pageKey="engineering_intelligence" />}>
             <Route path="/reports/engineering-intelligence" element={<EngineeringIntelligencePage />} />
           </Route>
+
+          <Route element={<ProtectedRoute pageKey="engineering_analytics" />}>
+            <Route path="/reports/engineering-analytics" element={<EngineeringAnalyticsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute pageKey="power_dashboard" />}>
+            <Route path="/reports/power-dashboard" element={<PowerDashboardPage />} />
+          </Route>
           {/* Legacy redirects — keep old bookmarks working */}
           <Route path="/reports/engineering-productivity" element={<Navigate to="/reports/engineering-intelligence" replace />} />
 
@@ -568,6 +587,10 @@ export default function App() {
             <Route path="/settings/sidebar-order" element={<SidebarOrderPage />} />
           </Route>
 
+          <Route element={<ProtectedRoute pageKey="sitemap" />}>
+            <Route path="/settings/sitemap" element={<SitemapPage />} />
+          </Route>
+
           <Route element={<ProtectedRoute pageKey="org_settings" />}>
             <Route path="/settings/org" element={<OrgSettingsPage />} />
           </Route>
@@ -684,6 +707,43 @@ export default function App() {
           <Route path="/risks"                            element={<Navigate to="/risk-register" replace />} />
           <Route path="/risk"                             element={<Navigate to="/risk-register" replace />} />
           <Route path="/health"                           element={<Navigate to="/reports/portfolio-health" replace />} />
+
+          {/* ── v30.0 Nav redesign: redirects for removed sidebar items ──── */}
+          {/* Removed items remain accessible via hub tabs or these redirects */}
+          <Route path="/reports/dora"                     element={<Navigate to="/engineering/hub?tab=dora" replace />} />
+          <Route path="/reports/dora-metrics"             element={<Navigate to="/engineering/hub?tab=dora" replace />} />
+          <Route path="/reports/delivery-predictability"  element={<Navigate to="/engineering/hub?tab=predictability" replace />} />
+          <Route path="/reports/workload-chart"           element={<Navigate to="/people/capacity?tab=workload" replace />} />
+          <Route path="/reports/hiring-forecast"          element={<Navigate to="/demand-forecast?tab=hiring" replace />} />
+          <Route path="/supply-demand"                    element={<Navigate to="/demand-forecast?tab=supply-demand" replace />} />
+          <Route path="/resource-pools"                   element={<Navigate to="/demand-forecast?tab=pools" replace />} />
+          <Route path="/reports/gantt-dependencies"       element={<Navigate to="/reports/dependency-map?tab=gantt" replace />} />
+          <Route path="/advanced-timeline"                element={<Navigate to="/portfolio/timeline" replace />} />
+          <Route path="/team-calendar"                    element={<Navigate to="/calendar?tab=team" replace />} />
+          <Route path="/sprint-calendar"                  element={<Navigate to="/calendar?tab=sprint" replace />} />
+          <Route path="/reports/release-calendar"         element={<Navigate to="/delivery/releases?tab=calendar" replace />} />
+          <Route path="/project-templates"                element={<Navigate to="/settings/org?tab=templates" replace />} />
+          <Route path="/reports/jira-analytics"           element={<Navigate to="/delivery/jira?tab=analytics" replace />} />
+          <Route path="/reports/skills-matrix"            element={<Navigate to="/skills-matrix" replace />} />
+          <Route path="/overrides"                        element={<Navigate to="/people/resources?tab=overrides" replace />} />
+          <Route path="/reports/resource-intelligence"    element={<Navigate to="/people/performance?tab=intelligence" replace />} />
+          <Route path="/reports/project-pod-matrix"       element={<Navigate to="/portfolio/health?tab=matrix" replace />} />
+          <Route path="/reports/project-signals"          element={<Navigate to="/portfolio/health?tab=signals" replace />} />
+          <Route path="/reports/utilization"              element={<Navigate to="/people/capacity?tab=utilization" replace />} />
+          <Route path="/reports/capacity-demand"          element={<Navigate to="/demand-forecast" replace />} />
+          <Route path="/tools/scenarios"                  element={<Navigate to="/scenario-planning" replace />} />
+          <Route path="/custom-dashboard"                 element={<Navigate to="/" replace />} />
+          <Route path="/bulk-import"                      element={<Navigate to="/settings/org?tab=import" replace />} />
+          <Route path="/reports/pod-hours"                element={<Navigate to="/pods" replace />} />
+          <Route path="/nlp/history"                      element={<Navigate to="/nlp" replace />} />
+          {/* Additional orphan redirects from nav redesign audit */}
+          <Route path="/reports/jira-portfolio-sync"      element={<Navigate to="/delivery/jira?tab=sync" replace />} />
+          <Route path="/reports/status-updates"           element={<Navigate to="/delivery/jira?tab=status" replace />} />
+          <Route path="/reports/capacity-forecast"        element={<Navigate to="/demand-forecast" replace />} />
+          <Route path="/reports/pod-resources"            element={<Navigate to="/pods" replace />} />
+          <Route path="/jira-capex"                       element={<Navigate to="/reports/budget-capex" replace />} />
+          <Route path="/jira-worklog"                     element={<Navigate to="/delivery/jira?tab=worklog" replace />} />
+          <Route path="/release-notes"                    element={<Navigate to="/settings/changelog" replace />} />
 
         </Route>
       </Route>

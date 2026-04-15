@@ -304,6 +304,50 @@ public class JiraClient {
     }
 
     /**
+     * Fetch all status-change transitions (changelog) for a given issue.
+     * Returns only items where field = "status", ordered by creation date ascending.
+     * Used for cycle-time calculations.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getIssueChangelog(String issueKey) {
+        List<Map<String, Object>> statusChanges = new ArrayList<>();
+        int startAt  = 0;
+        int pageSize = 100;
+        while (true) {
+            String url = UriComponentsBuilder
+                    .fromHttpUrl(creds.getBaseUrl() + "/rest/api/3/issue/" + issueKey + "/changelog")
+                    .queryParam("startAt",    startAt)
+                    .queryParam("maxResults", pageSize)
+                    .toUriString();
+            Map<String, Object> resp = get(url, Map.class);
+            if (resp == null) break;
+            Object valuesObj = resp.get("values");
+            if (!(valuesObj instanceof List)) break;
+            List<Map<String, Object>> values = (List<Map<String, Object>>) valuesObj;
+            for (Map<String, Object> entry : values) {
+                String created = (String) entry.get("created");
+                List<Map<String, Object>> items = (List<Map<String, Object>>) entry.get("items");
+                if (items == null) continue;
+                for (Map<String, Object> item : items) {
+                    if ("status".equals(item.get("field"))) {
+                        Map<String, Object> change = new java.util.LinkedHashMap<>();
+                        change.put("created",      created);
+                        change.put("fromStatus",   item.get("fromString"));
+                        change.put("toStatus",     item.get("toString"));
+                        change.put("authorName",   entry.containsKey("author")
+                                ? (String)((Map<?,?>)entry.get("author")).get("displayName") : null);
+                        statusChanges.add(change);
+                    }
+                }
+            }
+            int total = resp.get("total") instanceof Number ? ((Number) resp.get("total")).intValue() : 0;
+            startAt += values.size();
+            if (startAt >= total || values.isEmpty()) break;
+        }
+        return statusChanges;
+    }
+
+    /**
      * Fetch all comments for a given issue (paginated).
      */
     @SuppressWarnings("unchecked")

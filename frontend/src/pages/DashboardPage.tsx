@@ -29,7 +29,7 @@ import { useSupportSnapshot, useSupportBoards } from '../api/jira';
 import { useNlpInsights, NlpInsightCard } from '../api/nlp';
 import { useMonthLabels } from '../hooks/useMonthLabels';
 import { getUtilizationBgColor } from '../utils/colors';
-import { formatPercent, formatHours } from '../utils/formatting';
+import { formatPercent, formatHours, normaliseProjectStatus } from '../utils/formatting';
 import { formatRole } from '../types';
 import SummaryCard from '../components/charts/SummaryCard';
 import PageSkeleton from '../components/common/PageSkeleton';
@@ -202,7 +202,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
   }, [projects]);
 
   const inProgress = useMemo(() =>
-    projects.filter(p => p.status === 'ACTIVE').slice(0, 5), [projects]);
+    projects.filter(p => normaliseProjectStatus(p.status, p.jiraStatusCategory, p.sourceType) === 'ACTIVE').slice(0, 5), [projects]);
 
   const completed = useMemo(() =>
     projects.filter(p => p.status === 'COMPLETED')
@@ -422,7 +422,10 @@ function ExecutiveBoard({ projects, summary, capDemData, hiringData, hireRoles, 
 
   // Budget rollup across active/in-flight projects
   const budgetRollup = useMemo(() => {
-    const active = projects.filter(p => p.status !== 'CANCELLED' && p.status !== 'COMPLETED');
+    const active = projects.filter(p => {
+      const norm = normaliseProjectStatus(p.status, p.jiraStatusCategory, p.sourceType);
+      return norm !== 'CANCELLED' && norm !== 'COMPLETED';
+    });
     const withBudget = active.filter(p => p.estimatedBudget != null);
     const totalEst = withBudget.reduce((s, p) => s + (p.estimatedBudget ?? 0), 0);
     const totalAct = withBudget.reduce((s, p) => s + (p.actualCost ?? 0), 0);

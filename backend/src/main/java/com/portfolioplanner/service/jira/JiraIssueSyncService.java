@@ -52,17 +52,12 @@ public class JiraIssueSyncService {
     private final TransactionTemplate txTemplate;
 
     /** Fields to request from Jira – covers all standard + common custom fields */
+    // Request *navigable to get ALL custom fields without listing them explicitly.
+    // The saving code already persists any customfield_* that's returned.
+    // We still explicitly include critical fields to ensure they're always present.
     private static final List<String> SYNC_FIELDS = List.of(
-            "summary", "issuetype", "status", "priority", "assignee", "reporter", "creator",
-            "labels", "components", "fixVersions", "resolution",
-            "created", "updated", "resolutiondate", "duedate",
-            "timeoriginalestimate", "timeestimate", "timespent",
-            "story_points", "customfield_10016", "customfield_10028",
-            "customfield_10034", "customfield_10106", "customfield_10162",
-            "customfield_10014", // classic epic link
-            "parent", "project",
-            "customfield_10020", // Jira Cloud sprint field (replaces legacy "sprint")
-            "description", "comment", "worklog"
+            "*navigable",          // ← returns ALL navigable fields incl. every custom field
+            "comment", "worklog"   // *navigable excludes these — add explicitly
     );
 
     private final AtomicBoolean syncing = new AtomicBoolean(false);
@@ -429,24 +424,31 @@ public class JiraIssueSyncService {
             }
         }
 
-        // Custom fields – store anything that starts with "customfield_"
+        // Custom fields – store everything from *navigable except dedicated/noisy fields
+        // Fields skipped:
+        //   • story points (already in jira_issue.story_points)
+        //   • sprint field 10020 (already in jira_sprint via sprint sync)
+        //   • epic link 10014 (already in jira_issue.epic_key)
+        //   • fields with rich-text document content (type=doc) — too large, no filter value
         customFieldRepo.deleteByIssueKey(issueKey);
         for (Map.Entry<String, Object> entry : fields.entrySet()) {
-            if (entry.getKey().startsWith("customfield_") && entry.getValue() != null) {
-                String cfId = entry.getKey();
-                // Skip story point fields we already handled
-                if (cfId.equals("customfield_10016") || cfId.equals("customfield_10028")
-                        || cfId.equals("customfield_10034") || cfId.equals("customfield_10106")
-                        || cfId.equals("customfield_10162") || cfId.equals("customfield_10014")) {
-                    continue;
-                }
-                String value = extractCustomFieldValue(entry.getValue());
-                if (value != null && !value.isBlank()) {
-                    customFieldRepo.save(new JiraIssueCustomField(
-                            issueKey, cfId, null, value, detectFieldType(entry.getValue())
-                    ));
-                }
+            if (!entry.getKey().startsWith("customfield_") || entry.getValue() == null) continue;
+            String cfId = entry.getKey();
+            // Skip fields already handled elsewhere
+            if (Set.of("customfield_10016","customfield_10028","customfield_10034",
+                       "customfield_10106","customfield_10162","customfield_10014",
+                       "customfield_10020").contains(cfId)) continue;
+            // Skip rich-text / document objects (Jira's ADF format — not filterable)
+            if (entry.getValue() instanceof Map) {
+                Object type = ((Map<?,?>) entry.getValue()).get("type");
+                if ("doc".equals(type)) continue;
             }
+            String value = extractCustomFieldValue(entry.getValue());
+            // Skip nulls, blanks, and values that look like raw JSON (too long / not useful)
+            if (value == null || value.isBlank() || value.length() > 500) continue;
+            // field_name is populated separately via /fields/sync-names (calls Jira /rest/api/3/field)
+            JiraIssueCustomField cf = new JiraIssueCustomField(issueKey, cfId, null, value, detectFieldType(entry.getValue()));
+            customFieldRepo.save(cf);
         }
 
         // ── Comments ────────────────────────────────────────────────────
@@ -636,9 +638,12 @@ public class JiraIssueSyncService {
             for (Long boardId : boardIds) {
                 try {
                     List<Map<String, Object>> sprints = jiraClient.getAllSprints(boardId);
+                    Set<Long> returnedIds = new java.util.HashSet<>();
+
                     for (Map<String, Object> s : sprints) {
                         Long sprintJiraId = longVal(s, "id");
                         if (sprintJiraId == null) continue;
+                        returnedIds.add(sprintJiraId);
 
                         JiraSyncedSprint sprint = sprintRepo.findBySprintJiraId(sprintJiraId)
                                 .orElseGet(JiraSyncedSprint::new);
@@ -654,20 +659,34 @@ public class JiraIssueSyncService {
                         sprint.setSyncedAt(LocalDateTime.now());
                         sprintRepo.save(sprint);
 
-                        // ── For ACTIVE sprints: re-sync all issues currently in the sprint ──
-                        // Incremental sync misses issues that were moved into the sprint without
-                        // being edited (their Jira `updated` timestamp doesn't change, so the
-                        // updated >= lastSyncAt JQL filter skips them). Fetching sprint issues
-                        // directly from the board/sprint API guarantees accuracy.
-                        if ("active".equalsIgnoreCase(str(s, "state"))) {
+                        // ── For ACTIVE + FUTURE sprints: sync all issues in the sprint ──
+                        // Future sprints with pre-loaded backlogs need issue links too,
+                        // otherwise they show as empty in the Sprint Backlog until started.
+                        String sprintState = str(s, "state");
+                        if ("active".equalsIgnoreCase(sprintState) || "future".equalsIgnoreCase(sprintState)) {
                             try {
                                 syncActiveSprintIssues(boardId, sprintJiraId, projectKey);
                             } catch (Exception spEx) {
-                                log.warn("  Failed to sync active-sprint issues for board={} sprint={}: {}",
-                                        boardId, sprintJiraId, spEx.getMessage());
+                                log.warn("  Failed to sync sprint issues for board={} sprint={} state={}: {}",
+                                        boardId, sprintJiraId, sprintState, spEx.getMessage());
                             }
                         }
                     }
+
+                    // ── Deleted sprint detection ─────────────────────────────────────────
+                    // Any DB sprint for this board that Jira no longer returns was deleted.
+                    // Mark it 'closed' so it stops appearing as 'future' in the backlog.
+                    sprintRepo.findByBoardId(boardId).stream()
+                            .filter(db -> !returnedIds.contains(db.getSprintJiraId())
+                                    && "future".equalsIgnoreCase(db.getState()))
+                            .forEach(db -> {
+                                log.info("  Sprint {} '{}' no longer in Jira — marking closed",
+                                        db.getSprintJiraId(), db.getName());
+                                db.setState("closed");
+                                db.setSyncedAt(LocalDateTime.now());
+                                sprintRepo.save(db);
+                            });
+
                 } catch (Exception boardEx) {
                     log.warn("  Failed to sync sprints for board {}: {}", boardId, boardEx.getMessage());
                 }
@@ -734,6 +753,56 @@ public class JiraIssueSyncService {
 
         log.info("  Active sprint {}: upserted {} issues, {} stale links removed",
                 sprintJiraId, upserted, removed);
+
+        // ── Sync changelogs → jira_issue_transition (for cycle-time metrics) ──
+        syncSprintTransitions(jiraSprintKeys);
+    }
+
+    /**
+     * Fetches status-change changelogs from Jira and persists them to jira_issue_transition.
+     * Skips issues whose transitions were already synced within the last 12 hours.
+     * Called after every active-sprint issue sync; limits are per-sprint so N stays small.
+     */
+    private void syncSprintTransitions(Set<String> issueKeys) {
+        if (issueKeys.isEmpty()) return;
+        int synced = 0;
+        for (String issueKey : issueKeys) {
+            try {
+                // Skip if we recently synced transitions for this issue
+                boolean alreadySynced = transitionRepo.findByIssueKeyIn(List.of(issueKey))
+                        .stream()
+                        .anyMatch(t -> t.getTransitionedAt() != null
+                                && t.getTransitionedAt().isAfter(LocalDateTime.now().minusHours(12)));
+                if (alreadySynced) continue;
+
+                List<Map<String, Object>> changes = jiraClient.getIssueChangelog(issueKey);
+                if (changes.isEmpty()) continue;
+
+                // Delete old transitions for this issue before re-inserting
+                List<com.portfolioplanner.domain.model.JiraIssueTransition> existing =
+                        transitionRepo.findByIssueKeyOrderByTransitionedAtAsc(issueKey);
+                if (!existing.isEmpty()) transitionRepo.deleteAll(existing);
+
+                for (Map<String, Object> c : changes) {
+                    com.portfolioplanner.domain.model.JiraIssueTransition t =
+                            new com.portfolioplanner.domain.model.JiraIssueTransition();
+                    t.setIssueKey(issueKey);
+                    t.setFromStatus((String) c.get("fromStatus"));
+                    t.setToStatus((String) c.get("toStatus"));
+                    t.setAuthorName((String) c.get("authorName"));
+                    String created = (String) c.get("created");
+                    if (created != null) {
+                        t.setTransitionedAt(parseJiraTimestamp(created));
+                    }
+                    // Upsert — skip if exact (issue_key, transitioned_at, to_status) already exists
+                    transitionRepo.saveIfNotExists(t);
+                }
+                synced++;
+            } catch (Exception e) {
+                log.debug("  Transition sync skipped for {}: {}", issueKey, e.getMessage());
+            }
+        }
+        if (synced > 0) log.info("  Synced transitions for {} sprint issues", synced);
     }
 
     // ── Helper: update sync status ──────────────────────────────────────
@@ -834,6 +903,33 @@ public class JiraIssueSyncService {
     private static String str(Map<String, Object> map, String key) {
         Object val = map.get(key);
         return val != null ? val.toString() : null;
+    }
+
+    /**
+     * Parses a Jira API timestamp string to LocalDateTime.
+     * Jira returns "+0000" (no colon) which Java's OffsetDateTime.parse() rejects.
+     * We normalize to "+00:00" before parsing, then try multiple fallback formats.
+     */
+    public static LocalDateTime parseJiraTimestamp(String ts) {
+        if (ts == null || ts.isBlank()) return LocalDateTime.now();
+        try {
+            // Jira format: "2023-08-15T14:30:19.000+0000" — normalize timezone colon
+            String normalized = ts.replaceAll("([+-])(\\d{2})(\\d{2})$", "$1$2:$3");
+            return java.time.OffsetDateTime.parse(normalized).toLocalDateTime();
+        } catch (Exception e1) {
+            try {
+                // Try with explicit pattern for "+HHMM" (no colon)
+                java.time.format.DateTimeFormatter fmt =
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS][.SS][.S]xx");
+                return java.time.OffsetDateTime.parse(ts, fmt).toLocalDateTime();
+            } catch (Exception e2) {
+                try {
+                    return java.time.LocalDateTime.parse(ts.substring(0, 19));
+                } catch (Exception e3) {
+                    return LocalDateTime.now();
+                }
+            }
+        }
     }
 
     private static Long longVal(Map<String, Object> map, String key) {

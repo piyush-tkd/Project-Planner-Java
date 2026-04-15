@@ -603,7 +603,18 @@ export default function NlpLandingPage() {
      style={{ fontFamily: FONT_FAMILY }}
      title="AI running in limited mode"
    >
-     {nlpTierLabel}. Complex queries may not be answered — use quick actions for best results.
+     <span>{nlpTierLabel}. Complex questions may not be answered.</span>
+     {' '}
+     <span
+       style={{ cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+       onClick={() => navigate('/settings/my-ai?tab=engine')}
+     >
+       Configure your AI key or engine →
+     </span>
+     {' '}
+     <span style={{ color: 'inherit', opacity: 0.75 }}>
+       You can add your own Anthropic or OpenAI key if your org hasn't set one.
+     </span>
    </Alert>
  )}
 

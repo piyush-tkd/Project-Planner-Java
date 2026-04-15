@@ -741,7 +741,7 @@ export default function OrgSettingsPage() {
                       </Box>
                     ))}
                     <Box style={{ marginTop: 'auto', padding: '6px 8px' }}>
-                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.2)', fontFamily: FONT_FAMILY }}>v30.0</Text>
+                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.2)', fontFamily: FONT_FAMILY }}>v30.1</Text>
                     </Box>
                   </Box>
                   {/* Main area */}

@@ -3,6 +3,7 @@ import {
   Tabs, Text, Group, Badge, Stack, Collapse, Box,
   Center, ThemeIcon, ActionIcon, Tooltip,
   TextInput, Select, Divider, Paper, Button,
+  RingProgress, ScrollArea, Progress, SimpleGrid, SegmentedControl,
 } from '@mantine/core';
 import {
   IconChevronDown, IconChevronRight, IconBolt,
@@ -13,7 +14,7 @@ import {
   IconFlame, IconArrowUpCircle, IconSparkles, IconHelpCircle,
   IconList, IconLayoutKanban,
 } from '@tabler/icons-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
 import { PPPageLayout } from '../components/pp';
@@ -37,6 +38,7 @@ interface IssueRow {
   fixVersionName: string | null;
   subtask: boolean; parentKey: string | null;
   subtasks: IssueRow[];
+  createdAt: string | null; // Jira issue creation date — used for scope creep detection
 }
 
 interface SprintGroup {
@@ -486,9 +488,15 @@ function SprintSection({
             {sprint.state === 'active' && (
               <Badge size="xs" color="teal" variant="filled">ACTIVE</Badge>
             )}
-            {sprint.state === 'future' && (
-              <Badge size="xs" color="gray" variant="light">UPCOMING</Badge>
+            {sprint.state === 'closed' && (
+              <Badge size="xs" color="dark" variant="light">CLOSED</Badge>
             )}
+            {sprint.state === 'future' && (() => {
+              const isStale = sprint.endDate && new Date(sprint.endDate) < new Date();
+              return isStale
+                ? <Badge size="xs" color="orange" variant="light">STALE — never started</Badge>
+                : <Badge size="xs" color="gray" variant="light">UPCOMING</Badge>;
+            })()}
 
             {(sprint.startDate || sprint.endDate) && (
               <Group gap={4} wrap="nowrap">
@@ -698,14 +706,17 @@ export default function SprintBacklogPage() {
   const [activePod, setActivePod] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string | null>('Story');
+  const [sprintView, setSprintView] = useState<string>('future');
+  const [hideEmptySprints, setHideEmptySprints] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [savedViewId, setSavedViewId] = useState<string | null>(null);
 
-  const currentFilters = { search, filterType, activePod };
+  const currentFilters = { search, filterType, activePod, sprintView };
   const applyView = (filters: Record<string, string | null>) => {
     if (filters.search !== undefined) setSearch(filters.search ?? '');
     if (filters.filterType !== undefined) setFilterType(filters.filterType);
     if (filters.activePod !== undefined) setActivePod(filters.activePod);
+    if (filters.sprintView !== undefined) setSprintView(filters.sprintView ?? 'future');
   };
 
   const { data: pods, isLoading: loadingPods } = useQuery<PodSummary[]>({
@@ -723,17 +734,33 @@ export default function SprintBacklogPage() {
   const podList: PodSummary[] = pods ?? [];
   const podId = activePod ?? (podList.length > 0 ? String(podList[0].id) : null);
 
+  // Fetch all pods' data in parallel for the consolidated widget — respects sprintView filter
+  const allPodResults = useQueries({
+    queries: podList.map(pod => ({
+      queryKey: ['backlog', String(pod.id), sprintView],
+      queryFn: () => apiClient.get<BacklogResponse>(`/backlog/${pod.id}?view=${sprintView}`).then(r => r.data),
+      staleTime: 5 * 60 * 1000,
+    }))
+  });
+
+  const [widgetTab, setWidgetTab] = useState<string>('overview');
+
+  const qc = useQueryClient();
   const triggerSync = useMutation({
     mutationFn: () => apiClient.post('/jira/sync/trigger', null, { params: { fullSync: true } }),
     onSuccess: () => {
-      notifications.show({ color: 'teal', title: 'Sync started', message: 'Jira sync is running in the background. Refresh in ~30s to see updated data.' });
+      notifications.show({ color: 'teal', title: 'Sync started', message: 'Jira sync is running in background. Data will refresh automatically in ~30s.' });
+      // Invalidate ALL pod backlogs — sync is global, not tab-specific
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['backlog'] });
+      }, 30000);
     },
     onError: () => notifications.show({ color: 'red', message: 'Failed to trigger sync' }),
   });
 
   const { data: backlogData, isLoading: loadingBacklog, refetch } = useQuery<BacklogResponse>({
-    queryKey: ['backlog', podId],
-    queryFn: () => apiClient.get(`/backlog/${podId}`).then(r => r.data),
+    queryKey: ['backlog', podId, sprintView],
+    queryFn: () => apiClient.get(`/backlog/${podId}?view=${sprintView}`).then(r => r.data),
     enabled: !!podId,
     staleTime: 5 * 60 * 1000,
   });
@@ -774,9 +801,237 @@ export default function SprintBacklogPage() {
   );
 
   return (
-    <PPPageLayout title="Sprint Backlog" subtitle="Jira board backlog view per configured POD" animate>
+    <PPPageLayout title="Sprint Backlog" subtitle="Jira board backlog view per configured POD" animate
+      actions={
+        <Group gap="xs">
+          {backlogData?.syncedAt && (
+            <Text size="xs" c="dimmed">Synced: {backlogData.syncedAt.split('T')[0]}</Text>
+          )}
+          <Button size="xs" variant="light" color="teal"
+            leftSection={<IconCloudDownload size={14} />}
+            loading={triggerSync.isPending}
+            onClick={() => triggerSync.mutate()}
+          >
+            Sync Jira
+          </Button>
+          <ActionIcon variant="light" color="teal" size="sm"
+            onClick={() => refetch()} loading={loadingBacklog}
+            title="Refresh view"
+          >
+            <IconRefresh size={14} />
+          </ActionIcon>
+        </Group>
+      }
+    >
       <Stack gap="md">
-        {/* Toolbar */}
+        {/* ── Consolidated widget: ALL boards ── */}
+        {(() => {
+          // Aggregate active sprint data from all pods
+          const allSprints = allPodResults
+            .filter(r => r.data)
+            .map(r => {
+              const d = r.data!;
+              const active = d.sprints.find(s => s.state === 'active') ?? d.sprints[0];
+              return active ? { pod: d.podDisplayName, sprint: active } : null;
+            })
+            .filter(Boolean) as { pod: string; sprint: SprintGroup }[];
+
+          if (allSprints.length === 0) return null;
+
+          // Flatten all issues from all active sprints — apply type filter to match per-tab view
+          const allIssuesRaw = allSprints.flatMap(({ sprint }) => sprint.issues ?? []);
+          const allIssues = filterType
+            ? allIssuesRaw.filter(i => (i.issueType || '').toLowerCase() === filterType.toLowerCase())
+            : allIssuesRaw;
+
+          // Workflow status groups (based on actual Jira workflow)
+          const WORKFLOW_GROUPS: { label: string; statuses: string[]; color: string }[] = [
+            { label: 'Backlog/Draft',   color: '#94a3b8', statuses: ['DRAFT','IN SCOPING','PENDING PO APPROVAL','SCOPED AND READY FOR REFINEMENT','HOLD/PAUSED'] },
+            { label: 'Ready',           color: '#3b82f6', statuses: ['READY FOR DEVELOPMENT'] },
+            { label: 'In Dev',          color: '#8b5cf6', statuses: ['IN DEVELOPMENT','DEVELOPMENT COMPLETE','BLOCKED'] },
+            { label: 'Testing',         color: '#f59e0b', statuses: ['READY FOR TESTING','QA IN PROGRESS','QA COMPLETED'] },
+            { label: 'UAT',             color: '#06b6d4', statuses: ['READY FOR UAT','READY FOR PO ACCEPTANCE','UAT IN PROGRESS','UAT COMPLETE','UAT NOT REQUIRED'] },
+            { label: 'Release',         color: '#10b981', statuses: ['ADDED TO RELEASE BRANCH'] },
+            { label: 'Done',            color: '#22c55e', statuses: ['DONE','CANNOT REPRODUCE','NOT NEEDED','DUPLICATE'] },
+          ];
+
+          const total   = allIssues.length;
+          const done    = allIssues.filter(i => i.statusCategory === 'done').length;
+          const donePct = total > 0 ? Math.round((done / total) * 100) : 0;
+          const spTotal = allIssues.reduce((s, i) => s + (i.storyPoints ?? 0), 0);
+          const spDone  = allIssues.filter(i => i.statusCategory === 'done').reduce((s, i) => s + (i.storyPoints ?? 0), 0);
+
+          // Scope creep: NEW STORIES added to the sprint after it started.
+          // Only counts Stories — bugs/tasks added mid-sprint are expected, not scope creep.
+          const scopeCreep = allSprints.reduce((acc, { sprint }) => {
+            if (!sprint.startDate) return acc;
+            const start = sprint.startDate.split('T')[0];
+            const added = sprint.issues.filter(i =>
+              i.createdAt && i.createdAt > start &&
+              (i.issueType?.toLowerCase() === 'story' || i.issueType?.toLowerCase() === 'feature')
+            );
+            return acc + added.length;
+          }, 0);
+          const scopeCreepPct = total > 0 ? Math.round((scopeCreep / total) * 100) : 0;
+
+          // Type breakdown
+          const byType: Record<string, number> = {};
+          allIssues.forEach(i => { const t = i.issueType || 'Other'; byType[t] = (byType[t] ?? 0) + 1; });
+
+          // Priority breakdown
+          const PRIORITY_ORDER = ['Highest','High','Medium','Low','Lowest'];
+          const byPriority: Record<string, number> = {};
+          allIssues.forEach(i => { const p = i.priorityName || 'None'; byPriority[p] = (byPriority[p] ?? 0) + 1; });
+
+          // Workflow status breakdown
+          const byWorkflow = WORKFLOW_GROUPS.map(g => ({
+            ...g,
+            count: allIssues.filter(i => g.statuses.includes((i.statusName || '').toUpperCase())).length,
+          }));
+
+          // Per-board summary
+          const boardSummaries = allSprints.map(({ pod, sprint }) => {
+            const issues = sprint.issues;
+            const d = issues.filter(i => i.statusCategory === 'done').length;
+            const pct = issues.length > 0 ? Math.round((d / issues.length) * 100) : 0;
+            return { pod, name: sprint.name, total: issues.length, done: d, pct };
+          });
+
+          return (
+            <Paper p="md" radius="md" withBorder mb={4} style={{ borderLeft: `3px solid ${AQUA}` }}>
+              <Group justify="space-between" mb="sm">
+                <Group gap="xs">
+                  <IconUsersGroup size={16} color={AQUA} />
+                  <Text fw={700} size="sm" style={{ fontFamily: FONT_FAMILY }}>All Boards — Active Sprint Summary</Text>
+                  <Badge size="xs" color="teal" variant="light">{allSprints.length} boards</Badge>
+                  <Badge size="xs" color="gray" variant="light">{total} issues</Badge>
+                </Group>
+                <SegmentedControl
+                  size="xs"
+                  value={widgetTab}
+                  onChange={setWidgetTab}
+                  data={[
+                    { value: 'overview',  label: 'Overview' },
+                    { value: 'workflow',  label: 'Workflow' },
+                    { value: 'type',      label: 'By Type' },
+                    { value: 'priority',  label: 'Priority' },
+                    { value: 'boards',    label: 'By Board' },
+                  ]}
+                />
+              </Group>
+
+              {/* Overview tab */}
+              {widgetTab === 'overview' && (
+                <Group gap="sm" wrap="nowrap" style={{ overflowX: 'auto' }} pb={2}>
+                  <Paper p="sm" radius="md" withBorder style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <RingProgress size={56} thickness={5} roundCaps
+                      sections={[{ value: donePct, color: COLOR_EMERALD }]}
+                      label={<Text ta="center" size="10px" fw={700} c={COLOR_EMERALD}>{donePct}%</Text>}
+                    />
+                    <div>
+                      <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY }}>Overall Progress</Text>
+                      <Text size="10px" c="dimmed">{done} of {total} done</Text>
+                    </div>
+                  </Paper>
+                  {[
+                    { label: 'Total',       value: total,                                                                    color: COLOR_BLUE },
+                    { label: 'Done',        value: done,                                                                     color: COLOR_EMERALD },
+                    { label: 'In Progress', value: allIssues.filter(i => i.statusCategory === 'indeterminate').length,      color: COLOR_AMBER_DARK },
+                    { label: 'To Do',       value: allIssues.filter(i => i.statusCategory === 'new').length,                color: TEXT_GRAY },
+                  ].map(({ label, value, color }) => (
+                    <Paper key={label} p="sm" radius="md" withBorder style={{ textAlign: 'center', flexShrink: 0, minWidth: 80 }}>
+                      <Text style={{ fontSize: 22, fontWeight: 800, color, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{value}</Text>
+                      <Text size="xs" c="dimmed" mt={2} style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
+                    </Paper>
+                  ))}
+                  {spTotal > 0 && (
+                    <Paper p="sm" radius="md" withBorder style={{ flexShrink: 0, minWidth: 110 }}>
+                      <Group gap={4} align="baseline">
+                        <Text style={{ fontSize: 22, fontWeight: 800, color: COLOR_VIOLET, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{spDone}</Text>
+                        <Text size="xs" c="dimmed">/ {spTotal} SP</Text>
+                      </Group>
+                      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Story Points</Text>
+                      <Progress value={spTotal > 0 ? (spDone/spTotal)*100 : 0} color="violet" size="xs" radius="xl" mt={4} />
+                    </Paper>
+                  )}
+                  <Paper p="sm" radius="md" withBorder style={{ flexShrink: 0, minWidth: 110, borderColor: scopeCreepPct > 10 ? COLOR_ORANGE_ALT : undefined }}>
+                    <Group gap={4} align="baseline">
+                      <Text style={{ fontSize: 22, fontWeight: 800, color: scopeCreepPct > 10 ? COLOR_ORANGE_ALT : TEXT_GRAY, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{scopeCreep}</Text>
+                      <Text size="xs" c="dimmed">{scopeCreepPct}%</Text>
+                    </Group>
+                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Scope Creep</Text>
+                    <Text size="9px" c="dimmed">Added after sprint start</Text>
+                  </Paper>
+                </Group>
+              )}
+
+              {/* Workflow tab */}
+              {widgetTab === 'workflow' && (
+                <Stack gap={6}>
+                  <Text size="xs" c="dimmed" mb={4}>Issues mapped to your workflow stages across all active sprints</Text>
+                  {byWorkflow.filter(g => g.count > 0).map(g => (
+                    <Group key={g.label} gap="sm" align="center">
+                      <Text size="xs" style={{ fontFamily: FONT_FAMILY, minWidth: 110, color: g.color, fontWeight: 600 }}>{g.label}</Text>
+                      <Progress value={total > 0 ? (g.count/total)*100 : 0} color={g.color} size="md" radius="xl" style={{ flex: 1 }} />
+                      <Badge size="xs" variant="light" style={{ minWidth: 32, background: `${g.color}22`, color: g.color }}>{g.count}</Badge>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+
+              {/* By Type tab */}
+              {widgetTab === 'type' && (
+                <SimpleGrid cols={{ base: 3, sm: 5 }} spacing="xs">
+                  {Object.entries(byType).sort((a,b) => b[1]-a[1]).map(([type, count]) => {
+                    const def = TYPE_MAP[type];
+                    return (
+                      <Paper key={type} p="xs" radius="md" withBorder style={{ textAlign: 'center' }}>
+                        <Group justify="center" mb={4}><IssueTypeIcon type={type} /></Group>
+                        <Text style={{ fontSize: 20, fontWeight: 800, fontFamily: FONT_FAMILY }}>{count}</Text>
+                        <Text size="10px" c="dimmed">{type}</Text>
+                      </Paper>
+                    );
+                  })}
+                </SimpleGrid>
+              )}
+
+              {/* Priority tab */}
+              {widgetTab === 'priority' && (
+                <Stack gap={6}>
+                  {[...PRIORITY_ORDER, 'None'].map(p => {
+                    const count = byPriority[p] ?? 0;
+                    if (!count) return null;
+                    const color = priorityColor(p);
+                    return (
+                      <Group key={p} gap="sm" align="center">
+                        <Box style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <Text size="xs" style={{ minWidth: 70, fontFamily: FONT_FAMILY, fontWeight: 600, color }}>{p}</Text>
+                        <Progress value={total > 0 ? (count/total)*100 : 0} color={color} size="md" radius="xl" style={{ flex: 1 }} />
+                        <Text size="xs" fw={700} style={{ minWidth: 32, textAlign: 'right' }}>{count}</Text>
+                      </Group>
+                    );
+                  })}
+                </Stack>
+              )}
+
+              {/* By Board tab */}
+              {widgetTab === 'boards' && (
+                <Stack gap={6}>
+                  {boardSummaries.map(b => (
+                    <Group key={b.pod} gap="sm" align="center">
+                      <IconUsersGroup size={13} color={AQUA} style={{ flexShrink: 0 }} />
+                      <Text size="xs" style={{ fontFamily: FONT_FAMILY, fontWeight: 600, minWidth: 140 }} truncate>{b.pod}</Text>
+                      <Progress value={b.pct} color="teal" size="md" radius="xl" style={{ flex: 1 }} />
+                      <Text size="xs" c="dimmed" style={{ minWidth: 80, textAlign: 'right' }}>{b.done}/{b.total} • {b.pct}%</Text>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Paper>
+          );
+        })()}
+
+        {/* ── Global Toolbar — ABOVE POD tabs so filters apply across all boards ── */}
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Group gap="sm">
             <TextInput
@@ -796,6 +1051,28 @@ export default function SprintBacklogPage() {
               w={140}
               size="sm"
             />
+            <Select
+              data={[
+                { value: 'active', label: '● Active only' },
+                { value: 'future', label: '● Active + Future' },
+                { value: 'closed', label: '✓ Closed sprints' },
+                { value: 'all',    label: '⊕ All sprints' },
+              ]}
+              value={sprintView}
+              onChange={v => setSprintView(v ?? 'future')}
+              w={170}
+              size="sm"
+            />
+            <Tooltip label={hideEmptySprints ? 'Empty sprints hidden — click to show' : 'Showing empty sprints — click to hide'} withArrow>
+              <Button
+                size="xs"
+                variant={hideEmptySprints ? 'filled' : 'light'}
+                color={hideEmptySprints ? 'indigo' : 'gray'}
+                onClick={() => setHideEmptySprints(v => !v)}
+              >
+                {hideEmptySprints ? 'Hide empty' : 'Show empty'}
+              </Button>
+            </Tooltip>
             <SavedViews
               pageKey="sprint_backlog"
               currentFilters={currentFilters}
@@ -805,7 +1082,6 @@ export default function SprintBacklogPage() {
             />
           </Group>
           <Group gap="xs">
-            {/* View toggle: List / Board */}
             <Tooltip label={viewMode === 'list' ? 'Switch to Board view' : 'Switch to List view'} withArrow>
               <ActionIcon
                 variant={viewMode === 'board' ? 'filled' : 'light'}
@@ -815,21 +1091,6 @@ export default function SprintBacklogPage() {
                 {viewMode === 'list' ? <IconLayoutKanban size={16} /> : <IconList size={16} />}
               </ActionIcon>
             </Tooltip>
-            {backlogData?.syncedAt && (
-              <Text size="xs" c="dimmed">
-                Synced: {backlogData.syncedAt.split('T')[0]}
-              </Text>
-            )}
-            <Button
-              size="xs"
-              variant="light"
-              color="blue"
-              leftSection={<IconCloudDownload size={14} />}
-              loading={triggerSync.isPending}
-              onClick={() => triggerSync.mutate()}
-            >
-              Trigger Sync
-            </Button>
             <Tooltip label="Refresh view" withArrow>
               <ActionIcon variant="light" color="teal" onClick={() => refetch()} loading={loadingBacklog}>
                 <IconRefresh size={16} />
@@ -838,26 +1099,99 @@ export default function SprintBacklogPage() {
           </Group>
         </Group>
 
-        {/* Pod tabs */}
-        <Tabs
-          value={podId}
-          onChange={v => { setActivePod(v); setSearch(''); setFilterType('Story'); }}
-          variant="pills"
-        >
-          <Tabs.List>
-            {podList.map(pod => (
-              <Tabs.Tab key={pod.id} value={String(pod.id)}>
-                <Group gap={6} wrap="nowrap">
-                  <IconUsersGroup size={14} />
-                  <Text size="sm">{pod.displayName}</Text>
-                  <Badge size="xs" variant="light" color="gray">
-                    {pod.projectKeys.join(', ')}
-                  </Badge>
-                </Group>
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        {/* Pod tabs — horizontally scrollable, never wraps */}
+        <ScrollArea scrollbarSize={4} type="hover" style={{ borderBottom: `1px solid ${BORDER_STRONG}` }} pb={2}>
+          <Group gap={4} wrap="nowrap" pb={8}>
+            {podList.map(pod => {
+              const isActive = String(pod.id) === podId;
+              return (
+                <Box
+                  key={pod.id}
+                  onClick={() => { setActivePod(String(pod.id)); setSearch(''); setFilterType('Story'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                    whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s',
+                    background: isActive ? `${AQUA}22` : 'transparent',
+                    border: `1.5px solid ${isActive ? AQUA : 'transparent'}`,
+                    color: isActive ? AQUA : TEXT_GRAY,
+                    fontFamily: FONT_FAMILY, fontWeight: isActive ? 700 : 500,
+                    fontSize: 13,
+                  }}
+                >
+                  <IconUsersGroup size={13} />
+                  <span>{pod.displayName}</span>
+                  <span style={{
+                    background: isActive ? AQUA : BORDER_STRONG,
+                    color: isActive ? DEEP_BLUE : TEXT_SUBTLE,
+                    borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700,
+                  }}>
+                    {pod.projectKeys.join(' ')}
+                  </span>
+                </Box>
+              );
+            })}
+          </Group>
+        </ScrollArea>
+
+
+        {/* ── Per-pod sprint summary (below POD tabs, above issues) ── */}
+        {backlogData && (() => {
+          const s = backlogData.sprints.find(sp => sp.state === 'active') ?? backlogData.sprints[0];
+          if (!s) return null;
+          const issues = s.issues;
+          const total = issues.length;
+          const done  = issues.filter(i => i.statusCategory === 'done').length;
+          const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+          const spTotal = issues.reduce((a, i) => a + (i.storyPoints ?? 0), 0);
+          const spDone  = issues.filter(i => i.statusCategory === 'done').reduce((a, i) => a + (i.storyPoints ?? 0), 0);
+          const scopeCreepCount = s.startDate
+            ? issues.filter(i =>
+                i.createdAt && i.createdAt > s.startDate!.split('T')[0] &&
+                (i.issueType?.toLowerCase() === 'story' || i.issueType?.toLowerCase() === 'feature')
+              ).length
+            : 0;
+          return (
+            <Group gap="sm" wrap="nowrap" style={{ overflowX: 'auto' }} pb={2}>
+              <Paper p="sm" radius="md" withBorder style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <RingProgress size={48} thickness={4} roundCaps
+                  sections={[{ value: pct, color: COLOR_EMERALD }]}
+                  label={<Text ta="center" size="10px" fw={700} c={COLOR_EMERALD}>{pct}%</Text>}
+                />
+                <div>
+                  <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY }}>{s.name}</Text>
+                  {s.startDate && s.endDate && <Text size="10px" c="dimmed">{s.startDate.slice(5)} → {s.endDate.slice(5)}</Text>}
+                </div>
+              </Paper>
+              {[
+                { label: 'Items',  value: total, color: COLOR_BLUE },
+                { label: 'Done',   value: done,  color: COLOR_EMERALD },
+                { label: 'Active', value: issues.filter(i => i.statusCategory === 'indeterminate').length, color: COLOR_AMBER_DARK },
+                { label: 'Todo',   value: issues.filter(i => i.statusCategory === 'new').length, color: TEXT_GRAY },
+              ].map(({ label, value, color }) => (
+                <Paper key={label} p="xs" radius="md" withBorder style={{ textAlign: 'center', flexShrink: 0, minWidth: 72 }}>
+                  <Text style={{ fontSize: 20, fontWeight: 800, color, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{value}</Text>
+                  <Text size="xs" c="dimmed">{label}</Text>
+                </Paper>
+              ))}
+              {spTotal > 0 && (
+                <Paper p="xs" radius="md" withBorder style={{ flexShrink: 0, minWidth: 100 }}>
+                  <Group gap={3} align="baseline">
+                    <Text style={{ fontSize: 20, fontWeight: 800, color: COLOR_VIOLET, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{spDone}</Text>
+                    <Text size="xs" c="dimmed">/{spTotal} SP</Text>
+                  </Group>
+                  <Progress value={spTotal > 0 ? (spDone/spTotal)*100 : 0} color="violet" size="xs" radius="xl" mt={2} />
+                </Paper>
+              )}
+              {scopeCreepCount > 0 && (
+                <Paper p="xs" radius="md" withBorder style={{ flexShrink: 0, borderColor: COLOR_ORANGE_ALT }}>
+                  <Text style={{ fontSize: 20, fontWeight: 800, color: COLOR_ORANGE_ALT, fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{scopeCreepCount}</Text>
+                  <Text size="xs" c="dimmed">Scope creep</Text>
+                </Paper>
+              )}
+            </Group>
+          );
+        })()}
 
         {/* Content */}
         {loadingBacklog ? (
@@ -911,7 +1245,16 @@ export default function SprintBacklogPage() {
                 color="teal"
               />
             ) : (
-              backlogData.sprints.map((sprint, idx) => (
+              backlogData.sprints
+                .filter(sprint => {
+                  if (!hideEmptySprints || sprint.state === 'active') return true;
+                  // Count issues that pass the current type filter (same filter the SprintCard uses)
+                  const visibleCount = (sprint.issues ?? []).filter(i =>
+                    !filterType || (i.issueType || '').toLowerCase() === filterType.toLowerCase()
+                  ).length;
+                  return visibleCount > 0;
+                })
+                .map((sprint, idx) => (
                 <SprintSection
                   key={sprint.sprintJiraId}
                   sprint={{ ...sprint, issues: applyTypeFilter(sprint.issues) }}

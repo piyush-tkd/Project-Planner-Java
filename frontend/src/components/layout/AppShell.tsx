@@ -115,6 +115,7 @@ import {
   IconTableOptions,
   IconWand,
   IconHelp,
+  IconSitemap,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import NotificationBell from '../common/NotificationBell';
@@ -131,121 +132,138 @@ import { AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER_DARK, COLOR_ERROR, COLOR_
 interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string; featureFlag?: string; children?: NavItem[] }
 interface NavGroup { label: string; items: NavItem[] }
 
-// ── PP-13: Consolidated navigation (6-section model per UX Architecture spec) ────────────────
-// Sections: Overview | Portfolio | Teams | Finance | Delivery | Admin
-// Rule: group labels map to PP-13 mental model; no pages removed, only regrouped.
+// ── v30.1: Final nav — 6 sections, Jira subsection in Delivery, 3 focused Admin groups
 const navGroups: NavGroup[] = [
-  // ── OVERVIEW (always visible, not collapsible) ─────────────────────────────
+  // ── WORKSPACE ─────────────────────────────────────────────────────────────
   {
-    label: 'Overview',
+    label: 'Workspace',
     items: [
-      { label: 'Dashboard', path: '/',      icon: <IconDashboard size={14} />, pageKey: 'dashboard' },
-      { label: 'Inbox',     path: '/inbox', icon: <IconInbox size={14} />,     pageKey: 'inbox' },
-      { label: 'Ask AI',    path: '/nlp',   icon: <IconBrain size={14} />,     pageKey: 'nlp_landing', featureFlag: 'ai' },
-      { label: 'AI Content Studio', path: '/ai-content-studio', icon: <IconWand size={14} />, pageKey: 'ai_content_studio', featureFlag: 'ai' },
+      { label: 'Dashboard',         path: '/',                 icon: <IconDashboard size={14} />,  pageKey: 'dashboard' },
+      { label: 'Inbox',             path: '/inbox',            icon: <IconInbox size={14} />,      pageKey: 'inbox' },
+      { label: 'Ask AI',            path: '/nlp',              icon: <IconBrain size={14} />,      pageKey: 'nlp_landing',       featureFlag: 'ai' },
+      { label: 'AI Content Studio', path: '/ai-content-studio',icon: <IconWand size={14} />,       pageKey: 'ai_content_studio', featureFlag: 'ai' },
+      { label: 'Smart Insights',    path: '/smart-insights',   icon: <IconSparkles size={14} />,   pageKey: 'smart_insights' },
     ],
   },
+
   // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   {
     label: 'Portfolio',
     items: [
-      { label: 'Projects',                 path: '/projects',                         icon: <IconBriefcase size={14} />,       pageKey: 'projects' },
-      { label: 'Portfolio Health',         path: '/portfolio/health',                 icon: <IconShieldCheck size={14} />,     pageKey: 'portfolio_health_dashboard' },
-      { label: 'Portfolio Timeline',       path: '/portfolio/timeline',               icon: <IconChartAreaLine size={14} />,   pageKey: 'portfolio_timeline' },
-      { label: 'Project Health',          path: '/reports/project-health',            icon: <IconHeartRateMonitor size={14} />, pageKey: 'project_health' },
-      { label: 'Objectives',              path: '/objectives',                         icon: <IconTargetArrow size={14} />,     pageKey: 'objectives' },
-      { label: 'Risk Register',           path: '/risk-register',                      icon: <IconRadar size={14} />,           pageKey: 'risk_register' },
-      { label: 'Risk Heatmap',            path: '/reports/risk-heatmap',              icon: <IconChartDots3 size={14} />,      pageKey: 'risk_heatmap' },
-      { label: 'Dependency Map',          path: '/reports/dependency-map',            icon: <IconLink size={14} />,            pageKey: 'dependency_map' },
-      { label: 'Gantt Dependencies',      path: '/reports/gantt-dependencies',        icon: <IconTimeline size={14} />,        pageKey: 'gantt_dependencies' },
-      { label: 'Delivery Predictability', path: '/reports/delivery-predictability',   icon: <IconRocket size={14} />,          pageKey: 'delivery_predictability' },
-      { label: 'Executive Summary',       path: '/reports/executive-summary',         icon: <IconLayoutDashboard size={14} />, pageKey: 'exec_summary' },
+      { label: 'Projects',          path: '/projects',                  icon: <IconBriefcase size={14} />,       pageKey: 'projects' },
+      { label: 'Portfolio Health',  path: '/portfolio/health',          icon: <IconShieldCheck size={14} />,     pageKey: 'portfolio_health_dashboard' },
+      { label: 'Executive Summary', path: '/reports/executive-summary', icon: <IconLayoutDashboard size={14} />, pageKey: 'exec_summary' },
+      { label: 'Timeline',          path: '/portfolio/timeline',        icon: <IconChartAreaLine size={14} />,   pageKey: 'portfolio_timeline' },
+      { label: 'Risk & Issues',     path: '/risk-register',             icon: <IconRadar size={14} />,           pageKey: 'risk_register',   featureFlag: 'risk' },
+      { label: 'Risk Heatmap',      path: '/reports/risk-heatmap',      icon: <IconChartDots3 size={14} />,      pageKey: 'risk_heatmap' },
+      { label: 'Dependencies',      path: '/reports/dependency-map',    icon: <IconLink size={14} />,            pageKey: 'dependency_map' },
+      { label: 'Objectives',        path: '/objectives',                icon: <IconTargetArrow size={14} />,     pageKey: 'objectives',      featureFlag: 'okr' },
     ],
   },
-  // ── TEAMS (was: People) ────────────────────────────────────────────────────
+
+  // ── PEOPLE ────────────────────────────────────────────────────────────────
   {
-    label: 'Teams',
+    label: 'People',
     items: [
-      { label: 'Resources',             path: '/people/resources',              icon: <IconUsers size={14} />,           pageKey: 'resources' },
-      { label: 'Core Teams',            path: '/teams?type=core',               icon: <IconUsersGroup size={14} />,      pageKey: 'core_teams' },
-      { label: 'Project Teams',         path: '/teams?type=project',            icon: <IconBriefcase size={14} />,       pageKey: 'project_teams' },
-      { label: 'Capacity',              path: '/people/capacity',               icon: <IconFlame size={14} />,           pageKey: 'capacity_hub' },
-      { label: 'Performance',           path: '/people/performance',            icon: <IconTrendingUp size={14} />,      pageKey: 'resource_performance', featureFlag: 'advanced_people' },
-      { label: 'Workload Chart',        path: '/reports/workload-chart',        icon: <IconChartInfographic size={14} />, pageKey: 'workload_chart' },
-      { label: 'Hiring Forecast',       path: '/reports/hiring-forecast',       icon: <IconUserPlus size={14} />,        pageKey: 'hiring_forecast' },
-      { label: 'Resource Intelligence', path: '/reports/resource-intelligence', icon: <IconUserSearch size={14} />,      pageKey: 'resource_intelligence' },
-      { label: 'Skills Matrix',         path: '/reports/skills-matrix',         icon: <IconStars size={14} />,           pageKey: 'skills_matrix', featureFlag: 'advanced_people' },
-      { label: 'Team Pulse',            path: '/reports/team-pulse',            icon: <IconHeartRateMonitor size={14} />, pageKey: 'team_pulse', featureFlag: 'advanced_people' },
-      { label: 'Resource Pools',        path: '/resource-pools',                icon: <IconDatabase size={14} />,        pageKey: 'resource_pools' },
-      { label: 'Supply vs Demand',      path: '/supply-demand',                 icon: <IconChartBar size={14} />,        pageKey: 'supply_demand' },
-      { label: 'Demand Forecast',       path: '/demand-forecast',               icon: <IconChartBar size={14} />,        pageKey: 'demand_forecast' },
-      { label: 'Skills Matrix (New)',   path: '/skills-matrix',                 icon: <IconLayoutGrid size={14} />,      pageKey: 'skills_matrix_new' },
+      { label: 'People',             path: '/people/resources',  icon: <IconUsers size={14} />,            pageKey: 'resources' },
+      { label: 'Teams',              path: '/teams',             icon: <IconUsersGroup size={14} />,       pageKey: 'core_teams' },
+      { label: 'Capacity',           path: '/people/capacity',   icon: <IconFlame size={14} />,            pageKey: 'capacity_hub' },
+      { label: 'Performance',        path: '/people/performance',icon: <IconTrendingUp size={14} />,       pageKey: 'resource_performance', featureFlag: 'advanced_people' },
+      { label: 'Skills Matrix',      path: '/skills-matrix',     icon: <IconStars size={14} />,            pageKey: 'skills_matrix_new',    featureFlag: 'advanced_people' },
+      { label: 'Team Pulse',         path: '/reports/team-pulse',icon: <IconHeartRateMonitor size={14} />, pageKey: 'team_pulse',           featureFlag: 'advanced_people' },
+      { label: 'Workforce Planning', path: '/demand-forecast',   icon: <IconChartBar size={14} />,         pageKey: 'demand_forecast' },
+      { label: 'Leave Hub',          path: '/leave',             icon: <IconCalendarOff size={14} />,      pageKey: 'leave_hub' },
     ],
   },
-  // ── CALENDAR ───────────────────────────────────────────────────────────────
-  {
-    label: 'Calendar',
-    items: [
-      { label: 'Strategic Calendar', path: '/calendar',          icon: <IconCalendar size={14} />,      pageKey: 'calendar_hub' },
-      { label: 'Team Calendar',      path: '/team-calendar',     icon: <IconCalendarStats size={14} />, pageKey: 'team_calendar' },
-      { label: 'Sprint Planner',     path: '/sprint-planner',    icon: <IconBrain size={14} />,         pageKey: 'sprint_planner' },
-      { label: 'Sprint Calendar',    path: '/sprint-calendar',   icon: <IconCalendarEvent size={14} />, pageKey: 'sprint_calendar' },
-      { label: 'Release Calendar',   path: '/release-calendar',  icon: <IconCalendarPlus size={14} />,  pageKey: 'release_calendar' },
-      { label: 'Project Templates',  path: '/project-templates', icon: <IconTemplate size={14} />,      pageKey: 'project_templates' },
-    ],
-  },
-  // ── DELIVERY ───────────────────────────────────────────────────────────────
+
+  // ── DELIVERY ──────────────────────────────────────────────────────────────
   {
     label: 'Delivery',
     items: [
-      { label: 'PODs',             path: '/pods',              icon: <IconHexagons size={14} />,        pageKey: 'pods' },
-      { label: 'Ideas Board',      path: '/ideas',             icon: <IconBulb size={14} />,            pageKey: 'ideas_board' },
-      { label: 'Smart Insights',   path: '/smart-insights',    icon: <IconSparkles size={14} />,        pageKey: 'smart_insights' },
-      { label: 'Engineering Hub',  path: '/engineering/hub',   icon: <IconReportMoney size={14} />,     pageKey: 'engineering_intelligence', featureFlag: 'engineering' },
+      { label: 'PODs',             path: '/pods',            icon: <IconHexagons size={14} />,    pageKey: 'pods' },
+      { label: 'Sprint Planner',   path: '/sprint-planner',  icon: <IconBrain size={14} />,       pageKey: 'sprint_planner' },
+      { label: 'Sprint Quality',   path: '/reports/sprint-quality', icon: <IconShieldCheck size={14} />, pageKey: 'sprint_quality', featureFlag: 'jira' },
+      { label: 'Engineering Hub',      path: '/engineering/hub',                    icon: <IconReportMoney size={14} />, pageKey: 'engineering_intelligence',  featureFlag: 'engineering' },
+      { label: 'Engineering Analytics', path: '/reports/engineering-analytics',      icon: <IconChartBar size={14} />,    pageKey: 'engineering_analytics',     featureFlag: 'engineering' },
+      { label: 'Power Dashboard',   path: '/reports/power-dashboard',             icon: <IconLayoutGrid size={14} />,  pageKey: 'power_dashboard' },
+      { label: 'Calendar',         path: '/calendar',        icon: <IconCalendar size={14} />,    pageKey: 'calendar_hub' },
+      { label: 'Ideas Board',      path: '/ideas',           icon: <IconBulb size={14} />,        pageKey: 'ideas_board' },
+      // ── Jira subsection ───────────────────────────────────────────────────
+      {
+        label: 'Jira', path: '/sprint-backlog', icon: <IconLayoutBoard size={14} />, pageKey: 'sprint_backlog', featureFlag: 'jira',
+        children: [
+          { label: 'Sprint Backlog',    path: '/sprint-backlog',                 icon: <IconLayoutBoard size={14} />,    pageKey: 'sprint_backlog',        featureFlag: 'jira' },
+          { label: 'Sprint Retro',      path: '/reports/sprint-retro',           icon: <IconListCheck size={14} />,      pageKey: 'sprint_retro',          featureFlag: 'jira' },
+          { label: 'POD Dashboard',     path: '/delivery/jira',                  icon: <IconUsersGroup size={14} />,     pageKey: 'jira_pods',             featureFlag: 'jira', alertKey: 'supportStale' },
+          { label: 'Dashboard Builder', path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={14} />,pageKey: 'jira_dashboard_builder', featureFlag: 'jira' },
+          { label: 'Releases',          path: '/delivery/releases',              icon: <IconTag size={14} />,            pageKey: 'jira_releases',         featureFlag: 'jira' },
+          { label: 'Resource Mapping',  path: '/settings/jira-resource-mapping', icon: <IconUsersGroup size={14} />,     pageKey: 'jira_resource_mapping', featureFlag: 'jira' },
+          { label: 'Release Mapping',   path: '/settings/jira-release-mapping',  icon: <IconTag size={14} />,            pageKey: 'jira_release_mapping',  featureFlag: 'jira' },
+          { label: 'Support Boards',    path: '/settings/support-boards',        icon: <IconListCheck size={14} />,      pageKey: 'support_boards_admin',  featureFlag: 'jira' },
+        ],
+      },
     ],
   },
-  // ── FINANCE (was: Economics) — all cost, budget & financial intelligence ──
+
+  // ── FINANCE ───────────────────────────────────────────────────────────────
   {
     label: 'Finance',
     items: [
-      { label: 'Budget & CapEx',        path: '/reports/budget-capex',    icon: <IconCurrencyDollar size={14} />, pageKey: 'budget_capex',             featureFlag: 'financials' },
-      { label: 'Engineering Economics', path: '/engineering-economics',   icon: <IconCoin size={14} />,           pageKey: 'engineering_economics' },
-      { label: 'ROI Calculator',        path: '/roi-calculator',          icon: <IconChartPie size={14} />,       pageKey: 'roi_calculator' },
-      { label: 'Scenario Planning',     path: '/scenario-planning',       icon: <IconAdjustments size={14} />,    pageKey: 'scenario_planning' },
+      { label: 'Budget & CapEx',        path: '/reports/budget-capex',  icon: <IconCurrencyDollar size={14} />, pageKey: 'budget_capex',         featureFlag: 'financials' },
+      { label: 'Engineering Economics', path: '/engineering-economics', icon: <IconCoin size={14} />,           pageKey: 'engineering_economics' },
+      { label: 'ROI Calculator',        path: '/roi-calculator',        icon: <IconChartPie size={14} />,       pageKey: 'roi_calculator' },
+      { label: 'Scenario Planning',     path: '/scenario-planning',     icon: <IconAdjustments size={14} />,    pageKey: 'scenario_planning', featureFlag: 'simulations' },
     ],
   },
-  // ── JIRA ──────────────────────────────────────────────────────────────────
-  {
-    label: 'Jira',
-    items: [
-      { label: 'POD Dashboard',     path: '/delivery/jira',                  icon: <IconUsersGroup size={14} />,      pageKey: 'jira_pods',            featureFlag: 'jira', alertKey: 'supportStale' },
-      { label: 'Sprint Backlog',    path: '/sprint-backlog',                 icon: <IconLayoutBoard size={14} />,     pageKey: 'sprint_backlog',       featureFlag: 'jira' },
-      { label: 'Sprint Retro',      path: '/reports/sprint-retro',           icon: <IconListCheck size={14} />,       pageKey: 'sprint_retro',         featureFlag: 'jira' },
-      { label: 'Releases',          path: '/delivery/releases',              icon: <IconTag size={14} />,             pageKey: 'jira_releases',        featureFlag: 'jira' },
-      { label: 'Jira Analytics',    path: '/reports/jira-analytics',         icon: <IconChartAreaLine size={14} />,   pageKey: 'jira_analytics',       featureFlag: 'jira' },
-      { label: 'Dashboard Builder', path: '/reports/jira-dashboard-builder', icon: <IconLayoutDashboard size={14} />, pageKey: 'jira_dashboard_builder', featureFlag: 'jira' },
-      { label: 'Portfolio Sync',    path: '/reports/jira-portfolio-sync',    icon: <IconPlugConnected size={14} />,   pageKey: 'jira_portfolio_sync',  featureFlag: 'jira' },
-    ],
-  },
-  // ── TOOLS & ADMIN ─────────────────────────────────────────────────────────
+
+  // ── ADMIN — 4 pinned + 3 focused expandable groups ────────────────────────
   {
     label: 'Admin',
     items: [
-      { label: 'Approval Queue',      path: '/approvals',                         icon: <IconTarget size={14} />,         pageKey: 'project_approvals' },
-      { label: 'Scenario Tools',      path: '/tools/scenarios',                   icon: <IconAdjustments size={14} />,    pageKey: 'timeline_simulator',  featureFlag: 'simulations' },
-      { label: 'Automation Engine',   path: '/automation-engine',                 icon: <IconPlayerPlay size={14} />,     pageKey: 'automation_engine' },
-      { label: 'Smart Notifications', path: '/reports/smart-notifications',       icon: <IconBellRinging size={14} />,    pageKey: 'smart_notifications', featureFlag: 'ai' },
+      { label: 'Users',             path: '/settings/users',          icon: <IconUsers size={14} />,         pageKey: 'user_management' },
+      { label: 'Quality Config',    path: '/settings/quality-config', icon: <IconShieldCheck size={14} />,   pageKey: 'quality_config' },
+      { label: 'Automation Engine', path: '/automation-engine',       icon: <IconPlayerPlay size={14} />,    pageKey: 'automation_engine' },
+      { label: 'Jira Credentials',  path: '/settings/jira-credentials',icon: <IconPlugConnected size={14} />,pageKey: 'jira_credentials', featureFlag: 'jira' },
+
+      // Organisation settings
       {
-        label: 'Settings',            path: '/settings/org',                      icon: <IconSettings size={14} />,       pageKey: 'org_settings',
+        label: 'Organisation', path: '/settings/org', icon: <IconSettings size={14} />, pageKey: 'org_settings',
         children: [
-          { label: 'Email Templates', path: '/settings/email-templates',          icon: <IconMailCog size={15} />,        pageKey: 'email_templates' },
-          { label: 'Notification Prefs', path: '/settings/notification-preferences', icon: <IconBellCog size={15} />,    pageKey: 'notification_preferences' },
-          { label: 'Custom Fields',   path: '/settings/custom-fields',            icon: <IconAdjustments size={15} />,    pageKey: 'custom_fields_admin' },
-          { label: 'Webhooks',          path: '/settings/webhooks',                 icon: <IconWebhook size={15} />,        pageKey: 'webhook_settings' },
-          { label: 'Scheduled Reports', path: '/settings/scheduled-reports',      icon: <IconCalendarTime size={15} />,   pageKey: 'scheduled_reports' },
-          { label: 'Cost Rates',        path: '/settings/cost-rates',             icon: <IconTableOptions size={15} />,   pageKey: 'cost_rates' },
-          { label: 'Changelog',         path: '/settings/changelog',              icon: <IconHistory size={15} />,        pageKey: 'changelog_admin' },
-          { label: 'My AI Settings',    path: '/settings/my-ai',                  icon: <IconKey size={15} />,            pageKey: 'my_ai_settings' },
+          { label: 'General',            path: '/settings/org',                      icon: <IconSettings size={15} />,      pageKey: 'org_settings' },
+          { label: 'Email Templates',    path: '/settings/email-templates',          icon: <IconMailCog size={15} />,       pageKey: 'email_templates' },
+          { label: 'Notification Prefs', path: '/settings/notification-preferences', icon: <IconBellCog size={15} />,       pageKey: 'notification_preferences' },
+          { label: 'Cost Rates',         path: '/settings/cost-rates',               icon: <IconTableOptions size={15} />,  pageKey: 'cost_rates' },
+          { label: 'Custom Fields',      path: '/settings/custom-fields',            icon: <IconAdjustments size={15} />,   pageKey: 'custom_fields_admin' },
+          { label: 'Reference Data',     path: '/settings/ref-data',                 icon: <IconDatabase size={15} />,      pageKey: 'ref_data' },
+          { label: 'Webhooks',           path: '/settings/webhooks',                 icon: <IconWebhook size={15} />,       pageKey: 'webhook_settings' },
+          { label: 'Timeline Settings',  path: '/settings/timeline',                 icon: <IconTimeline size={15} />,      pageKey: 'timeline_settings' },
+          { label: 'Release Settings',   path: '/settings/releases',                 icon: <IconTag size={15} />,           pageKey: 'release_settings' },
+          { label: 'Azure DevOps',       path: '/settings/azure-devops',             icon: <IconBrandAzure size={15} />,    pageKey: 'azure_devops_settings' },
+          { label: 'Feedback Hub',       path: '/settings/feedback-hub',             icon: <IconBulb size={15} />,          pageKey: 'feedback_hub' },
+        ],
+      },
+
+      // AI & Intelligence settings
+      {
+        label: 'AI & Intelligence', path: '/settings/my-ai', icon: <IconBrain size={14} />, pageKey: 'my_ai_settings', featureFlag: 'ai',
+        children: [
+          { label: 'AI Settings',         path: '/settings/my-ai',          icon: <IconBrain size={15} />,       pageKey: 'my_ai_settings' },
+          { label: 'NLP Optimizer',       path: '/settings/nlp-optimizer',  icon: <IconRocket size={15} />,      pageKey: 'nlp_optimizer',   featureFlag: 'ai' },
+          { label: 'Smart Mapping',       path: '/settings/smart-mapping',  icon: <IconSparkles size={15} />,    pageKey: 'smart_mapping',   featureFlag: 'ai' },
+          { label: 'Smart Notifications', path: '/reports/smart-notifications', icon: <IconBellRinging size={15} />, pageKey: 'smart_notifications', featureFlag: 'ai' },
+        ],
+      },
+
+      // Developer tools
+      {
+        label: 'Developer Tools', path: '/settings/audit-log', icon: <IconDatabase size={14} />, pageKey: 'audit_log',
+        children: [
+          { label: 'Audit Log',     path: '/settings/audit-log',    icon: <IconHistory size={15} />,       pageKey: 'audit_log' },
+          { label: 'Error Logs',    path: '/settings/error-log',    icon: <IconAlertTriangle size={15} />, pageKey: 'error_log' },
+          { label: 'DB Tables',     path: '/settings/tables',       icon: <IconDatabase size={15} />,      pageKey: 'tables_admin' },
+          { label: 'Sidebar Order', path: '/settings/sidebar-order',icon: <IconAdjustments size={15} />,  pageKey: 'sidebar_order' },
+          { label: 'Sitemap',       path: '/settings/sitemap',      icon: <IconSitemap size={15} />,       pageKey: 'sitemap' },
+          { label: 'Changelog',     path: '/settings/changelog',    icon: <IconHistory size={15} />,       pageKey: 'changelog_admin' },
         ],
       },
     ],
@@ -449,7 +467,7 @@ export default function AppShellLayout() {
   }, []);
 
   function isGroupCollapsed(group: typeof visibleGroups[0]): boolean {
-    if (group.label === 'Overview') return false;
+    if (group.label === 'Overview' || group.label === 'Home') return false;
     // If the user has explicitly toggled this group, respect that preference
     if (group.label in collapsedGroups) return collapsedGroups[group.label];
     // Default: collapse all groups except the one containing the current route
@@ -673,61 +691,57 @@ export default function AppShellLayout() {
 
       {/* ── Sidebar nav ── */}
       <MantineAppShell.Navbar
-        p="xs"
         style={{
-          // DL-6: sidebar is darkest layer — creates depth separation from content
           backgroundColor: isDark ? '#0a0a0f' : SURFACE_SIDEBAR,
           borderRight: isDark ? '1px solid rgba(46, 51, 70, 0.5)' : `1px solid ${BORDER_DEFAULT}`,
           boxShadow: isDark ? `1px 0 20px rgba(0, 0, 0, 0.4)` : `1px 0 12px rgba(12, 35, 64, 0.04)`,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        <MantineAppShell.Section grow component={ScrollArea}>
-          {/* ── Sidebar nav filter ── */}
-          <div style={{ padding: '8px 8px 4px' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 8px',
-              borderRadius: 6,
-              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)',
-            }}>
-              <IconSearch size={11} color={isDark ? '#6b7280' : TEXT_SUBTLE} style={{ flexShrink: 0 }} />
-              <input
-                value={navFilter}
-                onChange={e => setNavFilter(e.target.value)}
-                placeholder="Filter pages..."
+        {/* ── Pinned search bar — stays fixed while nav items scroll ── */}
+        <MantineAppShell.Section style={{ padding: '8px 8px 4px', flexShrink: 0 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 8px',
+            borderRadius: 6,
+            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+            border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.1)',
+          }}>
+            <IconSearch size={11} color={isDark ? '#6b7280' : TEXT_SUBTLE} style={{ flexShrink: 0 }} />
+            <input
+              value={navFilter}
+              onChange={e => setNavFilter(e.target.value)}
+              placeholder="Filter pages..."
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                fontSize: 12,
+                fontFamily: FONT_FAMILY,
+                color: isDark ? '#c9cdd4' : DARK_TEXT_PRIMARY,
+                minWidth: 0,
+              }}
+            />
+            {navFilter && (
+              <button
+                onClick={() => setNavFilter('')}
                 style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 12,
-                  fontFamily: FONT_FAMILY,
-                  color: isDark ? '#c9cdd4' : DARK_TEXT_PRIMARY,
-                  minWidth: 0,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: 0, display: 'flex', alignItems: 'center',
+                  color: isDark ? '#6b7280' : TEXT_SUBTLE, fontSize: 14, lineHeight: 1,
                 }}
-              />
-              {navFilter && (
-                <button
-                  onClick={() => setNavFilter('')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: isDark ? '#6b7280' : TEXT_SUBTLE,
-                    fontSize: 14,
-                    lineHeight: 1,
-                  }}
-                >×</button>
-              )}
-            </div>
+              >×</button>
+            )}
           </div>
+        </MantineAppShell.Section>
 
+        {/* ── Scrollable nav items — flex: 1 + minHeight: 0 forces proper scroll constraint ── */}
+        <MantineAppShell.Section grow component={ScrollArea} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {/* ── Filtered flat view ── */}
           {navFilter.trim() && (() => {
             const q = navFilter.trim().toLowerCase();
@@ -1171,7 +1185,7 @@ export default function AppShellLayout() {
               WebkitTextFillColor: isDark ? undefined : 'transparent',
               fontWeight: 700,
             }}>
-              Portfolio Planner v30.0
+              Portfolio Planner v30.1
             </Text>
           </div>
         </MantineAppShell.Section>

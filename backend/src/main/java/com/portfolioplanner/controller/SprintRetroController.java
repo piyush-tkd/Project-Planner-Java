@@ -62,7 +62,8 @@ public class SprintRetroController {
         String state,
         String startDate,
         String endDate,
-        boolean hasRetro
+        boolean hasRetro,
+        Long   boardId
     ) {}
 
     // ── Endpoints ────────────────────────────────────────────────────────────
@@ -91,10 +92,13 @@ public class SprintRetroController {
             .collect(Collectors.toSet());
 
         return sprints.stream()
-            .filter(s -> "closed".equalsIgnoreCase(s.getState()))
-            // Sort most-recent first when returning all projects (findAll has no order guarantee)
+            .filter(s -> "closed".equalsIgnoreCase(s.getState()) || "active".equalsIgnoreCase(s.getState()))
             .sorted(Comparator.comparing(
-                (JiraSyncedSprint s) -> s.getEndDate() != null ? s.getEndDate() : java.time.LocalDateTime.MIN,
+                (JiraSyncedSprint s) -> {
+                    // Active sprints first, then closed most-recent first
+                    if ("active".equalsIgnoreCase(s.getState())) return java.time.LocalDateTime.MAX;
+                    return s.getEndDate() != null ? s.getEndDate() : java.time.LocalDateTime.MIN;
+                },
                 Comparator.reverseOrder()))
             .limit(effectiveLimit)
             .map(s -> new SprintSummaryItem(
@@ -104,7 +108,8 @@ public class SprintRetroController {
                 s.getState(),
                 s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : null,
                 s.getEndDate()   != null ? s.getEndDate().toLocalDate().toString()   : null,
-                retroIds.contains(s.getSprintJiraId())
+                retroIds.contains(s.getSprintJiraId()),
+                s.getBoardId()
             ))
             .collect(Collectors.toList());
     }

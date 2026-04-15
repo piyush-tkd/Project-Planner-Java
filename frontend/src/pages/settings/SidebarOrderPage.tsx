@@ -22,45 +22,47 @@ interface SidebarPrefs {
 
 const EMPTY_PREFS: SidebarPrefs = { groupOrder: [], itemOrder: {} };
 
-/* ── Default nav structure (must match AppShell.tsx) ───────────────── */
+/* ── Default nav structure — must stay in sync with AppShell.tsx navGroups ── */
 
 const DEFAULT_GROUPS: { label: string; items: string[] }[] = [
   {
-    label: 'Home',
-    items: ['Dashboard', 'Inbox', 'Ask AI'],
+    label: 'Workspace',
+    items: ['Dashboard', 'Inbox', 'Ask AI', 'AI Content Studio', 'Smart Insights'],
   },
   {
     label: 'Portfolio',
-    items: ['Projects', 'PODs', 'Objectives', 'Risk & Issues', 'Ideas Board'],
+    items: [
+      'Projects', 'Portfolio Health', 'Executive Summary', 'Timeline',
+      'Risk & Issues', 'Risk Heatmap', 'Dependencies', 'Objectives',
+    ],
   },
   {
     label: 'People',
-    items: ['Resources', 'Availability', 'Overrides', 'Bookings', 'Capacity', 'Leave & Holidays'],
-  },
-  {
-    label: 'Calendar',
-    items: ['Strategic Calendar', 'Sprint Planner', 'Project Templates'],
+    items: [
+      'People', 'Teams', 'Capacity', 'Performance',
+      'Skills Matrix', 'Team Pulse', 'Workforce Planning', 'Leave Hub',
+    ],
   },
   {
     label: 'Delivery',
     items: [
-      'POD Dashboard', 'Releases', 'Release Notes',
-      'Jira Actuals', 'Support Queue', 'Worklog', 'Budget & CapEx',
+      'PODs', 'Sprint Planner', 'Sprint Quality', 'Engineering Hub', 'Engineering Analytics', 'Power Dashboard', 'Calendar', 'Ideas Board',
+      // Jira subsection
+      'Jira → Sprint Backlog', 'Jira → Sprint Retro', 'Jira → POD Dashboard',
+      'Jira → Dashboard Builder', 'Jira → Releases', 'Jira → Resource Mapping',
+      'Jira → Release Mapping', 'Jira → Support Boards',
     ],
   },
   {
-    label: 'Analytics',
+    label: 'Finance',
+    items: ['Budget & CapEx', 'Engineering Economics', 'ROI Calculator', 'Scenario Planning'],
+  },
+  {
+    label: 'Admin',
     items: [
-      'Portfolio Health', 'Project Health', 'Dependency Map', 'Portfolio Timeline',
-      'Project Signals', 'Resource Performance', 'DORA Metrics', 'Jira Analytics',
-      'Dashboard Builder', 'Eng. Productivity', 'Gantt & Dependencies',
-      'Financial Intelligence', 'Delivery Predict.', 'Smart Notifications',
-      'Jira Portfolio Sync', 'Resource Intelligence', 'Timeline Simulator', 'Scenario Simulator',
+      'Users', 'Quality Config', 'Automation Engine', 'Jira Credentials',
+      'Organisation', 'AI & Intelligence', 'Developer Tools',
     ],
-  },
-  {
-    label: 'Workspace',
-    items: ['Admin Settings', 'Users', 'Audit Log'],
   },
 ];
 
