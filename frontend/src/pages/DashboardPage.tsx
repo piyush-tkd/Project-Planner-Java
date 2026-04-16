@@ -5,6 +5,7 @@ import apiClient from '../api/client';
 import {
   Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge, Title,
   Paper, ThemeIcon, ScrollArea, Tabs, Box, RingProgress, Tooltip as MTooltip, Menu,
+  ActionIcon as MantineActionIcon,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import {
@@ -122,7 +123,15 @@ function DashboardHeader({ title, activeBoard, onBoardChange, onAddWidget, onMor
           </Button>
           <Menu shadow="md" width={200} position="bottom-end">
             <Menu.Target>
-              <ActionIcon icon={<IconDots size={16} />} />
+              <MantineActionIcon
+                variant="default"
+                size={32}
+                radius={8}
+                aria-label="More options"
+                style={{ border: '1px solid var(--mantine-color-default-border)' }}
+              >
+                <IconDots size={16} />
+              </MantineActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Label>Dashboard</Menu.Label>
