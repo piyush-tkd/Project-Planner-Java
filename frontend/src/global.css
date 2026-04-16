@@ -547,6 +547,12 @@ a:hover {
   color: #0C2340 !important;
 }
 
+/* ── Login submit button: always white text regardless of color scheme ── */
+.login-submit-btn,
+.login-submit-btn * {
+  color: #ffffff !important;
+}
+
 /* ── Light-bg alert/info boxes (teal-0, green-0, blue-light, etc.) ── */
 /* Catch Mantine Alert with light backgrounds */
 [data-mantine-color-scheme="dark"] .mantine-Alert-root[data-variant="light"] {

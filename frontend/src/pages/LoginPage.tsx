@@ -262,6 +262,7 @@ export default function LoginPage() {
 
  <button
  type="submit"
+ className="login-submit-btn"
  disabled={loading}
  style={{
    width: '100%',
