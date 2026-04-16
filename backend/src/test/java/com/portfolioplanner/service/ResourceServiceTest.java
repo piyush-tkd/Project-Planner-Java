@@ -1,6 +1,8 @@
 package com.portfolioplanner.service;
 
 import com.portfolioplanner.domain.model.Resource;
+import com.portfolioplanner.domain.model.enums.Location;
+import com.portfolioplanner.domain.model.enums.Role;
 import com.portfolioplanner.domain.repository.ResourcePodAssignmentRepository;
 import com.portfolioplanner.domain.repository.ResourceRepository;
 import com.portfolioplanner.dto.request.ResourceRequest;
@@ -16,7 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -38,6 +39,19 @@ class ResourceServiceTest {
     @InjectMocks
     private ResourceService resourceService;
 
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private static ResourceRequest stubRequest(String name) {
+        return new ResourceRequest(name, name.toLowerCase().replace(" ", ".") + "@example.com",
+                Role.DEVELOPER, Location.US, true, true, null, null);
+    }
+
+    private static ResourceResponse stubResponse(Long id, String name) {
+        return new ResourceResponse(id, name, name.toLowerCase().replace(" ", ".") + "@example.com",
+                Role.DEVELOPER, Location.US, true, true,
+                null, null, null, null, null);
+    }
+
     // ── CREATE ───────────────────────────────────────────────────────────────
 
     @Nested
@@ -47,12 +61,11 @@ class ResourceServiceTest {
         @Test
         @DisplayName("creates resource and calls repository.save()")
         void createResourceSuccess() {
-            var request = new ResourceRequest("John Doe", "Developer", true, true, null, null, null);
+            var request = stubRequest("John Doe");
             var resource = new Resource();
             resource.setId(1L);
             resource.setName("John Doe");
-
-            var response = new ResourceResponse(1L, "John Doe", "Developer", true, true, null, null, null);
+            var response = stubResponse(1L, "John Doe");
 
             when(resourceRepository.findByNameIgnoreCase("John Doe")).thenReturn(Optional.empty());
             when(mapper.toEntity(request)).thenReturn(resource);
@@ -62,15 +75,15 @@ class ResourceServiceTest {
 
             ResourceResponse result = resourceService.create(request);
 
-            assertThat(result.getId()).isEqualTo(1L);
-            assertThat(result.getName()).isEqualTo("John Doe");
+            assertThat(result.id()).isEqualTo(1L);
+            assertThat(result.name()).isEqualTo("John Doe");
             verify(resourceRepository, times(1)).save(resource);
         }
 
         @Test
         @DisplayName("throws DuplicateNameException if resource with same name exists")
         void createResourceDuplicate() {
-            var request = new ResourceRequest("John Doe", "Developer", true, true, null, null, null);
+            var request = stubRequest("John Doe");
             var existingResource = new Resource();
             existingResource.setName("John Doe");
 
@@ -131,8 +144,7 @@ class ResourceServiceTest {
             var resource = new Resource();
             resource.setId(resourceId);
             resource.setName("John Doe");
-
-            var response = new ResourceResponse(resourceId, "John Doe", "Developer", true, true, null, null, null);
+            var response = stubResponse(resourceId, "John Doe");
 
             when(resourceRepository.findById(resourceId)).thenReturn(Optional.of(resource));
             when(assignmentRepository.findByResourceId(resourceId)).thenReturn(Optional.empty());
@@ -140,8 +152,8 @@ class ResourceServiceTest {
 
             ResourceResponse result = resourceService.getById(resourceId);
 
-            assertThat(result.getId()).isEqualTo(resourceId);
-            assertThat(result.getName()).isEqualTo("John Doe");
+            assertThat(result.id()).isEqualTo(resourceId);
+            assertThat(result.name()).isEqualTo("John Doe");
             verify(resourceRepository, times(1)).findById(resourceId);
         }
 

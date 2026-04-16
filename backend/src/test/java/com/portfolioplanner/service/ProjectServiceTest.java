@@ -2,6 +2,7 @@ package com.portfolioplanner.service;
 
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.enums.Priority;
+import com.portfolioplanner.domain.model.enums.SourceType;
 import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.dto.request.ProjectRequest;
 import com.portfolioplanner.dto.response.ProjectResponse;
@@ -33,6 +34,19 @@ class ProjectServiceTest {
     @InjectMocks
     private ProjectService projectService;
 
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    /** Build a minimal but valid ProjectResponse stub. */
+    private static ProjectResponse stubResponse(Long id, String name) {
+        return new ProjectResponse(
+                id, name, Priority.HIGH, "Alice",
+                1, 6, 6, "Flat", "Notes", "ACTIVE",
+                null, null, null, null, null, null,
+                null, null, null, null,
+                false, null, false, null, null
+        );
+    }
+
     // ── CREATE ───────────────────────────────────────────────────────────────
 
     @Nested
@@ -52,10 +66,7 @@ class ProjectServiceTest {
             project.setId(1L);
             project.setName("Test Project");
 
-            var response = new ProjectResponse(
-                    1L, "Test Project", Priority.HIGH, "Alice", 1, 6, 6, "Flat",
-                    "Notes", "ACTIVE", null, null, null, null, null, null, null, null, null
-            );
+            var response = stubResponse(1L, "Test Project");
 
             when(mapper.toEntity(request)).thenReturn(project);
             when(projectRepository.save(project)).thenReturn(project);
@@ -63,8 +74,8 @@ class ProjectServiceTest {
 
             ProjectResponse result = projectService.create(request);
 
-            assertThat(result.getId()).isEqualTo(1L);
-            assertThat(result.getName()).isEqualTo("Test Project");
+            assertThat(result.id()).isEqualTo(1L);
+            assertThat(result.name()).isEqualTo("Test Project");
             verify(projectRepository, times(1)).save(project);
             verify(mapper, times(1)).toEntity(request);
             verify(mapper, times(1)).toProjectResponse(project);
@@ -119,18 +130,15 @@ class ProjectServiceTest {
             project.setId(projectId);
             project.setName("Test Project");
 
-            var response = new ProjectResponse(
-                    projectId, "Test Project", Priority.HIGH, "Alice", 1, 6, 6, "Flat",
-                    "Notes", "ACTIVE", null, null, null, null, null, null, null, null, null
-            );
+            var response = stubResponse(projectId, "Test Project");
 
             when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
             when(mapper.toProjectResponse(project)).thenReturn(response);
 
             ProjectResponse result = projectService.getById(projectId);
 
-            assertThat(result.getId()).isEqualTo(projectId);
-            assertThat(result.getName()).isEqualTo("Test Project");
+            assertThat(result.id()).isEqualTo(projectId);
+            assertThat(result.name()).isEqualTo("Test Project");
             verify(projectRepository, times(1)).findById(projectId);
             verify(mapper, times(1)).toProjectResponse(project);
         }
