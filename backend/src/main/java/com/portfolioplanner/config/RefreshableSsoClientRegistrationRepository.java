@@ -2,10 +2,13 @@ package com.portfolioplanner.config;
 
 import com.portfolioplanner.domain.model.SsoConfig;
 import com.portfolioplanner.domain.repository.SsoConfigRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.stereotype.Component;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
@@ -20,7 +23,8 @@ import java.util.Optional;
  *
  * <p>Implementation is thread-safe using volatile field and synchronized refresh.
  */
-// Registered as a bean via SsoClientRegistrationConfig — no @Component needed
+@Component
+@Primary
 @RequiredArgsConstructor
 @Slf4j
 public class RefreshableSsoClientRegistrationRepository implements ClientRegistrationRepository {
@@ -48,6 +52,11 @@ public class RefreshableSsoClientRegistrationRepository implements ClientRegistr
      * Refresh the client registration from the database.
      * Thread-safe: synchronized to prevent race conditions during rebuild.
      */
+    @PostConstruct
+    public void init() {
+        refresh();
+    }
+
     public synchronized void refresh() {
         Optional<SsoConfig> opt = ssoRepo.findByOrgId(DEFAULT_ORG_ID);
 
