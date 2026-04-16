@@ -267,6 +267,7 @@ export default function LoginPage() {
  disabled={!username || !password}
  style={{
  backgroundColor: DEEP_BLUE_HEX,
+ color: '#ffffff',
  borderRadius: 6,
  height: 44,
  fontFamily: FONT_FAMILY,
