@@ -265,10 +265,14 @@ export default function LoginPage() {
  fullWidth
  loading={loading}
  disabled={!username || !password}
- c="#ffffff"
+ vars={() => ({
+   root: {
+     '--button-bg': DEEP_BLUE_HEX,
+     '--button-hover': '#0a1d33',
+     '--button-color': '#ffffff',
+   },
+ })}
  style={{
- backgroundColor: DEEP_BLUE_HEX,
- color: '#ffffff',
  borderRadius: 6,
  height: 44,
  fontFamily: FONT_FAMILY,
@@ -278,13 +282,6 @@ export default function LoginPage() {
  border: 'none',
  marginTop: 8,
  boxShadow: SHADOW.sm,
- }}
- styles={{
- root: {
-   color: '#ffffff',
-   '&:disabled': { color: '#ffffff', opacity: 0.6 },
-   '&[data-disabled]': { color: '#ffffff', opacity: 0.6 },
- }
  }}
  >
  Log In
