@@ -70,7 +70,8 @@ export default function CapacityHubPage() {
           const Component = tab.component;
           return (
             <Tabs.Panel key={tab.value} value={tab.value}>
-              <Component />
+              {/* Only mount the active tab — prevents one crashing sub-page from taking down the hub */}
+              {activeTab === tab.value && <Component />}
             </Tabs.Panel>
           );
         })}

@@ -4,6 +4,7 @@ import com.portfolioplanner.domain.model.Idea;
 import com.portfolioplanner.domain.repository.IdeaRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,8 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Arrays;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/ideas")
@@ -24,19 +23,19 @@ public class IdeasController {
     // ── DTOs ─────────────────────────────────────────────────────────────────
 
     public record IdeaResponse(
-        Long         id,
-        String       title,
-        String       description,
-        String       submitterName,
-        String       status,
-        int          votes,
-        List<String> tags,
-        String       estimatedEffort,
-        Long         linkedProjectId,
-        String       createdAt,
-        String       attachmentUrl,
-        String       attachmentName,
-        String       attachmentType
+        Long   id,
+        String title,
+        String description,
+        String submitterName,
+        String status,
+        int    votes,
+        String tags,           // comma-separated string, matching how the entity stores it
+        String estimatedEffort,
+        Long   linkedProjectId,
+        String createdAt,
+        String attachmentUrl,
+        String attachmentName,
+        String attachmentType
     ) {}
 
     public record IdeaRequest(
@@ -57,9 +56,6 @@ public class IdeasController {
     // ── Mappings ─────────────────────────────────────────────────────────────
 
     private IdeaResponse toDto(Idea idea) {
-        List<String> tagList = (idea.getTags() != null && !idea.getTags().isBlank())
-            ? Arrays.stream(idea.getTags().split(",")).map(String::trim).filter(s -> !s.isBlank()).toList()
-            : List.of();
         return new IdeaResponse(
             idea.getId(),
             idea.getTitle(),
@@ -67,7 +63,7 @@ public class IdeasController {
             idea.getSubmitterName(),
             idea.getStatus(),
             idea.getVotes(),
-            tagList,
+            idea.getTags(),   // return raw comma-separated string; null if no tags set
             idea.getEstimatedEffort(),
             idea.getLinkedProjectId(),
             idea.getCreatedAt() != null ? idea.getCreatedAt().toString() : null,
