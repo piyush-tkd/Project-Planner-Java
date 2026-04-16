@@ -52,12 +52,21 @@ import HealthBadge from '../components/common/HealthBadge';
 
 // ── Wrike-style pastel status colors ──────────────────────────────────────
 const STATUS_META: Record<string, { bg: string; text: string; border: string; label: string; chart: string }> = {
-  NOT_STARTED:  { bg: SURFACE_BLUE, text: COLOR_BLUE, border: '#bfdbfe', label: 'Not Started',  chart: '#93c5fd' },
-  IN_DISCOVERY: { bg: '#f5f3ff', text: COLOR_VIOLET, border: '#ddd6fe', label: 'In Discovery', chart: '#c4b5fd' },
-  ACTIVE:       { bg: '#ecfdf5', text: COLOR_EMERALD, border: '#a7f3d0', label: 'Active',        chart: '#6ee7b7' },
-  ON_HOLD:      { bg: '#fffbeb', text: COLOR_AMBER_DARK, border: '#fde68a', label: 'On Hold',       chart: '#fcd34d' },
-  COMPLETED:    { bg: SURFACE_SUCCESS_LIGHT, text: COLOR_GREEN_STRONG, border: '#bbf7d0', label: 'Completed',     chart: '#86efac' },
-  CANCELLED:    { bg: SURFACE_FAINT, text: TEXT_GRAY, border: BORDER_STRONG, label: 'Cancelled',     chart: '#cbd5e1' },
+  // ── values actually stored in DB ─────────────────────────────────────────
+  'In Progress': { bg: SURFACE_BLUE,         text: COLOR_BLUE,         border: '#bfdbfe', label: 'In Progress',  chart: '#2DCCD3' },
+  'Backlog':     { bg: '#f5f3ff',             text: COLOR_VIOLET,       border: '#ddd6fe', label: 'Backlog',      chart: '#818cf8' },
+  'Done':        { bg: SURFACE_SUCCESS_LIGHT, text: COLOR_GREEN_STRONG, border: '#bbf7d0', label: 'Done',         chart: '#34d399' },
+  'COMPLETED':   { bg: SURFACE_SUCCESS_LIGHT, text: COLOR_GREEN_STRONG, border: '#bbf7d0', label: 'Completed',    chart: '#34d399' },
+  'ON HOLD':     { bg: '#fffbeb',             text: COLOR_AMBER_DARK,   border: '#fde68a', label: 'On Hold',      chart: '#fbbf24' },
+  'On Hold':     { bg: '#fffbeb',             text: COLOR_AMBER_DARK,   border: '#fde68a', label: 'On Hold',      chart: '#fbbf24' },
+  'Cancelled':   { bg: SURFACE_FAINT,         text: TEXT_GRAY,          border: BORDER_STRONG, label: 'Cancelled', chart: '#94a3b8' },
+  'CANCELLED':   { bg: SURFACE_FAINT,         text: TEXT_GRAY,          border: BORDER_STRONG, label: 'Cancelled', chart: '#94a3b8' },
+  // ── legacy uppercase keys (kept for backward compat) ─────────────────────
+  'NOT_STARTED':  { bg: SURFACE_BLUE,         text: COLOR_BLUE,         border: '#bfdbfe', label: 'Not Started',  chart: '#60a5fa' },
+  'IN_DISCOVERY': { bg: '#f5f3ff',             text: COLOR_VIOLET,       border: '#ddd6fe', label: 'In Discovery', chart: '#a78bfa' },
+  'ACTIVE':       { bg: '#ecfdf5',             text: COLOR_EMERALD,      border: '#a7f3d0', label: 'Active',       chart: '#6ee7b7' },
+  'IN_PROGRESS':  { bg: SURFACE_BLUE,         text: COLOR_BLUE,         border: '#bfdbfe', label: 'In Progress',  chart: '#2DCCD3' },
+  'ON_HOLD':      { bg: '#fffbeb',             text: COLOR_AMBER_DARK,   border: '#fde68a', label: 'On Hold',      chart: '#fbbf24' },
 };
 
 const ROLE_COLORS: Record<string, string> = {
