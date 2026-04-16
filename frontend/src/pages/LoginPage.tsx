@@ -260,32 +260,29 @@ export default function LoginPage() {
  </div>
  </div>
 
- <Button
+ <button
  type="submit"
- fullWidth
- loading={loading}
- disabled={!username || !password}
- vars={() => ({
-   root: {
-     '--button-bg': DEEP_BLUE_HEX,
-     '--button-hover': '#0a1d33',
-     '--button-color': '#ffffff',
-   },
- })}
+ disabled={loading}
  style={{
- borderRadius: 6,
- height: 44,
- fontFamily: FONT_FAMILY,
- fontWeight: 500,
- fontSize: 16,
- letterSpacing: '0.01em',
- border: 'none',
- marginTop: 8,
- boxShadow: SHADOW.sm,
+   width: '100%',
+   backgroundColor: (!username || !password) ? '#4a6080' : DEEP_BLUE_HEX,
+   color: '#ffffff',
+   borderRadius: 6,
+   height: 44,
+   fontFamily: FONT_FAMILY,
+   fontWeight: 500,
+   fontSize: 16,
+   letterSpacing: '0.01em',
+   border: 'none',
+   marginTop: 8,
+   boxShadow: SHADOW.sm,
+   cursor: (!username || !password) ? 'not-allowed' : 'pointer',
+   opacity: loading ? 0.7 : 1,
+   transition: 'background-color 0.2s ease',
  }}
  >
- Log In
- </Button>
+ {loading ? 'Signing in…' : 'Log In'}
+ </button>
 
  {ssoEnabled && (
    <>
