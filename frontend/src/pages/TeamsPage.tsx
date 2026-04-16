@@ -95,7 +95,7 @@ export default function TeamsPage() {
 
   const { data: rawTeams, isLoading, isError, refetch } = useQuery<Team[]>({
     queryKey: ['pods-teams'],
-    queryFn: () => apiClient.get('/pods').then(r => r.data),
+    queryFn: () => apiClient.get('/pods/all').then(r => r.data),
   });
 
   const teams = Array.isArray(rawTeams) ? rawTeams : [];

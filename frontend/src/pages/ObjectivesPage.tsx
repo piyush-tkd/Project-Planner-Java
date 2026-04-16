@@ -100,7 +100,7 @@ export default function ObjectivesPage() {
   const { data: allProjects = [], isError: projectsError } = useQuery({
     queryKey: ['projects-list'],
     queryFn: async () => {
-      const res = await apiClient.get('/projects');
+      const res = await apiClient.get('/projects/all');
       return res.data;
     },
   });

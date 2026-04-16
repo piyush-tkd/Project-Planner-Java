@@ -108,7 +108,7 @@ export default function TeamCalendarPage() {
  // Fetch ALL pods so every team (even with no bookings) appears as a row
  const { data: allPods } = useQuery<{ id: number; name: string }[]>({
    queryKey: ['pods-all-names'],
-   queryFn: () => apiClient.get('/pods').then(r => r.data),
+   queryFn: () => apiClient.get('/pods/all').then(r => r.data),
  });
  const { monthLabels, currentMonthIndex } = useMonthLabels();
  const { data: timeline } = useTimeline();

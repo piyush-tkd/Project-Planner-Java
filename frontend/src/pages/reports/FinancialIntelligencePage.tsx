@@ -101,7 +101,7 @@ export default function FinancialIntelligencePage() {
   // Fetch all pods so every team appears in the utilization breakdown
   const { data: allPods } = useQuery<{ id: number; name: string }[]>({
     queryKey: ['pods-all-names'],
-    queryFn: () => apiClient.get('/pods').then(r => r.data),
+    queryFn: () => apiClient.get('/pods/all').then(r => r.data),
   });
 
   const loading = rLoading || crLoading || pLoading || wLoading || mLoading;

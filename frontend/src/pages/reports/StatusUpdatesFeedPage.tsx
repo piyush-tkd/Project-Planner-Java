@@ -55,7 +55,7 @@ export default function StatusUpdatesFeedPage() {
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['projects-list'],
-    queryFn: async () => { const res = await apiClient.get('/projects'); return res.data; },
+    queryFn: async () => { const res = await apiClient.get('/projects/all'); return res.data; },
   });
 
   const postMutation = useMutation({

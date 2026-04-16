@@ -85,7 +85,7 @@ export default function TeamPulsePage() {
 
   const { data: resources = [] } = useQuery<Resource[]>({
     queryKey: ['resources-list'],
-    queryFn: async () => { const r = await apiClient.get('/resources'); return r.data; },
+    queryFn: async () => { const r = await apiClient.get('/resources/all'); return r.data; },
   });
 
   // Current week entries (for edit/delete list)

@@ -145,7 +145,7 @@ export default function ResourceBookingsPage() {
   const { data: resources = [], isLoading: resourcesLoading, isError: resourcesError } = useQuery({
     queryKey: ['resources'],
     queryFn: async () => {
-      const res = await apiClient.get('/resources');
+      const res = await apiClient.get('/resources/all');
       return res.data;
     },
   });
@@ -154,7 +154,7 @@ export default function ResourceBookingsPage() {
   const { data: projects = [], isError: projectsError } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const res = await apiClient.get('/projects');
+      const res = await apiClient.get('/projects/all');
       return res.data;
     },
   });
