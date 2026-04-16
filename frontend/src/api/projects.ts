@@ -2,10 +2,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 import { ProjectResponse, ProjectRequest, ProjectPodPlanningResponse, ProjectPodPlanningRequest, ProjectPodMatrixResponse } from '../types';
 
+export interface PageData<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
+export function usePaginatedProjects(page: number, size: number = 50) {
+  return useQuery<PageData<ProjectResponse>>({
+    queryKey: ['projects', 'paginated', page, size],
+    queryFn: () => apiClient.get(`/projects?page=${page}&size=${size}`).then(r => r.data),
+  });
+}
+
 export function useProjects() {
   return useQuery<ProjectResponse[]>({
     queryKey: ['projects'],
-    queryFn: () => apiClient.get('/projects').then(r => r.data),
+    queryFn: () => apiClient.get('/projects/all').then(r => r.data),
   });
 }
 

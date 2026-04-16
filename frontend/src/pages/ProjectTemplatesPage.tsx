@@ -180,7 +180,7 @@ export default function ProjectTemplatesPage() {
       </Group>
 
       {/* Stats */}
-      <SimpleGrid cols={4} spacing="md" mb="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="lg">
         {[
           { label: 'Total Templates', value: templates.length },
           { label: 'Starred', value: templates.filter(t => t.starred).length },
@@ -230,7 +230,7 @@ export default function ProjectTemplatesPage() {
               Starred Templates
             </Text>
           </Group>
-          <SimpleGrid cols={3} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
             {starred.map(t => <TemplateCard key={t.id} template={t} />)}
           </SimpleGrid>
         </Box>
@@ -241,7 +241,7 @@ export default function ProjectTemplatesPage() {
         <Text fw={700} size="sm" tt="uppercase" style={{ letterSpacing: '0.6px', color: TEXT_SUBTLE }} mb="md">
           All Templates ({all.length})
         </Text>
-        <SimpleGrid cols={3} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
           {all.map(t => <TemplateCard key={t.id} template={t} />)}
         </SimpleGrid>
       </Box>

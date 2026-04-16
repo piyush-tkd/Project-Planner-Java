@@ -15,6 +15,9 @@ import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +34,15 @@ public class ResourceService {
     private final EntityMapper mapper;
     private final AuditLogService auditLogService;
 
-    public List<ResourceResponse> getAll() {
+    public Page<ResourceResponse> getAll(int page, int size) {
+        var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        return resourceRepository.findAll(pageable).map(r -> {
+            ResourcePodAssignment assignment = assignmentRepository.findByResourceId(r.getId()).orElse(null);
+            return mapper.toResourceResponse(r, assignment);
+        });
+    }
+
+    public List<ResourceResponse> getAllUnpaginated() {
         List<Resource> resources = resourceRepository.findAll();
         return resources.stream().map(r -> {
             ResourcePodAssignment assignment = assignmentRepository.findByResourceId(r.getId()).orElse(null);

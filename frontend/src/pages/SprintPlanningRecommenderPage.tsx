@@ -371,7 +371,7 @@ function PodRecommenderCard({
  const totalJiraHours = jiraMetrics?.totalHoursLogged ?? 0;
 
  return (
- <SimpleGrid cols={4} mb="md">
+ <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="md">
  {/* Total resource hours (before BAU) */}
  <Box style={{ textAlign: 'center' }}>
  <Tooltip
@@ -1154,7 +1154,7 @@ export default function SprintPlanningRecommenderPage() {
 
  {/* ── Summary stats row ──────────────────────────────────────────────── */}
  {allPods.length > 0 && activeSprint && (
- <SimpleGrid cols={4}>
+ <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }}>
  <Paper
  withBorder p="sm" ta="center"
  style={{ cursor: 'pointer', borderColor: podHealthFilter === 'all' ? (isDark ? 'rgba(255,255,255,0.55)' : DEEP_BLUE) : undefined }}

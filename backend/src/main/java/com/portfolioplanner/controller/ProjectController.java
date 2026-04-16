@@ -10,6 +10,9 @@ import com.portfolioplanner.service.ProjectHealthService;
 import com.portfolioplanner.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +31,16 @@ public class ProjectController {
     private final ProjectHealthService projectHealthService;
 
     @GetMapping
-    public ResponseEntity<List<ProjectResponse>> getAll(@RequestParam(required = false) String status) {
-        return ResponseEntity.ok(projectService.getAll(status));
+    public ResponseEntity<Page<ProjectResponse>> getAll(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(projectService.getAll(status, page, size));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<ProjectResponse>> getAllUnpaginated(@RequestParam(required = false) String status) {
+        return ResponseEntity.ok(projectService.getAllUnpaginated(status));
     }
 
     @GetMapping("/{id}")

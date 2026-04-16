@@ -377,7 +377,7 @@ export default function GanttDependenciesPage() {
       </Group>
 
       {/* KPIs */}
-      <SimpleGrid cols={4} spacing="md" mb="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="lg">
         {[
           { label: 'Total Projects',        value: ganttProjects.length,                                           color: DEEP_BLUE },
           { label: 'With POD Dependencies', value: ganttProjects.filter(p => p.resourceDeps.length > 0).length, color: COLOR_BLUE_STRONG },

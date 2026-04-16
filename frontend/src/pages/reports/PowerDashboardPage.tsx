@@ -402,7 +402,14 @@ function useAlerts(dashboardId: number | null) {
 }
 
 // Drill-through context — shared across all widgets on a dashboard
-interface DrillFilter { field: string; value: string; label: string; }
+interface DrillFilter {
+  field: string;
+  value: string;
+  label: string;
+  // Widget's own filters — applied alongside the drill dimension
+  widgetFilters?: WidgetFilter[];
+  widgetDateRange?: { preset?: string; from?: string; to?: string };
+}
 interface DrillCtx {
   drill: DrillFilter | null;
   setDrill: (d: DrillFilter | null) => void;
@@ -1408,7 +1415,7 @@ function GaugeWidget({ data, dark, config, onDrill }: { data: Record<string, unk
   return (
     <Stack align="center" justify="center" h="100%" style={{ overflow: 'hidden', cursor: onDrill ? 'pointer' : undefined }}
       onClick={() => onDrill?.('__all__', 'gauge')}>
-      <svg viewBox="0 0 200 155" style={{ width: '100%', maxWidth: 240, maxHeight: '85%' }}>
+      <svg viewBox="0 0 200 155" style={{ width: '100%', maxWidth: 240, maxHeight: '85%', pointerEvents: 'none' }}>
         {/* Track */}
         <path d={arcPath(START_DEG, endDeg)} fill="none" stroke={trackColor} strokeWidth={14} strokeLinecap="round" />
         {/* Warning zone */}
@@ -1482,7 +1489,8 @@ function SparklineKpiWidget({ data, dark, config, onDrill }: { data: Record<stri
           {Number(trend) >= 0 ? '↑' : '↓'} {Math.abs(Number(trend))}% vs prior
         </Badge>
       )}
-      <Box style={{ width: '100%', height: 50 }}>
+      {/* pointerEvents:none lets click pass through recharts to parent Stack */}
+      <Box style={{ width: '100%', height: 50, pointerEvents: 'none' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={sorted} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
             <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
@@ -1756,7 +1764,7 @@ function WorklogTimelineWidget({ data, dark, onDrill }: { data: Record<string, u
 // ── Completing Dashboard Builder Parity ──────────────────────────────────────
 
 /** Ratio KPI — metric A : metric B (e.g. Bug:Story ratio) */
-function RatioKpiWidget({ data, dark, config }: { data: Record<string, unknown>[]; dark: boolean; config?: WidgetConfig }) {
+function RatioKpiWidget({ data, dark, config, onDrill }: { data: Record<string, unknown>[]; dark: boolean; config?: WidgetConfig; onDrill?: () => void }) {
   if (!data.length) return <EmptyState reason="No data — set numeratorType/denominatorType in special_params" />;
   const d = data[0] ?? {};
   const num  = Number(d.numerator   ?? 0);
@@ -1766,7 +1774,8 @@ function RatioKpiWidget({ data, dark, config }: { data: Record<string, unknown>[
   const color = CHART_PRIMARY(dark);
   const sp = config?.special_params ?? {};
   return (
-    <Stack align="center" justify="center" h="100%" gap={6}>
+    <Stack align="center" justify="center" h="100%" gap={6}
+      style={{ cursor: onDrill ? 'pointer' : undefined }} onClick={onDrill}>
       <Text size="xs" fw={700} tt="uppercase" c="dimmed">
         {sp.numeratorType || 'Bug'} : {sp.denominatorType || 'Story'} Ratio
       </Text>
@@ -1788,7 +1797,7 @@ function RatioKpiWidget({ data, dark, config }: { data: Record<string, unknown>[
 }
 
 /** Created vs Resolved — dual-line chart */
-function CreatedVsResolvedWidget({ data, dark }: { data: Record<string, unknown>[]; dark: boolean }) {
+function CreatedVsResolvedWidget({ data, dark, onDrill }: { data: Record<string, unknown>[]; dark: boolean; onDrill?: (f:string,v:string)=>void }) {
   if (!data.length) return <EmptyState reason="No data matches this configuration" />;
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -1798,15 +1807,19 @@ function CreatedVsResolvedWidget({ data, dark }: { data: Record<string, unknown>
         <YAxis tick={{ fontSize: 11 }} />
         <ReTooltip />
         <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} verticalAlign="top" />
-        <Area type="monotone" dataKey="created" name="Created" stroke="#F1948A" fill="#F1948A" fillOpacity={0.2} strokeWidth={2} />
-        <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#82E0AA" fill="#82E0AA" fillOpacity={0.2} strokeWidth={2} />
+        <Area type="monotone" dataKey="created" name="Created" stroke="#F1948A" fill="#F1948A" fillOpacity={0.2} strokeWidth={2}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          activeDot={onDrill ? (p: any) => <circle {...p} r={5} style={{ cursor:'pointer' }} onClick={() => { const v = p?.payload?.week; if (v) onDrill('week', String(v)); }} /> : { r: 5 }} />
+        <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#82E0AA" fill="#82E0AA" fillOpacity={0.2} strokeWidth={2}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          activeDot={onDrill ? (p: any) => <circle {...p} r={5} style={{ cursor:'pointer' }} onClick={() => { const v = p?.payload?.week; if (v) onDrill('week', String(v)); }} /> : { r: 5 }} />
       </AreaChart>
     </ResponsiveContainer>
   );
 }
 
 /** Open Trend — running total of open issues with created/resolved overlay */
-function OpenTrendWidget({ data, dark }: { data: Record<string, unknown>[]; dark: boolean }) {
+function OpenTrendWidget({ data, dark, onDrill }: { data: Record<string, unknown>[]; dark: boolean; onDrill?: (f:string,v:string)=>void }) {
   if (!data.length) return <EmptyState reason="No data matches this configuration" />;
   const color = CHART_PRIMARY(dark);
   return (
@@ -1821,20 +1834,24 @@ function OpenTrendWidget({ data, dark }: { data: Record<string, unknown>[]; dark
         <Bar yAxisId="left" dataKey="created" name="Created" fill="#F1948A" opacity={0.5} />
         <Bar yAxisId="left" dataKey="resolved" name="Resolved" fill="#82E0AA" opacity={0.5} />
         <Line yAxisId="right" type="monotone" dataKey="open_running_total" name="Open Total"
-          stroke={color} strokeWidth={2.5} dot={false} />
+          stroke={color} strokeWidth={2.5}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          activeDot={onDrill ? (p: any) => <circle {...p} r={5} style={{ cursor:'pointer' }} onClick={() => { const v = p?.payload?.week; if (v) onDrill('week', String(v)); }} /> : { r: 4 }} />
       </ComposedChart>
     </ResponsiveContainer>
   );
 }
 
 /** Sprint Burndown — remaining SP vs ideal line */
-function SprintBurndownWidget({ data, dark, config }: { data: Record<string, unknown>[]; dark: boolean; config?: WidgetConfig }) {
+function SprintBurndownWidget({ data, dark, config, onDrill }: { data: Record<string, unknown>[]; dark: boolean; config?: WidgetConfig; onDrill?: (f:string,v:string)=>void }) {
   if (!data.length) return <EmptyState reason="No sprint found — try setting a project filter" />;
   // data is the burndown array from special endpoint (normalised in useWidgetData)
   const burndown = data.filter(d => d.day !== undefined || d.remaining !== undefined);
   if (!burndown.length) return <EmptyState reason="No burndown data" />;
   const color = CHART_PRIMARY(dark);
   return (
+    <Box h="100%" style={{ cursor: onDrill ? 'pointer' : undefined }}
+      onClick={() => onDrill?.('__all__', 'burndown')}>
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={burndown} margin={{ top: 8, right: 16, bottom: 40, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -1847,6 +1864,7 @@ function SprintBurndownWidget({ data, dark, config }: { data: Record<string, unk
         <ReferenceLine y={0} stroke={dark ? '#444' : '#ccc'} />
       </LineChart>
     </ResponsiveContainer>
+    </Box>
   );
 }
 
@@ -1888,7 +1906,7 @@ function TextBlockWidget({ config, dark }: { config: WidgetConfig; dark: boolean
 
 // ── Benchmark / Period Comparison widget ──────────────────────────────────────
 
-function BenchmarkWidget({ data, dark }: { data: Record<string, unknown>[]; dark: boolean }) {
+function BenchmarkWidget({ data, dark, onDrill }: { data: Record<string, unknown>[]; dark: boolean; onDrill?: (f:string,v:string)=>void }) {
   if (!data.length) return <EmptyState reason="No data matches this configuration" />;
   return (
     <ScrollArea h="100%">
@@ -1902,11 +1920,14 @@ function BenchmarkWidget({ data, dark }: { data: Record<string, unknown>[]; dark
           const pctAbs = Math.abs(pct);
           const ringColor = pctAbs > 20 ? (up ? 'green' : 'red') : (up ? 'teal' : 'orange');
           return (
-            <Group key={i} gap={12} wrap="nowrap" p={8} style={{
-              borderRadius: 8,
-              background: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${dark ? '#2a2a2a' : '#eee'}`,
-            }}>
+            <Group key={i} gap={12} wrap="nowrap" p={8}
+              style={{
+                borderRadius: 8, cursor: onDrill ? 'pointer' : undefined,
+                background: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                border: `1px solid ${dark ? '#2a2a2a' : '#eee'}`,
+              }}
+              onClick={() => onDrill?.('__all__', String(row.metric ?? ''))}>
+
               <RingProgress size={56} thickness={5} roundCaps
                 sections={[{ value: Math.min(100, pctAbs * 2), color: ringColor }]}
                 label={<Text size="xs" fw={700} ta="center" c={ringColor}>{up ? '↑' : '↓'}{pctAbs.toFixed(0)}%</Text>} />
@@ -2054,10 +2075,18 @@ function WidgetCard({ widget, dark, onEdit, onDelete, onDuplicate, onReposition 
 
   const { setDrill, openDrawer } = useContext(DrillContext);
   const handleDrill = useCallback((field: string, value: string) => {
-    const df = { field, value, label: `${field.replace(/_/g, ' ')} = "${value}"` };
+    const isAll = field === '__all__';
+    const df: DrillFilter = {
+      field,
+      value,
+      label: isAll ? `All issues — ${widget.title}` : `${field.replace(/_/g, ' ')} = "${value}"`,
+      // Carry widget's own filters so the drawer applies them too
+      widgetFilters: baseConfig.filters ?? [],
+      widgetDateRange: baseConfig.dateRange,
+    };
     setDrill(df);
-    openDrawer();          // open immediately — no useEffect timing gap
-  }, [setDrill, openDrawer]);
+    openDrawer();
+  }, [setDrill, openDrawer, baseConfig, widget.title]);
 
   // Threshold status for KPI cards
   const thresholdStatus: 'ok' | 'warning' | 'critical' = React.useMemo(() => {
@@ -2187,15 +2216,15 @@ function WidgetCard({ widget, dark, onEdit, onDelete, onDuplicate, onReposition 
         ) : widget.widget_type === 'text_block' || widget.widget_type === 'section_header' ? (
           <TextBlockWidget config={config} dark={dark} />
         ) : widget.widget_type === 'benchmark' ? (
-          <BenchmarkWidget data={rows} dark={dark} />
+          <BenchmarkWidget data={rows} dark={dark} onDrill={handleDrill} />
         ) : widget.widget_type === 'ratio_kpi' ? (
-          <RatioKpiWidget data={rows} dark={dark} config={config} />
+          <RatioKpiWidget data={rows} dark={dark} config={config} onDrill={() => handleDrill('__all__', 'ratio_kpi')} />
         ) : widget.widget_type === 'created_vs_resolved' ? (
-          <CreatedVsResolvedWidget data={rows} dark={dark} />
+          <CreatedVsResolvedWidget data={rows} dark={dark} onDrill={handleDrill} />
         ) : widget.widget_type === 'open_trend' ? (
-          <OpenTrendWidget data={rows} dark={dark} />
+          <OpenTrendWidget data={rows} dark={dark} onDrill={handleDrill} />
         ) : widget.widget_type === 'sprint_burndown' ? (
-          <SprintBurndownWidget data={rows} dark={dark} config={config} />
+          <SprintBurndownWidget data={rows} dark={dark} config={config} onDrill={handleDrill} />
         ) : widget.widget_type === 'horizontal_bar' ? (
           <HorizontalBarWidget data={rows} dark={dark} config={config} onDrill={handleDrill} />
         ) : widget.widget_type === 'gauge' ? (
@@ -2740,10 +2769,16 @@ function DrillDrawer({ drill, isOpen, dark, onClose }: {
   // Keep last drill value while drawer is closing (avoid empty flash)
   const activeDrill = drill;
   const { data, isLoading } = useQuery<{ data: Record<string, unknown>[]; count: number }>({
-    queryKey: ['drill-issues', activeDrill?.field, activeDrill?.value],
-    queryFn: () => apiClient.get(
-      `/power-dashboard/drill-issues?drillField=${encodeURIComponent(activeDrill?.field ?? '')}&drillValue=${encodeURIComponent(activeDrill?.value ?? '')}&days=730&limit=200`
-    ).then(r => r.data),
+    queryKey: ['drill-issues', activeDrill?.field, activeDrill?.value,
+               JSON.stringify(activeDrill?.widgetFilters), activeDrill?.widgetDateRange?.preset],
+    queryFn: () => apiClient.post('/power-dashboard/drill-issues', {
+      drillField:    activeDrill?.field ?? '',
+      drillValue:    activeDrill?.value ?? '',
+      widgetFilters: activeDrill?.widgetFilters ?? [],
+      dateRange:     activeDrill?.widgetDateRange ?? { preset: 'last_2y' },
+      days: 730,
+      limit: 200,
+    }).then(r => r.data),
     enabled: !!activeDrill && isOpen,
   });
 
@@ -2780,9 +2815,21 @@ function DrillDrawer({ drill, isOpen, dark, onClose }: {
           </Tooltip>
           <Text size="xs" c="dimmed">{isLoading ? '...' : `${filtered.length} issues`}</Text>
         </Group>
-        {activeDrill?.field === '__all__' && (
-          <Text size="xs" c="dimmed" mt={4}>Showing all recent issues — use filters above to narrow down</Text>
-        )}
+        <Group gap={4} mt={4} wrap="wrap">
+          {activeDrill?.field !== '__all__' && activeDrill?.field && (
+            <Badge size="xs" variant="light" color="teal">
+              🔍 {activeDrill.field.replace(/_/g,' ')} = {activeDrill.value}
+            </Badge>
+          )}
+          {(activeDrill?.widgetFilters ?? []).map((f, i) => (
+            <Badge key={i} size="xs" variant="dot" color="gray">
+              {f.field.replace(/_/g,' ')} {f.op} {Array.isArray(f.value) ? f.value.join(',') : f.value}
+            </Badge>
+          ))}
+          {activeDrill?.widgetDateRange?.preset && (
+            <Badge size="xs" variant="dot" color="blue">{activeDrill.widgetDateRange.preset}</Badge>
+          )}
+        </Group>
       </Box>
       <ScrollArea style={{ flex: 1 }}>
         {isLoading ? (

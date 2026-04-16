@@ -377,7 +377,7 @@ export default function JiraWorklogPage() {
  ) : (
  <>
  {/* Summary KPIs */}
- <SimpleGrid cols={3} spacing="xs">
+ <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
  <KpiCard
  label="Total Hours"
  value={`${historyData.months.reduce((s, m) => s + m.totalHours, 0).toFixed(0)} h`}

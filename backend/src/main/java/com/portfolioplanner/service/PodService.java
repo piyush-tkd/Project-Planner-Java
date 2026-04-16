@@ -8,6 +8,9 @@ import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +25,12 @@ public class PodService {
     private final ResourcePodAssignmentRepository assignmentRepository;
     private final EntityMapper mapper;
 
-    public List<PodResponse> getAll() {
+    public Page<PodResponse> getAll(int page, int size) {
+        var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        return podRepository.findByActiveTrue(pageable).map(mapper::toPodResponse);
+    }
+
+    public List<PodResponse> getAllUnpaginated() {
         return mapper.toPodResponseList(podRepository.findByActiveTrueOrderByDisplayOrderAsc());
     }
 

@@ -500,7 +500,7 @@ export default function AiContentStudioPage() {
               </Group>
 
               {selectedProject && (
-                <SimpleGrid cols={3} spacing="xs" mt="md">
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs" mt="md">
                   {[
                     { label: 'Status',   value: selectedProject.status ?? '—' },
                     { label: 'Priority', value: selectedProject.priority ?? '—' },

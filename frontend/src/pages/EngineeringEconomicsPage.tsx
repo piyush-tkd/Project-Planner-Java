@@ -261,7 +261,7 @@ export default function EngineeringEconomicsPage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                <SimpleGrid cols={2} spacing="md" mt="md">
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
                   {pieData.map(item => (
                     <Paper key={item.name} withBorder p="md" radius="md" style={{ borderLeft: `4px solid ${item.color}` }}>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{item.name}</Text>

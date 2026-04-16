@@ -99,7 +99,7 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  {/* Stats */}
  {expanded && (
  <>
- <SimpleGrid cols={4} p="xs" style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
+ <SimpleGrid cols={{ base: 2, sm: 4 }} p="xs" style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e9ecef', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
  {[
  { label: 'Total', value: metrics.totalIssues },
  { label: 'SP', value: metrics.totalSP > 0 ? `${metrics.doneSP}/${metrics.totalSP}` : '—' },

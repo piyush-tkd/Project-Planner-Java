@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 import { ResourceResponse, ResourceRequest, AvailabilityData } from '../types';
 
+export interface PageData<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
 export interface CostRateData {
   id: number;
   role: string;
@@ -47,10 +54,17 @@ export function useDeleteCostRate() {
   });
 }
 
+export function usePaginatedResources(page: number, size: number = 50) {
+  return useQuery<PageData<ResourceResponse>>({
+    queryKey: ['resources', 'paginated', page, size],
+    queryFn: () => apiClient.get(`/resources?page=${page}&size=${size}`).then(r => r.data),
+  });
+}
+
 export function useResources() {
   return useQuery<ResourceResponse[]>({
     queryKey: ['resources'],
-    queryFn: () => apiClient.get('/resources').then(r => r.data),
+    queryFn: () => apiClient.get('/resources/all').then(r => r.data),
   });
 }
 

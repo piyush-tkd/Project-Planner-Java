@@ -17,6 +17,9 @@ import {
   IconBrain, IconBulb, IconClock, IconRocket, IconSnowflake,
   IconStatusChange, IconPlayerPlay,
 } from '@tabler/icons-react';
+import { WrikeCard } from '../components/dashboard/widgets/WrikeCard';
+import ProjectStatusWidget from '../components/dashboard/widgets/ProjectStatusWidget';
+import TeamHealthWidget from '../components/dashboard/widgets/TeamHealthWidget';
 import { usePodHours } from '../api/podHours';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -63,35 +66,6 @@ const ROLE_COLORS: Record<string, string> = {
   TECH_LEAD: COLOR_ERROR_STRONG,
 };
 
-// ── Wrike-style widget card wrapper ──────────────────────────────────────
-function WrikeCard({ title, count, children, minH, onTitleClick }: {
-  title: string; count?: number; children: React.ReactNode; minH?: number; onTitleClick?: () => void;
-}) {
-  return (
-    <Paper
-      withBorder
-      radius="lg"
-      p={0}
-      style={{
-        border: '1px solid var(--mantine-color-default-border)',
-        background: 'var(--mantine-color-body)',
-        boxShadow: '0 1px 4px rgba(12,35,64,0.06)',
-        overflow: 'hidden',
-        minHeight: minH,
-      }}
-    >
-      <Box px={20} py={14}
-        onClick={onTitleClick}
-        style={{ borderBottom: '1px solid var(--pp-border)', cursor: onTitleClick ? 'pointer' : 'default' }}>
-        <Text fw={700} size="sm" style={{ color: 'var(--pp-text)' }}>
-          {title}{count !== undefined && <Text component="span" c="dimmed" fw={400} ml={6}>({count})</Text>}
-          {onTitleClick && <Text component="span" c="dimmed" fw={400} ml={6} size="xs">↗</Text>}
-        </Text>
-      </Box>
-      <Box p={0}>{children}</Box>
-    </Paper>
-  );
-}
 
 // ── Status badge (Wrike pill style) ──────────────────────────────────────
 function StatusPill({ status }: { status: string }) {
@@ -223,26 +197,6 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
       }));
   }, [projects]);
 
-  // Projects by owner (stacked bar)
-  const byOwner = useMemo(() => {
-    const map = new Map<string, Record<string, number>>();
-    projects.forEach(p => {
-      if (!map.has(p.owner)) map.set(p.owner, {});
-      const entry = map.get(p.owner)!;
-      entry[p.status] = (entry[p.status] ?? 0) + 1;
-    });
-    return Array.from(map.entries())
-      .map(([owner, counts]) => ({ owner: owner.split(' ').map((w, i) => i === 0 ? w : w[0] + '.').join(' '), ...counts }))
-      .sort((a, b) => {
-        const aTotal = Object.values(a).filter(v => typeof v === 'number').reduce((s, v) => s + (v as number), 0);
-        const bTotal = Object.values(b).filter(v => typeof v === 'number').reduce((s, v) => s + (v as number), 0);
-        return bTotal - aTotal;
-      })
-      .slice(0, 6);
-  }, [projects]);
-
-  const total = statusCounts.reduce((s, d) => s + d.value, 0);
-
   const formatDate = (d: string | null) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
@@ -290,44 +244,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
       </WrikeCard>
 
       {/* Projects by Status — Donut */}
-      <WrikeCard title="Projects by Status">
-        <Box p={20}>
-          <Group align="center" justify="center" gap="xl">
-            <ResponsiveContainer width={160} height={160}>
-              <PieChart>
-                <Pie animationDuration={600} data={statusCounts} dataKey="value" cx="50%" cy="50%"
-                  innerRadius={50} outerRadius={75} paddingAngle={2}
-                  cursor="pointer"
-                  onClick={(data) => {
-                    const statusKey = Object.keys(STATUS_META).find(k => STATUS_META[k].label === data.name);
-                    if (statusKey) navigate(`/projects?status=${statusKey}`);
-                  }}>
-                  {statusCounts.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <Stack gap={6}>
-              {statusCounts.map((entry) => {
-                const statusKey = Object.keys(STATUS_META).find(k => STATUS_META[k].label === entry.name);
-                return (
-                  <Group key={entry.name} gap={8} align="center"
-                    style={{ cursor: statusKey ? 'pointer' : 'default' }}
-                    onClick={() => statusKey && navigate(`/projects?status=${statusKey}`)}>
-                    <Box style={{ width: 10, height: 10, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-                    <Text size="xs" c="dimmed" style={{ minWidth: 90 }}>{entry.name}</Text>
-                    <Text size="xs" fw={700} style={{ color: 'var(--pp-text)' }}>
-                      {total > 0 ? Math.round((entry.value / total) * 100) : 0}%
-                    </Text>
-                  </Group>
-                );
-              })}
-            </Stack>
-          </Group>
-        </Box>
-      </WrikeCard>
+      <ProjectStatusWidget projects={projects} />
 
       {/* In Progress Projects */}
       <WrikeCard title="In Progress" count={inProgress.length} onTitleClick={() => navigate('/projects?status=ACTIVE')}>
@@ -366,31 +283,7 @@ function TeamDashboard({ projects }: { projects: ProjectResponse[] }) {
       </WrikeCard>
 
       {/* Projects by Assignee */}
-      <WrikeCard title="Projects by Assignee" minH={260}>
-        <Box p={20} pt={16}>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byOwner} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={dark ? "rgba(255,255,255,0.06)" : SURFACE_LIGHT} />
-              <XAxis type="number" fontSize={10} tick={{ fill: TEXT_SUBTLE }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="owner" width={90} fontSize={11} tick={{ fill: TEXT_GRAY }} axisLine={false} tickLine={false} />
-              <Tooltip />
-              {Object.keys(STATUS_META).map(s => (
-                <Bar animationDuration={600} key={s} dataKey={s} stackId="a" fill={STATUS_META[s].chart}
-                  name={STATUS_META[s].label} radius={[0, 0, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-          {/* Legend */}
-          <Group gap={12} mt={12} wrap="wrap" justify="center">
-            {statusCounts.map(s => (
-              <Group key={s.name} gap={4} align="center">
-                <Box style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
-                <Text size="xs" c="dimmed">{s.name}</Text>
-              </Group>
-            ))}
-          </Group>
-        </Box>
-      </WrikeCard>
+      <TeamHealthWidget projects={projects} statusCounts={statusCounts} />
     </SimpleGrid>
   );
 }

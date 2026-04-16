@@ -372,5 +372,37 @@ class DemandCalculatorTest {
             assertThat(result.get(POD_ID).get(Role.DEVELOPER).get(1))
                 .isEqualByComparingTo("2000.00");
         }
+
+        @Test
+        @DisplayName("No projects assigned to pod produces zero demand")
+        void emptyPlanningListProducesNoDemand() {
+            var result = calculator.calculate(
+                List.of(),
+                Map.of("Flat", flatPattern()),
+                Map.of(POD_ID, pod(POD_ID)),
+                Map.of()
+            );
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Demand with null effortPattern produces zero demand")
+        void nullEffortPatternProducesZeroDemand() {
+            Pod pod = pod(POD_ID);
+            Project project = activeProject(PROJ_ID, 1, 3, "NonExistent");
+            ProjectPodPlanning pp = planning(PLAN_ID, project, pod,
+                    new BigDecimal("1000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, null, null, null);
+
+            var result = calculator.calculate(
+                List.of(pp),
+                Map.of(),
+                Map.of(POD_ID, pod),
+                Map.of(PROJ_ID, project)
+            );
+
+            assertThat(result).isEmpty();
+        }
     }
 }

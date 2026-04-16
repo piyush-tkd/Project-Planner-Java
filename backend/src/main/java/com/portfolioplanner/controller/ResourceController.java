@@ -9,6 +9,9 @@ import com.portfolioplanner.service.AvailabilityService;
 import com.portfolioplanner.service.ResourceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +31,15 @@ public class ResourceController {
     private final AvailabilityService availabilityService;
 
     @GetMapping
-    public ResponseEntity<List<ResourceResponse>> getAll() {
-        return ResponseEntity.ok(resourceService.getAll());
+    public ResponseEntity<Page<ResourceResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(resourceService.getAll(page, size));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<ResourceResponse>> getAllUnpaginated() {
+        return ResponseEntity.ok(resourceService.getAllUnpaginated());
     }
 
     @GetMapping("/{id}")

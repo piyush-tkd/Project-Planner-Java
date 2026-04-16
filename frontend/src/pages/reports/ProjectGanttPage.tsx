@@ -1,6 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea, Tooltip } from '@mantine/core';
+import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea, Tooltip, Button } from '@mantine/core';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useProjects } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
@@ -9,7 +14,7 @@ import PriorityBadge from '../../components/common/PriorityBadge';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
-import { IconLayoutGrid } from '@tabler/icons-react';
+import { IconLayoutGrid, IconGripVertical } from '@tabler/icons-react';
 
 const PRIORITY_COLORS: Record<string, string> = {
   P0: COLOR_ERROR_DARK,
@@ -32,18 +37,127 @@ const PRIORITIES = ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST', 'BLOCKER', 'MI
 const ALL_STATUSES = Object.keys(STATUS_STYLE);
 const DEFAULT_STATUSES = ['NOT_STARTED', 'IN_DISCOVERY', 'ACTIVE', 'ON_HOLD'];
 
+// Sortable row component with drag handle
+function SortableProjectRow({ project, months, currentMonthIndex, dark }: {
+  project: any; months: number[]; currentMonthIndex: number; dark: boolean;
+}) {
+  const navigate = useNavigate();
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: String(project.id) });
+  const [showDragHandle, setShowDragHandle] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    transition: 'opacity 150ms ease',
+  };
+
+  const startIdx = project.startMonth ?? 0;
+  const endIdx = startIdx + project.durationMonths - 1;
+  const color = PRIORITY_COLORS[project.priority] ?? TEXT_GRAY;
+  const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
+  const useStripes = st.stripes;
+
+  return (
+    <Table.Tr
+      ref={setNodeRef}
+      style={style}
+      onMouseEnter={() => setShowDragHandle(true)}
+      onMouseLeave={() => setShowDragHandle(false)}
+      onClick={() => !isDragging && navigate(`/projects/${project.id}`)}
+    >
+      <Table.Td style={{ padding: '8px 4px', width: 40, textAlign: 'center' }}>
+        <Box
+          {...attributes}
+          {...listeners}
+          style={{
+            opacity: showDragHandle ? 1 : 0,
+            transition: 'opacity 150ms ease',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <IconGripVertical size={16} color={TEXT_GRAY} />
+        </Box>
+      </Table.Td>
+      <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Tooltip label={project.name} openDelay={400}>
+          <span>{project.name}</span>
+        </Tooltip>
+      </Table.Td>
+      <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
+      <Table.Td><StatusBadge status={project.status} /></Table.Td>
+      <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
+      {months.map(m => {
+        const inRange = m >= startIdx && m <= endIdx;
+        const isFirst = m === startIdx;
+        const isLast = m === endIdx || m === Math.min(endIdx, 12);
+        const isPast = m < currentMonthIndex;
+        const isCurrent = m === currentMonthIndex;
+
+        if (!inRange) {
+          return (
+            <Table.Td
+              key={m}
+              style={{
+                padding: 0,
+                background: isCurrent
+                  ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
+                  : isPast
+                    ? (dark ? 'rgba(255,255,255,0.02)' : SURFACE_LIGHT)
+                    : (dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT),
+              }}
+            />
+          );
+        }
+
+        const barBg = useStripes
+          ? `repeating-linear-gradient(45deg, ${color} 0px, ${color} 4px, ${color}88 4px, ${color}88 9px)`
+          : color;
+
+        return (
+          <Table.Td
+            key={m}
+            style={{
+              padding: 0,
+              background: barBg,
+              opacity: isPast ? Math.min(st.opacity, 0.4) : st.opacity,
+              borderRadius: `${isFirst ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isFirst ? '5px' : '0'}`,
+            }}
+          >
+            {isFirst && endIdx - startIdx >= 2 && (
+              <Text size="xs" c="white" fw={700} style={{ padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '24px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                {project.name}
+              </Text>
+            )}
+          </Table.Td>
+        );
+      })}
+      <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
+    </Table.Tr>
+  );
+}
+
 export default function ProjectGanttPage() {
   const { data: projects, isLoading } = useProjects();
   const { monthLabels, currentMonthIndex } = useMonthLabels();
   const navigate = useNavigate();
   const dark = useDarkMode();
+  const dndId = useId();
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(PRIORITIES);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(DEFAULT_STATUSES);
+  const [customOrder, setCustomOrder] = useState<string[]>([]);
+
+  // Set up DnD sensors with PointerSensor
+  const sensors = useSensors(
+    useSensor(PointerSensor, { distance: { x: 8, y: 8 } } as any)
+  );
 
   const visibleProjects = useMemo(() => {
     if (!projects) return [];
-    return projects
+    const filtered = projects
       .filter(p =>
         selectedPriorities.includes(p.priority) &&
         selectedStatuses.includes(p.status)
@@ -52,7 +166,40 @@ export default function ProjectGanttPage() {
         const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
         return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || (a.startMonth ?? 0) - (b.startMonth ?? 0);
       });
-  }, [projects, selectedPriorities, selectedStatuses]);
+
+    // Apply custom order if set
+    if (customOrder.length > 0) {
+      const customOrderMap = new Map(customOrder.map((id, idx) => [id, idx]));
+      return filtered.sort((a, b) => {
+        const aIdx = customOrderMap.get(String(a.id)) ?? Infinity;
+        const bIdx = customOrderMap.get(String(b.id)) ?? Infinity;
+        return aIdx - bIdx;
+      });
+    }
+
+    return filtered;
+  }, [projects, selectedPriorities, selectedStatuses, customOrder]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = visibleProjects.findIndex(p => String(p.id) === active.id);
+    const newIndex = visibleProjects.findIndex(p => String(p.id) === over.id);
+
+    if (oldIndex >= 0 && newIndex >= 0) {
+      const newOrder = arrayMove(
+        visibleProjects.map(p => String(p.id)),
+        oldIndex,
+        newIndex
+      );
+      setCustomOrder(newOrder);
+    }
+  };
+
+  const handleResetOrder = () => {
+    setCustomOrder([]);
+  };
 
   if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
   if (!projects || projects.length === 0) {
@@ -130,114 +277,74 @@ export default function ProjectGanttPage() {
         </Group>
       </Group>
 
-      <ScrollArea>
-        <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th style={{ width: 200 }}>Project</Table.Th>
-              <Table.Th style={{ width: 50 }}>Pri</Table.Th>
-              <Table.Th style={{ width: 90 }}>Status</Table.Th>
-              <Table.Th style={{ width: 70 }}>Owner</Table.Th>
-              {months.map(m => (
-                <Table.Th
-                  key={m}
-                  style={{
-                    textAlign: 'center',
-                    fontSize: 11,
-                    width: 65,
-                    background: m === currentMonthIndex
-                      ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
-                      : undefined,
-                    ...(m < currentMonthIndex ? { color: TEXT_SUBTLE, fontWeight: 400, fontStyle: 'italic' } : {}),
-                  }}
-                >
-                  {monthLabels[m] ?? `M${m}`}
-                </Table.Th>
-              ))}
-              <Table.Th style={{ width: 60 }}>Dur</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {visibleProjects.map(project => {
-              const startIdx = project.startMonth ?? 0;
-              const endIdx = startIdx + project.durationMonths - 1;
-              const color = PRIORITY_COLORS[project.priority] ?? TEXT_GRAY;
-              const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
-              const useStripes = st.stripes;
+      {customOrder.length > 0 && (
+        <Group justify="flex-end">
+          <Button variant="light" size="xs" onClick={handleResetOrder}>
+            Reset order
+          </Button>
+        </Group>
+      )}
 
-              return (
-                <Table.Tr
-                  key={project.id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                >
-                  <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <Tooltip label={project.name} openDelay={400}>
-                      <span>{project.name}</span>
-                    </Tooltip>
-                  </Table.Td>
-                  <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
-                  <Table.Td><StatusBadge status={project.status} /></Table.Td>
-                  <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
-                  {months.map(m => {
-                    const inRange = m >= startIdx && m <= endIdx;
-                    const isFirst = m === startIdx;
-                    const isLast = m === endIdx || m === Math.min(endIdx, 12);
-                    const isPast = m < currentMonthIndex;
-                    const isCurrent = m === currentMonthIndex;
-
-                    if (!inRange) {
-                      return (
-                        <Table.Td
-                          key={m}
-                          style={{
-                            padding: 0,
-                            background: isCurrent
-                              ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
-                              : isPast
-                                ? (dark ? 'rgba(255,255,255,0.02)' : SURFACE_LIGHT)
-                                : (dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT),
-                          }}
-                        />
-                      );
-                    }
-
-                    const barBg = useStripes
-                      ? `repeating-linear-gradient(45deg, ${color} 0px, ${color} 4px, ${color}88 4px, ${color}88 9px)`
-                      : color;
-
-                    return (
-                      <Table.Td
-                        key={m}
-                        style={{
-                          padding: 0,
-                          background: barBg,
-                          opacity: isPast ? Math.min(st.opacity, 0.4) : st.opacity,
-                          borderRadius: `${isFirst ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isFirst ? '5px' : '0'}`,
-                        }}
-                      >
-                        {isFirst && endIdx - startIdx >= 2 && (
-                          <Text size="xs" c="white" fw={700} style={{ padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '24px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                            {project.name}
-                          </Text>
-                        )}
-                      </Table.Td>
-                    );
-                  })}
-                  <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
-                </Table.Tr>
-              );
-            })}
-            {visibleProjects.length === 0 && (
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <ScrollArea>
+          <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={months.length + 5}>
-                  <Text ta="center" c="dimmed" py="md">No projects match the selected filters</Text>
-                </Table.Td>
+                <Table.Th style={{ width: 40 }}></Table.Th>
+                <Table.Th style={{ width: 200 }}>Project</Table.Th>
+                <Table.Th style={{ width: 50 }}>Pri</Table.Th>
+                <Table.Th style={{ width: 90 }}>Status</Table.Th>
+                <Table.Th style={{ width: 70 }}>Owner</Table.Th>
+                {months.map(m => (
+                  <Table.Th
+                    key={m}
+                    style={{
+                      textAlign: 'center',
+                      fontSize: 11,
+                      width: 65,
+                      background: m === currentMonthIndex
+                        ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
+                        : undefined,
+                      ...(m < currentMonthIndex ? { color: TEXT_SUBTLE, fontWeight: 400, fontStyle: 'italic' } : {}),
+                    }}
+                  >
+                    {monthLabels[m] ?? `M${m}`}
+                  </Table.Th>
+                ))}
+                <Table.Th style={{ width: 60 }}>Dur</Table.Th>
               </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </ScrollArea>
+            </Table.Thead>
+            <Table.Tbody>
+              <SortableContext
+                items={visibleProjects.map(p => String(p.id))}
+                strategy={verticalListSortingStrategy}
+              >
+                {visibleProjects.map(project => (
+                  <SortableProjectRow
+                    key={project.id}
+                    project={project}
+                    months={months}
+                    currentMonthIndex={currentMonthIndex}
+                    dark={dark}
+                  />
+                ))}
+              </SortableContext>
+              {visibleProjects.length === 0 && (
+                <Table.Tr>
+                  <Table.Td colSpan={months.length + 5}>
+                    <Text ta="center" c="dimmed" py="md">No projects match the selected filters</Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </DndContext>
     </Stack>
   );
 }

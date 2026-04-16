@@ -309,7 +309,7 @@ function ReleaseCard({
  <Tabs.Panel value="overview">
  <Stack gap="sm">
  {/* Status category counters — clickable */}
- <SimpleGrid cols={3} spacing="xs">
+ <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
  <Paper
  withBorder p="xs" radius="sm" ta="center"
  style={{ cursor: 'pointer' }}

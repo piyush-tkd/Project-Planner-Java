@@ -4,6 +4,9 @@ import com.portfolioplanner.domain.model.Pod;
 import com.portfolioplanner.dto.response.PodResponse;
 import com.portfolioplanner.service.PodService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +23,15 @@ public class PodController {
     private final PodService podService;
 
     @GetMapping
-    public ResponseEntity<List<PodResponse>> getAll() {
-        return ResponseEntity.ok(podService.getAll());
+    public ResponseEntity<Page<PodResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(podService.getAll(page, size));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<PodResponse>> getAllUnpaginated() {
+        return ResponseEntity.ok(podService.getAllUnpaginated());
     }
 
     @GetMapping("/{id}")

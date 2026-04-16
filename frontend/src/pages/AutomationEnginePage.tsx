@@ -462,7 +462,7 @@ function RuleModal({
         <Divider label="Condition — optional extra filter" labelPosition="left" />
 
         {/* Condition */}
-        <SimpleGrid cols={3}>
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
           <Select
             label="Field"
             placeholder="Any"

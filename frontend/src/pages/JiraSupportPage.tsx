@@ -615,7 +615,7 @@ function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  <Stack gap="md">
  <Text fw={600} size="md">{ticket.summary}</Text>
 
- <SimpleGrid cols={2} spacing="xs">
+ <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
  <Box>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase">Status</Text>
  <Badge mt={4}

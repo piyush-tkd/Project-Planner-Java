@@ -2,10 +2,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 import { PodResponse, BauAssumptionResponse, BauAssumptionRequest } from '../types';
 
+export interface PageData<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
+export function usePaginatedPods(page: number, size: number = 50) {
+  return useQuery<PageData<PodResponse>>({
+    queryKey: ['pods', 'paginated', page, size],
+    queryFn: () => apiClient.get(`/pods?page=${page}&size=${size}`).then(r => r.data),
+  });
+}
+
 export function usePods() {
   return useQuery<PodResponse[]>({
     queryKey: ['pods'],
-    queryFn: () => apiClient.get('/pods').then(r => r.data),
+    queryFn: () => apiClient.get('/pods/all').then(r => r.data),
   });
 }
 

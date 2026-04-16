@@ -371,7 +371,7 @@ export default function ResourceBookingsPage() {
       </Group>
 
       {/* Summary cards */}
-      <SimpleGrid cols={4} spacing="md" mb="lg" p="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="lg" p="md">
         {[
           { label: 'Total Resources', value: resources.length, color: DEEP_BLUE },
           {
@@ -638,7 +638,7 @@ export default function ResourceBookingsPage() {
         </Paper>
       ) : (
         /* Cards View */
-        <SimpleGrid cols={3} spacing="md" p="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" p="md">
           {filteredResources.map((resource: Resource) => {
             const resourceBookings = bookings.filter((b: Booking) => String(b.resourceId) === String(resource.id));
             const util = Math.round(utilization[String(resource.id)] ?? 0);

@@ -765,12 +765,19 @@ public class PowerDashboardController {
     // DRILL-THROUGH — raw issues filtered by any dimension
     // ══════════════════════════════════════════════════════════════════════════
 
-    @GetMapping("/drill-issues")
+    @PostMapping("/drill-issues")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> drillIssues(
-            @RequestParam(required = false) String drillField,
-            @RequestParam(required = false) String drillValue,
-            @RequestParam(defaultValue = "730") int days,
-            @RequestParam(defaultValue = "200") int limit) {
+            @RequestBody Map<String, Object> body) {
+        String drillField = (String) body.getOrDefault("drillField", null);
+        String drillValue = (String) body.getOrDefault("drillValue", null);
+        int days  = ((Number) body.getOrDefault("days",  730)).intValue();
+        int limit = ((Number) body.getOrDefault("limit", 200)).intValue();
+        // Widget's own filters — applied in addition to the drill dimension
+        List<Map<String, Object>> widgetFilters = body.get("widgetFilters") instanceof List
+            ? (List<Map<String, Object>>) body.get("widgetFilters") : List.of();
+        Map<String, Object> dateRange = body.get("dateRange") instanceof Map
+            ? (Map<String, Object>) body.get("dateRange") : Map.of();
 
         // Drill-safe field map — uses only jira_issue columns (no JOINs needed)
         // Overrides JOIN-dependent fields from ISSUE_DIMENSIONS with their jira_issue equivalents
@@ -799,19 +806,84 @@ public class PowerDashboardController {
             }
         }
 
-        String drillWhere = "";
-        if (drillValue != null && drillField != null) {
+        // Build the drill dimension WHERE clause
+        StringBuilder drillWhere = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
+        // Date range — use widget's dateRange if provided, otherwise fall back to days param
+        String dateFilter;
+        String drillPreset = dateRange.containsKey("preset") ? (String) dateRange.get("preset") : null;
+        if (drillPreset != null) {
+            String interval = switch (drillPreset) {
+                case "last_7d"   -> "7 days";
+                case "last_30d"  -> "30 days";
+                case "last_90d"  -> "90 days";
+                case "last_6m"   -> "6 months";
+                case "last_12m"  -> "12 months";
+                case "last_2y"   -> "2 years";
+                default          -> days + " days";
+            };
+            dateFilter = "i.created_at >= NOW() - INTERVAL '" + interval + "'";
+        } else {
+            dateFilter = "i.created_at >= NOW() - INTERVAL '1 day' * " + Math.min(days, 730);
+        }
+
+        // Drill dimension filter
+        if (drillValue != null && drillField != null && !isAll) {
             if (isLabel) {
-                drillWhere = " AND EXISTS (SELECT 1 FROM jira_issue_label WHERE issue_key = i.issue_key AND label = '" +
-                    drillValue.replace("'", "''") + "')";
+                drillWhere.append(" AND EXISTS (SELECT 1 FROM jira_issue_label WHERE issue_key = i.issue_key AND label = ?)");
+                params.add(drillValue);
             } else if (isCf) {
                 String cfId = drillField.substring(3);
-                drillWhere = " AND EXISTS (SELECT 1 FROM jira_issue_custom_field WHERE issue_key = i.issue_key AND field_id = '" +
-                    cfId.replace("'","''") + "' AND field_value = '" + drillValue.replace("'","''") + "')";
+                drillWhere.append(" AND EXISTS (SELECT 1 FROM jira_issue_custom_field WHERE issue_key = i.issue_key AND field_id = ? AND field_value = ?)");
+                params.add(cfId);
+                params.add(drillValue);
             } else if (fieldSql != null) {
-                drillWhere = " AND " + fieldSql + " = '" + drillValue.replace("'", "''") + "'";
+                drillWhere.append(" AND ").append(fieldSql).append(" = ?");
+                params.add(drillValue);
             }
         }
+
+        // Widget's own filters — same logic as PowerQueryBuilder.buildFilters
+        Map<String, String> drillDims = drillSafe;
+        for (Map<String, Object> f : widgetFilters) {
+            String ff = f.get("field") instanceof String ? (String) f.get("field") : null;
+            String op = f.get("op") instanceof String ? (String) f.get("op") : "eq";
+            Object val = f.get("value");
+            if (ff == null || val == null) continue;
+            boolean fLabel = "label".equals(ff);
+            boolean fCf    = ff.startsWith("cf_");
+            String fSql    = fLabel || fCf ? null : drillDims.get(ff);
+            if (fSql == null && !fLabel && !fCf) continue;
+            switch (op) {
+                case "eq" -> {
+                    if (fLabel) { drillWhere.append(" AND EXISTS (SELECT 1 FROM jira_issue_label WHERE issue_key = i.issue_key AND label = ?)"); params.add(val); }
+                    else if (fCf) { drillWhere.append(" AND EXISTS (SELECT 1 FROM jira_issue_custom_field WHERE issue_key = i.issue_key AND field_id = ? AND field_value = ?)"); params.add(ff.substring(3)); params.add(val); }
+                    else { drillWhere.append(" AND ").append(fSql).append(" = ?"); params.add(val); }
+                }
+                case "neq" -> { if (fSql != null) { drillWhere.append(" AND ").append(fSql).append(" != ?"); params.add(val); } }
+                case "in"  -> {
+                    List<?> vals = val instanceof List ? (List<?>) val : List.of(val);
+                    if (!vals.isEmpty() && fSql != null) {
+                        String ph = String.join(",", java.util.Collections.nCopies(vals.size(), "?"));
+                        drillWhere.append(" AND ").append(fSql).append(" IN (").append(ph).append(")");
+                        params.addAll(vals);
+                    }
+                }
+                case "not_in" -> {
+                    List<?> vals = val instanceof List ? (List<?>) val : List.of(val);
+                    if (!vals.isEmpty() && fSql != null) {
+                        String ph = String.join(",", java.util.Collections.nCopies(vals.size(), "?"));
+                        drillWhere.append(" AND ").append(fSql).append(" NOT IN (").append(ph).append(")");
+                        params.addAll(vals);
+                    }
+                }
+                case "like" -> { if (fSql != null) { drillWhere.append(" AND ").append(fSql).append(" ILIKE ?"); params.add("%" + val + "%"); } }
+            }
+        }
+
+        // Add limit param last
+        params.add(Math.min(limit, 500));
 
         List<Map<String, Object>> issues = jdbc.queryForList(
             "SELECT i.issue_key, i.summary, i.issue_type, i.status_name, i.status_category," +
@@ -821,11 +893,10 @@ public class PowerDashboardController {
             " COALESCE(i.resolution_date, i.updated_at)::date AS updated_date," +
             " ROUND(EXTRACT(EPOCH FROM (COALESCE(i.resolution_date, i.updated_at) - i.created_at)) / 86400.0, 1) AS age_days" +
             " FROM jira_issue i" +
-            " WHERE i.created_at >= NOW() - INTERVAL '1 day' * ?" +
-            " AND LOWER(i.issue_type) NOT IN ('epic','sub-task')" +
+            " WHERE " + dateFilter +
             drillWhere +
             " ORDER BY i.created_at DESC LIMIT ?",
-            days, Math.min(limit, 500));
+            params.toArray());
 
         return ResponseEntity.ok(Map.of("data", issues, "count", issues.size(),
             "drill_field", drillField != null ? drillField : "",
