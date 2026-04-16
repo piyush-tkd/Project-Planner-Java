@@ -9,7 +9,6 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
-import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
@@ -21,7 +20,7 @@ import java.util.Optional;
  *
  * <p>Implementation is thread-safe using volatile field and synchronized refresh.
  */
-@Component
+// Registered as a bean via SsoClientRegistrationConfig — no @Component needed
 @RequiredArgsConstructor
 @Slf4j
 public class RefreshableSsoClientRegistrationRepository implements ClientRegistrationRepository {
