@@ -72,7 +72,7 @@ export default function RiskHeatmapPage() {
 
   const { data: risks = [], isLoading } = useQuery<RiskItem[]>({
     queryKey: ['risks-all'],
-    queryFn: () => apiClient.get('/risks').then(r => r.data),
+    queryFn: () => apiClient.get("/risks/all").then(r => r.data),
   });
 
   // Only RISK type, not CLOSED
