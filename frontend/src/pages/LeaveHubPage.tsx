@@ -25,11 +25,11 @@ export default function LeaveHubPage() {
         </Tabs.List>
 
         <Tabs.Panel value="leave">
-          <LeaveManagementPage embedded />
+          {activeTab === 'leave' && <LeaveManagementPage embedded />}
         </Tabs.Panel>
 
         <Tabs.Panel value="holidays">
-          <HolidayCalendarPage embedded />
+          {activeTab === 'holidays' && <HolidayCalendarPage embedded />}
         </Tabs.Panel>
       </Tabs>
     </PPPageLayout>

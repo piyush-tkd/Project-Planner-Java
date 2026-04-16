@@ -667,7 +667,8 @@ export default function GanttDependenciesPage() {
                 ) : (
                   <Stack gap="md">
                     {project.resourceDeps.map(rd => {
-                      const c        = capacityMap.get(`${project.id}::${rd.pod}`)!;
+                      const c        = capacityMap.get(`${project.id}::${rd.pod}`);
+                      if (!c) return null;
                       const depColor = getPodColor(rd.pod);
                       const allocDevs = c.podTotalDevs - c.minAvailDevs;
                       const allocQa   = c.podTotalQa   - c.minAvailQa;
@@ -753,7 +754,8 @@ export default function GanttDependenciesPage() {
                     <Divider my="sm" />
                     <Text size="11px" c="dimmed" fw={600} mb={4}>Lending to</Text>
                     {inbound.map(p => {
-                      const rd = p.resourceDeps.find(d => d.pod === pod)!;
+                      const rd = p.resourceDeps.find(d => d.pod === pod);
+                      if (!rd) return null;
                       const c  = capacityMap.get(`${p.id}::${pod}`);
                       return (
                         <Group key={p.id} gap={6} mb={3}>
