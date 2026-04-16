@@ -4,17 +4,21 @@
  */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Stack, Group, Title, Text, Badge, Paper, Table, Button, Progress,
-  ActionIcon, Tooltip, Alert, Divider, Avatar, Skeleton,
+  ActionIcon, Alert, Avatar, Skeleton, Modal, Select, NumberInput,
+  Switch, TextInput,
 } from '@mantine/core';
-import { IconArrowLeft, IconUsers, IconPlus, IconPencil, IconTrash, IconAlertCircle } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_WARNING, COLOR_ERROR } from '../brandTokens';
+import { notifications } from '@mantine/notifications';
+import { IconArrowLeft, IconUsers, IconPlus, IconPencil, IconCheck } from '@tabler/icons-react';
+import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_WARNING } from '../brandTokens';
 import apiClient from '../api/client';
 import { useDarkMode } from '../hooks/useDarkMode';
 import TeamTypeBadge from '../components/teams/TeamTypeBadge';
 import ResourceAllocationDrawer from '../components/resources/ResourceAllocationDrawer';
+import { useCreateAllocation, useAllocationTypes } from '../api/allocations';
+import { useResources } from '../api/resources';
 
 interface TeamMember {
   allocation: {
@@ -31,6 +35,20 @@ export default function TeamDetailPage() {
   const dark = useDarkMode();
 
   const [drawerResource, setDrawerResource] = useState<{ id: number; name: string; role: string } | null>(null);
+  const [addOpen, setAddOpen]               = useState(false);
+
+  // Add Member form state
+  const [selResourceId, setSelResourceId]   = useState<string | null>(null);
+  const [selTypeId, setSelTypeId]           = useState<string | null>(null);
+  const [percentage, setPercentage]         = useState<number | string>(100);
+  const [startDate, setStartDate]           = useState('');
+  const [endDate, setEndDate]               = useState('');
+  const [isPrimary, setIsPrimary]           = useState(false);
+
+  const qc = useQueryClient();
+  const createAllocation = useCreateAllocation();
+  const { data: allResources = [] }  = useResources();
+  const { data: allocationTypes = [] } = useAllocationTypes();
 
   const { data: team, isLoading: teamLoading, isError: teamError } = useQuery<any>({
     queryKey: ['pod', id],
@@ -143,7 +161,7 @@ export default function TeamDetailPage() {
               Team Members ({members.length})
             </Text>
           </Group>
-          <Button size="xs" variant="filled" leftSection={<IconPlus size={13} />} style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}>
+          <Button size="xs" variant="filled" leftSection={<IconPlus size={13} />} style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }} onClick={() => setAddOpen(true)}>
             Add Member
           </Button>
         </Group>
@@ -254,6 +272,102 @@ export default function TeamDetailPage() {
         onClose={() => setDrawerResource(null)}
         resource={drawerResource}
       />
+
+      {/* ── Add Member Modal ── */}
+      <Modal
+        opened={addOpen}
+        onClose={() => { setAddOpen(false); setSelResourceId(null); setSelTypeId(null); setPercentage(100); setStartDate(''); setEndDate(''); setIsPrimary(false); }}
+        title={<Text fw={700} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>Add Team Member</Text>}
+        size="md"
+        centered
+      >
+        <Stack gap="sm">
+          <Select
+            label="Resource"
+            placeholder="Search for a resource…"
+            searchable
+            required
+            data={allResources.map((r: any) => ({ value: String(r.id), label: `${r.name} — ${r.role ?? ''}` }))}
+            value={selResourceId}
+            onChange={setSelResourceId}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <Select
+            label="Allocation Type"
+            placeholder="Select type…"
+            required
+            data={allocationTypes.map((t: any) => ({ value: String(t.id), label: t.name }))}
+            value={selTypeId}
+            onChange={setSelTypeId}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <NumberInput
+            label="Allocation %"
+            required
+            min={1}
+            max={100}
+            value={percentage}
+            onChange={setPercentage}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <TextInput
+            label="Start Date"
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.currentTarget.value)}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <TextInput
+            label="End Date (optional)"
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.currentTarget.value)}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <Switch
+            label="Primary allocation"
+            checked={isPrimary}
+            onChange={e => setIsPrimary(e.currentTarget.checked)}
+            styles={{ label: { fontFamily: FONT_FAMILY } }}
+          />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="subtle" color="gray" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button
+              leftSection={<IconCheck size={14} />}
+              style={{ backgroundColor: AQUA_HEX, color: DEEP_BLUE_HEX, fontWeight: 600 }}
+              disabled={!selResourceId || !selTypeId || !percentage}
+              loading={createAllocation.isPending}
+              onClick={() => {
+                if (!selResourceId || !selTypeId || !id) return;
+                createAllocation.mutate(
+                  {
+                    resourceId:       Number(selResourceId),
+                    teamId:           Number(id),
+                    allocationTypeId: Number(selTypeId),
+                    percentage:       Number(percentage),
+                    startDate:        startDate || undefined,
+                    endDate:          endDate   || undefined,
+                    isPrimary,
+                  },
+                  {
+                    onSuccess: () => {
+                      notifications.show({ title: 'Member added', message: 'Team member allocated successfully.', color: 'teal', icon: <IconCheck size={14} /> });
+                      qc.invalidateQueries({ queryKey: ['team-allocations', id] });
+                      setAddOpen(false);
+                      setSelResourceId(null); setSelTypeId(null); setPercentage(100); setStartDate(''); setEndDate(''); setIsPrimary(false);
+                    },
+                    onError: () => {
+                      notifications.show({ title: 'Error', message: 'Failed to add member. Please try again.', color: 'red' });
+                    },
+                  }
+                );
+              }}
+            >
+              Add Member
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
