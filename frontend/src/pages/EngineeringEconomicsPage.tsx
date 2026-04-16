@@ -148,7 +148,7 @@ export default function EngineeringEconomicsPage() {
       </SimpleGrid>
 
       {/* ── Tabs ── */}
-      <Tabs defaultValue="trend" variant="outline">
+      <Tabs defaultValue="trend" variant="outline" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="trend"  leftSection={<IconTrendingUp size={14} />}>Cost Trend</Tabs.Tab>
           <Tabs.Tab value="roi"    leftSection={<IconChartPie size={14} />}>Project ROI</Tabs.Tab>

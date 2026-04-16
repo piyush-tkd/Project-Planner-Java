@@ -370,7 +370,7 @@ export default function FinancialIntelligencePage() {
       </SimpleGrid>
 
       {/* ── View tabs ── */}
-      <Tabs value={view} onChange={v => setView(v ?? 'overview')} variant="outline" radius="sm">
+      <Tabs value={view} onChange={v => setView(v ?? 'overview')} variant="outline" radius="sm" keepMounted={false}>
         <Tabs.List mb="lg">
           <Tabs.Tab value="overview"    leftSection={<IconChartBar    size={14} />}>Overview</Tabs.Tab>
           <Tabs.Tab value="people"      leftSection={<IconUsers       size={14} />}>By Person</Tabs.Tab>

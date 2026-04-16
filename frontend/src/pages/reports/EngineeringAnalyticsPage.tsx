@@ -2143,7 +2143,7 @@ export default function EngineeringAnalyticsPage() {
         )}
       </Group>
 
-      <Tabs value={activeTab} onChange={(tab) => setActiveTab(tab as TabType)} variant="outline">
+      <Tabs value={activeTab} onChange={(tab) => setActiveTab(tab as TabType)} variant="outline" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="quality" leftSection={<IconBug size={14} />}>
             Quality

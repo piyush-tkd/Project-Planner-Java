@@ -3464,7 +3464,7 @@ function DashboardList({ dark, onOpen }: {
       </Group>
 
       {/* Tabs: My Dashboards | Templates */}
-      <Tabs defaultValue="dashboards">
+      <Tabs defaultValue="dashboards" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="dashboards">My Dashboards ({dashboards.length})</Tabs.Tab>
           <Tabs.Tab value="templates">📋 Templates</Tabs.Tab>

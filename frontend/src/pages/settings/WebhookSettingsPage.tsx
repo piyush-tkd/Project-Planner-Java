@@ -319,7 +319,7 @@ export default function WebhookSettingsPage() {
         </Button>
       </Group>
 
-      <Tabs value={activeTab} onChange={setActiveTab}>
+      <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="webhooks"     leftSection={<IconWebhook size={14} />}>
             Webhooks {hooks.length > 0 && <Badge size="xs" ml={5} variant="light">{hooks.length}</Badge>}

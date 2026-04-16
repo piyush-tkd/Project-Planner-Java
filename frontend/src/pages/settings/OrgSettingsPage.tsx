@@ -556,7 +556,7 @@ export default function OrgSettingsPage() {
         )}
       </Group>
 
-      <Tabs value={activeTab} onChange={handleTabChange} variant="outline" radius="sm">
+      <Tabs value={activeTab} onChange={handleTabChange} variant="outline" radius="sm" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="general"       leftSection={<IconBuilding size={13} />}>General</Tabs.Tab>
           <Tabs.Tab value="users"         leftSection={<IconUserCog size={13} />}>Users &amp; Access</Tabs.Tab>

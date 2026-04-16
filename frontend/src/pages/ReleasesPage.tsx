@@ -295,7 +295,7 @@ function ReleaseCard({
  {m.errorMessage}
  </Alert>
  ) : (
- <Tabs defaultValue="overview" variant="pills" radius="sm">
+ <Tabs defaultValue="overview" variant="pills" radius="sm" keepMounted={false}>
  <Tabs.List mb="sm" grow>
  <Tabs.Tab value="overview" fz="xs">Overview</Tabs.Tab>
  <Tabs.Tab value="types" fz="xs">By Type</Tabs.Tab>

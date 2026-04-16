@@ -586,7 +586,7 @@ export default function ProjectDetailPage() {
  </Group>
 
  {/* ── Tabbed content ──────────────────────────────────────────── */}
- <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
+ <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm" keepMounted={false}>
    <Tabs.List mb="md">
      <Tabs.Tab value="overview" leftSection={<IconChartBar size={14} />}>Overview</Tabs.Tab>
      <Tabs.Tab value="financials" leftSection={<IconCurrencyDollar size={14} />}>Financials</Tabs.Tab>

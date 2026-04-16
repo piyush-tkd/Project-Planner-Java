@@ -791,7 +791,7 @@ export default function CostRatesPage() {
               ))}
             </SimpleGrid>
 
-            <Tabs value={activeTab} onChange={setActiveTab}>
+            <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
               <Tabs.List mb="md">
                 <Tabs.Tab value="rates" leftSection={<IconCurrencyDollar size={14} />}>
                   Rate Table

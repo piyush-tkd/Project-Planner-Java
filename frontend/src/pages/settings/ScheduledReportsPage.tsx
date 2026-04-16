@@ -317,7 +317,7 @@ export default function ScheduledReportsPage() {
         ))}
       </SimpleGrid>
 
-      <Tabs value={activeTab} onChange={setActiveTab}>
+      <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="schedules" leftSection={<IconCalendarStats size={14} />}>
             Schedules

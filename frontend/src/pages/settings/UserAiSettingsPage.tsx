@@ -225,7 +225,7 @@ export default function UserAiSettingsPage() {
         </div>
       </Group>
 
-      <Tabs defaultValue="key" variant="outline" radius="md">
+      <Tabs defaultValue="key" variant="outline" radius="md" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="key"    leftSection={<IconCloud size={15} />}>Cloud API Key</Tabs.Tab>
           <Tabs.Tab value="engine" leftSection={<IconSettings size={15} />}>AI Engine</Tabs.Tab>

@@ -236,7 +236,7 @@ export default function NlpOptimizerPage() {
  )}
 
  {/* ── Tabs: Low Confidence | Negative Rated | Learned Patterns | Run History ── */}
- <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
+ <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
  <Tabs.Tab value="low-confidence" leftSection={<IconAlertTriangle size={14} />}
  style={{ fontFamily: FONT_FAMILY }}>

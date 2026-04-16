@@ -116,7 +116,7 @@ export default function ErrorLogPage() {
  </SimpleGrid>
 
  {/* ── Tabs ── */}
- <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
+ <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
  <Tabs.Tab value="all" style={{ fontFamily: FONT_FAMILY }}>All ({counts.all})</Tabs.Tab>
  <Tabs.Tab value="unresolved" leftSection={<IconBug size={14} />} style={{ fontFamily: FONT_FAMILY }}>

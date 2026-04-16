@@ -715,7 +715,7 @@ export default function TablesPage() {
  <Paper withBorder style={{ flex: 1, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
  <Box p="md" style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-  <Tabs defaultValue="query" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+  <Tabs defaultValue="query" keepMounted={false} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
    <Tabs.List mb="sm">
     <Tabs.Tab value="query" leftSection={<IconCode size={13} />}>
      SQL Query

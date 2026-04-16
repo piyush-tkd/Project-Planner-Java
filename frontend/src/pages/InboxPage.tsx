@@ -299,7 +299,7 @@ export default function InboxPage() {
     >
 
       {/* Tabs */}
-      <Tabs value={tab} onChange={setTab} variant="outline" radius="sm">
+      <Tabs value={tab} onChange={setTab} variant="outline" radius="sm" keepMounted={false}>
         <Tabs.List mb="lg">
           <Tabs.Tab value="all" leftSection={<IconInbox size={14} />}
             rightSection={allItems.length > 0 ? <Badge size="xs" color="red" variant="filled">{allItems.length}</Badge> : undefined}>

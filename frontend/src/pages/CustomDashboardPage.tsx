@@ -1025,7 +1025,7 @@ function WidgetPickerModal({
 
   return (
     <Modal opened={opened} onClose={onClose} title="Add Widget" size="xl">
-      <Tabs value={category} onChange={(v) => setCategory(v as any)}>
+      <Tabs value={category} onChange={(v) => setCategory(v as any)} keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="all">All</Tabs.Tab>
           <Tabs.Tab value="kpi">KPIs</Tabs.Tab>

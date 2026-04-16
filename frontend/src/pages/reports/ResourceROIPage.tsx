@@ -248,7 +248,7 @@ export default function ResourceROIPage() {
  </Card>
  </SimpleGrid>
 
- <Tabs defaultValue="rates" variant="outline">
+ <Tabs defaultValue="rates" variant="outline" keepMounted={false}>
  <Tabs.List>
  <Tabs.Tab value="rates" leftSection={<IconCoin size={15} />}>Rate Settings</Tabs.Tab>
  <Tabs.Tab value="info" leftSection={<IconInfoCircle size={15} />}>ROI Setup Guide</Tabs.Tab>

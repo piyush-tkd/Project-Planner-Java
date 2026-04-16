@@ -295,7 +295,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  </Group>
  )}
 
- <Tabs defaultValue="users">
+ <Tabs defaultValue="users" keepMounted={false}>
  <Tabs.List>
  <Tabs.Tab value="users"       leftSection={<IconShield size={15} />}>Users</Tabs.Tab>
  <Tabs.Tab value="roles"       leftSection={<IconColorSwatch size={15} />}>Roles</Tabs.Tab>

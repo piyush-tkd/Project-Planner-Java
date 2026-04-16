@@ -681,7 +681,7 @@ export default function AutomationEnginePage() {
       </Alert>
 
       {/* ── Tabs + list ────────────────────────────────────────────────────── */}
-      <Tabs value={activeTab} onChange={setActiveTab} mb="md">
+      <Tabs value={activeTab} onChange={setActiveTab} mb="md" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="all">All ({rules?.length ?? 0})</Tabs.Tab>
           <Tabs.Tab value="enabled">

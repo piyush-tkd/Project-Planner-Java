@@ -185,7 +185,7 @@ export default function ProjectApprovalPage() {
       )}
 
       {!isLoading && (
-        <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
           <Tabs.List mb="md">
             <Tabs.Tab value="pending" leftSection={<IconClock size={14} />}>
               Pending

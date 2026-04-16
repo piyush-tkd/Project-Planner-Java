@@ -249,7 +249,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  </Paper>
  </SimpleGrid>
 
- <Tabs defaultValue="sizes" variant="outline" radius="md">
+ <Tabs defaultValue="sizes" variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
  <Tabs.Tab value="sizes" leftSection={<IconRuler size={14} />} style={{ fontFamily: FONT_FAMILY }}>
  T-shirt Sizes ({sizes?.length ?? 0})

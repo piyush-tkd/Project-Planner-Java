@@ -799,7 +799,7 @@ export default function PodHoursPage() {
               />
 
               {/* Search bar + views */}
-              <Tabs defaultValue="matrix" styles={tabStyles}>
+              <Tabs defaultValue="matrix" keepMounted={false} styles={tabStyles}>
                 <Group justify="space-between" align="center" mb={0} wrap="wrap" gap="sm">
                   <Tabs.List style={{ marginBottom: 0 }}>
                     <Tabs.Tab value="matrix">Matrix View</Tabs.Tab>

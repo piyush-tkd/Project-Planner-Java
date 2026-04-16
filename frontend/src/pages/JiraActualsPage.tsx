@@ -172,7 +172,7 @@ export default function JiraActualsPage() {
  </Group>
  </Group>
 
- <Tabs value={activeTab} onChange={setActiveTab}>
+ <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
  <Tabs.List mb="md">
  <Tabs.Tab value="actuals" leftSection={<IconChartBar size={15} />}>
  Actuals vs Plan

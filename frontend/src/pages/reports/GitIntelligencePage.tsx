@@ -250,7 +250,7 @@ export default function GitIntelligencePage() {
           </SimpleGrid>
 
           {/* Sub-tabs */}
-          <Tabs value={subTab} onChange={v => setSubTab(v ?? 'prs')} variant="pills" radius="sm">
+          <Tabs value={subTab} onChange={v => setSubTab(v ?? 'prs')} variant="pills" radius="sm" keepMounted={false}>
             <Tabs.List mb="lg">
               <Tabs.Tab value="prs"      leftSection={<IconGitPullRequest size={14} />}>PR Activity</Tabs.Tab>
               <Tabs.Tab value="commits"  leftSection={<IconGitCommit size={14} />}>Commit Frequency</Tabs.Tab>

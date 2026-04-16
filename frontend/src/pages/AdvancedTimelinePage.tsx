@@ -714,7 +714,7 @@ export default function AdvancedTimelinePage() {
 
   return (
     <PPPageLayout title="Advanced Timeline" subtitle="Critical path, baselines and milestone tracking" animate>
-      <Tabs defaultValue="timeline" variant="outline" radius="sm">
+      <Tabs defaultValue="timeline" variant="outline" radius="sm" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="timeline"   leftSection={<IconLayoutBoard size={14} />}>Timeline</Tabs.Tab>
           <Tabs.Tab value="baselines"  leftSection={<IconHistory size={14} />}>Baselines</Tabs.Tab>

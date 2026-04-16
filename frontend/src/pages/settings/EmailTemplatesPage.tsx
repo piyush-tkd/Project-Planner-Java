@@ -230,7 +230,7 @@ function EditModal({ template, onClose }: EditModalProps) {
         </Text>
       </Paper>
 
-      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm">
+      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="sm" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="edit"    leftSection={<IconCode size={14} />}>Edit</Tabs.Tab>
           <Tabs.Tab value="preview" leftSection={<IconEye  size={14} />}>

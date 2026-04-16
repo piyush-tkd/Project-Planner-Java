@@ -385,7 +385,7 @@ export default function SprintQualityPage() {
                   color={(lastEsc?.escape_rate_pct ?? 0) > 10 ? COLOR_ERROR : COLOR_GREEN} />
               </SimpleGrid>
 
-              <Tabs defaultValue="story" variant="outline" radius="md">
+              <Tabs defaultValue="story" variant="outline" radius="md" keepMounted={false}>
                 <Tabs.List>
                   <Tabs.Tab value="story"   leftSection={<IconBug size={14}/>}>Story Quality</Tabs.Tab>
                   <Tabs.Tab value="cycle"   leftSection={<IconClock size={14}/>}>Cycle Time</Tabs.Tab>
