@@ -7,12 +7,21 @@ import { TEXT_SUBTLE } from '../../../brandTokens';
 import { ProjectResponse } from '../../../types';
 
 const STATUS_META: Record<string, { bg: string; text: string; border: string; label: string; chart: string }> = {
-  NOT_STARTED:  { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', label: 'Not Started',  chart: '#93c5fd' },
-  IN_DISCOVERY: { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe', label: 'In Discovery', chart: '#c4b5fd' },
-  ACTIVE:       { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0', label: 'Active',        chart: '#6ee7b7' },
-  ON_HOLD:      { bg: '#fffbeb', text: '#b45309', border: '#fde68a', label: 'On Hold',       chart: '#fcd34d' },
-  COMPLETED:    { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Completed',     chart: '#86efac' },
-  CANCELLED:    { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', label: 'Cancelled',     chart: '#cbd5e1' },
+  // Actual DB values
+  'In Progress': { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', label: 'In Progress',  chart: '#2DCCD3' },
+  'Backlog':     { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe', label: 'Backlog',      chart: '#818cf8' },
+  'Done':        { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Done',         chart: '#34d399' },
+  'ON HOLD':     { bg: '#fffbeb', text: '#b45309', border: '#fde68a', label: 'ON HOLD',      chart: '#fbbf24' },
+  'On Hold':     { bg: '#fffbeb', text: '#b45309', border: '#fde68a', label: 'On Hold',      chart: '#fbbf24' },
+  'Cancelled':   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', label: 'Cancelled',    chart: '#94a3b8' },
+  // Legacy uppercase keys
+  'NOT_STARTED':  { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', label: 'Not Started',  chart: '#60a5fa' },
+  'IN_DISCOVERY': { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe', label: 'In Discovery', chart: '#a78bfa' },
+  'ACTIVE':       { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0', label: 'Active',        chart: '#6ee7b7' },
+  'IN_PROGRESS':  { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', label: 'In Progress',  chart: '#2DCCD3' },
+  'ON_HOLD':      { bg: '#fffbeb', text: '#b45309', border: '#fde68a', label: 'On Hold',       chart: '#fbbf24' },
+  'COMPLETED':    { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Completed',     chart: '#34d399' },
+  'CANCELLED':    { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', label: 'Cancelled',     chart: '#94a3b8' },
 };
 
 interface ProjectStatusWidgetProps {

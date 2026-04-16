@@ -7,12 +7,19 @@ import { SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE } from '../../../brandTokens';
 import { ProjectResponse } from '../../../types';
 
 const STATUS_META: Record<string, { label: string; chart: string }> = {
-  NOT_STARTED:  { label: 'Not Started',  chart: '#93c5fd' },
-  IN_DISCOVERY: { label: 'In Discovery', chart: '#c4b5fd' },
-  ACTIVE:       { label: 'Active',        chart: '#6ee7b7' },
-  ON_HOLD:      { label: 'On Hold',       chart: '#fcd34d' },
-  COMPLETED:    { label: 'Completed',     chart: '#86efac' },
-  CANCELLED:    { label: 'Cancelled',     chart: '#cbd5e1' },
+  'In Progress': { label: 'In Progress',  chart: '#2DCCD3' },
+  'Backlog':     { label: 'Backlog',       chart: '#818cf8' },
+  'Done':        { label: 'Done',          chart: '#34d399' },
+  'ON HOLD':     { label: 'ON HOLD',       chart: '#fbbf24' },
+  'On Hold':     { label: 'On Hold',       chart: '#fbbf24' },
+  'Cancelled':   { label: 'Cancelled',     chart: '#94a3b8' },
+  'NOT_STARTED':  { label: 'Not Started',  chart: '#60a5fa' },
+  'IN_DISCOVERY': { label: 'In Discovery', chart: '#a78bfa' },
+  'ACTIVE':       { label: 'Active',        chart: '#6ee7b7' },
+  'IN_PROGRESS':  { label: 'In Progress',  chart: '#2DCCD3' },
+  'ON_HOLD':      { label: 'On Hold',       chart: '#fbbf24' },
+  'COMPLETED':    { label: 'Completed',     chart: '#34d399' },
+  'CANCELLED':    { label: 'Cancelled',     chart: '#94a3b8' },
 };
 
 interface TeamHealthWidgetProps {
