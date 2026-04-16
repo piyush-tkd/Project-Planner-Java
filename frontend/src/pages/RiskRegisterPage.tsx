@@ -96,13 +96,13 @@ export default function RiskRegisterPage() {
   const { data: risks = [], isLoading, isError } = useQuery({
     queryKey: ['risks', activeTab],
     queryFn: async () => {
-      let params = {};
+      let params: Record<string, string> = {};
       if (activeTab === 'risks') params = { type: 'RISK' };
       else if (activeTab === 'issues') params = { type: 'ISSUE' };
       else if (activeTab === 'decisions') params = { type: 'DECISION' };
 
-      const res = await apiClient.get('/risks', { params });
-      return res.data;
+      const res = await apiClient.get('/risks/all', { params });
+      return res.data as Risk[];
     },
   });
 
