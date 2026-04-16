@@ -39,7 +39,7 @@ const DEFAULT_GROUPS: { label: string; items: string[] }[] = [
   {
     label: 'People',
     items: [
-      'People', 'Teams', 'Capacity', 'Performance',
+      'People', 'Capacity', 'Performance',
       'Skills Matrix', 'Team Pulse', 'Workforce Planning', 'Leave Hub',
     ],
   },

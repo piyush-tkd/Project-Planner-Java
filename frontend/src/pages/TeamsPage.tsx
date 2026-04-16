@@ -141,6 +141,13 @@ export default function TeamsPage() {
 
   const commitDelete = () => {
     if (!deleteTarget) return;
+    // Core PODs are managed from the PODs page — never allow deletion here
+    const targetIsCore = deleteTarget.teamType?.name === 'Core Team' || !deleteTarget.targetEndDate;
+    if (targetIsCore) {
+      notifications.show({ title: 'Not allowed', message: 'Core PODs can only be deleted from the PODs page.', color: 'orange' });
+      setDeleteTarget(null);
+      return;
+    }
     deletePod.mutate(deleteTarget.id, {
       onSuccess: () => {
         notifications.show({ title: 'Deleted', message: `"${deleteTarget.name}" has been removed`, color: 'teal' });
@@ -356,12 +363,13 @@ export default function TeamsPage() {
                               <IconPencil size={14} />
                             </ActionIcon>
                           </Tooltip>
-                          <Tooltip label="Delete team">
+                          <Tooltip label={isCore ? 'Core PODs can only be deleted from the PODs page' : 'Delete team'}>
                             <ActionIcon
                               size="sm"
                               variant="subtle"
-                              color="red"
-                              onClick={() => setDeleteTarget(team)}
+                              color={isCore ? 'gray' : 'red'}
+                              disabled={isCore}
+                              onClick={() => !isCore && setDeleteTarget(team)}
                             >
                               <IconTrash size={14} />
                             </ActionIcon>

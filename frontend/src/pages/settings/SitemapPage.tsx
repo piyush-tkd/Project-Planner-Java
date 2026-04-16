@@ -43,7 +43,6 @@ const SITEMAP_DATA: SectionGroup[] = [
     label: 'People',
     pages: [
       { label: 'People', path: '/people/resources' },
-      { label: 'Teams', path: '/teams' },
       { label: 'Capacity', path: '/people/capacity' },
       { label: 'Performance', path: '/people/performance', featureFlag: 'advanced_people' },
       { label: 'Skills Matrix', path: '/skills-matrix', featureFlag: 'advanced_people' },

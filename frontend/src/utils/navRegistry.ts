@@ -39,7 +39,6 @@ export const NAV_ITEMS: NavItem[] = [
 
   // ── TEAMS & RESOURCES (8 items) ───────────────────────────────────────────
   { label: 'People',             path: '/people/resources',          group: 'Teams & Resources', keywords: ['people', 'resources', 'team', 'staff', 'directory', 'bookings', 'availability'] },
-  { label: 'Core Teams',         path: '/teams',                     group: 'Teams & Resources', keywords: ['core teams', 'squads', 'pods', 'engineering teams'] },
   { label: 'Capacity',           path: '/people/capacity',           group: 'Teams & Resources', keywords: ['capacity', 'bandwidth', 'availability', 'workload', 'hub'] },
   { label: 'Performance',        path: '/people/performance',        group: 'Teams & Resources', keywords: ['performance', 'kpi', 'velocity', 'resource intelligence'], featureFlag: 'advanced_people' },
   { label: 'Skills Matrix',      path: '/skills-matrix',             group: 'Teams & Resources', keywords: ['skills', 'competencies', 'matrix', 'expertise'], featureFlag: 'advanced_people' },

@@ -20,8 +20,6 @@ const ResourcesPage                 = lazy(() => import('./pages/ResourcesPage')
 const PodsPage                      = lazy(() => import('./pages/PodsPage'));
 const ProjectsPage                  = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage             = lazy(() => import('./pages/ProjectDetailPage'));
-const TeamsPage                     = lazy(() => import('./pages/TeamsPage'));
-const TeamDetailPage                = lazy(() => import('./pages/TeamDetailPage'));
 const AvailabilityPage              = lazy(() => import('./pages/AvailabilityPage'));
 const OverridesPage                 = lazy(() => import('./pages/OverridesPage'));
 const UtilizationCenterPage         = lazy(() => import('./pages/reports/UtilizationCenterPage'));
@@ -102,7 +100,6 @@ const PortfolioTimelinePage         = lazy(() => import('./pages/reports/Portfol
 const ResourceIntelligencePage      = lazy(() => import('./pages/reports/ResourceIntelligencePage'));
 const BudgetCapexPage               = lazy(() => import('./pages/reports/BudgetCapexPage'));
 const ProjectSignalsPage            = lazy(() => import('./pages/reports/ProjectSignalsPage'));
-const ResourceBookingsPage          = lazy(() => import('./pages/ResourceBookingsPage'));
 const ProjectTemplatesPage          = lazy(() => import('./pages/ProjectTemplatesPage'));
 const WorkloadChartPage             = lazy(() => import('./pages/WorkloadChartPage'));
 const GanttDependenciesPage         = lazy(() => import('./pages/GanttDependenciesPage'));
@@ -182,10 +179,9 @@ export default function App() {
             <Route path="/projects/:id" element={<ProjectDetailPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute pageKey="teams" />}>
-            <Route path="/teams" element={<TeamsPage />} />
-            <Route path="/teams/:id" element={<TeamDetailPage />} />
-          </Route>
+          {/* Teams deprecated — redirect to PODs */}
+          <Route path="/teams" element={<Navigate to="/pods" replace />} />
+          <Route path="/teams/:id" element={<Navigate to="/pods" replace />} />
 
           <Route element={<ProtectedRoute pageKey="availability" />}>
             <Route path="/availability" element={<AvailabilityPage />} />
@@ -621,11 +617,6 @@ export default function App() {
           {/* /settings/holiday-calendar and /settings/leave-management
               redirect to /leave hub — see Phase 2 redirects above */}
 
-          {/* ── Resource Bookings & Templates ─────────────────── */}
-          <Route element={<ProtectedRoute pageKey="resource_bookings" />}>
-            <Route path="/resource-bookings" element={<ResourceBookingsPage />} />
-          </Route>
-
           <Route element={<ProtectedRoute pageKey="project_templates" />}>
             <Route path="/project-templates" element={<ProjectTemplatesPage />} />
           </Route>
@@ -691,7 +682,7 @@ export default function App() {
           {/* ── DL-9 backward-compat redirects — keep old bookmarks working ── */}
           <Route path="/resources"                         element={<Navigate to="/people/resources" replace />} />
           <Route path="/availability"                      element={<Navigate to="/people/resources?tab=availability" replace />} />
-          <Route path="/resource-bookings"                 element={<Navigate to="/people/resources?tab=bookings" replace />} />
+          <Route path="/resource-bookings"                 element={<Navigate to="/people/resources" replace />} />
           <Route path="/capacity"                          element={<Navigate to="/people/capacity" replace />} />
           <Route path="/reports/portfolio-health-dashboard" element={<Navigate to="/portfolio/health" replace />} />
           <Route path="/reports/portfolio-timeline"        element={<Navigate to="/portfolio/timeline" replace />} />

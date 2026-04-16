@@ -166,7 +166,6 @@ const navGroups: NavGroup[] = [
     label: 'People',
     items: [
       { label: 'People',             path: '/people/resources',  icon: <IconUsers size={14} />,            pageKey: 'resources' },
-      { label: 'Teams',              path: '/teams',             icon: <IconUsersGroup size={14} />,       pageKey: 'core_teams' },
       { label: 'Capacity',           path: '/people/capacity',   icon: <IconFlame size={14} />,            pageKey: 'capacity_hub' },
       { label: 'Performance',        path: '/people/performance',icon: <IconTrendingUp size={14} />,       pageKey: 'resource_performance', featureFlag: 'advanced_people' },
       { label: 'Skills Matrix',      path: '/skills-matrix',     icon: <IconStars size={14} />,            pageKey: 'skills_matrix_new',    featureFlag: 'advanced_people' },

@@ -86,7 +86,6 @@ const PAGE_RESULTS: SearchResult[] = [
   { id: 'p-res',    label: 'Resources',          category: 'People',      icon: <IconUsers size={15} />,            path: '/resources' },
   { id: 'p-avail',  label: 'Availability',       category: 'People',      icon: <IconCalendarStats size={15} />,    path: '/availability' },
   { id: 'p-over',   label: 'Overrides',          category: 'People',      icon: <IconArrowsShuffle size={15} />,    path: '/overrides' },
-  { id: 'p-book',   label: 'Bookings',           category: 'People',      icon: <IconCalendarPlus size={15} />,     path: '/resource-bookings' },
   { id: 'p-caphub', label: 'Capacity',           category: 'People',      icon: <IconFlame size={15} />,            path: '/capacity' },
   { id: 'p-leave',  label: 'Leave & Holidays',   category: 'People',      icon: <IconCalendarOff size={15} />,      path: '/leave' },
   { id: 'p-rpf',    label: 'Resource Performance',  category: 'People',    icon: <IconTrendingUp size={15} />,       path: '/reports/resource-performance' },
