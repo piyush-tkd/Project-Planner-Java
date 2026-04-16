@@ -262,24 +262,24 @@ export default function LoginPage() {
 
  <button
  type="submit"
- className="login-submit-btn"
+ id="login-submit-btn"
  disabled={loading}
  style={{
    width: '100%',
-   backgroundColor: (!username || !password) ? '#4a6080' : DEEP_BLUE_HEX,
-   color: '#ffffff',
+   backgroundColor: AQUA_HEX,
+   color: DEEP_BLUE_HEX,
    borderRadius: 6,
    height: 44,
    fontFamily: FONT_FAMILY,
-   fontWeight: 500,
+   fontWeight: 700,
    fontSize: 16,
    letterSpacing: '0.01em',
    border: 'none',
    marginTop: 8,
    boxShadow: SHADOW.sm,
-   cursor: (!username || !password) ? 'not-allowed' : 'pointer',
-   opacity: loading ? 0.7 : 1,
-   transition: 'background-color 0.2s ease',
+   cursor: (!username || !password || loading) ? 'not-allowed' : 'pointer',
+   opacity: (!username || !password || loading) ? 0.55 : 1,
+   transition: 'opacity 0.2s ease',
  }}
  >
  {loading ? 'Signing in…' : 'Log In'}
