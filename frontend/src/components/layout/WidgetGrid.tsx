@@ -44,11 +44,19 @@ export function Widget({ children }: WidgetProps) {
 interface WidgetGridProps {
   pageKey: string;
   children: React.ReactNode;
+  customizeOpen?: boolean;
+  onCustomizeOpenChange?: (open: boolean) => void;
 }
 
-export default function WidgetGrid({ pageKey, children }: WidgetGridProps) {
+export default function WidgetGrid({ pageKey, children, customizeOpen: externalOpen, onCustomizeOpenChange }: WidgetGridProps) {
   const { prefs, isLoading, save } = useWidgetPreferences(pageKey);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const customizeOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setCustomizeOpen = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === 'function' ? v(customizeOpen) : v;
+    setInternalOpen(next);
+    onCustomizeOpenChange?.(next);
+  };
 
   // ── widget metadata from JSX children ─────────────────────────────────────
   const allWidgets = useMemo<WidgetMeta[]>(() => {

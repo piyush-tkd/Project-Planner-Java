@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/client';
 import {
   Stack, SimpleGrid, Text, Card, Group, Button, Table, Badge, Title,
-  Paper, ThemeIcon, ScrollArea, Tabs, Box, RingProgress, Tooltip as MTooltip,
+  Paper, ThemeIcon, ScrollArea, Tabs, Box, RingProgress, Tooltip as MTooltip, Menu,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import {
@@ -98,10 +98,12 @@ function KpiNumberCard({ label, value, sub }: { label: string; value: string | n
 }
 
 // ── Dashboard page header bar ─────────────────────────────────────────────
-function DashboardHeader({ title, activeBoard, onBoardChange }: {
+function DashboardHeader({ title, activeBoard, onBoardChange, onAddWidget, onMoreOptions }: {
   title: string;
   activeBoard: string;
   onBoardChange: (b: string) => void;
+  onAddWidget?: () => void;
+  onMoreOptions?: (action: string) => void;
 }) {
   return (
     <Box mb={20}>
@@ -114,10 +116,28 @@ function DashboardHeader({ title, activeBoard, onBoardChange }: {
           <ExportPortfolioButton />
           <Button size="xs" variant="filled" color="teal"
             leftSection={<IconPlus size={14} />}
-            style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}>
+            style={{ background: AQUA, color: DEEP_BLUE, fontWeight: 700 }}
+            onClick={onAddWidget}>
             Widget
           </Button>
-          <ActionIcon icon={<IconDots size={16} />} />
+          <Menu shadow="md" width={200} position="bottom-end">
+            <Menu.Target>
+              <ActionIcon icon={<IconDots size={16} />} />
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Dashboard</Menu.Label>
+              <Menu.Item leftSection={<IconLayoutDashboard size={14} />} onClick={() => onMoreOptions?.('customize')}>
+                Customize layout
+              </Menu.Item>
+              <Menu.Item leftSection={<IconArrowsLeftRight size={14} />} onClick={() => onMoreOptions?.('reset')}>
+                Reset layout
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item leftSection={<IconTag size={14} />} onClick={() => onMoreOptions?.('rename')}>
+                Rename board
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </Group>
       <Group gap={8}>
@@ -749,6 +769,18 @@ export default function DashboardPage() {
     const next = board && VALID_BOARDS.includes(board) ? board : 'team';
     setSearchParams(next === 'team' ? {} : { board: next }, { replace: false });
   };
+  const [widgetCustomizeOpen, setWidgetCustomizeOpen] = useState(false);
+  const handleAddWidget = () => setWidgetCustomizeOpen(true);
+  const handleMoreOptions = (action: string) => {
+    if (action === 'customize') setWidgetCustomizeOpen(o => !o);
+    if (action === 'reset') {
+      if (window.confirm('Reset dashboard layout to defaults?')) {
+        setWidgetCustomizeOpen(false);
+        // Clear persisted prefs by reloading — WidgetGrid will re-init from defaults
+        window.location.reload();
+      }
+    }
+  };
 
   // ── AI Insights summary ───────────────────────────────────────────────────
   const [insightCounts, setInsightCounts] = useState<{
@@ -859,6 +891,8 @@ export default function DashboardPage() {
           title={boardTitles[activeBoard] ?? 'Dashboard'}
           activeBoard={activeBoard}
           onBoardChange={setActiveBoard}
+          onAddWidget={handleAddWidget}
+          onMoreOptions={handleMoreOptions}
         />
 
       {/* Board content */}
@@ -880,7 +914,7 @@ export default function DashboardPage() {
         <Text size="xs" fw={700} tt="uppercase" style={{ color: 'var(--pp-text-muted)', letterSpacing: '0.7px', marginBottom: 12 }}>
           Resource & Capacity Overview
         </Text>
-        <WidgetGrid pageKey="dashboard">
+        <WidgetGrid pageKey="dashboard" customizeOpen={widgetCustomizeOpen} onCustomizeOpenChange={setWidgetCustomizeOpen}>
           {/* KPI Summary */}
           <Widget id="kpi-cards" title="KPI Summary">
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
