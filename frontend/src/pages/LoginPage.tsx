@@ -265,6 +265,7 @@ export default function LoginPage() {
  fullWidth
  loading={loading}
  disabled={!username || !password}
+ c="#ffffff"
  style={{
  backgroundColor: DEEP_BLUE_HEX,
  color: '#ffffff',
@@ -277,6 +278,13 @@ export default function LoginPage() {
  border: 'none',
  marginTop: 8,
  boxShadow: SHADOW.sm,
+ }}
+ styles={{
+ root: {
+   color: '#ffffff',
+   '&:disabled': { color: '#ffffff', opacity: 0.6 },
+   '&[data-disabled]': { color: '#ffffff', opacity: 0.6 },
+ }
  }}
  >
  Log In
