@@ -66,7 +66,7 @@ export const allocationKeys = {
 
 // ── API Functions ─────────────────────────────────────────────────────
 
-const BASE = '/api/allocations';
+const BASE = '/allocations';
 
 async function fetchAllocationsForResource(resourceId: number): Promise<ResourceAllocation[]> {
   const { data } = await apiClient.get(`${BASE}/resource/${resourceId}`);
