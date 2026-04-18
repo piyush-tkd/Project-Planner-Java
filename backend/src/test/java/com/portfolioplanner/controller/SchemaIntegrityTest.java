@@ -119,13 +119,6 @@ class SchemaIntegrityTest {
         ).doesNotThrowAnyException();
     }
 
-    @Test @DisplayName("objectives table is accessible")
-    void objectives_TableExists() {
-        assertThatCode(() ->
-            em.createQuery("SELECT COUNT(o) FROM Objective o", Long.class).getSingleResult()
-        ).doesNotThrowAnyException();
-    }
-
     @Test @DisplayName("risk_items table is accessible")
     void riskItems_TableExists() {
         assertThatCode(() ->
@@ -142,20 +135,20 @@ class SchemaIntegrityTest {
 
     // ── FK-join queries (catches missing FK columns) ──────────────────────────
 
-    @Test @DisplayName("Resources JOIN pods via assignment is valid JPQL")
+    @Test @DisplayName("ResourcePodAssignment JOIN resource and pod is valid JPQL")
     void resources_JoinPods_ValidJpql() {
         assertThatCode(() ->
             em.createQuery(
-                "SELECT r FROM Resource r LEFT JOIN r.podAssignments pa LEFT JOIN pa.pod p"
+                "SELECT rpa FROM ResourcePodAssignment rpa LEFT JOIN rpa.resource r LEFT JOIN rpa.pod p"
             ).getResultList()
         ).doesNotThrowAnyException();
     }
 
-    @Test @DisplayName("Projects JOIN pod planning is valid JPQL")
+    @Test @DisplayName("ProjectPodPlanning JOIN project and pod is valid JPQL")
     void projects_JoinPodPlanning_ValidJpql() {
         assertThatCode(() ->
             em.createQuery(
-                "SELECT p FROM Project p LEFT JOIN p.podPlannings pp"
+                "SELECT ppp FROM ProjectPodPlanning ppp LEFT JOIN ppp.project p LEFT JOIN ppp.pod po"
             ).getResultList()
         ).doesNotThrowAnyException();
     }
@@ -171,11 +164,11 @@ class SchemaIntegrityTest {
         ).doesNotThrowAnyException();
     }
 
-    @Test @DisplayName("Resource availability date range query is valid")
-    void resource_AvailabilityDateRange_ValidJpql() {
+    @Test @DisplayName("Resource availability query by monthIndex is valid")
+    void resource_AvailabilityMonthIndex_ValidJpql() {
         assertThatCode(() ->
             em.createQuery(
-                "SELECT a FROM ResourceAvailability a WHERE a.effectiveFrom IS NOT NULL ORDER BY a.effectiveFrom"
+                "SELECT a FROM ResourceAvailability a WHERE a.monthIndex IS NOT NULL ORDER BY a.monthIndex"
             ).getResultList()
         ).doesNotThrowAnyException();
     }

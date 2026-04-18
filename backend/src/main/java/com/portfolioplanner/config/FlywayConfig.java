@@ -4,6 +4,7 @@ import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * whether strict validation is on (expected in prod) or permissive (dev/test).
  */
 @Component
+@ConditionalOnBean(Flyway.class)
 public class FlywayConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FlywayConfig.class);
