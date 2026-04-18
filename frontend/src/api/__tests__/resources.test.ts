@@ -40,7 +40,7 @@ const MOCK_RESOURCES: ResourceResponse[] = [
 // ── MSW server ───────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get('/api/resources', () => HttpResponse.json(MOCK_RESOURCES)),
+  http.get('/api/resources/all', () => HttpResponse.json(MOCK_RESOURCES)),
   http.get('/api/resources/:id', ({ params }) => {
     const resource = MOCK_RESOURCES.find(r => r.id === Number(params.id));
     if (!resource) return HttpResponse.json({ message: 'Not found' }, { status: 404 });

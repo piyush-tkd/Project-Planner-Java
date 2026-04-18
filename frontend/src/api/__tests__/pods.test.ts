@@ -19,7 +19,7 @@ import { usePods, useCreatePod, useUpdatePod } from '../pods';
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get('/api/pods', () => HttpResponse.json(PODS)),
+  http.get('/api/pods/all', () => HttpResponse.json(PODS)),
   http.post('/api/pods', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({ id: 99, active: true, displayOrder: 3, ...body }, { status: 201 });

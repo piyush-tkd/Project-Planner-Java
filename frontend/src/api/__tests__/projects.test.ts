@@ -63,7 +63,7 @@ const MATRIX_ROWS: ProjectPodMatrixResponse[] = [
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get('/api/projects',           () => HttpResponse.json(PROJECTS)),
+  http.get('/api/projects/all',        () => HttpResponse.json(PROJECTS)),
   http.get('/api/projects/:id',       ({ params }) => {
     const p = PROJECTS.find(x => x.id === Number(params.id));
     return p ? HttpResponse.json(p) : HttpResponse.json({ message: 'Not found' }, { status: 404 });

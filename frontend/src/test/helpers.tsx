@@ -182,17 +182,17 @@ export const MONTH_LABELS: Record<number, string> = {
 
 /** Standard handler set reused across test files. */
 export const commonHandlers = [
-  http.get('/api/resources', () => HttpResponse.json(RESOURCES)),
+  http.get('/api/resources/all', () => HttpResponse.json(RESOURCES)),
   http.get('/api/resources/:id', ({ params }) => {
     const r = RESOURCES.find(x => x.id === Number(params.id));
     return r ? HttpResponse.json(r) : HttpResponse.json({ message: 'Not found' }, { status: 404 });
   }),
-  http.get('/api/projects', () => HttpResponse.json(PROJECTS)),
+  http.get('/api/projects/all', () => HttpResponse.json(PROJECTS)),
   http.get('/api/projects/:id', ({ params }) => {
     const p = PROJECTS.find(x => x.id === Number(params.id));
     return p ? HttpResponse.json(p) : HttpResponse.json({ message: 'Not found' }, { status: 404 });
   }),
-  http.get('/api/pods', () => HttpResponse.json(PODS)),
+  http.get('/api/pods/all', () => HttpResponse.json(PODS)),
   http.get('/api/pods/:id', ({ params }) => {
     const p = PODS.find(x => x.id === Number(params.id));
     return p ? HttpResponse.json(p) : HttpResponse.json({ message: 'Not found' }, { status: 404 });
