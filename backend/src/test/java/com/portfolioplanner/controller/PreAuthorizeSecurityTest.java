@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -195,8 +196,10 @@ class PreAuthorizeSecurityTest {
 
     @Test @DisplayName("POST /api/auth/login is PUBLIC (no auth needed)")
     void authLogin_IsPublic() throws Exception {
-        // Returns 400 (bad body) not 401 — endpoint is reachable
-        mockMvc.perform(get("/api/auth/login"))
+        // Returns 400 (bad body) not 401 — endpoint is reachable without auth
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{}"))
                .andExpect(result -> {
                    int status = result.getResponse().getStatus();
                    // Any non-401/403 status means we reached the controller

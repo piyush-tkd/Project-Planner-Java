@@ -209,7 +209,7 @@ public class DeterministicStrategy implements NlpStrategy {
 
             // "Who is John?" / "Tell me about Jane"
             new RoutePattern(
-                    Pattern.compile("(?i)^(?:who\\s+is|tell\\s+me\\s+about|details?\\s+(?:for|of|about)|show\\s+me|info\\s+(?:on|about|for))\\s+(?:resource\\s+)?([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)\\s*\\??$"),
+                    Pattern.compile("(?i)^(?:who\\s+is|tell\\s+me\\s+about|details?\\s+(?:for|of|about)|show\\s+me|info\\s+(?:on|about|for))\\s+(?:resource\\s+)?(?!all\\b|my\\b|the\\b|me\\b)([\\p{Lu}][a-zA-Z]+(?:\\s+[\\p{Lu}][a-zA-Z]+)*)\\s*\\??$"),
                     "get_resource_profile", "name"),
 
             // "Show me all developers" / "List QA engineers"
