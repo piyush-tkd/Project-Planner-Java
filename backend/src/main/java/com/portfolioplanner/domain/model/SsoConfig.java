@@ -29,7 +29,7 @@ public class SsoConfig {
 
     /** Identity provider type. */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "sso_provider")
+    @Column(nullable = false)
     private SsoProvider provider = SsoProvider.GOOGLE;
 
     @Column(name = "client_id", length = 500)
