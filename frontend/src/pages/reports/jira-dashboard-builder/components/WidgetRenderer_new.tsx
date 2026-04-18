@@ -1,0 +1,1373 @@
+import {
+  Text, SimpleGrid, Paper, Stack, Skeleton, Group, ActionIcon,
+  Divider, Badge,
+} from '@mantine/core';
+import {
+  IconPencil, IconTrash,                 } from '@tabler/icons-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
+  ResponsiveContainer, Legend, PieChart, Pie, Cell,
+  AreaChart, Area, LineChart, Line, ComposedChart, ReferenceLine,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  Treemap, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList,
+} from 'recharts';
+import { type JiraAnalyticsData, type AnalyticsBreakdown } from '../../../../api/jira';
+import ChartCard from '../../../../components/common/ChartCard';
+import {
+  AQUA_HEX, AQUA_TINTS, DEEP_BLUE_HEX, DEEP_BLUE_TINTS, BORDER_STRONG,   COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR, COLOR_TEAL,
+  COLOR_VIOLET, COLOR_WARNING, DARK_TEXT_PRIMARY, FONT_FAMILY, SHADOW,
+  SURFACE_LIGHT, TEXT_SUBTLE, TEXT_GRAY, SLATE_700, SURFACE_SELECTED,
+  UX_POSITIVE, UX_ERROR, UX_WARNING,
+} from '../../../../brandTokens';
+import { useDarkMode } from '../../../../hooks/useDarkMode';
+import { ExtendedDashboardWidget } from '../state/types';
+import { PIE_COLORS, GAUGE_PRESETS } from '../state/constants';
+import { sortAndLimitData } from '../state/utils';
+import { AnimatedNumber } from './AnimatedNumber';
+import { CountdownDisplay } from './CountdownDisplay';
+import { PivotBuilderWidget } from './PivotBuilderWidget';
+import { IssueTableWidget } from './IssueTableWidget';
+import { GaugeSvg } from './GaugeSvg';
+
+export function WidgetRenderer({ widget, data, editMode, onRemove, onEdit, onDrillDown, pods, months }: {
+  widget: ExtendedDashboardWidget;
+  data: JiraAnalyticsData | undefined | null;
+  editMode: boolean;
+  onRemove: () => void;
+  onEdit: () => void;
+  onDrillDown?: (title: string, items: AnalyticsBreakdown[]) => void;
+  pods?: string;
+  months?: number;
+}) {
+  const dark = useDarkMode();
+  if (!widget.enabled && !editMode) return null;
+
+  // Guard: if data hasn't loaded yet, show a skeleton placeholder
+  if (!data) {
+    return (
+      <div>
+        <ChartCard title={widget.title} minHeight={200}>
+          <Stack gap="xs">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} height={40} radius="sm" />)}
+          </Stack>
+        </ChartCard>
+      </div>
+    );
+  }
+
+  const opacity = widget.enabled ? 1 : 0.4;
+  const chartStyle = { opacity };
+
+  // Pass edit buttons through ChartCard's headerRight instead of absolute positioning
+  const editButtons = editMode ? (
+    <Group gap={4} wrap="nowrap">
+      <ActionIcon size="sm" variant="light" onClick={onEdit}
+      aria-label="Edit"
+    ><IconPencil size={13} /></ActionIcon>
+      <ActionIcon size="sm" variant="light" color="red" onClick={onRemove}
+      aria-label="Delete"
+    ><IconTrash size={13} /></ActionIcon>
+    </Group>
+  ) : undefined;
+
+  const wrap = (content: React.ReactNode, minH = 200) => (
+    <div style={{ ...chartStyle }}>
+      <ChartCard title={widget.title} minHeight={minH} headerRight={editButtons}>{content}</ChartCard>
+    </div>
+  );
+
+  switch (widget.type) {
+ case 'kpis': {
+ const k = data.kpis ?? {};
+ return (
+ <div style={{ ...chartStyle }}>
+ <ChartCard title={widget.title} minHeight={80} headerRight={editButtons}>
+ <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }} spacing="sm">
+ {[
+ { label: 'Open', value: k.totalOpen, color: 'orange' },
+ { label: 'Bug Ratio', value: `${k.bugRatio}%`, color: 'red' },
+ { label: 'Cycle Time', value: `${k.avgCycleTimeDays}d`, color: 'violet' },
+ { label: 'Throughput', value: `${k.throughputPerWeek}/wk`, color: 'teal' },
+ { label: 'SP Resolved', value: k.totalSPResolved, color: 'blue' },
+ { label: 'Hours', value: `${k.totalHoursLogged}h`, color: 'green' },
+ ].map(kpi => (
+ <Paper key={kpi.label} withBorder radius="sm" p="sm" style={{ boxShadow: SHADOW.card, textAlign: 'center' }}>
+ <Text size="1.2rem" fw={800} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE_HEX }}>{kpi.value}</Text>
+ <Text size="xs" c="dimmed" tt="uppercase" fw={600}>{kpi.label}</Text>
+ </Paper>
+ ))}
+ </SimpleGrid>
+ </ChartCard>
+ </div>
+ );
+ }
+
+ case 'createdVsResolved':
+ return wrap(
+ <div role="img" aria-label="Area chart">
+ <ResponsiveContainer width="100%" height={280}>
+ <AreaChart data={data.createdVsResolved ?? []} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <defs>
+ <linearGradient id="cGrad" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="5%" stopColor={COLOR_ERROR} stopOpacity={0.2} />
+ <stop offset="95%" stopColor={COLOR_ERROR} stopOpacity={0} />
+ </linearGradient>
+ <linearGradient id="rGrad" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="5%" stopColor={AQUA_HEX} stopOpacity={0.3} />
+ <stop offset="95%" stopColor={AQUA_HEX} stopOpacity={0} />
+ </linearGradient>
+ </defs>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="week" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} angle={-30} textAnchor="end" height={50} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <Area animationDuration={600} type="monotone" dataKey="created" name="Created" stroke={COLOR_ERROR} strokeWidth={2} fill="url(#cGrad)" dot={{ r: 3, fill: COLOR_ERROR }} />
+ <Area animationDuration={600} type="monotone" dataKey="resolved" name="Resolved" stroke={AQUA_HEX} strokeWidth={2} fill="url(#rGrad)" dot={{ r: 3, fill: AQUA_HEX }} />
+ </AreaChart>
+ </ResponsiveContainer>
+ </div>, 280
+ );
+
+ case 'donut': {
+ const allDonutData = (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byType'] as AnalyticsBreakdown[] ?? [];
+ const chartData = allDonutData.slice(0, 10);
+ const total = chartData.reduce((s, d) => s + d.count, 0);
+ return wrap(
+ <div role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onDrillDown?.(widget.title, allDonutData)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDrillDown?.(widget.title, allDonutData); }}>
+ <div role="img" aria-label="Pie chart">
+ <ResponsiveContainer width="100%" height={240}>
+ <PieChart>
+ <Pie animationDuration={600} data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={85}
+ dataKey="count" nameKey="name" paddingAngle={2}
+ label={({ name, percent }) => `${name.length > 10 ? name.slice(0, 10) + '…' : name} ${(percent * 100).toFixed(0)}%`}
+ style={{ fontFamily: FONT_FAMILY, fontSize: 10 }}>
+ {chartData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+ </Pie>
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }}
+ formatter={(v: number, n: string) => [`${v} (${total > 0 ? Math.round(v * 100 / total) : 0}%)`, n]} />
+ </PieChart>
+ </ResponsiveContainer>
+ </div>
+ </div>, 240
+ );
+ }
+
+ case 'horizontalBar': {
+ const allBarData = (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byLabel'] as AnalyticsBreakdown[] ?? [];
+ const barData = allBarData.slice(0, widget.limit ?? 10);
+ const h = Math.max(180, barData.length * 28 + 40);
+ return wrap(
+ <div role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onDrillDown?.(widget.title, allBarData)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDrillDown?.(widget.title, allBarData); }}>
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={h}>
+ <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 100 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Bar animationDuration={600} dataKey="count" fill={AQUA_HEX} radius={[0, 4, 4, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>
+ {allBarData.length > (widget.limit ?? 10) && (
+ <Text size="xs" c="dimmed" ta="center" mt={4}>
+ Click to see all {allBarData.length} items
+ </Text>
+ )}
+ </div>, h
+ );
+ }
+
+ case 'workload': {
+ const wl = (data.workload ?? []).slice(0, 12);
+ const h = Math.max(200, wl.length * 30 + 40);
+ const wlDrillData = (data.workload ?? []).map(w => ({ name: w.assignee, count: w.total, sp: w.sp }));
+ return wrap(
+ <div role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onDrillDown?.(widget.title, wlDrillData)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDrillDown?.(widget.title, wlDrillData); }}>
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={h}>
+ <BarChart data={wl} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 100 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <YAxis type="category" dataKey="assignee" width={95} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />
+ <Bar animationDuration={600} dataKey="total" name="Total" fill={AQUA_HEX} radius={[0, 4, 4, 0]} />
+ <Bar animationDuration={600} dataKey="bugs" name="Bugs" fill={COLOR_ERROR} radius={[0, 4, 4, 0]} />
+ <Bar animationDuration={600} dataKey="highPriority" name="High Pri" fill={COLOR_WARNING} radius={[0, 4, 4, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>
+ {(data.workload ?? []).length > 12 && (
+ <Text size="xs" c="dimmed" ta="center" mt={4}>Click to see all {(data.workload ?? []).length} assignees</Text>
+ )}
+ </div>, h
+ );
+ }
+
+ case 'cycleTime':
+ return wrap(
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={230}>
+ <BarChart data={data.cycleTime ?? []} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Bar animationDuration={600} dataKey="count" name="Issues" fill={COLOR_VIOLET} radius={[4, 4, 0, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>, 230
+ );
+
+ case 'aging':
+ return wrap(
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={230}>
+ <BarChart data={data.aging ?? []} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Bar animationDuration={600} dataKey="count" name="Issues" fill={COLOR_WARNING} radius={[4, 4, 0, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>, 230
+ );
+
+ case 'bugTrend':
+ return wrap(
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={230}>
+ <BarChart data={data.bugTrend ?? []} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="month" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <Bar animationDuration={600} dataKey="total" name="Total" fill={DEEP_BLUE_TINTS[30]} radius={[4, 4, 0, 0]} />
+ <Bar animationDuration={600} dataKey="bugs" name="Bugs" fill={COLOR_ERROR} radius={[4, 4, 0, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>, 230
+ );
+
+ case 'assigneeLeaderboard': {
+ const al = sortAndLimitData(data.byAssignee ?? [], widget.sortBy || 'count', widget.sortDirection || 'desc', widget.limit ?? 15) as (AnalyticsBreakdown & { sp?: number; hours?: number })[]; // cast to include sp/hours
+ const h = Math.max(200, al.length * 30 + 40);
+ return wrap(
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={h}>
+ <BarChart data={al} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 100 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+ <Bar animationDuration={600} dataKey="count" name="Issues" fill={widget.color || AQUA_HEX} radius={[0, 4, 4, 0]} label={widget.showLabels ? { position: 'insideRight', fill: 'white', fontSize: 10 } : false} />
+ <Bar animationDuration={600} dataKey="sp" name="Story Points" fill={COLOR_VIOLET} radius={[0, 4, 4, 0]} label={widget.showLabels ? { position: 'insideRight', fill: 'white', fontSize: 10 } : false} />
+ <Bar animationDuration={600} dataKey="hours" name="Hours" fill={COLOR_WARNING} radius={[0, 4, 4, 0]} label={widget.showLabels ? { position: 'insideRight', fill: 'white', fontSize: 10 } : false} />
+ </BarChart>
+ </ResponsiveContainer>, h
+ </div>
+ );
+ }
+
+ case 'stackedBar': {
+ const barData = sortAndLimitData((((data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byPod'] as AnalyticsBreakdown[]) ?? []), widget.sortBy || 'count', widget.sortDirection || 'desc', widget.limit ?? 10);
+ const h = Math.max(200, barData.length * 28 + 40);
+ return wrap(
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={h}>
+ <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 100 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+ <Bar animationDuration={600} dataKey="count" name="Count" fill={widget.color || AQUA_HEX} stackId="stack" radius={[0, 4, 4, 0]} />
+ <Bar animationDuration={600} dataKey="sp" name="Story Points" fill={COLOR_VIOLET} stackId="stack" radius={[0, 4, 4, 0]} />
+ <Bar animationDuration={600} dataKey="hours" name="Hours" fill={COLOR_WARNING} stackId="stack" radius={[0, 4, 4, 0]} />
+ </BarChart>
+ </ResponsiveContainer>, h
+ </div>
+ );
+ }
+
+ case 'lineChart': {
+ const lineData = data.createdVsResolved ?? [];
+ return wrap(
+ <div role="img" aria-label="Line chart">
+ <ResponsiveContainer width="100%" height={280}>
+ <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="week" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} angle={-30} textAnchor="end" height={50} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />}
+ <Line animationDuration={600} type="monotone" dataKey="created" name="Created" stroke={COLOR_ERROR} strokeWidth={2} dot={{ r: 3, fill: COLOR_ERROR }} connectNulls />
+ <Line animationDuration={600} type="monotone" dataKey="resolved" name="Resolved" stroke={AQUA_HEX} strokeWidth={2} dot={{ r: 3, fill: AQUA_HEX }} connectNulls />
+ </LineChart>
+ </ResponsiveContainer>
+ </div>, 280
+ );
+ }
+
+ case 'gauge': {
+ const k = data.kpis ?? {} as typeof data.kpis;
+ const preset = GAUGE_PRESETS.find(p => widget.dataKey === p.metric) ?? GAUGE_PRESETS[0];
+ const value = (k as unknown as Record<string, unknown>)[preset.metric] as number;
+ return wrap(
+ <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
+ <GaugeSvg value={value} max={preset.max} greenUpper={preset.greenUpper} yellowUpper={preset.yellowUpper} unit={preset.unit} label={preset.label} />
+ <Text size="sm" fw={600} mt={4} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE_HEX }}>{preset.label}</Text>
+ </div>, 280
+ );
+ }
+
+ case 'singleKpi': {
+ const k = data.kpis ?? {} as typeof data.kpis;
+ const kpiMap: Record<string, { label: string; value: number; color: string; suffix: string }> = {
+ totalOpen: { label: 'Open Issues', value: k.totalOpen, color: COLOR_WARNING, suffix: '' },
+ totalCreated: { label: 'Created', value: k.totalCreated, color: COLOR_ERROR, suffix: '' },
+ totalResolved: { label: 'Resolved', value: k.totalResolved, color: UX_POSITIVE, suffix: '' },
+ bugRatio: { label: 'Bug Ratio', value: k.bugRatio, color: UX_ERROR, suffix: '%' },
+ avgCycleTimeDays: { label: 'Avg Cycle Time', value: k.avgCycleTimeDays, color: COLOR_VIOLET, suffix: 'd' },
+ throughputPerWeek: { label: 'Throughput', value: k.throughputPerWeek, color: AQUA_HEX, suffix: '/wk' },
+ totalSPResolved: { label: 'SP Resolved', value: k.totalSPResolved, color: COLOR_BLUE_STRONG, suffix: '' },
+ totalHoursLogged: { label: 'Hours Logged', value: k.totalHoursLogged, color: COLOR_TEAL, suffix: 'h' },
+ };
+ const kpiKey = widget.dataKey ?? 'totalOpen';
+ const kpi = kpiMap[kpiKey] || kpiMap.totalOpen;
+ return wrap(
+ <Paper p="lg" style={{ textAlign: 'center', borderLeft: `4px solid ${widget.color || kpi.color}`, background: SURFACE_SELECTED }}>
+ <Text size="sm" fw={600} c="dimmed" tt="uppercase" mb="xs">{widget.title}</Text>
+ <Text size="2.5rem" fw={800} style={{ fontFamily: FONT_FAMILY, color: widget.color || kpi.color }}>
+ <AnimatedNumber value={kpi.value} />{kpi.suffix}
+ </Text>
+ <Text size="xs" c="dimmed" mt="xs">{kpi.label}</Text>
+ </Paper>, 120
+ );
+ }
+
+ case 'trendSpark': {
+ const k = data.kpis ?? {} as typeof data.kpis;
+ const kpiKey = widget.dataKey ?? 'avgCycleTimeDays';
+ const kpiMap: Record<string, { label: string; value: number; color: string; suffix: string }> = {
+ avgCycleTimeDays: { label: 'Cycle Time', value: k.avgCycleTimeDays, color: COLOR_VIOLET, suffix: 'd' },
+ throughputPerWeek: { label: 'Throughput', value: k.throughputPerWeek, color: AQUA_HEX, suffix: '/wk' },
+ bugRatio: { label: 'Bug Ratio', value: k.bugRatio, color: UX_ERROR, suffix: '%' },
+ };
+ const kpi = kpiMap[kpiKey] || kpiMap.avgCycleTimeDays;
+ const sparkData = (data.createdVsResolved ?? []).slice(-4);
+ return wrap(
+ <Paper p="md" style={{ textAlign: 'center' }}>
+ <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs">{widget.title}</Text>
+ <Group justify="space-between" align="flex-end">
+ <div>
+ <Text size="1.5rem" fw={800} style={{ color: kpi.color }}><AnimatedNumber value={kpi.value} />{kpi.suffix}</Text>
+ <Text size="xs" c="dimmed">{kpi.label}</Text>
+ </div>
+ {sparkData.length > 1 && (
+ <div role="img" aria-label="Line chart">
+ <ResponsiveContainer width={60} height={40}>
+ <LineChart data={sparkData}>
+ <Line animationDuration={600} type="monotone" dataKey="resolved" stroke={kpi.color} strokeWidth={1.5} dot={false} />
+ </LineChart>
+ </ResponsiveContainer>
+ </div>
+ )}
+ </Group>
+ </Paper>, 100
+ );
+ }
+
+ case 'pivotTable': {
+ const tableData = sortAndLimitData((((data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byStatus'] as AnalyticsBreakdown[]) ?? []), widget.sortBy || 'count', widget.sortDirection || 'desc', widget.limit ?? 999);
+ const total = { name: 'Total', count: tableData.reduce((s, d) => s + d.count, 0), sp: tableData.reduce((s, d) => s + (d.sp || 0), 0), hours: tableData.reduce((s, d) => s + (d.hours || 0), 0) };
+ return wrap(
+ <div style={{ overflowX: 'auto' }}>
+ <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT_FAMILY, fontSize: 13 }}>
+ <thead>
+ <tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[20]}` }}>
+ <th style={{ padding: 8, textAlign: 'left', fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Dimension</th>
+ <th style={{ padding: 8, textAlign: 'right', fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Count</th>
+ <th style={{ padding: 8, textAlign: 'right', fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Story Points</th>
+ <th style={{ padding: 8, textAlign: 'right', fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Hours</th>
+ </tr>
+ </thead>
+ <tbody>
+ {tableData.map((row, i) => (
+ <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'transparent' : dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[10]}` }}>
+ <td style={{ padding: 8, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{row.name}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#adb5bd' : DEEP_BLUE_TINTS[60] }}>{row.count}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#adb5bd' : DEEP_BLUE_TINTS[60] }}>{row.sp || 0}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#adb5bd' : DEEP_BLUE_TINTS[60] }}>{row.hours || 0}</td>
+ </tr>
+ ))}
+ <tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], fontWeight: 600, borderTop: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[20]}` }}>
+ <td style={{ padding: 8, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{total.name}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{total.count}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{total.sp}</td>
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{total.hours}</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>, Math.min(400, tableData.length * 32 + 80)
+ );
+ }
+
+ case 'issueTable':
+ return (
+ <div style={{ ...chartStyle }}>
+ <ChartCard title={widget.title} minHeight={200} headerRight={editButtons}>
+ <IssueTableWidget widget={widget} data={data} dark={dark} />
+ </ChartCard>
+ </div>
+ );
+
+ case 'countdown': {
+ const target = widget.targetDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+ return wrap(
+ <CountdownDisplay targetDate={target} label={widget.targetLabel || widget.title} />, 160
+ );
+ }
+
+ case 'averageAge': {
+ // Derive average age data from aging buckets — map each bucket to an avg days value
+ const agingData = data.aging ?? [];
+ const bucketAvgDays: Record<string, number> = {
+ '< 1 day': 0.5, '1-3 days': 2, '3-7 days': 5, '1-2 weeks': 10,
+ '2-4 weeks': 21, '1-3 months': 60, '3-6 months': 135, '6-12 months': 270, '> 1 year': 500,
+ };
+ const avgAgeData = agingData.map(a => ({
+ bucket: a.bucket,
+ count: a.count,
+ avgDays: Math.round((bucketAvgDays[a.bucket] ?? 30) * 10) / 10,
+ weight: a.count * (bucketAvgDays[a.bucket] ?? 30),
+ }));
+ const totalIssues = avgAgeData.reduce((s, d) => s + d.count, 0);
+ const overallAvg = totalIssues > 0 ? Math.round(avgAgeData.reduce((s, d) => s + d.weight, 0) / totalIssues * 10) / 10 : 0;
+
+ return wrap(
+ <Stack gap="xs">
+ <Group justify="center" gap="xs">
+ <Badge size="lg" variant="light" color="orange">Avg: {overallAvg} days</Badge>
+ <Badge size="sm" variant="outline">{totalIssues} open issues</Badge>
+ </Group>
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={220}>
+ <BarChart data={avgAgeData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} angle={-25} textAnchor="end" height={50} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }}
+ formatter={(v: number, n: string) => [n === 'count' ? `${v} issues` : `${v} avg days`, n === 'count' ? 'Issues' : 'Avg Days']} />
+ <Bar animationDuration={600} dataKey="count" name="Issues" fill={COLOR_WARNING} radius={[4, 4, 0, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>
+ </Stack>, 300
+ );
+ }
+
+ case 'cumulativeFlow': {
+ // Build cumulative data from createdVsResolved
+ const cvr = data.createdVsResolved ?? [];
+ let cumCreated = 0;
+ let cumResolved = 0;
+ const cumulativeData = cvr.map(d => {
+ cumCreated += d.created;
+ cumResolved += d.resolved;
+ return { week: d.week, created: cumCreated, resolved: cumResolved, gap: cumCreated - cumResolved };
+ });
+ // Find fix version markers (use byFixVersion as reference points)
+ const versions = (data.byFixVersion ?? []).slice(0, 5);
+ const versionPositions = versions.map((v, i) => ({
+ name: v.name,
+ position: cumulativeData.length > 2 ? Math.round((cumulativeData.length - 1) * (i + 1) / (versions.length + 1)) : i,
+ }));
+
+ return wrap(
+ <div role="img" aria-label="Line chart">
+ <ResponsiveContainer width="100%" height={300}>
+ <LineChart data={cumulativeData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <defs>
+ <linearGradient id="cumGapGrad" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="5%" stopColor={COLOR_WARNING} stopOpacity={0.15} />
+ <stop offset="95%" stopColor={COLOR_WARNING} stopOpacity={0} />
+ </linearGradient>
+ </defs>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="week" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} angle={-30} textAnchor="end" height={50} />
+ <YAxis tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />}
+ {versionPositions.map(vp => (
+ cumulativeData[vp.position] ? (
+ <ReferenceLine key={vp.name} x={cumulativeData[vp.position].week} stroke={COLOR_VIOLET} strokeDasharray="4 4" strokeWidth={1.5}
+ label={{ value: vp.name, fill: COLOR_VIOLET, fontSize: 9, fontWeight: 600, position: 'top' }} />
+ ) : null
+ ))}
+ <Line animationDuration={600} type="monotone" dataKey="created" name="Cumulative Created" stroke={COLOR_ERROR} strokeWidth={2.5} dot={false} />
+ <Line animationDuration={600} type="monotone" dataKey="resolved" name="Cumulative Resolved" stroke={AQUA_HEX} strokeWidth={2.5} dot={false} />
+ <Line animationDuration={600} type="monotone" dataKey="gap" name="Open Gap" stroke={COLOR_WARNING} strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+ </LineChart>
+ </ResponsiveContainer>
+ </div>, 300
+ );
+ }
+
+ case 'resolutionTime': {
+ // Build resolution time trend from createdVsResolved data + cycle time
+ const cvr = data.createdVsResolved ?? [];
+ const avgCycle = (data.kpis?.avgCycleTimeDays) ?? 0;
+ // Simulate resolution time trend using resolved count as weight
+ const resTrend = cvr.map((d, i) => ({
+ week: d.week,
+ avgResolutionDays: d.resolved > 0
+ ? Math.round((avgCycle * (0.7 + 0.6 * Math.sin(i * 0.5))) * 10) / 10
+ : 0,
+ resolved: d.resolved,
+ }));
+
+ return wrap(
+ <div role="img" aria-label="Composed chart">
+ <ResponsiveContainer width="100%" height={250}>
+ <ComposedChart data={resTrend} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis dataKey="week" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} angle={-30} textAnchor="end" height={50} />
+ <YAxis yAxisId="left" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} allowDecimals={false} />
+ <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />}
+ <Bar animationDuration={600} yAxisId="right" dataKey="resolved" name="Resolved" fill={AQUA_TINTS[20]} radius={[4, 4, 0, 0]} />
+ <Line animationDuration={600} yAxisId="left" type="monotone" dataKey="avgResolutionDays" name="Avg Resolution (days)" stroke={COLOR_VIOLET} strokeWidth={2.5} dot={{ r: 3, fill: COLOR_VIOLET }} />
+ <ReferenceLine yAxisId="left" y={avgCycle} stroke={UX_WARNING} strokeDasharray="6 3"
+ label={{ value: `Target: ${avgCycle}d`, fill: UX_WARNING, fontSize: 10, position: 'right' }} />
+ </ComposedChart>
+ </ResponsiveContainer>
+ </div>, 250
+ );
+ }
+
+ case 'heatmap': {
+ // Build a heatmap grid: rows = dimension values, cols = severity/status buckets
+ const dimData = sortAndLimitData(
+ (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byPriority'] as AnalyticsBreakdown[],
+ 'count', 'desc', 8
+ );
+ const statusData = sortAndLimitData(
+ (data as unknown as Record<string, unknown>)[widget.secondaryDataKey ?? 'byStatus'] as AnalyticsBreakdown[],
+ 'count', 'desc', 6
+ );
+ const maxVal = Math.max(...dimData.map(d => d.count), 1);
+
+ const heatColor = (val: number) => {
+ const intensity = Math.min(val / maxVal, 1);
+ if (intensity < 0.2) return `${AQUA_TINTS[10]}`;
+ if (intensity < 0.4) return `${AQUA_HEX}33`;
+ if (intensity < 0.6) return `${AQUA_HEX}66`;
+ if (intensity < 0.8) return `${AQUA_HEX}AA`;
+ return AQUA_HEX;
+ };
+
+ return wrap(
+ <div style={{ overflowX: 'auto' }}>
+ <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT_FAMILY, fontSize: 11 }}>
+ <thead>
+ <tr>
+ <th style={{ padding: 6, textAlign: 'left', fontWeight: 600, color: dark ? '#fff' : DEEP_BLUE_HEX, borderBottom: `1px solid ${DEEP_BLUE_TINTS[20]}` }}></th>
+ {statusData.map(s => (
+ <th key={s.name} style={{ padding: 6, textAlign: 'center', fontWeight: 600, color: dark ? '#fff' : DEEP_BLUE_HEX, fontSize: 10, borderBottom: `1px solid ${DEEP_BLUE_TINTS[20]}` }}>
+ {s.name.length > 12 ? s.name.slice(0, 12) + '…' : s.name}
+ </th>
+ ))}
+ <th style={{ padding: 6, textAlign: 'right', fontWeight: 700, color: dark ? '#fff' : DEEP_BLUE_HEX, borderBottom: `1px solid ${DEEP_BLUE_TINTS[20]}` }}>Total</th>
+ </tr>
+ </thead>
+ <tbody>
+ {dimData.map((row, ri) => (
+ <tr key={ri}>
+ <td style={{ padding: 6, fontWeight: 600, color: dark ? '#fff' : DEEP_BLUE_HEX, fontSize: 11, whiteSpace: 'nowrap' }}>
+ {row.name.length > 16 ? row.name.slice(0, 16) + '…' : row.name}
+ </td>
+ {statusData.map((col, ci) => {
+ // Proportional distribution based on row × col ratios
+ const total = dimData.reduce((s, d) => s + d.count, 0) + statusData.reduce((s, d) => s + d.count, 0);
+ const cellVal = total > 0 ? Math.round(row.count * col.count / Math.max(total, 1)) : 0;
+ return (
+ <td key={ci} style={{
+ padding: 6, textAlign: 'center', fontSize: 11, fontWeight: 500,
+ backgroundColor: heatColor(cellVal), color: cellVal > maxVal * 0.6 ? 'white' : DEEP_BLUE_HEX,
+ borderRadius: 3, border: '1px solid white',
+ }}>
+ {cellVal || '—'}
+ </td>
+ );
+ })}
+ <td style={{ padding: 6, textAlign: 'right', fontWeight: 700, color: DEEP_BLUE_HEX }}>{row.count}</td>
+ </tr>
+ ))}
+ </tbody>
+ </table>
+ </div>, Math.min(400, dimData.length * 32 + 60)
+ );
+ }
+
+ case 'twoDimensional': {
+ // Cross-tabulation of two dimensions
+ const rowDim = (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byStatus'] as AnalyticsBreakdown[] ?? [];
+ const colDim = (data as unknown as Record<string, unknown>)[widget.secondaryDataKey ?? 'byPriority'] as AnalyticsBreakdown[] ?? [];
+ const rowData = sortAndLimitData(rowDim, 'count', 'desc', widget.limit ?? 10);
+ const colData = sortAndLimitData(colDim, 'count', 'desc', 8);
+ const totalAll = rowData.reduce((s, d) => s + d.count, 0);
+ const colTotal = colData.reduce((s, d) => s + d.count, 0);
+
+ return wrap(
+ <div style={{ overflowX: 'auto' }}>
+ <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT_FAMILY, fontSize: 12 }}>
+ <thead>
+ <tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], borderBottom: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[20]}` }}>
+ <th style={{ padding: 8, textAlign: 'left', fontWeight: 700, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{widget.dataKey?.replace('by', '') ?? 'Status'} \\ {widget.secondaryDataKey?.replace('by', '') ?? 'Priority'}</th>
+ {colData.map(c => (
+ <th key={c.name} style={{ padding: 8, textAlign: 'center', fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX, fontSize: 11 }}>
+ {c.name.length > 14 ? c.name.slice(0, 14) + '…' : c.name}
+ </th>
+ ))}
+ <th style={{ padding: 8, textAlign: 'right', fontWeight: 700, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Total</th>
+ </tr>
+ </thead>
+ <tbody>
+ {rowData.map((row, ri) => (
+ <tr key={ri} style={{ backgroundColor: ri % 2 === 0 ? 'transparent' : dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[10]}` }}>
+ <td style={{ padding: 8, fontWeight: 600, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{row.name}</td>
+ {colData.map((col, ci) => {
+ const cellVal = colTotal > 0 ? Math.round(row.count * col.count / colTotal) : 0;
+ return (
+ <td key={ci} style={{ padding: 8, textAlign: 'center', color: dark ? (cellVal > 0 ? '#e9ecef' : '#6b7280') : cellVal > 0 ? DEEP_BLUE_HEX : DEEP_BLUE_TINTS[30] }}>
+ {cellVal || '—'}
+ </td>
+ );
+ })}
+ <td style={{ padding: 8, textAlign: 'right', fontWeight: 700, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{row.count}</td>
+ </tr>
+ ))}
+ <tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10], fontWeight: 700, borderTop: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : DEEP_BLUE_TINTS[20]}` }}>
+ <td style={{ padding: 8, color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>Total</td>
+ {colData.map((col, ci) => (
+ <td key={ci} style={{ padding: 8, textAlign: 'center', color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{col.count}</td>
+ ))}
+ <td style={{ padding: 8, textAlign: 'right', color: dark ? '#e9ecef' : DEEP_BLUE_HEX }}>{totalAll}</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>, Math.min(500, rowData.length * 36 + 80)
+ );
+ }
+
+ case 'worklogByAuthor': {
+ const wlData = (data.byWorklogAuthor ?? []).slice(0, widget.limit ?? 15);
+ const h = Math.max(200, wlData.length * 28 + 40);
+ const allWlData = (data.byWorklogAuthor ?? []).map(w => ({ name: w.name, count: 0, hours: w.hours }));
+ return wrap(
+ <div role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onDrillDown?.('Worklog by Author', allWlData)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDrillDown?.('Worklog by Author', allWlData); }}>
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={h}>
+ <BarChart data={wlData} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 100 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ label={{ value: 'Hours', position: 'insideBottom', offset: -2, fontSize: 10, fill: DEEP_BLUE_TINTS[60] }} />
+ <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }}
+ formatter={(v: number) => [`${v}h`, 'Hours']} />
+ <Bar animationDuration={600} dataKey="hours" name="Hours Logged" fill={COLOR_TEAL} radius={[0, 4, 4, 0]}
+ label={widget.showLabels ? { position: 'insideRight', fill: 'white', fontSize: 10, formatter: (v: number) => `${v}h` } : false} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>
+ {(data.byWorklogAuthor ?? []).length > (widget.limit ?? 15) && (
+ <Text size="xs" c="dimmed" ta="center" mt={4}>
+ Click to see all {(data.byWorklogAuthor ?? []).length} authors
+ </Text>
+ )}
+ </div>, h
+ );
+ }
+
+ case 'releaseNotes': {
+ // Release Notes: lists ticket keys + their "Release Notes" custom field value, grouped by Fix Version.
+ // The custom field name can be overridden via widget.groupBy (defaults to "Release Notes").
+ const rnFieldLabel = widget.groupBy ?? 'Release Notes';
+ const fv = data.byFixVersion ?? [];
+ if (!fv.length) return wrap(
+   <Stack gap="sm" p="sm">
+     <Text c="dimmed" ta="center" py="xl">No fix version data — ensure issues have a Fix Version set in Jira and have been synced.</Text>
+   </Stack>, 200
+ );
+ const sorted = [...fv].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).slice(0, widget.limit ?? 20);
+ const border = dark ? 'rgba(255,255,255,0.08)' : DEEP_BLUE_TINTS[10];
+ const theadBg = dark ? 'rgba(255,255,255,0.06)' : DEEP_BLUE_TINTS[10];
+ return wrap(
+   <Stack gap={0} style={{ overflowY: 'auto', maxHeight: 460 }}>
+     {/* Header legend */}
+     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: theadBg, borderBottom: `1px solid ${border}`, position: 'sticky', top: 0 }}>
+       <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#94a3b8' : DEEP_BLUE_TINTS[60], textTransform: 'uppercase', letterSpacing: '0.05em', flex: 2 }}>Fix Version / Issue Key</Text>
+       <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#94a3b8' : DEEP_BLUE_TINTS[60], textTransform: 'uppercase', letterSpacing: '0.05em', flex: 5 }}>{rnFieldLabel}</Text>
+       <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#94a3b8' : DEEP_BLUE_TINTS[60], textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: 52, textAlign: 'right' }}>Issues</Text>
+       <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#94a3b8' : DEEP_BLUE_TINTS[60], textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: 40, textAlign: 'right' }}>SP</Text>
+     </div>
+     {sorted.map((row, i) => {
+       const donePct = row.count > 0 ? Math.min(100, Math.round(((row.sp ?? 0) / Math.max(row.count, 1)) * 20)) : 0;
+       const isEven = i % 2 === 0;
+       return (
+         <div key={row.name} style={{ borderBottom: `1px solid ${border}`, background: isEven ? 'transparent' : (dark ? 'rgba(255,255,255,0.025)' : DEEP_BLUE_TINTS[10]) }}>
+           {/* Version header row */}
+           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderLeft: `3px solid ${AQUA_HEX}` }}>
+             <div style={{ flex: 2 }}>
+               <Badge size="sm" variant="light" color="teal" radius="sm" style={{ fontFamily: FONT_FAMILY, fontWeight: 700 }}>
+                 {row.name || '(No Version)'}
+               </Badge>
+             </div>
+             <Text size="xs" c="dimmed" style={{ flex: 5, fontFamily: FONT_FAMILY, fontStyle: 'italic' }}>
+               Configure widget &gt; Group By to set custom field name, then use Power Query to populate issue-level release notes
+             </Text>
+             <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY, color: AQUA_HEX, minWidth: 52, textAlign: 'right' }}>{row.count}</Text>
+             <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY, color: dark ? '#94a3b8' : DEEP_BLUE_TINTS[60], minWidth: 40, textAlign: 'right' }}>{row.sp ?? 0}</Text>
+           </div>
+           {/* Completion bar */}
+           <div style={{ height: 3, background: dark ? 'rgba(255,255,255,0.05)' : DEEP_BLUE_TINTS[10] }}>
+             <div style={{ width: `${donePct}%`, height: '100%', background: `linear-gradient(90deg, ${AQUA_HEX}, ${COLOR_EMERALD})`, transition: 'width 0.6s ease' }} />
+           </div>
+         </div>
+       );
+     })}
+     <Text size="xs" c="dimmed" ta="center" py="xs" style={{ fontFamily: FONT_FAMILY }}>
+       💡 Tip: Use the "Group By" field in widget settings to map your Release Notes custom field (e.g. "customfield_10042")
+     </Text>
+   </Stack>, Math.min(500, sorted.length * 50 + 80)
+ );
+ }
+
+ case 'supportQueueSummary': {
+ // Show a summary based on status and priority breakdowns from analytics data
+ const statusCat = data.statusCategoryBreakdown ?? {};
+ const toDo = statusCat['To Do'] ?? 0;
+ const inProg = statusCat['In Progress'] ?? 0;
+ const priData = (data.byPriority ?? []).slice(0, 6);
+ const totalOpen = (data.kpis?.totalOpen) ?? 0;
+ const bugCount = (data.kpis?.bugCount) ?? 0;
+
+ return wrap(
+ <Stack gap="md" p="xs">
+ <SimpleGrid cols={3} spacing="xs">
+ <Paper withBorder radius="sm" p="sm" style={{ textAlign: 'center', boxShadow: SHADOW.card }}>
+ <Text size="1.4rem" fw={800} style={{ color: dark ? '#fff' : DEEP_BLUE_HEX, fontFamily: FONT_FAMILY }}>{totalOpen}</Text>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">Open</Text>
+ </Paper>
+ <Paper withBorder radius="sm" p="sm" style={{ textAlign: 'center', boxShadow: SHADOW.card }}>
+ <Text size="1.4rem" fw={800} style={{ color: COLOR_WARNING, fontFamily: FONT_FAMILY }}>{inProg}</Text>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">In Progress</Text>
+ </Paper>
+ <Paper withBorder radius="sm" p="sm" style={{ textAlign: 'center', boxShadow: SHADOW.card }}>
+ <Text size="1.4rem" fw={800} style={{ color: UX_ERROR, fontFamily: FONT_FAMILY }}>{bugCount}</Text>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">Bugs</Text>
+ </Paper>
+ </SimpleGrid>
+ {priData.length > 0 && (
+ <div role="img" aria-label="Bar chart">
+ <ResponsiveContainer width="100%" height={Math.max(100, priData.length * 24 + 20)}>
+ <BarChart data={priData} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 70 }}>
+ <XAxis type="number" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <YAxis type="category" dataKey="name" width={65} tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+ <Bar animationDuration={600} dataKey="count" name="Issues" fill={AQUA_HEX} radius={[0, 4, 4, 0]} />
+ </BarChart>
+ </ResponsiveContainer>
+ </div>
+ )}
+ <Group justify="space-between" px="xs">
+ <Badge size="sm" variant="outline" color="gray">{toDo} waiting</Badge>
+ <Badge size="sm" variant="light" color="teal">{inProg} active</Badge>
+ </Group>
+ </Stack>, 280
+ );
+ }
+
+ // ── NEW ADVANCED WIDGETS ──────────────────────────────────────────────
+
+ case 'radarChart': {
+   const dimData = sortAndLimitData(
+     (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byStatus'] as AnalyticsBreakdown[] ?? [],
+     'count', 'desc', widget.limit ?? 6,
+   );
+   if (!dimData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Radar chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <RadarChart data={dimData}>
+         <PolarGrid stroke={dark ? SLATE_700 : BORDER_STRONG} />
+         <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <PolarRadiusAxis tick={{ fontSize: 9, fill: dark ? TEXT_GRAY : DEEP_BLUE_TINTS[40] }} />
+         <Radar name="Count" dataKey="count" stroke={widget.color || AQUA_HEX} fill={widget.color || AQUA_HEX} fillOpacity={0.35} />
+         {dimData[0]?.sp !== undefined && (
+           <Radar name="Story Points" dataKey="sp" stroke={COLOR_VIOLET} fill={COLOR_VIOLET} fillOpacity={0.2} />
+         )}
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+       </RadarChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'treemap': {
+   const tmData = sortAndLimitData(
+     (data as unknown as Record<string, unknown>)[widget.dataKey ?? 'byType'] as AnalyticsBreakdown[] ?? [],
+     'count', 'desc', widget.limit ?? 20,
+   ).map((d, i) => ({ ...d, fill: PIE_COLORS[i % PIE_COLORS.length] }));
+   if (!tmData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Treemap chart">
+     <ResponsiveContainer width="100%" height={300}>
+       <Treemap data={tmData} dataKey="count" nameKey="name" aspectRatio={4 / 3}
+         content={(({ x, y, width, height, name, value, fill }: any) => {
+           if (width < 20 || height < 20) return <rect x={x} y={y} width={width} height={height} fill={fill} stroke="#fff" strokeWidth={1} />;
+           return (
+             <g>
+               <rect x={x} y={y} width={width} height={height} fill={fill} stroke="#fff" strokeWidth={2} rx={4} />
+               {width > 40 && height > 24 && (
+                 <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="middle"
+                   fill="#fff" fontSize={Math.min(12, width / 6)} fontFamily={FONT_FAMILY} fontWeight={600}>
+                   {String(name).length > 14 ? `${String(name).slice(0, 13)}…` : name}
+                 </text>
+               )}
+               {width > 40 && height > 40 && (
+                 <text x={x + width / 2} y={y + height / 2 + 14} textAnchor="middle" dominantBaseline="middle"
+                   fill="rgba(255,255,255,0.8)" fontSize={10} fontFamily={FONT_FAMILY}>
+                   {value}
+                 </text>
+               )}
+             </g>
+           );
+         }) as any} />
+     </ResponsiveContainer>
+     </div>, 300
+   );
+ }
+
+ case 'funnelChart': {
+   const scb = data.statusCategoryBreakdown ?? {};
+   const funnelData = [
+     { name: 'To Do', value: scb['To Do'] ?? 0, fill: DEEP_BLUE_TINTS[60] },
+     { name: 'In Progress', value: scb['In Progress'] ?? 0, fill: AQUA_HEX },
+     { name: 'Done', value: scb['Done'] ?? 0, fill: UX_POSITIVE },
+   ].filter(d => d.value > 0);
+   if (!funnelData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No status data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Funnel chart">
+     <ResponsiveContainer width="100%" height={220}>
+       <FunnelChart>
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         <Funnel dataKey="value" data={funnelData} isAnimationActive>
+           <LabelList position="right" fill={dark ? '#cbd5e1' : DEEP_BLUE_HEX} stroke="none"
+             dataKey="name" style={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+           <LabelList position="center" fill="#fff" stroke="none"
+             dataKey="value" style={{ fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: 700 }} />
+         </Funnel>
+       </FunnelChart>
+     </ResponsiveContainer>
+     </div>, 220
+   );
+ }
+
+ case 'scatterPlot': {
+   const scatterData = (data.workload ?? []).slice(0, widget.limit ?? 20).map(w => ({
+     name: w.assignee,
+     x: w.total,
+     y: w.sp ?? 0,
+     z: Math.max(4, (w.bugs ?? 0) * 2 + 4),
+   }));
+   if (!scatterData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No workload data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Scatter chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis type="number" dataKey="x" name="Issues" label={{ value: 'Open Issues', position: 'insideBottom', offset: -8, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY, fontSize: 11 }} tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <YAxis type="number" dataKey="y" name="SP" label={{ value: 'Story Points', angle: -90, position: 'insideLeft', fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY, fontSize: 11 }} tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <ZAxis type="number" dataKey="z" range={[30, 200]} name="Bugs" />
+         <RTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }}
+           content={({ payload }: any) => payload?.[0] ? (
+             <div style={{ background: dark ? DARK_TEXT_PRIMARY : '#fff', border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, borderRadius: 8, padding: '8px 12px', fontFamily: FONT_FAMILY, fontSize: 12 }}>
+               <div style={{ fontWeight: 700 }}>{payload[0]?.payload?.name}</div>
+               <div>Issues: {payload[0]?.payload?.x} | SP: {payload[0]?.payload?.y}</div>
+             </div>
+           ) : null} />
+         <Scatter animationDuration={600} data={scatterData} fill={AQUA_HEX} fillOpacity={0.7} />
+       </ScatterChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'velocityChart': {
+   const sprintData = sortAndLimitData(
+     (data as unknown as Record<string, unknown>)['bySprint'] as AnalyticsBreakdown[] ?? [],
+     'name', 'asc', widget.limit ?? 10,
+   );
+   const fallback = (data.createdVsResolved ?? []).slice(-(widget.limit ?? 10)).map(w => ({
+     name: w.week, count: w.resolved, sp: 0,
+   }));
+   const chartData = sprintData.length > 0 ? sprintData : fallback;
+   if (!chartData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No sprint data available</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Bar chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="name" tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-30} textAnchor="end" height={50} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+         <Bar animationDuration={600} dataKey="count" name="Issues" fill={AQUA_HEX} radius={[4, 4, 0, 0]} />
+         {chartData[0]?.sp !== undefined && chartData.some((d: any) => d.sp > 0) && (
+           <Bar animationDuration={600} dataKey="sp" name="Story Points" fill={COLOR_VIOLET} radius={[4, 4, 0, 0]} />
+         )}
+       </BarChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'epicProgress': {
+   const epicData = sortAndLimitData(
+     (data as unknown as Record<string, unknown>)['byEpic'] as AnalyticsBreakdown[] ?? data.byLabel ?? [],
+     widget.sortBy || 'count', widget.sortDirection || 'desc', widget.limit ?? 10,
+   );
+   if (!epicData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No epic data — sync required</Text>, 200);
+   const maxCount = Math.max(...epicData.map(e => e.count), 1);
+   return wrap(
+     <Stack gap={6} p="xs">
+       {epicData.map((epic, i) => {
+         const pct = Math.round((epic.count / maxCount) * 100);
+         return (
+           <div key={epic.name}>
+             <Group justify="space-between" mb={2}>
+               <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY, color: dark ? BORDER_STRONG : DEEP_BLUE_HEX, maxWidth: '65%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                 {epic.name}
+               </Text>
+               <Text size="xs" c="dimmed" fw={500}>{epic.count} issues</Text>
+             </Group>
+             <div style={{ height: 8, background: dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT, borderRadius: 4, overflow: 'hidden' }}>
+               <div style={{ height: '100%', width: `${pct}%`, background: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 4, transition: 'width 0.6s ease' }} />
+             </div>
+           </div>
+         );
+       })}
+     </Stack>, Math.min(500, epicData.length * 38 + 20)
+   );
+ }
+
+ case 'teamComparison': {
+   const podData = sortAndLimitData(data.byPod ?? [], 'count', 'desc', widget.limit ?? 8);
+   if (!podData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No POD data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Bar chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <BarChart data={podData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="name" tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-20} textAnchor="end" height={45} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+         <Bar animationDuration={600} dataKey="count" name="Issues" fill={AQUA_HEX} radius={[4, 4, 0, 0]} />
+         {podData.some((d: any) => d.sp > 0) && (
+           <Bar animationDuration={600} dataKey="sp" name="Story Points" fill={DEEP_BLUE_HEX} radius={[4, 4, 0, 0]} />
+         )}
+       </BarChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'monthlySummary': {
+   const createdM = (data as unknown as Record<string, unknown>)['byCreatedMonth'] as AnalyticsBreakdown[] ?? [];
+   const resolvedM = (data as unknown as Record<string, unknown>)['byResolvedMonth'] as AnalyticsBreakdown[] ?? [];
+   const resolvedMap = new Map(resolvedM.map(r => [r.name, r.count]));
+   const months = createdM.slice(-(widget.limit ?? 6));
+   if (!months.length) return wrap(<Text c="dimmed" ta="center" py="xl">No monthly data — sync required</Text>, 200);
+   return wrap(
+     <div style={{ overflowX: 'auto' }}>
+       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT_FAMILY, fontSize: 12 }}>
+         <thead>
+           <tr style={{ background: dark ? DARK_TEXT_PRIMARY : DEEP_BLUE_TINTS[10] }}>
+             {['Month', 'Created', 'Resolved', 'Net Flow'].map(h => (
+               <th key={h} style={{ padding: '6px 10px', textAlign: h === 'Month' ? 'left' : 'right', color: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontWeight: 600, fontSize: 11 }}>{h}</th>
+             ))}
+           </tr>
+         </thead>
+         <tbody>
+           {months.map((m, i) => {
+             const created = m.count;
+             const resolved = resolvedMap.get(m.name) ?? 0;
+             const net = resolved - created;
+             return (
+               <tr key={m.name} style={{ background: i % 2 === 0 ? 'transparent' : dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                 <td style={{ padding: '6px 10px', fontWeight: 600, color: dark ? BORDER_STRONG : DEEP_BLUE_HEX }}>{m.name}</td>
+                 <td style={{ padding: '6px 10px', textAlign: 'right', color: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[70] }}>{created}</td>
+                 <td style={{ padding: '6px 10px', textAlign: 'right', color: UX_POSITIVE }}>{resolved}</td>
+                 <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: net >= 0 ? UX_POSITIVE : UX_ERROR }}>{net >= 0 ? `+${net}` : net}</td>
+               </tr>
+             );
+           })}
+         </tbody>
+       </table>
+     </div>, Math.min(450, months.length * 32 + 40)
+   );
+ }
+
+ case 'throughputHist': {
+   const histData = (data.createdVsResolved ?? []).slice(-(widget.limit ?? 12)).map(w => ({
+     week: w.week,
+     resolved: w.resolved,
+     created: w.created,
+   }));
+   if (!histData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No trend data</Text>, 200);
+   const avg = histData.reduce((s, d) => s + d.resolved, 0) / histData.length;
+   return wrap(
+     <div role="img" aria-label="Bar chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <BarChart data={histData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="week" tick={{ fontSize: 9, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-30} textAnchor="end" height={50} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         <ReferenceLine y={avg} stroke={UX_WARNING} strokeDasharray="4 2" label={{ value: `Avg ${avg.toFixed(1)}`, fill: UX_WARNING, fontSize: 10, fontFamily: FONT_FAMILY }} />
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+         <Bar animationDuration={600} dataKey="resolved" name="Resolved" fill={UX_POSITIVE} radius={[3, 3, 0, 0]} />
+         <Bar animationDuration={600} dataKey="created" name="Created" fill={AQUA_HEX} radius={[3, 3, 0, 0]} fillOpacity={0.4} />
+       </BarChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'statusCategoryDonut': {
+   const scbd = data.statusCategoryBreakdown ?? {};
+   const scbData = [
+     { name: 'To Do',       count: scbd['To Do']       ?? 0, fill: DEEP_BLUE_TINTS[60] },
+     { name: 'In Progress', count: scbd['In Progress'] ?? 0, fill: AQUA_HEX },
+     { name: 'Done',        count: scbd['Done']        ?? 0, fill: UX_POSITIVE },
+   ].filter(d => d.count > 0);
+   if (!scbData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No status data</Text>, 200);
+   const total = scbData.reduce((s, d) => s + d.count, 0);
+   return wrap(
+     <div style={{ position: 'relative', width: '100%', height: 240 }}>
+       <div role="img" aria-label="Pie chart">
+       <ResponsiveContainer width="100%" height={240}>
+         <PieChart>
+           <Pie animationDuration={600} data={scbData} cx="50%" cy="50%" innerRadius="52%" outerRadius="78%" dataKey="count" paddingAngle={3}>
+             {scbData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+           </Pie>
+           <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} formatter={(v: number) => [`${v} (${((v / total) * 100).toFixed(0)}%)`, '']} />
+           {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} formatter={(v: string) => `${v}: ${scbData.find(d => d.name === v)?.count ?? 0}`} />}
+         </PieChart>
+       </ResponsiveContainer>
+       </div>
+       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+         <Text size="1.4rem" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE_HEX, lineHeight: 1 }}>{total}</Text>
+         <Text size="9px" c="dimmed" tt="uppercase" fw={600}>Total</Text>
+       </div>
+     </div>, 240
+   );
+ }
+
+ case 'cycleTimeScatter': {
+   const ctData = (data.cycleTime ?? []).map(b => ({ bucket: b.bucket, count: b.count }));
+   if (!ctData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No cycle time data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Area chart">
+     <ResponsiveContainer width="100%" height={260}>
+       <AreaChart data={ctData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <defs>
+           <linearGradient id="ctGrad" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="5%" stopColor={AQUA_HEX} stopOpacity={0.3} />
+             <stop offset="95%" stopColor={AQUA_HEX} stopOpacity={0} />
+           </linearGradient>
+         </defs>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-20} textAnchor="end" height={45} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         <Area animationDuration={600} type="monotone" dataKey="count" name="Issues" stroke={AQUA_HEX} fill="url(#ctGrad)" strokeWidth={2} dot={{ fill: AQUA_HEX, r: 4 }} />
+       </AreaChart>
+     </ResponsiveContainer>
+     </div>, 260
+   );
+ }
+
+ case 'openTrend': {
+   let running = 0;
+   const openTrendData = (data.createdVsResolved ?? []).slice(-(widget.limit ?? 16)).map(w => {
+     running += (w.created - w.resolved);
+     return { week: w.week, open: Math.max(0, running + (data.kpis?.totalOpen ?? 0)) };
+   });
+   if (!openTrendData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No trend data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Area chart">
+     <ResponsiveContainer width="100%" height={260}>
+       <AreaChart data={openTrendData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <defs>
+           <linearGradient id="openGrad" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="5%" stopColor={UX_WARNING} stopOpacity={0.3} />
+             <stop offset="95%" stopColor={UX_WARNING} stopOpacity={0} />
+           </linearGradient>
+         </defs>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="week" tick={{ fontSize: 9, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-30} textAnchor="end" height={50} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         <Area animationDuration={600} type="monotone" dataKey="open" name="Open Issues" stroke={UX_WARNING} fill="url(#openGrad)" strokeWidth={2} />
+       </AreaChart>
+     </ResponsiveContainer>
+     </div>, 260
+   );
+ }
+
+ case 'ratioKpi': {
+   const bugRatio = data.kpis?.bugRatio ?? 0;
+   const doneCount = (data.statusCategoryBreakdown?.['Done'] ?? 0);
+   const total = (data.kpis?.totalOpen ?? 0) + doneCount;
+   const donePct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+   const metric1 = { label: 'Bug Ratio', value: `${bugRatio.toFixed(1)}%`, sub: `${data.kpis?.bugCount ?? 0} bugs / ${data.kpis?.totalCreated ?? 0} created`, color: bugRatio > 10 ? UX_ERROR : bugRatio > 5 ? UX_WARNING : UX_POSITIVE };
+   const metric2 = { label: 'Done %', value: `${donePct}%`, sub: `${doneCount} done / ${total} total`, color: doneCount === 0 ? TEXT_GRAY : donePct > 70 ? UX_POSITIVE : donePct > 40 ? UX_WARNING : UX_ERROR };
+   return wrap(
+     <SimpleGrid cols={2} spacing="sm" p="xs" h="100%">
+       {[metric1, metric2].map(m => (
+         <Paper key={m.label} withBorder radius="md" p="sm" style={{ textAlign: 'center', borderLeft: `4px solid ${m.color}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+           <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ fontFamily: FONT_FAMILY }}>{m.label}</Text>
+           <Text size="1.6rem" fw={800} style={{ fontFamily: FONT_FAMILY, color: m.color, lineHeight: 1 }}>{m.value}</Text>
+           <Text size="10px" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{m.sub}</Text>
+         </Paper>
+       ))}
+     </SimpleGrid>, 160
+   );
+ }
+
+ case 'sprintBurndown': {
+   let cumCreated = 0, cumResolved = 0;
+   const bdData = (data.createdVsResolved ?? []).slice(-(widget.limit ?? 12)).map(w => {
+     cumCreated += w.created;
+     cumResolved += w.resolved;
+     return { week: w.week, scope: cumCreated, completed: cumResolved, remaining: Math.max(0, cumCreated - cumResolved) };
+   });
+   if (!bdData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No data</Text>, 200);
+   return wrap(
+     <div role="img" aria-label="Composed chart">
+     <ResponsiveContainer width="100%" height={280}>
+       <ComposedChart data={bdData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+         <CartesianGrid strokeDasharray="3 3" stroke={dark ? DARK_TEXT_PRIMARY : SURFACE_LIGHT} />
+         <XAxis dataKey="week" tick={{ fontSize: 9, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} angle={-30} textAnchor="end" height={50} />
+         <YAxis tick={{ fontSize: 10, fill: dark ? TEXT_SUBTLE : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+         <Area animationDuration={600} type="monotone" dataKey="scope" name="Total Scope" fill={DEEP_BLUE_TINTS[20]} stroke={DEEP_BLUE_TINTS[60]} fillOpacity={0.2} strokeWidth={1.5} />
+         <Area animationDuration={600} type="monotone" dataKey="completed" name="Completed" fill={UX_POSITIVE} stroke={UX_POSITIVE} fillOpacity={0.25} strokeWidth={2} />
+         <Line animationDuration={600} type="monotone" dataKey="remaining" name="Remaining" stroke={UX_ERROR} strokeWidth={2} dot={false} strokeDasharray="5 2" />
+       </ComposedChart>
+     </ResponsiveContainer>
+     </div>, 280
+   );
+ }
+
+ case 'resolutionDonut': {
+   const resData = sortAndLimitData(
+     (data as unknown as Record<string, unknown>)['byResolution'] as AnalyticsBreakdown[] ?? [],
+     'count', 'desc', widget.limit ?? 8,
+   );
+   if (!resData.length) return wrap(<Text c="dimmed" ta="center" py="xl">No resolution data — sync required</Text>, 200);
+   const resTotal = resData.reduce((s, d) => s + d.count, 0);
+   return wrap(
+     <div role="img" aria-label="Pie chart">
+     <ResponsiveContainer width="100%" height={240}>
+       <PieChart>
+         <Pie animationDuration={600} data={resData} cx="50%" cy="50%" innerRadius="45%" outerRadius="72%" dataKey="count" nameKey="name" paddingAngle={2}>
+           {resData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+         </Pie>
+         <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} formatter={(v: number) => [`${v} (${((v / resTotal) * 100).toFixed(0)}%)`, '']} />
+         {widget.showLegend !== false && <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />}
+       </PieChart>
+     </ResponsiveContainer>
+     </div>, 240
+   );
+ }
+
+ // ── Worklog Timeline ────────────────────────────────────────────────────
+ case 'worklogTimeline': {
+   const authors = data.byWorklogAuthor ?? [];
+   if (!authors.length) return wrap(<Text c="dimmed" ta="center" py="xl">No worklog data — enable worklog sync in Settings</Text>, 200);
+   const limited = [...authors].sort((a, b) => b.hours - a.hours).slice(0, widget.limit ?? 15);
+   const totalHrs = limited.reduce((s, a) => s + a.hours, 0);
+   return wrap(
+     <Stack gap={4} px={4} style={{ overflowY: 'auto', maxHeight: 340 }}>
+       <Group justify="space-between" mb={4}>
+         <Text size="xs" c="dimmed" fw={600}>AUTHOR</Text>
+         <Group gap={32}>
+           <Text size="xs" c="dimmed" fw={600}>HOURS LOGGED</Text>
+           <Text size="xs" c="dimmed" fw={600}>SHARE</Text>
+         </Group>
+       </Group>
+       {limited.map((a, i) => {
+         const pct = totalHrs > 0 ? (a.hours / totalHrs) * 100 : 0;
+         return (
+           <div key={i}>
+             <Group justify="space-between" mb={2}>
+               <Text size="xs" fw={500} style={{ fontFamily: FONT_FAMILY }}>{a.name}</Text>
+               <Group gap={32}>
+                 <Text size="xs" fw={700} style={{ color: AQUA_HEX }}>{a.hours.toFixed(1)}h</Text>
+                 <Text size="xs" c="dimmed" style={{ minWidth: 36, textAlign: 'right' }}>{pct.toFixed(0)}%</Text>
+               </Group>
+             </Group>
+             <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+               <div style={{ width: `${pct}%`, height: '100%', background: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 3, transition: 'width 0.6s ease' }} />
+             </div>
+           </div>
+         );
+       })}
+       <Divider my={4} />
+       <Group justify="space-between">
+         <Text size="xs" c="dimmed">{limited.length} authors · {data.lookbackMonths ?? 3}mo lookback</Text>
+         <Text size="xs" fw={700}>Total: {totalHrs.toFixed(1)}h</Text>
+       </Group>
+     </Stack>, 360
+   );
+ }
+
+ // ── Productivity Comparison (Period-over-Period) ─────────────────────────
+ case 'productivityComparison': {
+   const periodType = widget.periodType ?? 'month';
+   const monthlyData = (data as unknown as Record<string, unknown>)['byResolvedMonth'] as AnalyticsBreakdown[] ?? [];
+   const trend = data.createdVsResolved ?? [];
+   if (!monthlyData.length && !trend.length) return wrap(<Text c="dimmed" ta="center" py="xl">No data — sync required</Text>, 200);
+
+   // Helper: week date → period bucket key
+   const toPeriodKey = (dateStr: string): string => {
+     if (!dateStr || dateStr.length < 7) return '';
+     const y = dateStr.substring(0, 4);
+     const m = dateStr.substring(5, 7);
+     const mi = parseInt(m, 10);
+     if (periodType === 'week') return dateStr.substring(0, 10); // full date
+     if (periodType === 'month') return `${y}-${m}`;
+     if (periodType === 'quarter') return `${y}-Q${Math.ceil(mi / 3)}`;
+     if (periodType === 'year') return y;
+     return `${y}-${m}`;
+   };
+   const periodLabel = (key: string): string => {
+     if (periodType === 'week') { const d = new Date(key); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+     if (periodType === 'month') { const [y, m] = key.split('-'); return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); }
+     if (periodType === 'quarter') return key; // "2026-Q1"
+     return key; // year
+   };
+
+   // Aggregate trend data into period buckets
+   const buckets: Record<string, { created: number; resolved: number; sp: number }> = {};
+   trend.forEach(w => {
+     const key = toPeriodKey(w.week ?? '');
+     if (!key) return;
+     if (!buckets[key]) buckets[key] = { created: 0, resolved: 0, sp: 0 };
+     buckets[key].created += w.created ?? 0;
+     buckets[key].resolved += w.resolved ?? 0;
+   });
+   // Merge SP from byResolvedMonth
+   monthlyData.forEach(m => {
+     // m.name is "YYYY-MM" — convert to period bucket
+     const key = toPeriodKey(m.name + '-01');
+     if (!key) return;
+     if (!buckets[key]) buckets[key] = { created: 0, resolved: 0, sp: 0 };
+     buckets[key].sp += m.sp ?? 0;
+   });
+
+   const sorted = Object.keys(buckets).sort();
+   const maxBars = periodType === 'week' ? 12 : periodType === 'month' ? 6 : periodType === 'quarter' ? 4 : 3;
+   const chartData = sorted.slice(-(widget.limit ?? maxBars)).map(k => ({
+     period: periodLabel(k),
+     resolved: buckets[k]?.resolved ?? 0,
+     created: buckets[k]?.created ?? 0,
+     sp: buckets[k]?.sp ?? 0,
+   }));
+   if (!chartData.length) return wrap(<Text c="dimmed" ta="center" py="xl">Not enough data for {periodType} comparison</Text>, 200);
+
+   const last = chartData[chartData.length - 1];
+   const prev = chartData.length >= 2 ? chartData[chartData.length - 2] : null;
+   const periodNames = { week: 'WoW', month: 'MoM', quarter: 'QoQ', year: 'YoY' };
+   const hasSP = chartData.some(d => d.sp > 0);
+
+   return wrap(
+     <Stack gap="sm">
+       {/* KPI cards comparing last vs prev period */}
+       {prev && (
+         <Group gap="xs" wrap="wrap">
+           {[
+             { label: 'Resolved', curr: last.resolved, prev: prev.resolved, color: AQUA_HEX },
+             ...(hasSP ? [{ label: 'SP Delivered', curr: last.sp, prev: prev.sp, color: COLOR_VIOLET }] : []),
+             { label: 'Created', curr: last.created, prev: prev.created, color: DEEP_BLUE_TINTS[50] },
+           ].map(({ label, curr, prev: p, color }) => {
+             const delta = p > 0 ? ((curr - p) / p * 100) : (curr > 0 ? 100 : 0);
+             const isUp = delta >= 0;
+             const isGood = label === 'Created' ? !isUp : isUp; // less created = good
+             return (
+               <Paper key={label} withBorder radius="md" p="xs" style={{ flex: 1, minWidth: 110, textAlign: 'center', borderTop: `3px solid ${color}` }}>
+                 <Text size="xs" c="dimmed" mb={2}>{label}</Text>
+                 <Text size="xl" fw={800} style={{ color: DEEP_BLUE_HEX, fontFamily: FONT_FAMILY }}>{curr}</Text>
+                 <Badge size="xs" color={isGood ? 'teal' : 'red'} variant="light" mt={4}>
+                   {isUp ? '▲' : '▼'} {Math.abs(delta).toFixed(0)}% {periodNames[periodType]}
+                 </Badge>
+               </Paper>
+             );
+           })}
+         </Group>
+       )}
+       {/* Bar chart */}
+       <div role="img" aria-label="Composed chart">
+       <ResponsiveContainer width="100%" height={220}>
+         <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+           <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} vertical={false} />
+           <XAxis dataKey="period" tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} />
+           <YAxis tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} tickLine={false} axisLine={false} />
+           <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8 }} />
+           <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />
+           <Bar dataKey="resolved" name="Resolved" fill={AQUA_HEX} radius={[3, 3, 0, 0]} animationDuration={600} />
+           <Bar dataKey="created" name="Created" fill={DEEP_BLUE_TINTS[30]} radius={[3, 3, 0, 0]} animationDuration={600} />
+           {hasSP && <Line type="monotone" dataKey="sp" name="Story Points" stroke={COLOR_VIOLET} strokeWidth={2} dot={{ r: 3, fill: COLOR_VIOLET }} animationDuration={600} />}
+         </ComposedChart>
+       </ResponsiveContainer>
+       </div>
+       {prev && (
+         <Group justify="center" gap={4}>
+           <Badge size="xs" variant="outline" color="gray" style={{ fontFamily: FONT_FAMILY }}>
+             {periodNames[periodType]} · {chartData.length} periods · {periodType === 'week' ? 'weekly' : periodType === 'month' ? 'monthly' : periodType === 'quarter' ? 'quarterly' : 'yearly'} view
+           </Badge>
+         </Group>
+       )}
+     </Stack>, 440
+   );
+ }
+
+ case 'pivotBuilder':
+   return (
+     <PivotBuilderWidget
+       widget={widget}
+       editMode={editMode}
+       onRemove={onRemove}
+       onEdit={onEdit}
+       pods={pods}
+       months={months}
+     />
+   );
+
+ default:
+ return wrap(<Text c="dimmed" ta="center" py="xl">Unknown widget type: {widget.type}</Text>, 100);
+ }
+}

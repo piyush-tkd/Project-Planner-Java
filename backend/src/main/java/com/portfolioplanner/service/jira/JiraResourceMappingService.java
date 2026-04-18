@@ -52,7 +52,8 @@ public class JiraResourceMappingService {
         Boolean confirmed,
         long issueCount,
         double hoursLogged,
-        String resourceCategory  // MAX_BILLING, BUFFER, or EXTERNAL
+        String resourceCategory,  // MAX_BILLING, BUFFER, or EXTERNAL
+        String jiraAvatarUrl      // avatar synced from Jira, null if not yet synced
     ) {}
 
     public record MappingStats(
@@ -429,7 +430,8 @@ public class JiraResourceMappingService {
                 effectiveResource != null ? effectiveResource.getRole().name() : null,
                 effectiveResource != null ? effectiveResource.getEmail() : null,
                 m.getMappingType(), m.getConfidence(), m.getConfirmed(),
-                info.issueCount, info.hoursLogged, category
+                info.issueCount, info.hoursLogged, category,
+                effectiveResource != null ? effectiveResource.getAvatarUrl() : null
             );
         }).toList());
 
@@ -446,7 +448,7 @@ public class JiraResourceMappingService {
                     null, bd.displayName, bd.accountId,
                     null, null, null, null,
                     "AUTO", 0.0, false,
-                    bd.issueCount, bd.hoursLogged, "BUFFER"
+                    bd.issueCount, bd.hoursLogged, "BUFFER", null
                 ));
             }
         }

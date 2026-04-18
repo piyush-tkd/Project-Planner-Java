@@ -4,6 +4,8 @@ import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.enums.Priority;
 import com.portfolioplanner.domain.model.enums.SourceType;
 import com.portfolioplanner.domain.repository.ProjectRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -43,6 +45,9 @@ public class JiraEpicSyncService {
     private final JiraCredentialsService  jiraCreds;
     private final ProjectRepository       projectRepository;
     private final CacheManager            cacheManager;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -155,6 +160,10 @@ public class JiraEpicSyncService {
                 }
             } catch (Exception e) {
                 log.warn("JiraEpicSyncService: epic upsert failed — {}", e.getMessage());
+                // Clear the Hibernate session to prevent AssertionFailure("null id") on
+                // subsequent epics — when an exception occurs mid-flush the session state
+                // becomes corrupted and must be reset before any further operations.
+                entityManager.clear();
                 failed++;
                 errors.add(epicKey(epic) + ": " + e.getMessage());
             }

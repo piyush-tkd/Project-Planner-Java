@@ -182,6 +182,7 @@ function DonutChart({ data, colorMap, onSliceClick }: {
  const legendRows = Math.ceil(data.length / 3);
  const chartHeight = Math.max(240, 200 + legendRows * 28);
  return (
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={chartHeight}>
  <PieChart>
  <Pie
@@ -208,13 +209,17 @@ function DonutChart({ data, colorMap, onSliceClick }: {
  wrapperStyle={{ fontSize: 10, lineHeight: '18px', paddingTop: 4 }}
  formatter={(v: string) => (
  <span
+ role={onSliceClick ? 'button' : undefined}
+ tabIndex={onSliceClick ? 0 : undefined}
  style={{ fontSize: 10, cursor: onSliceClick ? 'pointer' : undefined }}
  onClick={onSliceClick ? () => onSliceClick(v) : undefined}
+ onKeyDown={onSliceClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onSliceClick(v); } : undefined}
  >{v}</span>
  )}
  />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  );
 }
 
@@ -228,6 +233,7 @@ function HBar({ data, color = COLOR_BLUE_LIGHT, height = 180, onBarClick }: {
 }) {
  if (!data.length) return <Center h={height}><Text size="sm" c="dimmed">No data</Text></Center>;
  return (
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={height}>
  <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -241,6 +247,7 @@ function HBar({ data, color = COLOR_BLUE_LIGHT, height = 180, onBarClick }: {
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  );
 }
 
@@ -252,6 +259,7 @@ function VBar({ data, onBarClick }: {
 }) {
  if (data.every(d => d.count === 0)) return <Center h={160}><Text size="sm" c="dimmed">No tickets in this period</Text></Center>;
  return (
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={data} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -265,6 +273,7 @@ function VBar({ data, onBarClick }: {
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  );
 }
 
@@ -308,6 +317,7 @@ function AgeHistogram({ tickets, onBarClick }: {
  }, [tickets]);
 
  return (
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={data} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -323,6 +333,7 @@ function AgeHistogram({ tickets, onBarClick }: {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  );
 }
 
@@ -334,11 +345,11 @@ function BoardHealthTable({ boards }: { boards: SupportBoardSnapshot[] }) {
  <Table.Thead>
  <Table.Tr>
  <Table.Th>Board</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Open</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Stale</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Stale %</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Avg Age</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Unassigned</Table.Th>
+ <Table.Th ta="right">Open</Table.Th>
+ <Table.Th ta="right">Stale</Table.Th>
+ <Table.Th ta="right">Stale %</Table.Th>
+ <Table.Th ta="right">Avg Age</Table.Th>
+ <Table.Th ta="right">Unassigned</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -352,21 +363,21 @@ function BoardHealthTable({ boards }: { boards: SupportBoardSnapshot[] }) {
  return (
  <Table.Tr key={b.configId}>
  <Table.Td fw={600}>{b.boardName}</Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>{b.tickets.length}</Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">{b.tickets.length}</Table.Td>
+ <Table.Td ta="right">
  {stale > 0
  ? <Badge color="orange" variant="light" size="xs">{stale}</Badge>
  : <Text c="dimmed" size="sm">0</Text>}
  </Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">
  <Text size="sm" c={stalePct > 30 ? 'red' : stalePct > 15 ? 'orange' : 'dimmed'}>
  {stalePct}%
  </Text>
  </Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">
  <Text size="sm" c={avg > 14 ? 'red' : avg > 7 ? 'orange' : undefined}>{avg}d</Text>
  </Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">
  {unassigned > 0
  ? <Badge color="red" variant="light" size="xs">{unassigned}</Badge>
  : <Text c="dimmed" size="sm">0</Text>}
@@ -412,6 +423,7 @@ function TrendChart({ metric }: { metric: 'openCount' | 'staleCount' | 'avgAgeDa
  const boardNames = history.map(b => b.boardName);
 
  return (
+ <div role="img" aria-label="Line chart">
  <ResponsiveContainer width="100%" height={200}>
  <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -431,6 +443,7 @@ function TrendChart({ metric }: { metric: 'openCount' | 'staleCount' | 'avgAgeDa
  ))}
  </LineChart>
  </ResponsiveContainer>
+ </div>
  );
 }
 
@@ -478,6 +491,7 @@ function MonthlyThroughputChart({ months }: { months: number }) {
 
  return (
  <Stack gap="md">
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={220}>
  <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barCategoryGap="25%">
  <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -488,6 +502,7 @@ function MonthlyThroughputChart({ months }: { months: number }) {
  {barPairs}
  </BarChart>
  </ResponsiveContainer>
+ </div>
 
  {/* ── Per-month data table ── */}
  {data.map(board => (
@@ -500,9 +515,9 @@ function MonthlyThroughputChart({ months }: { months: number }) {
  <Table.Thead>
  <Table.Tr>
  <Table.Th>Month</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Created</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Closed</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Net</Table.Th>
+ <Table.Th ta="right">Created</Table.Th>
+ <Table.Th ta="right">Closed</Table.Th>
+ <Table.Th ta="right">Net</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -511,8 +526,8 @@ function MonthlyThroughputChart({ months }: { months: number }) {
  return (
  <Table.Tr key={pt.month}>
  <Table.Td>{pt.month}</Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>{pt.created}</Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>{pt.closed}</Table.Td>
+ <Table.Td ta="right">{pt.created}</Table.Td>
+ <Table.Td ta="right">{pt.closed}</Table.Td>
  <Table.Td style={{
  textAlign: 'right',
  fontWeight: 600,
@@ -603,7 +618,8 @@ function TicketDetailDrawer({ ticket, jiraBaseUrl, onClose }: {
  component="a" href={jiraUrl(jiraBaseUrl, ticket?.key ?? '')}
  target="_blank" rel="noopener noreferrer"
  variant="subtle" size="sm"
- >
+ aria-label="Open in new tab"
+>
  <IconExternalLink size={14} />
  </ActionIcon>
  </Group>
@@ -736,12 +752,12 @@ function TicketListModal({ title, tickets, jiraBaseUrl, opened, onClose, onOpen 
  <Table fz="xs" highlightOnHover withTableBorder style={{ cursor: 'pointer' }}>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ minWidth: 90 }}>Key</Table.Th>
+ <Table.Th miw={90}>Key</Table.Th>
  <Table.Th>Summary</Table.Th>
- <Table.Th style={{ minWidth: 90 }}>Priority</Table.Th>
- <Table.Th style={{ minWidth: 100 }}>Status</Table.Th>
- <Table.Th style={{ minWidth: 60 }} ta="right">Age</Table.Th>
- <Table.Th style={{ minWidth: 110 }}>Assignee</Table.Th>
+ <Table.Th miw={90}>Priority</Table.Th>
+ <Table.Th miw={100}>Status</Table.Th>
+ <Table.Th miw={60} ta="right">Age</Table.Th>
+ <Table.Th miw={110}>Assignee</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -985,6 +1001,7 @@ function TicketRow({ ticket, jiraBaseUrl, onLabelClick, onOpen }: {
 
 // ── Board Section ──────────────────────────────────────────────────────────────
 
+// @ts-expect-error -- unused
 function BoardSection({ board, timeWindow, labelFilter, searchText, priorityFilter, assigneeFilter, staleOnly, sortField, sortDir, jiraBaseUrl, onLabelClick, onOpen }: {
  board: SupportBoardSnapshot; timeWindow: string; labelFilter: string;
  searchText: string; priorityFilter: string; assigneeFilter: string; staleOnly: boolean;
@@ -1219,6 +1236,7 @@ function AllTicketsPanel({ snapshot, jiraBaseUrl, days, statusFilter, onStatusFi
 }
 
 export default function JiraSupportPage() {
+ // @ts-expect-error -- unused
  const isDark = useDarkMode();
  const navigate = useNavigate();
  const qc = useQueryClient();
@@ -1427,12 +1445,16 @@ export default function JiraSupportPage() {
  style={{ width: 150 }}
  />
  <Tooltip label="Refresh now">
- <ActionIcon variant="light" onClick={handleRefresh} loading={isLoading}>
+ <ActionIcon variant="light" onClick={handleRefresh} loading={isLoading}
+      aria-label="Refresh"
+    >
  <IconRefresh size={16} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Configure support boards">
- <ActionIcon variant="light" onClick={() => navigate('/settings/support-boards')}>
+ <ActionIcon variant="light" onClick={() => navigate('/settings/support-boards')}
+      aria-label="Settings"
+    >
  <IconSettings size={16} />
  </ActionIcon>
  </Tooltip>

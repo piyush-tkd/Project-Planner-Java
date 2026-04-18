@@ -7,11 +7,9 @@ import {
   Text,
   Group,
   Badge,
-  Paper,
   Table,
   Tooltip,
   ThemeIcon,
-  Progress,
   RingProgress,
   ScrollArea,
 } from '@mantine/core';
@@ -29,11 +27,9 @@ import {
   Tooltip as RechartTooltip,
   ResponsiveContainer,
   Legend,
-  ComposedChart,
-  Line,
 } from 'recharts';
 import { IconCircleCheck, IconCircleX, IconAlertCircle, IconCircle, IconChartBar } from '@tabler/icons-react';
-import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, CHART_COLORS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, TEXT_DIM } from '../../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, COLOR_ERROR, COLOR_SUCCESS, COLOR_ORANGE, DARK_CARD, DEEP_BLUE, SHADOW } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import ChartCard from '../../components/common/ChartCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -43,27 +39,39 @@ import { useProjects } from '../../api/projects';
 import { useProductivityMetrics, useDoraMetrics } from '../../api/reports';
 import { ProjectResponse } from '../../types/project';
 
-const LEVEL_COLORS: Record<string, string> = {
-  elite: COLOR_SUCCESS,
-  high: COLOR_BLUE_DARK,
-  medium: '#fcc419',
-  low: COLOR_ERROR,
+// Mantine color names — used for Badge color prop so variant="light" tinting works correctly
+const LEVEL_BADGE_COLORS: Record<string, string> = {
+  elite: 'teal',
+  high:  'blue',
+  medium:'yellow',
+  low:   'red',
 };
 
+// Hex values — used for Recharts Cell fill and RingProgress
 const STATUS_COLORS: Record<string, string> = {
-  COMPLETED: COLOR_SUCCESS,
-  ACTIVE: COLOR_BLUE_DARK,
-  IN_DISCOVERY: '#7950f2',
-  NOT_STARTED: TEXT_DIM,
-  ON_HOLD: COLOR_ORANGE,
-  CANCELLED: COLOR_ERROR,
+  COMPLETED:    AQUA_HEX,     // teal  — done
+  ACTIVE:       '#228be6',    // blue  — in flight
+  IN_DISCOVERY: '#7950f2',    // violet — scoping
+  NOT_STARTED:  '#adb5bd',    // mid-gray — not yet started (was TEXT_DIM = too light)
+  ON_HOLD:      COLOR_ORANGE, // orange
+  CANCELLED:    COLOR_ERROR,  // red
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  P0: COLOR_ERROR,
-  P1: COLOR_ORANGE,
-  P2: '#fcc419',
-  P3: COLOR_BLUE_DARK,
+// Mantine color names for Badge
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  COMPLETED:    'teal',
+  ACTIVE:       'blue',
+  IN_DISCOVERY: 'violet',
+  NOT_STARTED:  'gray',
+  ON_HOLD:      'orange',
+  CANCELLED:    'red',
+};
+
+const PRIORITY_BADGE_COLORS: Record<string, string> = {
+  P0: 'red',
+  P1: 'orange',
+  P2: 'yellow',
+  P3: 'blue',
 };
 
 interface DoraMetric {
@@ -72,14 +80,16 @@ interface DoraMetric {
   unit: string;
 }
 
-interface DoraMetrics {
+// @ts-expect-error -- unused
+interface _DoraMetrics {
   deploymentFrequency: DoraMetric;
   leadTimeForChanges: DoraMetric;
   changeFailureRate: DoraMetric;
   meanTimeToRecovery: DoraMetric;
 }
 
-interface ProductivityMetrics {
+// @ts-expect-error -- unused
+interface _ProductivityMetrics {
   output?: {
     completionRate?: number;
     statusBreakdown?: Record<string, number>;
@@ -89,7 +99,7 @@ interface ProductivityMetrics {
 export const DeliveryPredictabilityPage: React.FC = () => {
   const isDark = useDarkMode();
   const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useProjects();
-  const { data: productivityData, isLoading: productivityLoading } = useProductivityMetrics(6);
+  const { data: _productivityData, isLoading: productivityLoading } = useProductivityMetrics(6);
   const { data: doraData, isLoading: doraLoading } = useDoraMetrics(6);
 
   const isLoading = projectsLoading || productivityLoading || doraLoading;
@@ -221,10 +231,10 @@ export const DeliveryPredictabilityPage: React.FC = () => {
   }
 
   return (
-    <Stack gap="lg" style={{ padding: '24px', fontFamily: FONT_FAMILY }}>
+    <Stack gap="lg" p="xl">
       {/* Header */}
       <div>
-        <Title order={1} style={{ color: isDark ? '#fff' : DEEP_BLUE, marginBottom: '8px' }}>
+        <Title order={1} mb="xs" style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
           Delivery Predictability
         </Title>
         <Text size="sm" c="dimmed">
@@ -235,7 +245,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
       {/* DORA Snapshot */}
       {doraData && (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
-          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+          <Card shadow={SHADOW.card} padding="lg" radius="md" bg={isDark ? DARK_CARD : 'white'}>
             <Stack gap="xs">
               <Text size="sm" fw={600} c="dimmed">
                 Deployment Frequency
@@ -249,14 +259,14 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                     {doraData.deploymentFrequency.unit}
                   </Text>
                 </div>
-                <Badge color={LEVEL_COLORS[doraData.deploymentFrequency.level]} variant="light">
+                <Badge color={LEVEL_BADGE_COLORS[doraData.deploymentFrequency.level] ?? 'gray'} variant="light">
                   {doraData.deploymentFrequency.level}
                 </Badge>
               </Group>
             </Stack>
           </Card>
 
-          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+          <Card shadow={SHADOW.card} padding="lg" radius="md" bg={isDark ? DARK_CARD : 'white'}>
             <Stack gap="xs">
               <Text size="sm" fw={600} c="dimmed">
                 Lead Time
@@ -270,14 +280,14 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                     {doraData.leadTimeForChanges.unit}
                   </Text>
                 </div>
-                <Badge color={LEVEL_COLORS[doraData.leadTimeForChanges.level]} variant="light">
+                <Badge color={LEVEL_BADGE_COLORS[doraData.leadTimeForChanges.level] ?? 'gray'} variant="light">
                   {doraData.leadTimeForChanges.level}
                 </Badge>
               </Group>
             </Stack>
           </Card>
 
-          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+          <Card shadow={SHADOW.card} padding="lg" radius="md" bg={isDark ? DARK_CARD : 'white'}>
             <Stack gap="xs">
               <Text size="sm" fw={600} c="dimmed">
                 Change Failure Rate
@@ -291,14 +301,14 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                     {doraData.changeFailureRate.unit}
                   </Text>
                 </div>
-                <Badge color={LEVEL_COLORS[doraData.changeFailureRate.level]} variant="light">
+                <Badge color={LEVEL_BADGE_COLORS[doraData.changeFailureRate.level] ?? 'gray'} variant="light">
                   {doraData.changeFailureRate.level}
                 </Badge>
               </Group>
             </Stack>
           </Card>
 
-          <Card shadow={SHADOW.card} padding="lg" radius="md" style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+          <Card shadow={SHADOW.card} padding="lg" radius="md" bg={isDark ? DARK_CARD : 'white'}>
             <Stack gap="xs">
               <Text size="sm" fw={600} c="dimmed">
                 MTTR
@@ -312,7 +322,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                     {doraData.meanTimeToRecovery.unit}
                   </Text>
                 </div>
-                <Badge color={LEVEL_COLORS[doraData.meanTimeToRecovery.level]} variant="light">
+                <Badge color={LEVEL_BADGE_COLORS[doraData.meanTimeToRecovery.level] ?? 'gray'} variant="light">
                   {doraData.meanTimeToRecovery.level}
                 </Badge>
               </Group>
@@ -324,34 +334,35 @@ export const DeliveryPredictabilityPage: React.FC = () => {
       {/* Delivery Confidence */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         <ChartCard title="Completion Rate">
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+          <Group justify="center" py={40}>
             <RingProgress
               sections={[{ value: completionStats.rate, color: completionRateColor }]}
               label={
-                <div style={{ textAlign: 'center' }}>
+                <Stack gap={2} align="center">
                   <Text fw={700} size="xl">
                     {completionStats.rate.toFixed(0)}%
                   </Text>
                   <Text size="xs" c="dimmed">
                     {completionStats.completed}/{completionStats.total}
                   </Text>
-                </div>
+                </Stack>
               }
               size={200}
               thickness={8}
             />
-          </div>
+          </Group>
         </ChartCard>
 
         <ChartCard title="Status Distribution">
-          <ResponsiveContainer width="100%" height={250}>
+          <div role="img" aria-label="Pie chart">
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={statusBreakdown}
                 cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
+                cy="45%"
+                innerRadius={55}
+                outerRadius={85}
                 paddingAngle={2}
                 dataKey="value"
               >
@@ -360,15 +371,21 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                 ))}
               </Pie>
               <RechartTooltip formatter={(value) => `${value} projects`} />
+              <Legend
+                iconType="circle"
+                iconSize={10}
+                formatter={(value) => value.replace(/_/g, ' ')}
+              />
             </PieChart>
           </ResponsiveContainer>
+          </div>
         </ChartCard>
       </SimpleGrid>
 
       {/* Commitment Tracking */}
       <ChartCard title="Commitment Tracking">
         <ScrollArea>
-          <Table striped highlightOnHover style={{ minWidth: '800px' }}>
+          <Table striped highlightOnHover miw={800}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Project</Table.Th>
@@ -392,7 +409,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={PRIORITY_COLORS[project.priority] || '#999'} variant="light">
+                      <Badge color={PRIORITY_BADGE_COLORS[project.priority] ?? 'gray'} variant="light">
                         {project.priority}
                       </Badge>
                     </Table.Td>
@@ -405,7 +422,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={STATUS_COLORS[project.status] || '#999'} variant="light">
+                      <Badge color={STATUS_BADGE_COLORS[project.status] ?? 'gray'} variant="light">
                         {project.status}
                       </Badge>
                     </Table.Td>
@@ -430,6 +447,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
       {/* Lead Time Analytics */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         <ChartCard title="Duration Distribution">
+          <div role="img" aria-label="Bar chart">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={durationDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
@@ -439,9 +457,11 @@ export const DeliveryPredictabilityPage: React.FC = () => {
               <Bar animationDuration={600} dataKey="count" fill={AQUA_HEX} radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         <ChartCard title="Projects by Client">
+          <div role="img" aria-label="Area chart">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={projectsByClient} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ddd'} />
@@ -451,11 +471,13 @@ export const DeliveryPredictabilityPage: React.FC = () => {
               <Bar animationDuration={600} dataKey="count" fill={DEEP_BLUE_HEX} radius={[0, 8, 8, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </ChartCard>
       </SimpleGrid>
 
       {/* Delivery Trend */}
       <ChartCard title="Delivery Trend">
+        <div role="img" aria-label="Area chart">
         <ResponsiveContainer width="100%" height={350}>
           <AreaChart data={deliveryTrend}>
             <defs>
@@ -491,6 +513,7 @@ export const DeliveryPredictabilityPage: React.FC = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
+        </div>
       </ChartCard>
     </Stack>
   );

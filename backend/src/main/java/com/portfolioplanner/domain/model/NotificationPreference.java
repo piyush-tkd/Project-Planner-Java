@@ -44,6 +44,12 @@ public class NotificationPreference {
     @Column(name = "on_target_date_passed", nullable = false)
     private boolean onTargetDatePassed = true;
 
+    @Column(name = "on_approval_pending", nullable = false)
+    private boolean onApprovalPending = false;
+
+    @Column(name = "on_approval_decision", nullable = false)
+    private boolean onApprovalDecision = false;
+
     // ── Email delivery ────────────────────────────────────────────────────────
 
     @Column(name = "email_enabled", nullable = false)

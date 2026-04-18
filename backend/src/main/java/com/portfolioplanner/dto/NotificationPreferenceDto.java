@@ -19,6 +19,8 @@ public class NotificationPreferenceDto {
     private boolean onSprintStart;
     private boolean onAutomationFired;
     private boolean onTargetDatePassed;
+    private boolean onApprovalPending;
+    private boolean onApprovalDecision;
 
     // ── Email ─────────────────────────────────────────────────────────────────
     private boolean emailEnabled;

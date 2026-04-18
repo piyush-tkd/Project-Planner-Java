@@ -17,6 +17,7 @@ export interface ResourceMappingResponse {
   issueCount: number;
   hoursLogged: number;
   resourceCategory: string; // MAX_BILLING | BUFFER | EXTERNAL
+  jiraAvatarUrl: string | null;
 }
 
 export interface MappingStats {

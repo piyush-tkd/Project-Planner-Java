@@ -8,18 +8,18 @@ import { notifications } from '@mantine/notifications';
 import {
   IconUsers, IconSearch, IconWand, IconCheck, IconX, IconArrowRight,
   IconRefresh, IconDeviceFloppy, IconUserOff, IconEdit, IconTrash,
-  IconAlertTriangle, IconChevronDown, IconChevronUp, IconLink, IconLinkOff, IconPhoto,
+  IconChevronDown, IconChevronUp, IconLink, IconLinkOff, IconPhoto,
 } from '@tabler/icons-react';
 import {
   useResourceMappings, useResourceMappingStats, useAutoMatch,
   useSaveResourceMapping, useDeleteResourceMapping, useBulkAcceptMappings,
-  useUnmappedResources, useClearResourceMapping, useSyncAvatars,
+  useClearResourceMapping, useSyncAvatars,
   ResourceMappingResponse,
 } from '../../api/jiraResourceMapping';
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { AQUA, AQUA_HEX, DARK_BORDER, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY, GRAY_100, GRAY_BORDER} from '../../brandTokens';
+import { AQUA, AQUA_HEX, DARK_BORDER, DEEP_BLUE, DEEP_BLUE_HEX, GRAY_100, GRAY_BORDER} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useInlineEdit } from '../../hooks/useInlineEdit';
 import { InlineSelectCell, InlineSelectOption } from '../../components/common/InlineCell';
@@ -50,6 +50,7 @@ interface ResourceRow {
   mappingId: number | null;
   jiraDisplayName: string | null;
   jiraAccountId: string | null;
+  jiraAvatarUrl: string | null;
   mappingType: string | null;       // AUTO | MANUAL | EXCLUDED
   confidence: number | null;
   confirmed: boolean;
@@ -60,6 +61,7 @@ interface ResourceRow {
 export default function JiraResourceMappingPage() {
   const isDark = useDarkMode();
   const { data: mappings, isLoading, error, refetch } = useResourceMappings();
+  // @ts-expect-error -- unused
   const { data: stats, refetch: refetchStats } = useResourceMappingStats();
   const { data: resources, isLoading: resLoading } = useResources();
   const autoMatchMut = useAutoMatch();
@@ -68,6 +70,7 @@ export default function JiraResourceMappingPage() {
   const clearMut = useClearResourceMapping();
   const bulkAcceptMut = useBulkAcceptMappings();
   const syncAvatarsMut = useSyncAvatars();
+  // @ts-expect-error -- unused
   const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
 
   const [search, setSearch] = useState('');
@@ -99,6 +102,7 @@ export default function JiraResourceMappingPage() {
         mappingId: m?.id ?? null,
         jiraDisplayName: m?.jiraDisplayName ?? r.jiraDisplayName ?? null,
         jiraAccountId: m?.jiraAccountId ?? r.jiraAccountId ?? null,
+        jiraAvatarUrl: m?.jiraAvatarUrl ?? null,
         mappingType: m?.mappingType ?? null,
         confidence: m?.confidence ?? null,
         confirmed: m?.confirmed ?? false,
@@ -109,6 +113,7 @@ export default function JiraResourceMappingPage() {
   }, [resources, mappings]);
 
   // Jira name options for dropdown (all known Jira names)
+  // @ts-expect-error -- unused
   const jiraNameOptions = useMemo(() => {
     if (!mappings) return [];
     const seen = new Set<string>();
@@ -132,6 +137,7 @@ export default function JiraResourceMappingPage() {
   }, [resources]);
 
   // Confidence level options
+  // @ts-expect-error -- unused
   const confidenceOptions = useMemo<InlineSelectOption[]>(() => [
     { value: 'HIGH', label: 'HIGH (0.85+)' },
     { value: 'MEDIUM', label: 'MEDIUM (0.60-0.84)' },
@@ -209,6 +215,7 @@ export default function JiraResourceMappingPage() {
     });
   }
 
+  // @ts-expect-error -- unused
   function handleDelete(m: { mappingId: number | null; jiraDisplayName: string | null }) {
     if (!m.mappingId) return;
     deleteMut.mutate(m.mappingId, {
@@ -233,7 +240,7 @@ export default function JiraResourceMappingPage() {
     <Stack gap="md">
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
             Jira Resource Mapping
           </Title>
           <Text size="sm" c="dimmed" mt={4}>Map your resources to Jira users for accurate time tracking</Text>
@@ -328,7 +335,6 @@ export default function JiraResourceMappingPage() {
               cursor: 'pointer',
               borderBottom: tab === key ? `2px solid ${AQUA}` : '2px solid transparent',
               marginBottom: -2,
-              fontFamily: FONT_FAMILY,
               fontSize: 13,
               fontWeight: tab === key ? 600 : 400,
               color: tab === key ? AQUA : undefined,
@@ -346,7 +352,7 @@ export default function JiraResourceMappingPage() {
           leftSection={<IconSearch size={14} />}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: 340 }}
+          w={340}
           size="xs"
         />
         <Group gap="xs">
@@ -370,19 +376,20 @@ export default function JiraResourceMappingPage() {
         <Table fz="xs" withColumnBorders withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 40 }}>#</Table.Th>
-              <Table.Th style={{ minWidth: 200 }}>Resource Name</Table.Th>
-              <Table.Th style={{ width: 30 }}></Table.Th>
-              <Table.Th style={{ minWidth: 220 }}>Jira User (Read-Only)</Table.Th>
-              <Table.Th style={{ minWidth: 180 }}>Mapped Resource</Table.Th>
-              <Table.Th style={{ width: 100 }}>Confidence</Table.Th>
-              <Table.Th style={{ width: 100 }}>Status</Table.Th>
-              <Table.Th style={{ width: 130 }}>Actions</Table.Th>
+              <Table.Th w={40}>#</Table.Th>
+              <Table.Th miw={200}>Resource Name</Table.Th>
+              <Table.Th w={30}></Table.Th>
+              <Table.Th miw={220}>Jira User (Read-Only)</Table.Th>
+              <Table.Th miw={180}>Mapped Resource</Table.Th>
+              <Table.Th w={100}>Confidence</Table.Th>
+              <Table.Th w={100}>Status</Table.Th>
+              <Table.Th w={130}>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filtered.map((row, idx) => {
               const isEditingRow = editingRow === row.resourceId;
+              // @ts-expect-error -- unused
               const isEditingJiraUser = isEditing(row.resourceId, 'jiraUser');
               const isEditingMappedResource = isEditing(row.resourceId, 'mappedResource');
 
@@ -430,9 +437,15 @@ export default function JiraResourceMappingPage() {
                   <Table.Td>
                     {row.jiraDisplayName ? (
                       <Group gap="xs" wrap="nowrap">
-                        <ThemeIcon size={22} radius="xl" color="teal" variant="light">
+                        <Avatar
+                          src={row.jiraAvatarUrl}
+                          size={26}
+                          radius="xl"
+                          color="teal"
+                          variant="light"
+                        >
                           <Text size="xs" fw={700}>{initials(row.jiraDisplayName)}</Text>
-                        </ThemeIcon>
+                        </Avatar>
                         <div>
                           <Text size="xs" fw={500}>{row.jiraDisplayName}</Text>
                           {row.jiraAccountId && (
@@ -511,6 +524,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label={editJiraName ? 'Save mapping' : 'Save as unmapped'}>
                             <ActionIcon
                               size="sm" color="green" variant="light"
+                              aria-label={editJiraName ? 'Save mapping' : 'Save as unmapped'}
                               onClick={() => {
                                 if (editJiraName) {
                                   handleSave(editJiraName, row.resourceId, 'MANUAL');
@@ -525,7 +539,7 @@ export default function JiraResourceMappingPage() {
                             </ActionIcon>
                           </Tooltip>
                           <Tooltip label="Cancel">
-                            <ActionIcon size="sm" color="gray" variant="light" onClick={() => { setEditingRow(null); setEditJiraName(null); }}>
+                            <ActionIcon size="sm" color="gray" variant="light" aria-label="Cancel" onClick={() => { setEditingRow(null); setEditJiraName(null); }}>
                               <IconX size={13} />
                             </ActionIcon>
                           </Tooltip>
@@ -535,6 +549,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Accept match">
                             <ActionIcon
                               size="sm" color="green" variant="light"
+                              aria-label="Accept match"
                               onClick={() => handleSave(row.jiraDisplayName!, row.resourceId, 'AUTO')}
                               loading={saveMut.isPending}
                             >
@@ -544,6 +559,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Change Jira user">
                             <ActionIcon
                               size="sm" color="blue" variant="light"
+                              aria-label="Change Jira user"
                               onClick={() => { setEditingRow(row.resourceId); setEditJiraName(row.jiraDisplayName); }}
                             >
                               <IconEdit size={13} />
@@ -552,6 +568,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Remove mapping">
                             <ActionIcon
                               size="sm" color="orange" variant="light"
+                              aria-label="Remove mapping"
                               onClick={() => handleClearMapping(row.resourceId)}
                               loading={clearMut.isPending}
                             >
@@ -564,6 +581,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Change Jira user">
                             <ActionIcon
                               size="sm" color="blue" variant="light"
+                              aria-label="Change Jira user"
                               onClick={() => { setEditingRow(row.resourceId); setEditJiraName(row.jiraDisplayName); }}
                             >
                               <IconEdit size={13} />
@@ -572,6 +590,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Remove mapping">
                             <ActionIcon
                               size="sm" color="orange" variant="light"
+                              aria-label="Remove mapping"
                               onClick={() => handleClearMapping(row.resourceId)}
                               loading={clearMut.isPending}
                             >
@@ -584,6 +603,7 @@ export default function JiraResourceMappingPage() {
                           <Tooltip label="Assign Jira user">
                             <ActionIcon
                               size="sm" color="blue" variant="light"
+                              aria-label="Assign Jira user"
                               onClick={() => { setEditingRow(row.resourceId); setEditJiraName(null); }}
                             >
                               <IconEdit size={13} />
@@ -634,7 +654,11 @@ export default function JiraResourceMappingPage() {
                 </Text>
               </div>
             </Group>
-            <ActionIcon variant="subtle" size="sm">
+            <ActionIcon
+              variant="subtle" size="sm"
+              aria-label={showBuffer ? 'Collapse buffer users' : 'Expand buffer users'}
+              onClick={(e) => { e.stopPropagation(); setShowBuffer(!showBuffer); }}
+            >
               {showBuffer ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
             </ActionIcon>
           </Group>
@@ -643,12 +667,12 @@ export default function JiraResourceMappingPage() {
               <Table fz="xs" withColumnBorders withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ width: 40 }}>#</Table.Th>
+                    <Table.Th w={40}>#</Table.Th>
                     <Table.Th>Jira Display Name</Table.Th>
-                    <Table.Th style={{ width: 100 }}>Issues</Table.Th>
-                    <Table.Th style={{ width: 100 }}>Hours</Table.Th>
-                    <Table.Th style={{ width: 90 }}>Category</Table.Th>
-                    <Table.Th style={{ width: 120 }}>Actions</Table.Th>
+                    <Table.Th w={100}>Issues</Table.Th>
+                    <Table.Th w={100}>Hours</Table.Th>
+                    <Table.Th w={90}>Category</Table.Th>
+                    <Table.Th w={200}>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -674,10 +698,22 @@ export default function JiraResourceMappingPage() {
                         <Badge size="xs" color="orange" variant="filled">Buffer</Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Group gap={4}>
+                        <Group gap={4} wrap="nowrap">
+                          <Select
+                            placeholder="Assign to resource…"
+                            size="xs"
+                            w={150}
+                            data={resourceOptions}
+                            searchable
+                            clearable
+                            onChange={(val) => {
+                              if (val) handleSave(m.jiraDisplayName, Number(val), 'MANUAL');
+                            }}
+                          />
                           <Tooltip label="Mark non-billable">
                             <ActionIcon
                               size="sm" color="gray" variant="light"
+                              aria-label="Mark non-billable"
                               onClick={() => handleSave(m.jiraDisplayName, null, 'EXCLUDED')}
                               loading={saveMut.isPending}
                             >
@@ -686,7 +722,7 @@ export default function JiraResourceMappingPage() {
                           </Tooltip>
                           {m.id && (
                             <Tooltip label="Remove">
-                              <ActionIcon size="sm" color="red" variant="light" onClick={() => deleteMut.mutate(m.id!, {
+                              <ActionIcon size="sm" color="red" variant="light" aria-label="Remove buffer entry" onClick={() => deleteMut.mutate(m.id!, {
                                 onSuccess: () => {
                                   refetchStats();
                                   notifications.show({ title: 'Removed', message: 'Buffer entry removed', color: 'orange' });

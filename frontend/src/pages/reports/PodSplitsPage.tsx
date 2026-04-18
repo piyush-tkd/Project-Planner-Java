@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Title, Stack, Text, Card, Table, Badge, SimpleGrid, Group, TextInput, Select, Button, ScrollArea} from '@mantine/core';
-import { IconUsers, IconArrowsShuffle, IconAlertTriangle, IconHexagons, IconSearch } from '@tabler/icons-react';
+import { IconUsers, IconArrowsShuffle, IconHexagons, IconSearch } from '@tabler/icons-react';
 import { useOverrides } from '../../api/overrides';
 import { useResources } from '../../api/resources';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
@@ -8,7 +8,7 @@ import { useTableSort } from '../../hooks/useTableSort';
 import SortableHeader from '../../components/common/SortableHeader';
 import SummaryCard from '../../components/charts/SummaryCard';
 import { formatRole } from '../../types';
-import { COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -27,14 +27,14 @@ const roleBadgeColor: Record<string, string> = {
  DEVELOPER: 'blue',
  QA: 'orange',
  BSA: 'pink',
- TECH_LEAD: 'yellow',
+ TECH_LEAD: 'yellow'
 };
 
 export default function PodSplitsPage() {
  const isDark = useDarkMode();
  const { data: overrides, isLoading: overridesLoading } = useOverrides();
  const { data: resources, isLoading: resourcesLoading } = useResources();
- const { monthLabels } = useMonthLabels();
+ useMonthLabels();
 
  const { permanent, temporary, stats } = useMemo(() => {
  if (!overrides || !resources) return { permanent: [], temporary: [], stats: { permanentCount: 0, temporaryCount: 0, peopleAffected: 0, podsReceiving: 0 } };
@@ -66,7 +66,7 @@ export default function PodSplitsPage() {
  allocationPct: o.allocationPct,
  homePct: 100 - o.allocationPct,
  months: monthRange,
- notes: o.notes,
+ notes: o.notes
  };
 
  if (isFullYear) {
@@ -83,8 +83,8 @@ export default function PodSplitsPage() {
  permanentCount: perm.length,
  temporaryCount: temp.length,
  peopleAffected: uniquePeople.size,
- podsReceiving: uniquePods.size,
- },
+ podsReceiving: uniquePods.size
+ }
  };
  }, [overrides, resources]);
 
@@ -123,7 +123,7 @@ export default function PodSplitsPage() {
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>POD Splits</Title>
+ <Title order={2} style={{color: isDark ? '#fff' : DEEP_BLUE }}>POD Splits</Title>
  <Text size="sm" c="dimmed">Permanent splits = always allocated across two PODs. Temporary = short-term loan.</Text>
  </div>
  </Group>

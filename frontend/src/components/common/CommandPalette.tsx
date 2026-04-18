@@ -12,12 +12,12 @@ import { Command } from 'cmdk';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconSearch, IconLayoutDashboard, IconUsers, IconBriefcase,
-  IconBolt, IconBrain, IconSettings, IconCalendar, IconChartBar,
+  IconBolt, IconBrain, IconSettings, IconCalendar,
   IconHexagons, IconPackage, IconTool, IconUserCog, IconDatabaseStar,
   IconKey, IconSparkles,
 } from '@tabler/icons-react';
 import { NAV_ITEMS, NAV_GROUPS } from '../../utils/navRegistry';
-import { AQUA, DEEP_BLUE } from '../../brandTokens';
+import { AQUA } from '../../brandTokens';
 import apiClient from '../../api/client';
 
 // ── Local recent pages ─────────────────────────────────────────────────────
@@ -232,8 +232,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       setSearchQuery('');
       setTimeout(() => inputRef.current?.focus(), 20);
       // Fetch project list for search (lightweight: just id, name, status)
-      apiClient.get<ProjectSearchHit[]>('/projects?size=500&fields=id,name,status')
-        .then(r => setAllProjects(r.data ?? []))
+      apiClient.get('/projects?size=500&fields=id,name,status')
+        .then(r => {
+          // Spring page wrapper → { content: [...] }; some endpoints return plain array
+          const raw = r.data;
+          const list = Array.isArray(raw) ? raw : Array.isArray(raw?.content) ? raw.content : [];
+          setAllProjects(list);
+        })
         .catch(() => { /* suppress — search degrades gracefully */ });
     }
   }, [open]);
@@ -253,7 +258,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }));
 
   return (
-    <div style={overlayStyle} onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div role="presentation" style={overlayStyle} onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={panelStyle}>
         <Command label="Portfolio Planner Command Palette" loop>
           {/* Search input */}

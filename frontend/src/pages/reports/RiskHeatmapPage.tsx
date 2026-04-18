@@ -1,331 +1,332 @@
 import { useState, useMemo } from 'react';
 import {
-  Title,
-  Text,
-  Stack,
-  SimpleGrid,
-  Card,
-  Group,
-  Badge,
-  Loader,
-  Center,
-  ThemeIcon,
-  Table,
-  ScrollArea,
-  Modal,
-  List,
-  Divider,
+ Title,
+ Text,
+ Stack,
+ SimpleGrid,
+ Card,
+ Group,
+ Badge,
+ Loader,
+ Center,
+ ThemeIcon,
+ Table,
+ ScrollArea,
+ Modal,
+ Divider
 } from '@mantine/core';
 import {
-  IconAlertTriangle,
-  IconChartDots3,
+ IconAlertTriangle,
+ IconChartDots3
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/client';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 
 interface RiskItem {
-  id: number;
-  title: string;
-  description: string;
-  itemType: string;
-  severity: string;
-  probability: string;
-  status: string;
-  owner: string;
-  projectId: number | null;
-  mitigationPlan: string;
-  dueDate: string | null;
+ id: number;
+ title: string;
+ description: string;
+ itemType: string;
+ severity: string;
+ probability: string;
+ status: string;
+ owner: string;
+ projectId: number | null;
+ mitigationPlan: string;
+ dueDate: string | null;
 }
 
 // Map severity & probability to numeric scores
-const SEVERITY_SCORE:     Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
-const PROBABILITY_SCORE:  Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3 };
-const SEVERITY_LABEL  = ['', 'Low', 'Medium', 'High', 'Critical'];
+const SEVERITY_SCORE: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+const PROBABILITY_SCORE: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3 };
+const SEVERITY_LABEL = ['', 'Low', 'Medium', 'High', 'Critical'];
 const PROBABILITY_LABEL = ['', 'Low', 'Medium', 'High'];
 
 // Cell colour based on risk score (prob × severity)
 function cellColor(prob: number, sev: number): string {
-  const score = prob * sev;
-  if (score >= 9) return 'var(--mantine-color-red-8)';
-  if (score >= 6) return 'var(--mantine-color-red-5)';
-  if (score >= 4) return 'var(--mantine-color-orange-5)';
-  if (score >= 2) return 'var(--mantine-color-yellow-5)';
-  return 'var(--mantine-color-teal-5)';
+ const score = prob * sev;
+ if (score >= 9) return 'var(--mantine-color-red-8)';
+ if (score >= 6) return 'var(--mantine-color-red-5)';
+ if (score >= 4) return 'var(--mantine-color-orange-5)';
+ if (score >= 2) return 'var(--mantine-color-yellow-5)';
+ return 'var(--mantine-color-teal-5)';
 }
 
 function cellLabel(prob: number, sev: number): string {
-  const score = prob * sev;
-  if (score >= 9) return 'Critical';
-  if (score >= 6) return 'High';
-  if (score >= 4) return 'Medium-High';
-  if (score >= 2) return 'Medium';
-  return 'Low';
+ const score = prob * sev;
+ if (score >= 9) return 'Critical';
+ if (score >= 6) return 'High';
+ if (score >= 4) return 'Medium-High';
+ if (score >= 2) return 'Medium';
+ return 'Low';
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  OPEN: 'red', IN_PROGRESS: 'yellow', MITIGATED: 'teal', CLOSED: 'gray',
+ OPEN: 'red', IN_PROGRESS: 'yellow', MITIGATED: 'teal', CLOSED: 'gray'
 };
 
 export default function RiskHeatmapPage() {
-  const [selected, setSelected] = useState<{ prob: number; sev: number } | null>(null);
+ const [selected, setSelected] = useState<{ prob: number; sev: number } | null>(null);
 
-  const { data: risks = [], isLoading } = useQuery<RiskItem[]>({
-    queryKey: ['risks-all'],
-    queryFn: () => apiClient.get("/risks/all").then(r => r.data),
-  });
+ const { data: risks = [], isLoading } = useQuery<RiskItem[]>({
+ queryKey: ['risks-all'],
+ queryFn: () => apiClient.get("/risks/all").then(r => r.data)
+ });
 
-  // Only RISK type, not CLOSED
-  const activeRisks = useMemo(() =>
-    risks.filter(r => r.itemType === 'RISK' && r.status !== 'CLOSED'),
-    [risks]
-  );
+ // Only RISK type, not CLOSED
+ const activeRisks = useMemo(() =>
+ risks.filter(r => r.itemType === 'RISK' && r.status !== 'CLOSED'),
+ [risks]
+ );
 
-  // Build cell map: [prob][sev] -> risks[]
-  const cellMap = useMemo(() => {
-    const m: Record<string, RiskItem[]> = {};
-    for (const r of activeRisks) {
-      const p = PROBABILITY_SCORE[r.probability] ?? 2;
-      const s = SEVERITY_SCORE[r.severity]    ?? 2;
-      const key = `${p}_${s}`;
-      if (!m[key]) m[key] = [];
-      m[key].push(r);
-    }
-    return m;
-  }, [activeRisks]);
+ // Build cell map: [prob][sev] -> risks[]
+ const cellMap = useMemo(() => {
+ const m: Record<string, RiskItem[]> = {};
+ for (const r of activeRisks) {
+ const p = PROBABILITY_SCORE[r.probability] ?? 2;
+ const s = SEVERITY_SCORE[r.severity] ?? 2;
+ const key = `${p}_${s}`;
+ if (!m[key]) m[key] = [];
+ m[key].push(r);
+ }
+ return m;
+ }, [activeRisks]);
 
-  const cellRisks = (prob: number, sev: number) =>
-    cellMap[`${prob}_${sev}`] ?? [];
+ const cellRisks = (prob: number, sev: number) =>
+ cellMap[`${prob}_${sev}`] ?? [];
 
-  const selectedRisks = selected
-    ? cellRisks(selected.prob, selected.sev)
-    : [];
+ const selectedRisks = selected
+ ? cellRisks(selected.prob, selected.sev)
+ : [];
 
-  // Summary KPIs
-  const criticalCount = activeRisks.filter(r =>
-    (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2) >= 9
-  ).length;
-  const highCount = activeRisks.filter(r => {
-    const s = (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2);
-    return s >= 6 && s < 9;
-  }).length;
+ // Summary KPIs
+ const criticalCount = activeRisks.filter(r =>
+ (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2) >= 9
+ ).length;
+ const highCount = activeRisks.filter(r => {
+ const s = (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2);
+ return s >= 6 && s < 9;
+ }).length;
 
-  if (isLoading) return <Center py={120}><Loader size="lg" /></Center>;
+ if (isLoading) return <Center py={120}><Loader size="lg" /></Center>;
 
-  return (
-    <Stack gap="lg" p="md">
-      {/* Header */}
-      <div>
-        <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 600 }}>
-          Portfolio Risk Heatmap
-        </Title>
-        <Text c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
-          Likelihood × Impact matrix for all open risks. Click a cell to see the risk list.
-        </Text>
-      </div>
+ return (
+ <Stack gap="lg" p="md">
+ {/* Header */}
+ <div>
+ <Title order={2} style={{ color: DEEP_BLUE, fontWeight: 600 }}>
+ Portfolio Risk Heatmap
+ </Title>
+ <Text c="dimmed" mt={4} style={{ }}>
+ Likelihood × Impact matrix for all open risks. Click a cell to see the risk list.
+ </Text>
+ </div>
 
-      {/* KPIs */}
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-        <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-red-7)' }}>
-          <Text size="xs" c="dimmed">Critical risks</Text>
-          <Text size="xl" fw={700} c="red">{criticalCount}</Text>
-        </Card>
-        <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}>
-          <Text size="xs" c="dimmed">High risks</Text>
-          <Text size="xl" fw={700} c="orange">{highCount}</Text>
-        </Card>
-        <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-blue-5)' }}>
-          <Text size="xs" c="dimmed">Total open risks</Text>
-          <Text size="xl" fw={700}>{activeRisks.length}</Text>
-        </Card>
-        <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-teal-5)' }}>
-          <Text size="xs" c="dimmed">With mitigation</Text>
-          <Text size="xl" fw={700} c="teal">
-            {activeRisks.filter(r => r.mitigationPlan).length}
-          </Text>
-        </Card>
-      </SimpleGrid>
+ {/* KPIs */}
+ <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+ <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-red-7)' }}>
+ <Text size="xs" c="dimmed">Critical risks</Text>
+ <Text size="xl" fw={700} c="red">{criticalCount}</Text>
+ </Card>
+ <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}>
+ <Text size="xs" c="dimmed">High risks</Text>
+ <Text size="xl" fw={700} c="orange">{highCount}</Text>
+ </Card>
+ <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-blue-5)' }}>
+ <Text size="xs" c="dimmed">Total open risks</Text>
+ <Text size="xl" fw={700}>{activeRisks.length}</Text>
+ </Card>
+ <Card withBorder radius="md" p="sm" style={{ borderLeft: '4px solid var(--mantine-color-teal-5)' }}>
+ <Text size="xs" c="dimmed">With mitigation</Text>
+ <Text size="xl" fw={700} c="teal">
+ {activeRisks.filter(r => r.mitigationPlan).length}
+ </Text>
+ </Card>
+ </SimpleGrid>
 
-      {/* Heatmap grid */}
-      {activeRisks.length === 0 ? (
-        <Center py={80}>
-          <Stack align="center" gap="sm">
-            <ThemeIcon size={64} radius="md" variant="light" color="green">
-              <IconChartDots3 size={32} stroke={1.5} />
-            </ThemeIcon>
-            <Text fw={600} c="dimmed">No open risks in the register</Text>
-            <Text size="sm" c="dimmed">Add risks in the Risk Register to see them mapped here.</Text>
-          </Stack>
-        </Center>
-      ) : (
-        <Card withBorder radius="md" p="md">
-          <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-            Probability (vertical) × Impact/Severity (horizontal)
-          </Text>
+ {/* Heatmap grid */}
+ {activeRisks.length === 0 ? (
+ <Center py={80}>
+ <Stack align="center" gap="sm">
+ <ThemeIcon size={64} radius="md" variant="light" color="green">
+ <IconChartDots3 size={32} stroke={1.5} />
+ </ThemeIcon>
+ <Text fw={600} c="dimmed">No open risks in the register</Text>
+ <Text size="sm" c="dimmed">Add risks in the Risk Register to see them mapped here.</Text>
+ </Stack>
+ </Center>
+ ) : (
+ <Card withBorder radius="md" p="md">
+ <Text fw={600} size="sm" mb="md" style={{ }}>
+ Probability (vertical) × Impact/Severity (horizontal)
+ </Text>
 
-          {/* Grid: rows = probability (High→Low), cols = severity (Low→Critical) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr', gap: 4 }}>
-            {/* Header row */}
-            <div />
-            {[1, 2, 3, 4].map(s => (
-              <Text key={s} size="xs" ta="center" fw={600} c="dimmed">
-                {SEVERITY_LABEL[s]}
-              </Text>
-            ))}
+ {/* Grid: rows = probability (High→Low), cols = severity (Low→Critical) */}
+ <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr', gap: 4 }}>
+ {/* Header row */}
+ <div />
+ {[1, 2, 3, 4].map(s => (
+ <Text key={s} size="xs" ta="center" fw={600} c="dimmed">
+ {SEVERITY_LABEL[s]}
+ </Text>
+ ))}
 
-            {/* Rows: probability 3→1 (High at top) */}
-            {[3, 2, 1].map(prob => (
-              <>
-                <Text key={`label-${prob}`} size="xs" fw={600} c="dimmed"
-                  style={{ writingMode: 'horizontal-tb', alignSelf: 'center', textAlign: 'right', paddingRight: 8 }}>
-                  {PROBABILITY_LABEL[prob]}
-                </Text>
-                {[1, 2, 3, 4].map(sev => {
-                  const count = cellRisks(prob, sev).length;
-                  const bg    = cellColor(prob, sev);
-                  return (
-                    <div
-                      key={`${prob}_${sev}`}
-                      onClick={() => count > 0 && setSelected({ prob, sev })}
-                      style={{
-                        height: 72,
-                        borderRadius: 6,
-                        background: bg,
-                        opacity: count > 0 ? 1 : 0.25,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: count > 0 ? 'pointer' : 'default',
-                        transition: 'transform 0.1s',
-                        border: selected?.prob === prob && selected?.sev === sev
-                          ? '2px solid var(--mantine-color-dark-9)' : '2px solid transparent',
-                      }}
-                    >
-                      {count > 0 && (
-                        <>
-                          <Text size="xl" fw={800} c="white">{count}</Text>
-                          <Text size="9px" c="white" opacity={0.9}>{cellLabel(prob, sev)}</Text>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            ))}
-          </div>
+ {/* Rows: probability 3→1 (High at top) */}
+ {[3, 2, 1].map(prob => (
+ <>
+ <Text key={`label-${prob}`} size="xs" fw={600} c="dimmed"
+ style={{ writingMode: 'horizontal-tb', alignSelf: 'center', textAlign: 'right', paddingRight: 8 }}>
+ {PROBABILITY_LABEL[prob]}
+ </Text>
+ {[1, 2, 3, 4].map(sev => {
+ const count = cellRisks(prob, sev).length;
+ const bg = cellColor(prob, sev);
+ return (
+ <div
+ key={`${prob}_${sev}`}
+ role={count > 0 ? 'button' : undefined}
+ tabIndex={count > 0 ? 0 : undefined}
+ onClick={() => count > 0 && setSelected({ prob, sev })}
+ onKeyDown={count > 0 ? (e) => { if (e.key === 'Enter' || e.key === ' ') setSelected({ prob, sev }); } : undefined}
+ style={{
+ height: 72,
+ borderRadius: 6,
+ background: bg,
+ opacity: count > 0 ? 1 : 0.25,
+ display: 'flex',
+ flexDirection: 'column',
+ alignItems: 'center',
+ justifyContent: 'center',
+ cursor: count > 0 ? 'pointer' : 'default',
+ transition: 'transform 0.1s',
+ border: selected?.prob === prob && selected?.sev === sev
+ ? '2px solid var(--mantine-color-dark-9)' : '2px solid transparent'}}
+ >
+ {count > 0 && (
+ <>
+ <Text size="xl" fw={800} c="white">{count}</Text>
+ <Text size="9px" c="white" opacity={0.9}>{cellLabel(prob, sev)}</Text>
+ </>
+ )}
+ </div>
+ );
+ })}
+ </>
+ ))}
+ </div>
 
-          {/* Legend */}
-          <Group gap="xs" mt="md">
-            {[
-              { color: 'var(--mantine-color-teal-5)', label: 'Low' },
-              { color: 'var(--mantine-color-yellow-5)', label: 'Medium' },
-              { color: 'var(--mantine-color-orange-5)', label: 'Med-High' },
-              { color: 'var(--mantine-color-red-5)', label: 'High' },
-              { color: 'var(--mantine-color-red-8)', label: 'Critical' },
-            ].map(l => (
-              <Group key={l.label} gap={4}>
-                <div style={{ width: 12, height: 12, borderRadius: 2, background: l.color }} />
-                <Text size="xs" c="dimmed">{l.label}</Text>
-              </Group>
-            ))}
-          </Group>
-        </Card>
-      )}
+ {/* Legend */}
+ <Group gap="xs" mt="md">
+ {[
+ { color: 'var(--mantine-color-teal-5)', label: 'Low' },
+ { color: 'var(--mantine-color-yellow-5)', label: 'Medium' },
+ { color: 'var(--mantine-color-orange-5)', label: 'Med-High' },
+ { color: 'var(--mantine-color-red-5)', label: 'High' },
+ { color: 'var(--mantine-color-red-8)', label: 'Critical' },
+ ].map(l => (
+ <Group key={l.label} gap={4}>
+ <div style={{ width: 12, height: 12, borderRadius: 2, background: l.color }} />
+ <Text size="xs" c="dimmed">{l.label}</Text>
+ </Group>
+ ))}
+ </Group>
+ </Card>
+ )}
 
-      {/* Full risk table */}
-      {activeRisks.length > 0 && (
-        <Card withBorder radius="md" p="md">
-          <Text fw={600} size="sm" mb="sm">All Open Risks</Text>
-          <ScrollArea>
-            <Table striped highlightOnHover withTableBorder fz="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Title</Table.Th>
-                  <Table.Th>Severity</Table.Th>
-                  <Table.Th>Probability</Table.Th>
-                  <Table.Th>Score</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Owner</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {activeRisks
-                  .sort((a, b) =>
-                    (PROBABILITY_SCORE[b.probability] ?? 2) * (SEVERITY_SCORE[b.severity] ?? 2) -
-                    (PROBABILITY_SCORE[a.probability] ?? 2) * (SEVERITY_SCORE[a.severity] ?? 2))
-                  .map(r => {
-                    const score = (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2);
-                    return (
-                      <Table.Tr key={r.id}>
-                        <Table.Td fw={500}>{r.title}</Table.Td>
-                        <Table.Td>
-                          <Badge size="xs" color={
-                            r.severity === 'CRITICAL' ? 'red' : r.severity === 'HIGH' ? 'orange' :
-                            r.severity === 'MEDIUM' ? 'yellow' : 'gray'
-                          } variant="light">{r.severity}</Badge>
-                        </Table.Td>
-                        <Table.Td>{r.probability}</Table.Td>
-                        <Table.Td>
-                          <Badge size="xs" color={
-                            score >= 9 ? 'red' : score >= 6 ? 'orange' : score >= 4 ? 'yellow' : 'teal'
-                          }>{score}</Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge size="xs" color={STATUS_COLOR[r.status] ?? 'gray'} variant="dot">
-                            {r.status.replace('_', ' ')}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>{r.owner ?? '—'}</Table.Td>
-                      </Table.Tr>
-                    );
-                  })}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-        </Card>
-      )}
+ {/* Full risk table */}
+ {activeRisks.length > 0 && (
+ <Card withBorder radius="md" p="md">
+ <Text fw={600} size="sm" mb="sm">All Open Risks</Text>
+ <ScrollArea>
+ <Table striped highlightOnHover withTableBorder fz="xs">
+ <Table.Thead>
+ <Table.Tr>
+ <Table.Th>Title</Table.Th>
+ <Table.Th>Severity</Table.Th>
+ <Table.Th>Probability</Table.Th>
+ <Table.Th>Score</Table.Th>
+ <Table.Th>Status</Table.Th>
+ <Table.Th>Owner</Table.Th>
+ </Table.Tr>
+ </Table.Thead>
+ <Table.Tbody>
+ {activeRisks
+ .sort((a, b) =>
+ (PROBABILITY_SCORE[b.probability] ?? 2) * (SEVERITY_SCORE[b.severity] ?? 2) -
+ (PROBABILITY_SCORE[a.probability] ?? 2) * (SEVERITY_SCORE[a.severity] ?? 2))
+ .map(r => {
+ const score = (PROBABILITY_SCORE[r.probability] ?? 2) * (SEVERITY_SCORE[r.severity] ?? 2);
+ return (
+ <Table.Tr key={r.id}>
+ <Table.Td fw={500}>{r.title}</Table.Td>
+ <Table.Td>
+ <Badge size="xs" color={
+ r.severity === 'CRITICAL' ? 'red' : r.severity === 'HIGH' ? 'orange' :
+ r.severity === 'MEDIUM' ? 'yellow' : 'gray'
+ } variant="light">{r.severity}</Badge>
+ </Table.Td>
+ <Table.Td>{r.probability}</Table.Td>
+ <Table.Td>
+ <Badge size="xs" color={
+ score >= 9 ? 'red' : score >= 6 ? 'orange' : score >= 4 ? 'yellow' : 'teal'
+ }>{score}</Badge>
+ </Table.Td>
+ <Table.Td>
+ <Badge size="xs" color={STATUS_COLOR[r.status] ?? 'gray'} variant="dot">
+ {r.status.replace('_', ' ')}
+ </Badge>
+ </Table.Td>
+ <Table.Td>{r.owner ?? '—'}</Table.Td>
+ </Table.Tr>
+ );
+ })}
+ </Table.Tbody>
+ </Table>
+ </ScrollArea>
+ </Card>
+ )}
 
-      {/* Cell drill-down modal */}
-      <Modal
-        opened={!!selected}
-        onClose={() => setSelected(null)}
-        title={
-          selected && (
-            <Group gap="sm">
-              <ThemeIcon color="red" variant="light" size={28} radius="sm">
-                <IconAlertTriangle size={14} />
-              </ThemeIcon>
-              <Text fw={600}>
-                {PROBABILITY_LABEL[selected.prob]} Probability × {SEVERITY_LABEL[selected.sev]} Impact
-                {' '}— {selectedRisks.length} risk{selectedRisks.length !== 1 ? 's' : ''}
-              </Text>
-            </Group>
-          )
-        }
-        size="md"
-      >
-        <Stack gap="sm">
-          {selectedRisks.map(r => (
-            <Card key={r.id} withBorder radius="sm" p="sm">
-              <Group justify="space-between" mb={4}>
-                <Text fw={600} size="sm">{r.title}</Text>
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="dot" size="xs">
-                  {r.status.replace('_', ' ')}
-                </Badge>
-              </Group>
-              {r.description && <Text size="xs" c="dimmed" mb={4}>{r.description}</Text>}
-              {r.owner && <Text size="xs">Owner: {r.owner}</Text>}
-              {r.mitigationPlan && (
-                <>
-                  <Divider my={4} />
-                  <Text size="xs" c="teal">Mitigation: {r.mitigationPlan}</Text>
-                </>
-              )}
-            </Card>
-          ))}
-        </Stack>
-      </Modal>
-    </Stack>
-  );
+ {/* Cell drill-down modal */}
+ <Modal
+ opened={!!selected}
+ onClose={() => setSelected(null)}
+ title={
+ selected && (
+ <Group gap="sm">
+ <ThemeIcon color="red" variant="light" size={28} radius="sm">
+ <IconAlertTriangle size={14} />
+ </ThemeIcon>
+ <Text fw={600}>
+ {PROBABILITY_LABEL[selected.prob]} Probability × {SEVERITY_LABEL[selected.sev]} Impact
+ {' '}— {selectedRisks.length} risk{selectedRisks.length !== 1 ? 's' : ''}
+ </Text>
+ </Group>
+ )
+ }
+ size="md"
+ >
+ <Stack gap="sm">
+ {selectedRisks.map(r => (
+ <Card key={r.id} withBorder radius="sm" p="sm">
+ <Group justify="space-between" mb={4}>
+ <Text fw={600} size="sm">{r.title}</Text>
+ <Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="dot" size="xs">
+ {r.status.replace('_', ' ')}
+ </Badge>
+ </Group>
+ {r.description && <Text size="xs" c="dimmed" mb={4}>{r.description}</Text>}
+ {r.owner && <Text size="xs">Owner: {r.owner}</Text>}
+ {r.mitigationPlan && (
+ <>
+ <Divider my={4} />
+ <Text size="xs" c="teal">Mitigation: {r.mitigationPlan}</Text>
+ </>
+ )}
+ </Card>
+ ))}
+ </Stack>
+ </Modal>
+ </Stack>
+ );
 }
