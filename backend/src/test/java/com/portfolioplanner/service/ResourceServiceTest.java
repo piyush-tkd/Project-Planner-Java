@@ -5,6 +5,7 @@ import com.portfolioplanner.domain.model.enums.Location;
 import com.portfolioplanner.domain.model.enums.Role;
 import com.portfolioplanner.domain.repository.ResourcePodAssignmentRepository;
 import com.portfolioplanner.domain.repository.ResourceRepository;
+import com.portfolioplanner.service.AuditLogService;
 import com.portfolioplanner.dto.request.ResourceRequest;
 import com.portfolioplanner.dto.response.ResourceResponse;
 import com.portfolioplanner.exception.DuplicateNameException;
@@ -35,6 +36,9 @@ class ResourceServiceTest {
 
     @Mock
     private EntityMapper mapper;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private ResourceService resourceService;
@@ -70,7 +74,6 @@ class ResourceServiceTest {
             when(resourceRepository.findByNameIgnoreCase("John Doe")).thenReturn(Optional.empty());
             when(mapper.toEntity(request)).thenReturn(resource);
             when(resourceRepository.save(resource)).thenReturn(resource);
-            when(assignmentRepository.findByResourceId(1L)).thenReturn(Optional.empty());
             when(mapper.toResourceResponse(resource, null)).thenReturn(response);
 
             ResourceResponse result = resourceService.create(request);

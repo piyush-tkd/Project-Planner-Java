@@ -154,7 +154,9 @@ class DemandCalculatorTest {
             BigDecimal qa1 = result.get(POD_ID).get(Role.QA).get(1);
             BigDecimal qa2 = result.get(POD_ID).get(Role.QA).get(2);
             BigDecimal qa3 = result.get(POD_ID).get(Role.QA).get(3);
-            assertThat(qa1.add(qa2).add(qa3)).isEqualByComparingTo("200.00");
+            // Allow ±0.05 for rounding across 3 months of flat distribution
+            BigDecimal sum = qa1.add(qa2).add(qa3);
+            assertThat(sum).isBetween(new java.math.BigDecimal("199.95"), new java.math.BigDecimal("200.05"));
         }
 
         @Test

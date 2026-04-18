@@ -101,6 +101,8 @@ public class NlpRoutingCatalog {
                 "get_pod_profile", Map.of(), "name", "DETAIL", "DATA_QUERY", "/pods", 0.92);
 
         // ── SUMMARY/ANALYTICS QUERIES ──
+        addEntry("(?:portfolio\\s+(?:summary|overview|snapshot|health)|project\\s+(?:summary|overview))",
+                "get_portfolio_summary", Map.of(), null, "SUMMARY", "DATA_QUERY", "/reports/portfolio-health", 0.90);
         addEntry("(?:show|get|give|what(?:'s|\\s+is))\\s+(?:me\\s+)?(?:the\\s+)?(?:a\\s+)?(?:portfolio\\s+(?:summary|overview|snapshot|health)|project\\s+(?:summary|overview))",
                 "get_portfolio_summary", Map.of(), null, "SUMMARY", "DATA_QUERY", "/reports/portfolio-health", 0.95);
         addEntry("(?:show|get|what(?:'s|\\s+is))\\s+(?:me\\s+)?(?:the\\s+)?(?:team\\s+composition|headcount|team\\s+breakdown)",
@@ -109,7 +111,7 @@ public class NlpRoutingCatalog {
                 "get_utilization_summary", Map.of(), null, "SUMMARY", "DATA_QUERY", "/heatmap", 0.95);
         addEntry("(?:show|get|what(?:'s|\\s+is))\\s+(?:me\\s+)?(?:the\\s+)?(?:available\\s+)?capacity(?:\\s+summary)?",
                 "get_capacity_summary", Map.of(), null, "SUMMARY", "DATA_QUERY", "/heatmap", 0.95);
-        addEntry("(?:show|get|what(?:'s|\\s+is))\\s+(?:me\\s+)?(?:the\\s+)?cost\\s+rates?|billing\\s+rates?",
+        addEntry("(?:show|get|what(?:'s|'re|\\s+is|\\s+are))\\s+(?:me\\s+)?(?:the\\s+)?(?:cost\\s+rates?|billing\\s+rates?|hourly\\s+rates?)",
                 "get_cost_rates", Map.of(), null, "SUMMARY", "DATA_QUERY", "/cost-rates", 0.92);
 
         // ── SPRINT/RELEASE QUERIES ──

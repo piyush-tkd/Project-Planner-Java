@@ -33,14 +33,14 @@ class AliasResolverTest {
 
         @ParameterizedTest
         @CsvSource({
-                "show me highest priority projects, show me P0 projects",
-                "list critical projects, list P0 projects",
-                "show me p-zero projects, show me P0 projects",
-                "high priority items, P1 items",
-                "p-one tasks, P1 tasks",
-                "medium priority projects, P2 projects",
-                "p2 stuff, P2 stuff",
-                "low priority items, P3 items"
+                "show me highest priority projects, show me HIGHEST projects",
+                "list critical projects, list HIGHEST projects",
+                "show me p-zero projects, show me HIGHEST projects",
+                "high priority items, HIGH items",
+                "p-one tasks, HIGH tasks",
+                "medium priority projects, MEDIUM projects",
+                "p2 stuff, MEDIUM stuff",
+                "low priority items, LOW items"
         })
         void shouldResolvePriorityAliases(String input, String expected) {
             assertThat(resolver.resolve(input)).isEqualTo(expected);
@@ -54,7 +54,7 @@ class AliasResolverTest {
         @ParameterizedTest
         @CsvSource({
                 "show paused projects, show ON_HOLD projects",
-                "list frozen projects, show ON_HOLD projects",
+                "list frozen projects, list ON_HOLD projects",
                 "show on hold projects, show ON_HOLD projects",
                 "show done projects, show COMPLETED projects",
                 "show finished projects, show COMPLETED projects",
@@ -100,12 +100,11 @@ class AliasResolverTest {
                 "show offshore team, show India pod"
         })
         void shouldResolveLocationAliases(String input, String expected) {
-            // Note: "developers" gets resolved by entity alias to nothing (role aliases are NOT global),
-            // but "onshore" → "US" and "team" → "pod"
+            // "onshore" → "US", "offshore" → "INDIA", "team" → "pod" (entity alias)
             String result = resolver.resolve(input);
-            assertThat(result).contains("US").satisfiesAnyOf(
+            assertThat(result).satisfiesAnyOf(
                     r -> assertThat(r).contains("US"),
-                    r -> assertThat(r).contains("India")
+                    r -> assertThat(r).contains("INDIA")
             );
         }
     }
@@ -126,7 +125,8 @@ class AliasResolverTest {
 
         @Test
         void shouldCollapseMultipleSpaces() {
-            assertThat(resolver.resolve("show  me   P0  projects")).isEqualTo("show me P0 projects");
+            // Use a term with no aliases to test pure whitespace collapsing
+            assertThat(resolver.resolve("show  me   alpha  projects")).isEqualTo("show me alpha projects");
         }
 
         @Test
@@ -146,15 +146,15 @@ class AliasResolverTest {
 
         @ParameterizedTest
         @CsvSource({
-                "P0 projects, P0",
-                "show highest priority tasks, P0",
-                "critical items, P0",
-                "P1 projects, P1",
-                "high priority tasks, P1",
-                "P2 items, P2",
-                "medium priority work, P2",
-                "P3 items, P3",
-                "low priority tasks, P3"
+                "P0 projects, HIGHEST",
+                "show highest priority tasks, HIGHEST",
+                "critical items, HIGHEST",
+                "P1 projects, HIGH",
+                "high priority tasks, HIGH",
+                "P2 items, MEDIUM",
+                "medium priority work, MEDIUM",
+                "P3 items, LOW",
+                "low priority tasks, LOW"
         })
         void shouldExtractCorrectPriority(String input, String expected) {
             assertThat(resolver.extractPriority(input)).isEqualTo(expected);
@@ -239,8 +239,8 @@ class AliasResolverTest {
         @CsvSource({
                 "show onshore developers, US",
                 "US resources, US",
-                "offshore team, India",
-                "India based resources, India"
+                "offshore team, INDIA",
+                "India based resources, INDIA"
         })
         void shouldExtractCorrectLocation(String input, String expected) {
             assertThat(resolver.extractLocation(input)).isEqualTo(expected);

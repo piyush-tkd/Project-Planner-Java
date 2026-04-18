@@ -77,7 +77,7 @@ class ProjectControllerTest extends BaseControllerTest {
         void emptyList() throws Exception {
             mockMvc.perform(get("/api/projects"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$.content", hasSize(0)));
         }
 
         @Test
@@ -89,8 +89,8 @@ class ProjectControllerTest extends BaseControllerTest {
 
             mockMvc.perform(get("/api/projects"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(3)))
-                    .andExpect(jsonPath("$[*].name", containsInAnyOrder("Alpha", "Beta", "Gamma")));
+                    .andExpect(jsonPath("$.content", hasSize(3)))
+                    .andExpect(jsonPath("$.content[*].name", containsInAnyOrder("Alpha", "Beta", "Gamma")));
         }
 
         @Test
@@ -101,8 +101,8 @@ class ProjectControllerTest extends BaseControllerTest {
 
             mockMvc.perform(get("/api/projects").param("status", "ACTIVE"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].name").value("Alpha"));
+                    .andExpect(jsonPath("$.content", hasSize(1)))
+                    .andExpect(jsonPath("$.content[0].name").value("Alpha"));
         }
 
         @Test
@@ -113,8 +113,8 @@ class ProjectControllerTest extends BaseControllerTest {
 
             mockMvc.perform(get("/api/projects").param("status", "ON_HOLD"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].name").value("Blocked"));
+                    .andExpect(jsonPath("$.content", hasSize(1)))
+                    .andExpect(jsonPath("$.content[0].name").value("Blocked"));
         }
 
         @Test
@@ -124,7 +124,7 @@ class ProjectControllerTest extends BaseControllerTest {
 
             mockMvc.perform(get("/api/projects").param("status", "COMPLETED"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$.content", hasSize(0)));
         }
     }
 

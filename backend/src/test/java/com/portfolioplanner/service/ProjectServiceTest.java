@@ -3,8 +3,10 @@ package com.portfolioplanner.service;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.enums.Priority;
 import com.portfolioplanner.domain.model.enums.SourceType;
+import com.portfolioplanner.domain.repository.ProjectPodPlanningRepository;
 import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.dto.request.ProjectRequest;
+import com.portfolioplanner.service.AuditLogService;
 import com.portfolioplanner.dto.response.ProjectResponse;
 import com.portfolioplanner.exception.ResourceNotFoundException;
 import com.portfolioplanner.mapper.EntityMapper;
@@ -15,7 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,7 +33,16 @@ class ProjectServiceTest {
     private ProjectRepository projectRepository;
 
     @Mock
+    private ProjectPodPlanningRepository planningRepository;
+
+    @Mock
     private EntityMapper mapper;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ProjectService projectService;
@@ -68,6 +81,7 @@ class ProjectServiceTest {
 
             var response = stubResponse(1L, "Test Project");
 
+            when(projectRepository.findByNameIgnoreCase("Test Project")).thenReturn(Optional.empty());
             when(mapper.toEntity(request)).thenReturn(project);
             when(projectRepository.save(project)).thenReturn(project);
             when(mapper.toProjectResponse(project)).thenReturn(response);
@@ -96,6 +110,7 @@ class ProjectServiceTest {
             project.setId(projectId);
 
             when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+            when(planningRepository.findByProjectId(projectId)).thenReturn(List.of());
 
             projectService.delete(projectId);
 

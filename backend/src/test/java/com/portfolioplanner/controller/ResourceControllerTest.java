@@ -83,8 +83,8 @@ class ResourceControllerTest extends BaseControllerTest {
         void emptyList() throws Exception {
             mockMvc.perform(get("/api/resources"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray())
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(jsonPath("$.content", hasSize(0)));
         }
 
         @Test
@@ -96,8 +96,8 @@ class ResourceControllerTest extends BaseControllerTest {
 
             mockMvc.perform(get("/api/resources"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[*].name", containsInAnyOrder("Alice", "Bob")));
+                    .andExpect(jsonPath("$.content", hasSize(2)))
+                    .andExpect(jsonPath("$.content[*].name", containsInAnyOrder("Alice", "Bob")));
         }
 
         @Test

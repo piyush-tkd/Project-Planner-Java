@@ -93,7 +93,6 @@ class EmailServiceTest {
 
     @Test
     void sendAlert_templateFailure_throwsEmailDeliveryException() {
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
         when(emailTemplateService.renderHtml(anyString(), any()))
                 .thenThrow(new RuntimeException("Template not found"));
 

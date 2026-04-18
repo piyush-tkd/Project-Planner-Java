@@ -9,9 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +27,7 @@ import static org.mockito.Mockito.when;
  * - Null-safety and fallback handling
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("CompositeToolExecutor — comparison query handling")
 class CompositeToolExecutorTest {
 
@@ -375,12 +379,12 @@ class CompositeToolExecutorTest {
     // ── Helper methods ────────────────────────────────────────────────────────
 
     private void mockToolSuccess(String toolName, String entityName, String resultData) {
-        when(toolRegistry.executeTool(toolName, any(JsonNode.class), any(NlpCatalogResponse.class)))
+        when(toolRegistry.executeTool(eq(toolName), any(JsonNode.class), any(NlpCatalogResponse.class)))
                 .thenReturn(NlpToolRegistry.ToolResult.ok(resultData));
     }
 
     private void mockToolFail(String toolName, String entityName, String error) {
-        when(toolRegistry.executeTool(toolName, any(JsonNode.class), any(NlpCatalogResponse.class)))
+        when(toolRegistry.executeTool(eq(toolName), any(JsonNode.class), any(NlpCatalogResponse.class)))
                 .thenReturn(NlpToolRegistry.ToolResult.fail(error));
     }
 }

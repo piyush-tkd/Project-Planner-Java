@@ -64,6 +64,7 @@ public class CompositeToolExecutor {
      * Returns null if the query is not a comparison query.
      */
     public NlpStrategy.NlpResult tryExecute(String query, NlpCatalogResponse catalog) {
+        if (query == null) return null;
         ComparisonIntent intent = detectComparison(query);
         if (intent == null) return null;
 
