@@ -9,7 +9,6 @@
 import React from 'react';
 import { PPSkeleton } from './PPSkeleton';
 import styles from './PPChart.module.css';
-import { AQUA, SIDEBAR_INACTIVE } from '../../brandTokens';
 
 /** PP chart colour palette — Slate design system (v29.0), optimised for both light and dark */
 export const PP_CHART_COLORS = [

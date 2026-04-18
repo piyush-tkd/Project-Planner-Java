@@ -8,5 +8,9 @@
 /Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/config/AppConfig.java
 /Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/config/VectorStoreConfig.java
 /Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/data/ProjectDataRepository.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/llm/LlmChatRequest.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/llm/LlmChatResponse.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/llm/LlmGatewayController.java
+/Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/llm/LlmGatewayService.java
 /Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/rag/RagService.java
 /Users/piyushbaheti/Project Planner/portfolio-planner-ai/src/main/java/com/portfolioplanner/ai/sync/SyncController.java

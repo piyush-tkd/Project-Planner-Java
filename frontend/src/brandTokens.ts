@@ -249,6 +249,7 @@ export const BORDER_SOFT        = '#e5e7eb';   // tailwind gray-200
 
 /* ── Dark Mode Surfaces ───────────────────────────────────────────── */
 export const DARK_BG            = '#1a1b1e';   // darkest background
+export const DARK_CARD          = '#1e1e1e';   // card background in dark mode
 export const DARK_SURFACE       = '#25262b';   // card / paper surface
 export const DARK_SURFACE_ALT   = '#242836';   // alternate dark surface
 export const DARK_ELEMENT       = '#2e3346';   // elevated element bg

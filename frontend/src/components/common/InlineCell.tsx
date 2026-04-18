@@ -33,10 +33,9 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import {
-  Box, Text, TextInput, Select, NumberInput, Switch, Badge, Tooltip, Group,
+  Box, Text, TextInput, Select, NumberInput, Switch, Badge, Tooltip,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { IconAlertCircle } from '@tabler/icons-react';
 
 // Inject spinner keyframes once
 function ensureSpinnerKeyframes() {

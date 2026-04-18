@@ -7,7 +7,6 @@ import { IconShieldCheck, IconCheck, IconInfoCircle } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
-import { FONT_FAMILY } from '../../brandTokens';
 
 interface ConfigEntry { value: string; description: string; updated_at: string }
 interface SchemaEntry  { key: string; label: string; hint: string }
@@ -104,7 +103,7 @@ export default function QualityConfigPage() {
           <IconShieldCheck size={20} />
         </ThemeIcon>
         <div>
-          <Title order={3} style={{ fontFamily: FONT_FAMILY }}>Quality Metrics Config</Title>
+          <Title order={3}>Quality Metrics Config</Title>
           <Text size="xs" c="dimmed">Configure what counts as an escaped bug, invalid status, and which issue types to track</Text>
         </div>
       </Group>
@@ -134,7 +133,7 @@ export default function QualityConfigPage() {
             style={{ borderLeft: isDirty ? '3px solid var(--mantine-color-orange-5)' : undefined }}>
             <Group justify="space-between" mb="xs">
               <div>
-                <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{s.label}</Text>
+                <Text fw={600} size="sm">{s.label}</Text>
                 <Text size="xs" c="dimmed">{s.hint}</Text>
               </div>
               {config?.[s.key]?.updated_at && (

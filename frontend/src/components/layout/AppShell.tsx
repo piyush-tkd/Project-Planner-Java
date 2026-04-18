@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, Suspense, useEffect } from 'react';
+import { useMediaQuery } from '@mantine/hooks';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import PageSkeleton from '../common/PageSkeleton';
 import ErrorBoundary from '../common/ErrorBoundary';
@@ -7,6 +8,7 @@ import { useFavoritesContext } from '../../context/FavoritesContext';
 import GlobalSearch, { useGlobalSearch } from '../common/GlobalSearch';
 import KeyboardShortcutsPanel, { useShortcutsPanel } from '../common/KeyboardShortcutsPanel';
 import { CommandPalette } from '../common/CommandPalette';
+import LogoMark from '../common/LogoMark';
 import GlobalBreadcrumb from '../common/GlobalBreadcrumb';
 import UserPreferencesDrawer from '../common/UserPreferencesDrawer';
 import { PPPreferencesPanel } from '../pp';
@@ -32,17 +34,17 @@ import {
   useComputedColorScheme,
   Kbd,
   UnstyledButton,
+  Center,
+  Stack,
+  Title,
 } from '@mantine/core';
 import {
   IconDashboard,
   IconUsers,
   IconBriefcase,
   IconHexagons,
-  IconCalendarStats,
-  IconArrowsShuffle,
   IconChartBar,
   IconFlame,
-  IconUserPlus,
   IconAlertTriangle,
   IconTargetArrow,
   IconChartPie,
@@ -53,81 +55,63 @@ import {
   IconDatabase,
   IconUsersGroup,
   IconCalendar,
-  IconBuildingFactory,
   IconBrandAzure,
   IconSun,
   IconMoon,
-  IconTicket,
   IconLogout,
   IconChevronDown,
   IconTag,
-  IconKey,
   IconCurrencyDollar,
   IconUserCog,
-  IconHeadset,
   IconSearch,
   IconHistory,
   IconChevronRight,
-  IconLayoutSidebarLeftCollapse,
-  IconLayoutSidebarLeftExpand,
   IconCoin,
   IconHeartRateMonitor,
   IconLink,
-  IconChartInfographic,
   IconBulb,
   IconClock,
-  IconCalendarEvent,
   IconRocket,
-  IconPackage,
   IconBrain,
-  IconMessageReport,
   IconLayoutDashboard,
   IconTrendingUp,
   IconShieldCheck,
   IconTimeline,
-  IconUserSearch,
   IconPlugConnected,
   IconReportMoney,
-  IconGitBranch,
   IconChartDots3,
   IconBellRinging,
   IconCalendarOff,
-  IconCalendarPlus,
-  IconTemplate,
   IconInbox,
-  IconTruck,
   IconPlus,
   IconRadar,
   IconStars,
   IconListCheck,
-  IconFlame as IconFlameAlias,
+  IconFlame as _IconFlameAlias,
   IconSparkles,
   IconBellCog,
   IconLayoutBoard,
-  IconUpload,
-  IconTarget,
   IconLayoutGrid,
   IconStar,
   IconStarFilled,
   IconWebhook,
   IconMailCog,
-  IconCalendarTime,
   IconTableOptions,
   IconWand,
   IconHelp,
   IconSitemap,
+  IconDeviceDesktop,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
 import NotificationBell from '../common/NotificationBell';
 import TourGuide from '../common/TourGuide';
 import FeedbackWidget from '../common/FeedbackWidget';
 import WhatsNewDrawer, { useUnreadChangelogCount } from '../common/WhatsNewDrawer';
 import ActivityFeedDrawer from '../common/ActivityFeedDrawer';
 import { useAuth } from '../../auth/AuthContext';
-import apiClient from '../../api/client';
+import _apiClient from '../../api/client';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
 import { useSidebarOrder } from '../../api/widgetPreferences';
-import { AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER_DARK, COLOR_ERROR, COLOR_WARNING, DARK_ELEMENT, DARK_TEXT_PRIMARY, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, SURFACE_SIDEBAR, TEXT_GRAY, TEXT_SECONDARY, TEXT_SUBTLE } from '../../brandTokens';
+import { AQUA, BORDER_DEFAULT, COLOR_AMBER_DARK, COLOR_ERROR, COLOR_WARNING, DARK_ELEMENT, DARK_TEXT_PRIMARY, DEEP_BLUE_TINTS, FONT_FAMILY, SURFACE_SIDEBAR, TEXT_GRAY, TEXT_SECONDARY, TEXT_SUBTLE } from '../../brandTokens';
 
 interface NavItem  { label: string; path: string; icon: React.ReactNode; pageKey?: string; alertKey?: string; featureFlag?: string; children?: NavItem[] }
 interface NavGroup { label: string; items: NavItem[] }
@@ -181,7 +165,6 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'PODs',             path: '/pods',            icon: <IconHexagons size={14} />,    pageKey: 'pods' },
       { label: 'Sprint Planner',   path: '/sprint-planner',  icon: <IconBrain size={14} />,       pageKey: 'sprint_planner' },
-      { label: 'Sprint Quality',   path: '/reports/sprint-quality', icon: <IconShieldCheck size={14} />, pageKey: 'sprint_quality', featureFlag: 'jira' },
       { label: 'Engineering Hub',      path: '/engineering/hub',                    icon: <IconReportMoney size={14} />, pageKey: 'engineering_intelligence',  featureFlag: 'engineering' },
       { label: 'Engineering Analytics', path: '/reports/engineering-analytics',      icon: <IconChartBar size={14} />,    pageKey: 'engineering_analytics',     featureFlag: 'engineering' },
       { label: 'Power Dashboard',   path: '/reports/power-dashboard',             icon: <IconLayoutGrid size={14} />,  pageKey: 'power_dashboard' },
@@ -308,6 +291,7 @@ export default function AppShellLayout() {
   const orgName      = orgSettings.orgName;
   const orgLogoUrl   = orgSettings.logoUrl;
   const isDark = computedColorScheme === 'dark';
+  const isNarrow = useMediaQuery('(max-width: 1023px)');
   const alerts = useAlertCounts();
   const { opened: searchOpened, setOpened: setSearchOpened } = useGlobalSearch();
   const { opened: shortcutsOpened, setOpened: setShortcutsOpened } = useShortcutsPanel();
@@ -399,7 +383,7 @@ export default function AppShellLayout() {
   }, [sidebarOrder, isAdmin, canAccess, orgSettings.features]);
 
   // ── Sidebar Favorites — backend-synced via FavoritesContext ──────────────
-  const { favorites: favEntries, isFavorite, toggle: toggleFavorite } = useFavoritesContext();
+  const { favorites: favEntries, toggle: toggleFavorite } = useFavoritesContext();
   // Derive a Set<path> for O(1) membership checks used throughout the nav render
   const favorites = useMemo(() => new Set(favEntries.map(f => f.pagePath)), [favEntries]);
 
@@ -474,6 +458,22 @@ export default function AppShellLayout() {
     return !containsActive;
   }
 
+  // 5.6 Option A — desktop-only guard: politely block sub-1024px viewports
+  if (isNarrow) {
+    return (
+      <Center style={{ minHeight: '100dvh', padding: '2rem' }}>
+        <Stack align="center" gap="lg" maw={400} ta="center">
+          <IconDeviceDesktop size={56} stroke={1.2} color="var(--mantine-color-dimmed)" />
+          <Title order={3} fw={600}>Desktop required</Title>
+          <Text c="dimmed" size="sm">
+            Project Planner is optimised for desktop use. Please open this app on a screen
+            wider than 1,024 px.
+          </Text>
+        </Stack>
+      </Center>
+    );
+  }
+
   return (
     <MantineAppShell
       header={{ height: 56 }}
@@ -484,6 +484,47 @@ export default function AppShellLayout() {
       }}
       padding="md"
     >
+      {/* Skip-to-main-content — visually hidden until focused; §5.5 a11y */}
+      <a
+        href="#main-content"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          top: 'auto',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          zIndex: 9999,
+        }}
+        onFocus={e => {
+          e.currentTarget.style.left = '50%';
+          e.currentTarget.style.top = '8px';
+          e.currentTarget.style.transform = 'translateX(-50%)';
+          e.currentTarget.style.width = 'auto';
+          e.currentTarget.style.height = 'auto';
+          e.currentTarget.style.overflow = 'visible';
+          e.currentTarget.style.padding = '8px 16px';
+          e.currentTarget.style.background = isDark ? '#1a1d27' : '#fff';
+          e.currentTarget.style.color = isDark ? AQUA : DEEP_BLUE_TINTS[80];
+          e.currentTarget.style.borderRadius = '8px';
+          e.currentTarget.style.border = `2px solid ${AQUA}`;
+          e.currentTarget.style.fontFamily = FONT_FAMILY;
+          e.currentTarget.style.fontWeight = '600';
+          e.currentTarget.style.fontSize = '14px';
+          e.currentTarget.style.textDecoration = 'none';
+        }}
+        onBlur={e => {
+          e.currentTarget.style.left = '-9999px';
+          e.currentTarget.style.top = 'auto';
+          e.currentTarget.style.transform = '';
+          e.currentTarget.style.width = '1px';
+          e.currentTarget.style.height = '1px';
+          e.currentTarget.style.overflow = 'hidden';
+          e.currentTarget.style.padding = '';
+        }}
+      >
+        Skip to main content
+      </a>
       {/* ── Header ── */}
       <MantineAppShell.Header
         style={{
@@ -511,16 +552,7 @@ export default function AppShellLayout() {
                 style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 6, flexShrink: 0 }}
               />
             ) : (
-              <svg
-                width="28"
-                height="26"
-                viewBox="0 0 28 26"
-                fill="none"
-                className="logo-mark-animated"
-              >
-                <polygon points="14,1 27,25 1,25" fill="none" stroke={orgPrimary} strokeWidth="2.5" />
-                <polygon points="14,7 23,23 5,23"  fill={orgPrimary} opacity="0.3" />
-              </svg>
+              <LogoMark size={28} className="logo-mark-animated" />
             )}
             <Text
               style={{
@@ -588,6 +620,7 @@ export default function AppShellLayout() {
                 size="lg"
                 onClick={() => setActivityOpen(true)}
                 style={{ color: 'rgba(255,255,255,0.75)' }}
+                aria-label="History"
               >
                 <IconHistory size={19} />
               </ActionIcon>
@@ -601,6 +634,7 @@ export default function AppShellLayout() {
                   size="lg"
                   onClick={() => setWhatsNewOpen(true)}
                   style={{ color: 'rgba(255,255,255,0.75)' }}
+                  aria-label="Notifications"
                 >
                   <IconBellRinging size={19} />
                 </ActionIcon>
@@ -620,6 +654,7 @@ export default function AppShellLayout() {
                 size="lg"
                 onClick={() => setColorScheme(isDark ? 'light' : 'dark')}
                 style={{ color: 'rgba(255,255,255,0.75)' }}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {isDark ? <IconSun size={19} /> : <IconMoon size={19} />}
               </ActionIcon>
@@ -841,6 +876,7 @@ export default function AppShellLayout() {
                               variant="transparent"
                               onClick={e => { e.stopPropagation(); e.preventDefault(); toggleFavorite(fav.pagePath, fav.pageLabel); }}
                               style={{ color: COLOR_WARNING, opacity: 0.8 }}
+                              aria-label="Favourite"
                             >
                               <IconStarFilled size={11} />
                             </ActionIcon>
@@ -1049,6 +1085,7 @@ export default function AppShellLayout() {
                                   navigate('/projects?new=true');
                                 }}
                                 style={{ opacity: 0.7 }}
+                                aria-label="Add"
                               >
                                 <IconPlus size={12} />
                               </ActionIcon>
@@ -1065,6 +1102,7 @@ export default function AppShellLayout() {
                               transition: 'opacity 0.15s',
                               flexShrink: 0,
                             }}
+                            aria-label="Favourite"
                           >
                             {isFav ? <IconStarFilled size={11} /> : <IconStar size={11} />}
                           </ActionIcon>
@@ -1098,7 +1136,7 @@ export default function AppShellLayout() {
                             label={child.label}
                             leftSection={child.icon}
                             active={isChildActive}
-                            onClick={() => navigate(child.path)}
+                            onClick={e => { e.stopPropagation(); navigate(child.path); }}
                             style={navItemStyle(isChildActive, true)}
                           />
                         );
@@ -1166,6 +1204,7 @@ export default function AppShellLayout() {
                     border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',
                     color: isDark ? '#6b7280' : TEXT_SUBTLE,
                   }}
+                  aria-label="Help"
                 >
                   <IconHelp size={15} />
                 </ActionIcon>
@@ -1190,7 +1229,7 @@ export default function AppShellLayout() {
         </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 
-      <MantineAppShell.Main>
+      <MantineAppShell.Main id="main-content">
         <GlobalBreadcrumb />
         <ErrorBoundary key={location.pathname}>
           <Suspense fallback={<PageSkeleton variant="table" />}>

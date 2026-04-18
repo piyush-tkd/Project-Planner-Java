@@ -39,16 +39,19 @@ public class PodController {
         return ResponseEntity.ok(podService.getById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<PodResponse> create(@RequestBody Pod pod) {
         return ResponseEntity.status(HttpStatus.CREATED).body(podService.create(pod));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<PodResponse> update(@PathVariable Long id, @RequestBody Pod pod) {
         return ResponseEntity.ok(podService.update(id, pod));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         podService.delete(id);

@@ -1,18 +1,18 @@
 import { useState, useMemo } from 'react';
 import {
  Title, Text, Paper, Group, Stack, Badge, Table, NumberInput,
- ActionIcon, Tooltip, Loader, Center, Alert, Tabs, ThemeIcon,
- SimpleGrid, Card, Divider, Button, TextInput, ScrollArea, Avatar,
+ ActionIcon, Tooltip, Center, Alert, Tabs, ThemeIcon,
+ SimpleGrid, Card, Divider, TextInput, ScrollArea, Avatar
 } from '@mantine/core';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
  IconCoin, IconAlertCircle, IconPencil, IconCheck, IconX,
- IconSearch, IconInfoCircle, IconChartBar, IconUsers,
+ IconSearch, IconInfoCircle, IconChartBar, IconUsers
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useResources, useCostRates, useUpdateActualRate } from '../../api/resources';
 import { ResourceResponse } from '../../types/resource';
-import { AQUA, AQUA_TINTS, DARK_BG, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, DEEP_BLUE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ function roleBadgeColor(role: string) {
  const map: Record<string, string> = {
  ENGINEER: 'blue', SENIOR_ENGINEER: 'indigo', LEAD_ENGINEER: 'violet',
  PRINCIPAL: 'grape', MANAGER: 'teal', DIRECTOR: 'cyan', ARCHITECT: 'orange',
- QA: 'green', DEVOPS: 'lime', DATA_SCIENTIST: 'yellow', PRODUCT_MANAGER: 'pink',
+ QA: 'green', DEVOPS: 'lime', DATA_SCIENTIST: 'yellow', PRODUCT_MANAGER: 'pink'
  };
  return map[role] ?? 'gray';
 }
@@ -106,10 +106,14 @@ function RateRow({ resource, defaultRate }: RateRowProps) {
  style={{ width: 100 }}
  autoFocus
  />
- <ActionIcon size="sm" color="teal" onClick={save} loading={updateRate.isPending}>
+ <ActionIcon size="sm" color="teal" onClick={save} loading={updateRate.isPending}
+      aria-label="Confirm"
+    >
  <IconCheck size={14} />
  </ActionIcon>
- <ActionIcon size="sm" color="gray" onClick={cancel}>
+ <ActionIcon size="sm" color="gray" onClick={cancel}
+      aria-label="Close"
+    >
  <IconX size={14} />
  </ActionIcon>
  </Group>
@@ -119,7 +123,9 @@ function RateRow({ resource, defaultRate }: RateRowProps) {
  {resource.actualRate != null ? fmt(resource.actualRate) + '/hr' : 'Using default'}
  </Text>
  <Tooltip label="Edit individual rate">
- <ActionIcon size="xs" variant="subtle" color="gray" onClick={() => setEditing(true)}>
+ <ActionIcon size="xs" variant="subtle" color="gray" onClick={() => setEditing(true)}
+      aria-label="Edit"
+    >
  <IconPencil size={12} />
  </ActionIcon>
  </Tooltip>
@@ -188,7 +194,7 @@ export default function ResourceROIPage() {
  <Stack gap="lg" className="page-enter stagger-children">
  <Group justify="space-between" wrap="nowrap" className="slide-in-left">
  <div>
- <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY, fontWeight: 700 }}>
+ <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Resource ROI
  </Title>
  <Text size="sm" c="dimmed">
@@ -323,15 +329,15 @@ export default function ResourceROIPage() {
  {[
  {
  step: '1', color: 'blue', title: 'Set Rates',
- body: 'Set an individual hourly rate per resource above, or configure role+location defaults in the Reference Data settings.',
+ body: 'Set an individual hourly rate per resource above, or configure role+location defaults in the Reference Data settings.'
  },
  {
  step: '2', color: 'teal', title: 'Sync Jira Hours',
- body: 'Connect Jira and sync worklogs. Hours logged against stories, bugs, tasks, and incidents are pulled per resource.',
+ body: 'Connect Jira and sync worklogs. Hours logged against stories, bugs, tasks, and incidents are pulled per resource.'
  },
  {
  step: '3', color: 'violet', title: 'View ROI',
- body: 'Actual cost = hours logged × hourly rate. Compare to estimated cost from capacity planning to see ROI per resource.',
+ body: 'Actual cost = hours logged × hourly rate. Compare to estimated cost from capacity planning to see ROI per resource.'
  },
  ].map(({ step, color, title, body }) => (
  <Card key={step} withBorder radius="md" p="md">

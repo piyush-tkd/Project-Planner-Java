@@ -25,17 +25,20 @@ public class TemporaryOverrideController {
         return ResponseEntity.ok(overrideService.getAll());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<TemporaryOverrideResponse> create(@Valid @RequestBody TemporaryOverrideRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(overrideService.create(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<TemporaryOverrideResponse> update(@PathVariable Long id,
                                                             @Valid @RequestBody TemporaryOverrideRequest request) {
         return ResponseEntity.ok(overrideService.update(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         overrideService.delete(id);

@@ -11,11 +11,11 @@
  * Saving POSTs to PUT /api/settings/email-templates/{name}.
  * Reset reverts to the Thymeleaf default.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Title, Text, Stack, Group, Button, Paper, Badge, Skeleton,
-  Alert, Modal, TextInput, Textarea, Tabs, ThemeIcon, ActionIcon,
-  Tooltip, Code, ScrollArea, SimpleGrid, Divider, Box, CopyButton,
+  Alert, Modal, TextInput, Tabs, ThemeIcon, ActionIcon,
+  Tooltip, Code, ScrollArea, Divider, Box, CopyButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -24,7 +24,7 @@ import {
   IconMailFast, IconMailCheck, IconMailX, IconCalendar, IconKey,
   IconHeadset,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
+import { DEEP_BLUE, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import {
   useEmailTemplates, useSaveEmailTemplate, useResetEmailTemplate,
@@ -215,7 +215,7 @@ function EditModal({ template, onClose }: EditModalProps) {
       <Paper withBorder p="sm" radius="sm" mb="md" style={{ background: cardBg, borderColor }}>
         <Group gap="xs" mb={6} align="center">
           <IconInfoCircle size={13} color="var(--mantine-color-blue-5)" />
-          <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="xs" fw={600}>
             Available variables — click to insert into body
           </Text>
         </Group>
@@ -224,7 +224,7 @@ function EditModal({ template, onClose }: EditModalProps) {
             <VariableChip key={v.name} name={v.name} onClick={insertVar} />
           ))}
         </Group>
-        <Text size="xs" c="dimmed" mt={6} style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="xs" c="dimmed" mt={6}>
           Use <Code style={{ fontSize: 11 }}>{'{{variableName}}'}</Code> syntax in both subject and body.
           Variables not listed above are left as-is.
         </Text>
@@ -245,14 +245,12 @@ function EditModal({ template, onClose }: EditModalProps) {
               description="Leave blank to use the application default subject."
               placeholder="e.g. [{{orgName}}] Approval required: {{projectName}}"
               value={subject}
-              onChange={e => setSubject(e.currentTarget.value)}
-              styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
-            />
+              onChange={e => setSubject(e.currentTarget.value)}/>
             <Box>
-              <Text size="sm" fw={500} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="sm" fw={500} mb={4}>
                 HTML body
               </Text>
-              <Text size="xs" c="dimmed" mb={6} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed" mb={6}>
                 Full HTML is supported. Leave blank to use the built-in Thymeleaf template.
               </Text>
               <textarea
@@ -301,7 +299,7 @@ function EditModal({ template, onClose }: EditModalProps) {
           ) : (
             <Paper withBorder radius="sm" p="xl" style={{ background: cardBg, borderColor, textAlign: 'center' }}>
               <IconEye size={32} color="var(--mantine-color-dimmed)" />
-              <Text size="sm" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="sm" c="dimmed" mt="sm">
                 Click "Preview" to render your template with sample data.
               </Text>
               <Button
@@ -396,7 +394,7 @@ function TemplateCard({
           </ThemeIcon>
           <div style={{ minWidth: 0 }}>
             <Group gap="xs" align="center" wrap="nowrap">
-              <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+              <Text fw={600} size="sm">
                 {template.templateName}
               </Text>
               {template.customized ? (
@@ -405,16 +403,16 @@ function TemplateCard({
                 <Badge size="xs" color="gray" variant="outline">default</Badge>
               )}
             </Group>
-            <Text size="xs" c="dimmed" mt={2} style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" c="dimmed" mt={2}>
               {template.description}
             </Text>
             {template.customized && template.subject && (
-              <Text size="xs" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed" mt={4}>
                 Subject: <em>{template.subject.length > 70 ? template.subject.slice(0, 70) + '…' : template.subject}</em>
               </Text>
             )}
             {template.customized && template.updatedAt && (
-              <Text size="xs" c="dimmed" mt={2} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed" mt={2}>
                 Last saved: {new Date(template.updatedAt).toLocaleString()}
               </Text>
             )}
@@ -426,6 +424,7 @@ function TemplateCard({
             color={color}
             size="lg"
             onClick={() => onEdit(template)}
+            aria-label="Edit"
           >
             <IconEdit size={16} />
           </ActionIcon>
@@ -477,10 +476,10 @@ export default function EmailTemplatesPage() {
               {editing ? TEMPLATE_ICONS[editing.templateName] ?? <IconMail size={14} /> : <IconMail size={14} />}
             </ThemeIcon>
             <div>
-              <Text fw={700} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+              <Text fw={700} size="sm">
                 Edit: {editing?.templateName}
               </Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed">
                 {editing?.description}
               </Text>
             </div>
@@ -502,16 +501,18 @@ export default function EmailTemplatesPage() {
         {/* Header */}
         <Group justify="space-between" align="flex-start">
           <div>
-            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+            <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
               Email Templates
             </Title>
-            <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="sm" c="dimmed" mt={4}>
               Customise the subject line and HTML body of outgoing emails without touching backend files.
               Use <Code style={{ fontSize: 11 }}>{'{{variable}}'}</Code> tokens to insert dynamic values.
             </Text>
           </div>
           <Tooltip label="Refresh">
-            <ActionIcon variant="default" size="lg" onClick={() => refetch()}>
+            <ActionIcon variant="default" size="lg" onClick={() => refetch()}
+      aria-label="Refresh"
+    >
               <IconRefresh size={16} />
             </ActionIcon>
           </Tooltip>
@@ -524,7 +525,7 @@ export default function EmailTemplatesPage() {
           variant="light"
           radius="sm"
         >
-          <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="sm">
             Templates marked <Badge size="xs" color="teal" variant="filled">customised</Badge> use your
             saved content. <Badge size="xs" color="gray" variant="outline">default</Badge> templates use
             the built-in HTML file. You can reset a custom template at any time to restore the built-in design.
@@ -544,7 +545,7 @@ export default function EmailTemplatesPage() {
           ))}
           {templates.length === 0 && (
             <Paper withBorder radius="md" p="xl" style={{ background: cardBg, borderColor, textAlign: 'center' }}>
-              <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No templates found.</Text>
+              <Text size="sm" c="dimmed">No templates found.</Text>
             </Paper>
           )}
         </Stack>

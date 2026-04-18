@@ -53,6 +53,7 @@ public class JiraReleaseController {
      * Saves tracked release versions for the supplied PODs.
      * Only the PODs present in the request list are updated; others are untouched.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/config")
     public ResponseEntity<List<ReleaseConfigResponse>> saveConfig(
             @RequestBody List<ReleaseConfigRequest> requests) {
@@ -82,6 +83,7 @@ public class JiraReleaseController {
      *
      * Usage: GET /api/jira/releases/debug/{podId}
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/{podId}")
     public ResponseEntity<Map<String, Object>> debugRelease(@PathVariable Long podId) {
         return ResponseEntity.ok(releaseService.debugRelease(podId));

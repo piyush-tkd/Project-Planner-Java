@@ -16,7 +16,7 @@ import {
 } from '../../api/jira';
 import { useJiraStatus } from '../../api/jira';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { AQUA, COLOR_ERROR_DEEP, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
+import { COLOR_ERROR_DEEP, DEEP_BLUE, TEXT_DIM } from '../../brandTokens';
 
 export default function SupportBoardsSettingsPage() {
  const dark = useDarkMode();
@@ -69,10 +69,10 @@ export default function SupportBoardsSettingsPage() {
  <Container size="xl" py="md" className="page-enter stagger-children">
  <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Support Boards
  </Title>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" mt={4}>
  Configure which Jira boards appear in the Support Queue dashboard
  </Text>
  </div>
@@ -80,7 +80,7 @@ export default function SupportBoardsSettingsPage() {
  leftSection={<IconPlus size={14} />}
  size="sm"
  onClick={openCreate}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}
+ style={{ backgroundColor: DEEP_BLUE }}
  >
  Add Board
  </Button>
@@ -88,7 +88,7 @@ export default function SupportBoardsSettingsPage() {
 
  {!jiraStatus?.configured && (
  <Alert color="yellow" icon={<IconAlertCircle size={16} />} mb="lg" radius="md"
- styles={{ message: { fontFamily: FONT_FAMILY } }}>
+ styles={{ message: { } }}>
  Jira is not configured. Please add your Jira credentials in Settings → Jira Credentials first.
  </Alert>
  )}
@@ -101,8 +101,8 @@ export default function SupportBoardsSettingsPage() {
  <IconHeadset size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Total Boards</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>{boards.length}</Text>
+ <Text size="xs" c="dimmed">Total Boards</Text>
+ <Text size="xl" fw={700} style={{ color: dark ? '#fff' : DEEP_BLUE }}>{boards.length}</Text>
  </div>
  </Group>
  </Paper>
@@ -112,8 +112,8 @@ export default function SupportBoardsSettingsPage() {
  <IconCheck size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Active</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: '#2b8a3e' }}>{activeCount}</Text>
+ <Text size="xs" c="dimmed">Active</Text>
+ <Text size="xl" fw={700} style={{ color: '#2b8a3e' }}>{activeCount}</Text>
  </div>
  </Group>
  </Paper>
@@ -123,8 +123,8 @@ export default function SupportBoardsSettingsPage() {
  <IconX size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Disabled</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: TEXT_DIM }}>{disabledCount}</Text>
+ <Text size="xs" c="dimmed">Disabled</Text>
+ <Text size="xl" fw={700} style={{ color: TEXT_DIM }}>{disabledCount}</Text>
  </div>
  </Group>
  </Paper>
@@ -140,7 +140,7 @@ export default function SupportBoardsSettingsPage() {
  <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
  <IconHeadset size={24} />
  </ThemeIcon>
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text c="dimmed">
  No support boards configured yet. Click "Add Board" to get started.
  </Text>
  </Box>
@@ -148,45 +148,45 @@ export default function SupportBoardsSettingsPage() {
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Board Name</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Project / Queue</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Stale After</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Alert Priorities</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, width: 90 }}>Actions</Table.Th>
+ <Table.Th>Board Name</Table.Th>
+ <Table.Th>Project / Queue</Table.Th>
+ <Table.Th>Stale After</Table.Th>
+ <Table.Th>Alert Priorities</Table.Th>
+ <Table.Th>Status</Table.Th>
+ <Table.Th style={{ width: 90 }}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {boards.map(b => (
  <Table.Tr key={b.id}>
  <Table.Td>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{b.name}</Text>
+ <Text size="sm" fw={600}>{b.name}</Text>
  </Table.Td>
  <Table.Td>
  {b.projectKey ? (
  <Group gap={4}>
- <Badge size="sm" variant="light" color="teal" style={{ fontFamily: FONT_FAMILY }}>
+ <Badge size="sm" variant="light" color="teal">
  {b.projectKey}
  </Badge>
  {b.queueId && (
- <Badge size="xs" variant="outline" color="gray" style={{ fontFamily: FONT_FAMILY }}>
+ <Badge size="xs" variant="outline" color="gray">
  Queue {b.queueId}
  </Badge>
  )}
  </Group>
  ) : (
- <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>SD #{b.boardId}</Text>
+ <Text size="sm" c="dimmed">SD #{b.boardId}</Text>
  )}
  </Table.Td>
  <Table.Td>
- <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed">
  {b.staleThresholdDays ?? 3} biz days
  </Text>
  </Table.Td>
  <Table.Td>
  <Group gap={4} wrap="wrap">
  {(b.alertPriorities ?? 'Blocker,Critical,Highest').split(',').map(p => p.trim()).filter(Boolean).map(p => (
- <Badge key={p} size="xs" variant="light" color="orange" style={{ fontFamily: FONT_FAMILY }}>{p}</Badge>
+ <Badge key={p} size="xs" variant="light" color="orange">{p}</Badge>
  ))}
  </Group>
  </Table.Td>
@@ -203,12 +203,16 @@ export default function SupportBoardsSettingsPage() {
  <Table.Td>
  <Group gap={4}>
  <Tooltip label="Edit">
- <ActionIcon variant="subtle" size="xs" color="blue" onClick={() => openEdit(b)}>
+ <ActionIcon variant="subtle" size="xs" color="blue" onClick={() => openEdit(b)}
+      aria-label="Edit"
+    >
  <IconPencil size={14} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Remove">
- <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteTarget(b)}>
+ <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteTarget(b)}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -240,11 +244,11 @@ export default function SupportBoardsSettingsPage() {
  <Modal
  opened={deleteTarget !== null}
  onClose={() => setDeleteTarget(null)}
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Remove Support Board</Text>}
+ title={<Text fw={600} style={{ color: COLOR_ERROR_DEEP }}>Remove Support Board</Text>}
  size="sm"
  centered
  >
- <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm">
  Remove <strong>{deleteTarget?.name}</strong> from the support queue? This only removes
  the configuration — no Jira data is deleted.
  </Text>
@@ -254,8 +258,8 @@ export default function SupportBoardsSettingsPage() {
  </Alert>
  )}
  <Group justify="flex-end" mt="md">
- <Button variant="subtle" onClick={() => setDeleteTarget(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
- <Button color="red" loading={deleteBoard.isPending} onClick={handleDelete} style={{ fontFamily: FONT_FAMILY }}>
+ <Button variant="subtle" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+ <Button color="red" loading={deleteBoard.isPending} onClick={handleDelete}>
  Remove
  </Button>
  </Group>
@@ -330,7 +334,7 @@ function BoardFormModal({
  opened={opened}
  onClose={onClose}
  title={
- <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text fw={600} style={{ color: dark ? '#fff' : DEEP_BLUE }}>
  {mode === 'create' ? 'Add Support Board' : `Edit — ${initial?.name}`}
  </Text>
  }
@@ -344,7 +348,7 @@ function BoardFormModal({
  value={name}
  onChange={e => setName(e.currentTarget.value)}
  required
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
 
  <Group grow align="flex-end">
@@ -354,7 +358,7 @@ function BoardFormModal({
  description="From the Jira URL: /projects/{key}/queues/..."
  value={projectKey}
  onChange={e => setProjectKey(e.currentTarget.value.toUpperCase())}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY }, description: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { }, description: { } }}
  />
  <TextInput
  label="Queue ID (optional)"
@@ -362,7 +366,7 @@ function BoardFormModal({
  description="From the URL: /queues/custom/{id}"
  value={queueId}
  onChange={e => setQueueId(e.currentTarget.value.replace(/\D/g, ''))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY }, description: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { }, description: { } }}
  />
  </Group>
 
@@ -374,7 +378,7 @@ function BoardFormModal({
  max={30}
  value={staleThresholdDays}
  onChange={v => setStaleThresholdDays(typeof v === 'number' ? v : 3)}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY }, description: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { }, description: { } }}
  />
 
  <MultiSelect
@@ -386,9 +390,9 @@ function BoardFormModal({
  placeholder="Select priorities…"
  clearable
  styles={{
- label: { fontFamily: FONT_FAMILY },
- input: { fontFamily: FONT_FAMILY },
- description: { fontFamily: FONT_FAMILY },
+ label: { },
+ input: { },
+ description: { },
  }}
  />
 
@@ -397,7 +401,7 @@ function BoardFormModal({
  label="Board active"
  checked={enabled}
  onChange={e => setEnabled(e.currentTarget.checked)}
- styles={{ label: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { } }}
  />
  )}
 
@@ -406,9 +410,9 @@ function BoardFormModal({
  )}
 
  <Group justify="flex-end" mt="xs">
- <Button variant="subtle" onClick={onClose} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
+ <Button variant="subtle" onClick={onClose}>Cancel</Button>
  <Button loading={saving} disabled={!canSave} onClick={handleSave}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  {mode === 'create' ? 'Add' : 'Save'}
  </Button>
  </Group>

@@ -12,7 +12,7 @@ import {
 import {
   useAdoSettings, useSaveAdoSettings, useAdoStatus, useAdoTestConnection,
 } from '../../api/azureDevOps';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, AQUA } from '../../brandTokens';
 
 export default function AzureDevOpsSettingsPage() {
   const { data: settings, isLoading } = useAdoSettings();
@@ -90,7 +90,7 @@ export default function AzureDevOpsSettingsPage() {
       {/* ── Header ── */}
       <Group justify="space-between" align="flex-end">
         <Box>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+          <Title order={2} c={DEEP_BLUE}>
             Azure DevOps
           </Title>
           <Text size="sm" c="dimmed" mt={2}>
@@ -122,11 +122,11 @@ export default function AzureDevOpsSettingsPage() {
       {/* ── Credentials form ── */}
       <Paper withBorder p="xl" radius="md">
         <Group gap="sm" mb="md">
-          <ThemeIcon size={34} radius="md" style={{ background: DEEP_BLUE }}>
+          <ThemeIcon size={34} radius="md" bg={DEEP_BLUE}>
             <IconBrandAzure size={18} color="white" />
           </ThemeIcon>
           <Box>
-            <Text fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+            <Text fw={700} c={DEEP_BLUE}>
               Organisation Credentials
             </Text>
             <Text size="xs" c="dimmed">
@@ -193,7 +193,7 @@ export default function AzureDevOpsSettingsPage() {
             onClick={handleSave}
             disabled={!dirty || save.isPending}
             loading={save.isPending}
-            style={{ background: AQUA }}
+            bg={AQUA}
             size="sm"
           >
             Save settings
@@ -215,7 +215,7 @@ export default function AzureDevOpsSettingsPage() {
       {/* ── Configured repos summary ── */}
       {configured && (status?.repos ?? []).length > 0 && (
         <Paper withBorder p="lg" radius="md">
-          <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE }}>
+          <Text fw={600} size="sm" mb="sm" c={DEEP_BLUE}>
             Configured repositories
           </Text>
           <Group gap="xs">

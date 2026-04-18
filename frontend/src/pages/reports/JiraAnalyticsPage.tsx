@@ -2,31 +2,31 @@ import { useState, useMemo, useCallback } from 'react';
 import {
  Text, Badge, Group, SegmentedControl, SimpleGrid, Paper, ThemeIcon,
  MultiSelect, Button, Stack, Tooltip, ActionIcon,
- Drawer, Table, ScrollArea, Collapse,
+ Drawer, Table, ScrollArea, Collapse
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
  IconRefresh, IconBug, IconClock, IconRocket, IconUsers,
- IconTrendingUp, IconCircleCheck, IconAlertTriangle, IconFlame,
+ IconAlertTriangle, IconFlame,
  IconPackage, IconCloudDownload, IconFilter,
- IconX, IconArrowRight, IconCategory, IconLayoutBoard,
+ IconX, IconArrowRight, IconCategory, IconLayoutBoard
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
  ResponsiveContainer, Legend, PieChart, Pie, Cell,
- AreaChart, Area,
+ AreaChart, Area
 } from 'recharts';
 import {
  useJiraAnalytics, useJiraAnalyticsFilters, useJiraSyncStatus, useTriggerJiraSync,
- type JiraAnalyticsData, type AnalyticsBreakdown,
+ type AnalyticsBreakdown
 } from '../../api/jira';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
 import ReportPageShell from '../../components/common/ReportPageShell';
 import { EmptyState } from '../../components/ui';
-import { AQUA_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, TEXT_SUBTLE} from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SHADOW, TEXT_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 /* ── Palette ──────────────────────────────────────────────────────────── */
@@ -38,12 +38,12 @@ const PIE_COLORS = [
 
 const PRIORITY_COLORS: Record<string, string> = {
  Highest: COLOR_ERROR_DARK, Critical: COLOR_ERROR_DARK, Blocker: COLOR_ERROR_DARK,
- High: COLOR_WARNING, Medium: COLOR_BLUE, Low: COLOR_GREEN, Lowest: TEXT_SUBTLE,
+ High: COLOR_WARNING, Medium: COLOR_BLUE, Low: COLOR_GREEN, Lowest: TEXT_SUBTLE
 };
 
 const STATUS_CATEGORY_COLORS: Record<string, string> = {
  'To Do': TEXT_SUBTLE, 'In Progress': COLOR_WARNING, Done: COLOR_GREEN,
- 'In Review': COLOR_VIOLET, Backlog: '#CBD5E1',
+ 'In Review': COLOR_VIOLET, Backlog: '#CBD5E1'
 };
 
 /* ── Keyframes ────────────────────────────────────────────────────────── */
@@ -72,8 +72,7 @@ function KpiCard({ label, value, unit, icon, color, subtitle, onClick }: {
  boxShadow: SHADOW.card,
  cursor: onClick ? 'pointer' : 'default',
  transition: 'all 0.2s ease',
- borderLeft: `4px solid ${color}`,
- }}
+ borderLeft: `4px solid ${color}`}}
  onClick={onClick}
  onMouseEnter={(e) => {
  if (onClick) {
@@ -92,17 +91,17 @@ function KpiCard({ label, value, unit, icon, color, subtitle, onClick }: {
  </ThemeIcon>
  <div style={{ flex: 1, minWidth: 0 }}>
  <Text size="xs" c="dimmed" tt="uppercase" fw={600}
- style={{ fontFamily: FONT_FAMILY, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+ style={{letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
  {label}
  </Text>
  <Group gap={6} align="baseline" wrap="nowrap">
  <Text fw={800}
- style={{ fontFamily: FONT_FAMILY, color: 'var(--pp-text)', lineHeight: 1.1, fontSize: '1.75rem' }}>
+ style={{color: 'var(--pp-text)', lineHeight: 1.1, fontSize: '1.75rem' }}>
  {value}
  </Text>
- {unit && <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{unit}</Text>}
+ {unit && <Text size="sm" c="dimmed" style={{ }}>{unit}</Text>}
  </Group>
- {subtitle && <Text size="xs" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>{subtitle}</Text>}
+ {subtitle && <Text size="xs" c="dimmed" mt={4} style={{ }}>{subtitle}</Text>}
  </div>
  {onClick && (
  <Tooltip label="Click to drill down" withArrow>
@@ -127,6 +126,7 @@ function DonutChart({ data, title, colorMap, onSliceClick, highlightNames, dark 
 
  return (
  <ChartCard title={title} minHeight={280}>
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={260}>
  <PieChart>
  <Pie
@@ -136,7 +136,7 @@ function DonutChart({ data, title, colorMap, onSliceClick, highlightNames, dark 
  dataKey="count"
  nameKey="name"
  paddingAngle={2}
- style={{ fontFamily: FONT_FAMILY, fontSize: 10, cursor: onSliceClick ? 'pointer' : 'default' }}
+ style={{fontSize: 10, cursor: onSliceClick ? 'pointer' : 'default' }}
  label={({ name, percent }) =>
  `${name.length > 12 ? name.slice(0, 12) + '…' : name} ${(percent * 100).toFixed(0)}%`
  }
@@ -158,13 +158,14 @@ function DonutChart({ data, title, colorMap, onSliceClick, highlightNames, dark 
  })}
  </Pie>
  <RTooltip
- contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }}
+ contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }}
  formatter={(value: number, name: string) => [
  `${value} (${total > 0 ? Math.round(value * 100 / total) : 0}%)`, name,
  ]}
  />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  );
 }
@@ -181,15 +182,16 @@ function HorizontalBarChart({ data, title, dataKey, barColor, maxItems = 15, onB
 
  return (
  <ChartCard title={title} minHeight={height}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={height}>
  <BarChart data={sliced} layout="vertical" margin={{ top: 4, right: 30, bottom: 4, left: 120 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}} />
  <YAxis
  type="category" dataKey="name" width={110}
- tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
  <Bar
  dataKey={dataKey}
  fill={barColor ?? AQUA}
@@ -199,6 +201,7 @@ function HorizontalBarChart({ data, title, dataKey, barColor, maxItems = 15, onB
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  );
 }
@@ -231,24 +234,24 @@ function DrillDrawer({ opened, onClose, title, breakdowns }: {
  return (
  <Drawer opened={opened} onClose={onClose} title={title} position="right"
  size="xl" overlayProps={{ blur: 2, backgroundOpacity: 0.15 }}
- styles={{ title: { fontFamily: FONT_FAMILY, fontWeight: 700, color: 'var(--pp-text)' } }}>
+ styles={{ title: {fontWeight: 700, color: 'var(--pp-text)' } }}>
  <Stack gap="sm">
  {/* Summary row */}
  <Group gap="lg">
  <Paper withBorder p="xs" radius="sm" style={{ borderLeft: `3px solid ${AQUA}` }}>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Total Issues</Text>
- <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: 'var(--pp-text)' }}>{totalCount}</Text>
+ <Text size="xs" c="dimmed" style={{ }}>Total Issues</Text>
+ <Text fw={700} size="lg" style={{color: 'var(--pp-text)' }}>{totalCount}</Text>
  </Paper>
  {hasSp && (
  <Paper withBorder p="xs" radius="sm" style={{ borderLeft: '3px solid #7C3AED' }}>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Story Points</Text>
- <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>{totalSp}</Text>
+ <Text size="xs" c="dimmed" style={{ }}>Story Points</Text>
+ <Text fw={700} size="lg" style={{color: dark ? '#fff' : DEEP_BLUE }}>{totalSp}</Text>
  </Paper>
  )}
  {hasHours && (
  <Paper withBorder p="xs" radius="sm" style={{ borderLeft: '3px solid #059669' }}>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Hours</Text>
- <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>{totalHrs.toFixed(1)}</Text>
+ <Text size="xs" c="dimmed" style={{ }}>Hours</Text>
+ <Text fw={700} size="lg" style={{color: dark ? '#fff' : DEEP_BLUE }}>{totalHrs.toFixed(1)}</Text>
  </Paper>
  )}
  </Group>
@@ -259,33 +262,33 @@ function DrillDrawer({ opened, onClose, title, breakdowns }: {
  value={tab}
  onChange={(v) => setTab(v as DrillTab)}
  data={tabs.filter(t => (breakdowns[t.key]?.length ?? 0) > 0).map(t => ({ value: t.key, label: t.label }))}
- styles={{ root: { fontFamily: FONT_FAMILY } }}
+ styles={{ root: { } }}
  />
 
  <ScrollArea h="calc(100vh - 220px)">
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Name</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>Issues</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>%</Table.Th>
- {hasSp && <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>SP</Table.Th>}
- {hasHours && <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>Hours</Table.Th>}
+ <Table.Th style={{ }}>Name</Table.Th>
+ <Table.Th style={{textAlign: 'right' }}>Issues</Table.Th>
+ <Table.Th style={{textAlign: 'right' }}>%</Table.Th>
+ {hasSp && <Table.Th style={{textAlign: 'right' }}>SP</Table.Th>}
+ {hasHours && <Table.Th style={{textAlign: 'right' }}>Hours</Table.Th>}
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {sorted.map((row, i) => (
  <Table.Tr key={i}>
- <Table.Td style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>{row.name}</Table.Td>
- <Table.Td style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>{row.count}</Table.Td>
- <Table.Td style={{ fontFamily: FONT_FAMILY, textAlign: 'right', color: DEEP_BLUE_TINTS[50] }}>
+ <Table.Td style={{fontWeight: 500 }}>{row.name}</Table.Td>
+ <Table.Td style={{textAlign: 'right' }}>{row.count}</Table.Td>
+ <Table.Td style={{textAlign: 'right', color: DEEP_BLUE_TINTS[50] }}>
  {totalCount > 0 ? `${Math.round(row.count * 100 / totalCount)}%` : '–'}
  </Table.Td>
  {hasSp && (
- <Table.Td style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>{row.sp ?? '–'}</Table.Td>
+ <Table.Td style={{textAlign: 'right' }}>{row.sp ?? '–'}</Table.Td>
  )}
  {hasHours && (
- <Table.Td style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>
+ <Table.Td style={{textAlign: 'right' }}>
  {row.hours != null ? row.hours.toFixed(1) : '–'}
  </Table.Td>
  )}
@@ -314,23 +317,25 @@ function ActiveFilters({ filters, onClear, onClearAll }: {
  if (!hasAny) return null;
  return (
  <Group gap={6} mt="xs" style={{ animation: 'ja-slide 0.2s ease-out' }}>
- <Text size="xs" c="dimmed" fw={600} style={{ fontFamily: FONT_FAMILY }}>Active:</Text>
+ <Text size="xs" c="dimmed" fw={600} style={{ }}>Active:</Text>
  {filters.flatMap(f =>
  f.values.map(v => (
  <Badge key={`${f.key}-${v}`} size="sm" variant="light" color="blue" radius="sm"
  rightSection={
  <ActionIcon size={14} variant="transparent" color="blue"
- onClick={() => onClear(f.key, v)}>
+ onClick={() => onClear(f.key, v)}
+      aria-label="Close"
+    >
  <IconX size={10} />
  </ActionIcon>
  }
- styles={{ root: { fontFamily: FONT_FAMILY, cursor: 'default', paddingRight: 4 } }}>
+ styles={{ root: {cursor: 'default', paddingRight: 4 } }}>
  {f.label}: {v}
  </Badge>
  ))
  )}
  <Button variant="subtle" size="compact-xs" color="red" onClick={onClearAll}
- style={{ fontFamily: FONT_FAMILY }}>
+ style={{ }}>
  Clear all
  </Button>
  </Group>
@@ -444,7 +449,7 @@ export default function JiraAnalyticsPage() {
  byType: data.byType,
  byStatus: data.byStatus,
  byPriority: data.byPriority,
- byPod: data.byPod,
+ byPod: data.byPod
  } as Record<string, AnalyticsBreakdown[]>;
  }, [data]);
 
@@ -492,7 +497,7 @@ export default function JiraAnalyticsPage() {
  {/* ── Primary controls row ── */}
  <Group gap="md" align="flex-end" wrap="wrap">
  <div>
- <Text size="xs" c="dimmed" mb={4} style={{ fontFamily: FONT_FAMILY }}>Lookback</Text>
+ <Text size="xs" c="dimmed" mb={4} style={{ }}>Lookback</Text>
  <SegmentedControl
  value={String(months)}
  onChange={v => setMonths(Number(v))}
@@ -503,13 +508,13 @@ export default function JiraAnalyticsPage() {
  { value: '12', label: '12 mo' },
  ]}
  size="sm"
- styles={{ root: { fontFamily: FONT_FAMILY } }}
+ styles={{ root: { } }}
  />
  </div>
 
  <Tooltip label={`Covering ${data.projectKeys.length} Jira projects across ${data.podNames.length} PODs`}>
  <Badge size="lg" variant="light" color="blue" radius="sm"
- styles={{ root: { fontFamily: FONT_FAMILY, cursor: 'help' } }}>
+ styles={{ root: {cursor: 'help' } }}>
  {data.projectKeys.length} Projects
  </Badge>
  </Tooltip>
@@ -523,7 +528,7 @@ export default function JiraAnalyticsPage() {
  <Badge size="xs" circle color="blue" variant="filled">{activeFilterCount}</Badge>
  ) : undefined}
  onClick={toggleFilters}
- style={{ fontFamily: FONT_FAMILY }}>
+ style={{ }}>
  Filters
  </Button>
 
@@ -531,7 +536,7 @@ export default function JiraAnalyticsPage() {
  leftSection={<IconRefresh size={15} />}
  loading={isFetching}
  onClick={() => refetch()}
- style={{ fontFamily: FONT_FAMILY }}>
+ style={{ }}>
  Refresh
  </Button>
  <Tooltip label={syncStatus?.syncing ? 'Sync in progress…' : 'Sync Jira data to local DB'}>
@@ -539,12 +544,12 @@ export default function JiraAnalyticsPage() {
  leftSection={<IconCloudDownload size={15} />}
  loading={syncStatus?.syncing || triggerSync.isPending}
  onClick={() => triggerSync.mutate(false, { onSuccess: () => notifications.show({ title: 'Sync started', message: 'Jira sync is running.', color: 'teal' }), onError: (e: unknown) => notifications.show({ title: 'Sync failed', message: (e as Error).message || 'Could not start sync.', color: 'red' }) })}
- style={{ fontFamily: FONT_FAMILY }}>
+ style={{ }}>
  {syncStatus?.syncing ? 'Syncing…' : 'Sync'}
  </Button>
  </Tooltip>
  {data?.lastSyncAt && (
- <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap'}}>
  Last synced: {data.lastSyncAt}
  </Text>
  )}
@@ -558,7 +563,7 @@ export default function JiraAnalyticsPage() {
  <div>
  <Group gap={6} mb={4}>
  <IconUsers size={13} color={dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]} />
- <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>POD / Team</Text>
+ <Text size="xs" fw={600} c="dimmed" style={{ }}>POD / Team</Text>
  </Group>
  <MultiSelect
  data={podOptions}
@@ -568,13 +573,13 @@ export default function JiraAnalyticsPage() {
  size="xs"
  clearable
  maxDropdownHeight={200}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
  </div>
  <div>
  <Group gap={6} mb={4}>
  <IconCategory size={13} color={dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]} />
- <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Issue Type</Text>
+ <Text size="xs" fw={600} c="dimmed" style={{ }}>Issue Type</Text>
  </Group>
  <MultiSelect
  data={typeOptions}
@@ -584,13 +589,13 @@ export default function JiraAnalyticsPage() {
  size="xs"
  clearable
  maxDropdownHeight={200}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
  </div>
  <div>
  <Group gap={6} mb={4}>
  <IconPackage size={13} color={dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]} />
- <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Release / Fix Version</Text>
+ <Text size="xs" fw={600} c="dimmed" style={{ }}>Release / Fix Version</Text>
  </Group>
  <MultiSelect
  data={releaseOptions}
@@ -601,13 +606,13 @@ export default function JiraAnalyticsPage() {
  clearable
  searchable
  maxDropdownHeight={200}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
  </div>
  <div>
  <Group gap={6} mb={4}>
  <IconLayoutBoard size={13} color={dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]} />
- <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Jira Board</Text>
+ <Text size="xs" fw={600} c="dimmed" style={{ }}>Jira Board</Text>
  </Group>
  <MultiSelect
  data={boardOptions}
@@ -618,13 +623,13 @@ export default function JiraAnalyticsPage() {
  clearable
  searchable
  maxDropdownHeight={200}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
  </div>
  <div>
  <Group gap={6} mb={4}>
  <IconRocket size={13} color={dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]} />
- <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Sprint</Text>
+ <Text size="xs" fw={600} c="dimmed" style={{ }}>Sprint</Text>
  </Group>
  <MultiSelect
  data={sprintOptions}
@@ -635,7 +640,7 @@ export default function JiraAnalyticsPage() {
  clearable
  searchable
  maxDropdownHeight={200}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
  </div>
  </SimpleGrid>
@@ -700,6 +705,7 @@ export default function JiraAnalyticsPage() {
  {/* ── Row 2: Created vs Resolved Trend ───────────────────────── */}
  <div style={{ animation: 'ja-slide 0.35s ease-out 0.1s both' }}>
  <ChartCard title="Created vs Resolved — Weekly Trend" minHeight={300}>
+ <div role="img" aria-label="Area chart">
  <ResponsiveContainer width="100%" height={300}>
  <AreaChart data={data.createdVsResolved} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
  <defs>
@@ -713,18 +719,19 @@ export default function JiraAnalyticsPage() {
  </linearGradient>
  </defs>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis dataKey="week" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <XAxis dataKey="week" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} angle={-30} textAnchor="end" height={50} />
- <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} allowDecimals={false} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <Legend wrapperStyle={{fontSize: 12 }} />
  <Area animationDuration={600} type="monotone" dataKey="created" name="Created" stroke={COLOR_ERROR}
  strokeWidth={2} fill="url(#createdGrad)" dot={{ r: 3, fill: COLOR_ERROR }} />
  <Area animationDuration={600} type="monotone" dataKey="resolved" name="Resolved" stroke={AQUA_HEX}
  strokeWidth={2} fill="url(#resolvedGrad)" dot={{ r: 3, fill: AQUA }} />
  </AreaChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </div>
 
@@ -732,23 +739,25 @@ export default function JiraAnalyticsPage() {
  {data.bySprint && data.bySprint.length > 0 && (
  <div style={{ animation: 'ja-slide 0.35s ease-out 0.15s both' }}>
  <ChartCard title="Sprint Comparison — Planned vs Completed Story Points (Last 6 Sprints)" minHeight={300}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <BarChart data={data.bySprint.slice(-6).map(s => ({
  name: s.name,
  Planned: s.sp ?? 0,
- Completed: s.count ?? 0,
+ Completed: s.count ?? 0
  }))} margin={{ top: 8, right: 16, bottom: 40, left: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis dataKey="name" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <XAxis dataKey="name" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} angle={-45} textAnchor="end" height={60} />
- <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} allowDecimals={false} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <Legend wrapperStyle={{fontSize: 12 }} />
  <Bar animationDuration={600} dataKey="Planned" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
  <Bar animationDuration={600} dataKey="Completed" fill={COLOR_EMERALD} radius={[4, 4, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </div>
  )}
@@ -778,67 +787,75 @@ export default function JiraAnalyticsPage() {
  {/* ── Row 4: Workload + Cycle Time ───────────────────────────── */}
  <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
  <ChartCard title="Workload — Open Issues by Assignee" minHeight={Math.max(250, data.workload.length * 32 + 40)}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={Math.max(250, data.workload.length * 32 + 40)}>
  <BarChart data={data.workload.slice(0, 15)} layout="vertical"
  margin={{ top: 4, right: 30, bottom: 4, left: 100 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}} />
  <YAxis type="category" dataKey="assignee" width={95}
- tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />
+ tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <Legend wrapperStyle={{fontSize: 11 }} />
  <Bar animationDuration={600} dataKey="total" name="Total" fill={AQUA_HEX} radius={[0, 4, 4, 0]} stackId="a" />
  <Bar animationDuration={600} dataKey="bugs" name="Bugs" fill={COLOR_ERROR} radius={[0, 4, 4, 0]} stackId="b" />
  <Bar animationDuration={600} dataKey="highPriority" name="High Priority" fill={COLOR_WARNING} radius={[0, 4, 4, 0]} stackId="c" />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  <ChartCard title="Cycle Time Distribution — Resolved Issues" minHeight={250}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={250}>
  <BarChart data={data.cycleTime} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} />
- <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} allowDecimals={false} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
  <Bar animationDuration={600} dataKey="count" name="Issues" fill={COLOR_VIOLET} radius={[4, 4, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </SimpleGrid>
 
  {/* ── Row 5: Aging + Bug Trend ───────────────────────────────── */}
  <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
  <ChartCard title="Issue Aging — Open Issues by Age" minHeight={250}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={250}>
  <BarChart data={data.aging} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} />
- <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} allowDecimals={false} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
  <Bar animationDuration={600} dataKey="count" name="Issues" fill={COLOR_WARNING} radius={[4, 4, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  <ChartCard title="Bug Trend — Monthly Created Bugs vs Total" minHeight={250}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={250}>
  <BarChart data={data.bugTrend} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis dataKey="month" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <XAxis dataKey="month" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} />
- <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ <YAxis tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}}
  tickLine={false} allowDecimals={false} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <Legend wrapperStyle={{fontSize: 12 }} />
  <Bar animationDuration={600} dataKey="total" name="Total Created" fill={DEEP_BLUE_TINTS[30]} radius={[4, 4, 0, 0]} />
  <Bar animationDuration={600} dataKey="bugs" name="Bugs" fill={COLOR_ERROR} radius={[4, 4, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </SimpleGrid>
 
@@ -867,21 +884,23 @@ export default function JiraAnalyticsPage() {
  {data.byAssignee.length > 0 && (
  <ChartCard title="Assignee Leaderboard — Issues, Story Points & Hours"
  minHeight={Math.max(250, Math.min(data.byAssignee.length, 15) * 32 + 40)}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%"
  height={Math.max(250, Math.min(data.byAssignee.length, 15) * 32 + 40)}>
  <BarChart data={data.byAssignee.slice(0, 15)} layout="vertical"
  margin={{ top: 4, right: 30, bottom: 4, left: 100 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? DEEP_BLUE_TINTS[30] : DEEP_BLUE_TINTS[10]} />
- <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
+ <XAxis type="number" tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}} />
  <YAxis type="category" dataKey="name" width={95}
- tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }} />
- <RTooltip contentStyle={{ fontFamily: FONT_FAMILY, fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 11 }} />
+ tick={{ fontSize: 11, fill: dark ? DEEP_BLUE_TINTS[40] : DEEP_BLUE_TINTS[60]}} />
+ <RTooltip contentStyle={{fontSize: 12, borderRadius: 8, boxShadow: SHADOW.md }} />
+ <Legend wrapperStyle={{fontSize: 11 }} />
  <Bar animationDuration={600} dataKey="count" name="Issues" fill={AQUA_HEX} radius={[0, 4, 4, 0]} />
  <Bar animationDuration={600} dataKey="sp" name="Story Points" fill={COLOR_VIOLET} radius={[0, 4, 4, 0]} />
  <Bar animationDuration={600} dataKey="hours" name="Hours" fill={COLOR_WARNING} radius={[0, 4, 4, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
  </ReportPageShell>

@@ -1,4 +1,4 @@
-import React from 'react';
+import _React from 'react';
 import { Paper, Text, Group, Stack } from '@mantine/core';
 import { IconTrendingUp, IconTrendingDown, IconMinus } from '@tabler/icons-react';
 import { BORDER_SOFT, COLOR_ERROR_DARK, COLOR_GREEN_STRONG, FONT_FAMILY, GRAY_200, GRAY_400, TEXT_SECONDARY} from '../../brandTokens';
@@ -23,7 +23,7 @@ export default function KpiCard({
   value,
   trend,
   trendValue,
-  color = 'blue',
+  color: _color = 'blue',
 }: KpiCardProps) {
   const dark = useDarkMode();
   const trendConfig = trend ? TREND_CONFIG[trend] : null;
@@ -45,7 +45,6 @@ export default function KpiCard({
           tt="uppercase"
           style={{
             color: dark ? GRAY_400 : TEXT_SECONDARY,
-            fontFamily: FONT_FAMILY,
             letterSpacing: '0.05em',
           }}
         >
@@ -57,7 +56,6 @@ export default function KpiCard({
             size="xl"
             fw={700}
             style={{
-              fontFamily: FONT_FAMILY,
               color: dark ? GRAY_200 : '#111827',
               lineHeight: 1,
             }}

@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
- IconPlus, IconEdit, IconTrash, IconRocket, IconInfoCircle, IconExternalLink,
+ IconPlus, IconEdit, IconTrash, IconInfoCircle, IconExternalLink,
  IconAlertTriangle, IconChevronDown, IconChevronUp, IconCheck, IconPackage,
 } from '@tabler/icons-react';
 import { PPPageLayout } from '../components/pp';
@@ -16,7 +16,7 @@ import { useReleases, useCreateRelease, useUpdateRelease, useDeleteRelease } fro
 import { useSearchReleaseVersion, useJiraStatus, useAllFixVersions, type ReleaseMetrics, type IssueRow } from '../api/jira';
 import type { ReleaseCalendarRequest, ReleaseCalendarResponse } from '../types/project';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import { Title } from '@mantine/core';
 
 // ── Issue-card colours ────────────────────────────────────────────────────────
@@ -90,7 +90,9 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  {donePct}% Done
  </Badge>
  <ActionIcon variant="subtle" style={{ color: 'white' }} size="sm"
- onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}>
+ onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
+      aria-label="Expand"
+    >
  {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
  </ActionIcon>
  </Group>
@@ -134,12 +136,12 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table fz="xs" withColumnBorders highlightOnHover>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ minWidth: 90 }}>Key</Table.Th>
- <Table.Th style={{ minWidth: 70 }}>Type</Table.Th>
- <Table.Th style={{ minWidth: 320 }}>Summary</Table.Th>
- <Table.Th style={{ minWidth: 80 }}>Status</Table.Th>
- <Table.Th style={{ minWidth: 120 }}>Assignee</Table.Th>
- <Table.Th style={{ minWidth: 40, textAlign: 'right' }}>SP</Table.Th>
+ <Table.Th miw={90}>Key</Table.Th>
+ <Table.Th miw={70}>Type</Table.Th>
+ <Table.Th miw={320}>Summary</Table.Th>
+ <Table.Th miw={80}>Status</Table.Th>
+ <Table.Th miw={120}>Assignee</Table.Th>
+ <Table.Th miw={40} ta="right">SP</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -389,8 +391,12 @@ function ReleaseTable({ releases, onEdit, onDelete, onView, highlightCurrent }: 
  <Table.Td c="dimmed">{r.notes ?? '-'}</Table.Td>
  <Table.Td>
  <Group gap="xs" onClick={e => e.stopPropagation()}>
- <ActionIcon variant="subtle" onClick={() => onEdit(r)}><IconEdit size={14} /></ActionIcon>
- <ActionIcon color="red" variant="subtle" onClick={() => onDelete(r.id)}><IconTrash size={14} /></ActionIcon>
+ <ActionIcon variant="subtle" onClick={() => onEdit(r)}
+      aria-label="Edit"
+    ><IconEdit size={14} /></ActionIcon>
+ <ActionIcon color="red" variant="subtle" onClick={() => onDelete(r.id)}
+      aria-label="Delete"
+    ><IconTrash size={14} /></ActionIcon>
  </Group>
  </Table.Td>
  </Table.Tr>
@@ -402,7 +408,6 @@ function ReleaseTable({ releases, onEdit, onDelete, onView, highlightCurrent }: 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ReleaseCalendarPage() {
- const isDark = useDarkMode();
  const { data: releases, isLoading } = useReleases();
  const createRelease = useCreateRelease();
  const updateRelease = useUpdateRelease();

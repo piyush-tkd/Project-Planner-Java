@@ -10,11 +10,11 @@
  */
 import { useRef, useCallback } from 'react';
 import {
-  Paper, Text, Group, ActionIcon, Modal, Box, Tooltip,
+  Paper, Text, Group, ActionIcon, Modal, Box, Tooltip
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconMaximize, IconCamera } from '@tabler/icons-react';
-import { DEEP_BLUE, FONT_FAMILY, SHADOW } from '../../brandTokens';
+import { DEEP_BLUE, SHADOW } from '../../brandTokens';
 
 interface ChartCardProps {
   title: string;
@@ -139,7 +139,7 @@ export default function ChartCard({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   colspan: _colspan,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  icon: _icon,
+  icon: _icon
 }: ChartCardProps) {
   const [zoomed, { open: openZoom, close: closeZoom }] = useDisclosure(false);
   // Two separate refs — one for the inline card, one for the modal
@@ -156,12 +156,16 @@ export default function ChartCard({
     <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
       {headerRight}
       <Tooltip label="Download snapshot" withArrow fz="xs">
-        <ActionIcon size="xs" variant="subtle" color="gray" onClick={handleSnapshot}>
+        <ActionIcon size="xs" variant="subtle" color="gray" onClick={handleSnapshot}
+      aria-label="Camera"
+    >
           <IconCamera size={13} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label="Expand" withArrow fz="xs">
-        <ActionIcon size="xs" variant="subtle" color="gray" onClick={openZoom}>
+        <ActionIcon size="xs" variant="subtle" color="gray" onClick={openZoom}
+      aria-label="Maximize"
+    >
           <IconMaximize size={13} />
         </ActionIcon>
       </Tooltip>
@@ -178,7 +182,7 @@ export default function ChartCard({
         className="chart-reveal"
         style={{
           transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-          boxShadow: SHADOW.card,
+          boxShadow: SHADOW.card
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.boxShadow = SHADOW.cardHover;
@@ -191,11 +195,11 @@ export default function ChartCard({
       >
         <Group justify="space-between" mb="sm" wrap="nowrap" align="flex-start">
           <div>
-            <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+            <Text fw={600} size="sm">
               {title}
             </Text>
             {subtitle && (
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed">
                 {subtitle}
               </Text>
             )}
@@ -224,7 +228,9 @@ export default function ChartCard({
       >
         <Group justify="flex-end" mb="xs">
           <Tooltip label="Download snapshot" withArrow fz="xs">
-            <ActionIcon size="sm" variant="light" color="gray" onClick={handleSnapshot}>
+            <ActionIcon size="sm" variant="light" color="gray" onClick={handleSnapshot}
+      aria-label="Camera"
+    >
               <IconCamera size={15} />
             </ActionIcon>
           </Tooltip>

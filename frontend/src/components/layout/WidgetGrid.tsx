@@ -197,7 +197,9 @@ export default function WidgetGrid({ pageKey, children, customizeOpen: externalO
                onDragOver={e => e.preventDefault()}>
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={600}>All widgets — drag to reorder, eye to hide/show</Text>
-            <ActionIcon size="xs" variant="subtle" onClick={() => setCustomizeOpen(false)}>
+            <ActionIcon size="xs" variant="subtle" onClick={() => setCustomizeOpen(false)}
+      aria-label="Close"
+    >
               <IconX size={13} />
             </ActionIcon>
           </Group>
@@ -234,6 +236,7 @@ export default function WidgetGrid({ pageKey, children, customizeOpen: externalO
                     <ActionIcon
                       size="xs" variant="subtle" color={isHidden ? 'gray' : 'blue'}
                       onClick={e => { e.stopPropagation(); toggleHide(id); }}
+                      aria-label="View"
                     >
                       {isHidden ? <IconEyeOff size={13} /> : <IconEye size={13} />}
                     </ActionIcon>
@@ -310,6 +313,7 @@ export default function WidgetGrid({ pageKey, children, customizeOpen: externalO
                 <ActionIcon
                   size="xs" variant="subtle" color="gray"
                   onClick={e => { e.stopPropagation(); toggleHide(id); }}
+                  aria-label="View"
                 >
                   <IconEyeOff size={12} />
                 </ActionIcon>

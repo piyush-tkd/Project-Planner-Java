@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   Text, Stack, Paper, Tabs, Badge, Group, Box,
-  ActionIcon, Anchor, ThemeIcon, Center, Divider, Button,
-  Tooltip, ScrollArea,
+  ActionIcon, ThemeIcon, Center, Button,
+  Tooltip,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import {
@@ -11,10 +11,10 @@ import {
   IconExternalLink, IconX, IconCircleCheck,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { AQUA, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, FONT_FAMILY, SURFACE_RED_FAINT, BORDER_SOFT, DARK_BORDER, SURFACE_ORANGE, SURFACE_BLUE} from '../brandTokens';
+import { COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, FONT_FAMILY, SURFACE_RED_FAINT, BORDER_SOFT, DARK_BORDER, SURFACE_ORANGE, SURFACE_BLUE} from '../brandTokens';
 import { useAlertCounts }          from '../hooks/useAlertCounts';
 import { useDarkMode }             from '../hooks/useDarkMode';
-import { useJiraStatus, SupportTicket } from '../api/jira';
+import { useJiraStatus } from '../api/jira';
 import { useProjects }             from '../api/projects';
 import { useCapacityDemandSummary } from '../api/reports';
 import { useAllApprovals, usePendingApprovals, describeProposedChange } from '../api/projectApprovals';
@@ -385,7 +385,7 @@ function ItemFeed({
 // ── Severity group ────────────────────────────────────────────────────────────
 
 function SeverityGroup({
-  label, color, items, onDismiss, onNavigate,
+  label, items, onDismiss, onNavigate,
 }: {
   label: string;
   color: string;
@@ -475,7 +475,9 @@ function ItemRow({
           {item.jiraUrl && (
             <Tooltip label="Open in Jira" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray"
-                component="a" href={item.jiraUrl} target="_blank" rel="noopener">
+                component="a" href={item.jiraUrl} target="_blank" rel="noopener"
+      aria-label="Open in new tab"
+    >
                 <IconExternalLink size={13} />
               </ActionIcon>
             </Tooltip>
@@ -483,14 +485,18 @@ function ItemRow({
           {item.appUrl && (
             <Tooltip label="View in app" withArrow>
               <ActionIcon size="sm" variant="subtle" color="blue"
-                onClick={() => onNavigate(item.appUrl!)}>
+                onClick={() => onNavigate(item.appUrl!)}
+      aria-label="Open in new tab"
+    >
                 <IconExternalLink size={13} />
               </ActionIcon>
             </Tooltip>
           )}
           <Tooltip label="Dismiss" withArrow>
             <ActionIcon size="sm" variant="subtle" color="gray"
-              onClick={() => onDismiss(item)}>
+              onClick={() => onDismiss(item)}
+      aria-label="Close"
+    >
               <IconX size={13} />
             </ActionIcon>
           </Tooltip>

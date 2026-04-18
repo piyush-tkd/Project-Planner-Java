@@ -7,7 +7,7 @@ import {
 import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
-  IconPlus, IconHistory, IconCheck, IconX,
+  IconPlus, IconHistory,
   IconTrash, IconUsers, IconAlertCircle,
 } from '@tabler/icons-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -21,12 +21,9 @@ import {
   useActivateScenario,
   useApproveScenario,
   useDeleteScenario,
-  type Scenario,
-  type ScenarioChange,
-  type ScenarioSnapshot,
 } from '../api/scenarios';
 import {
-  COLOR_BLUE, COLOR_GREEN, COLOR_ORANGE, COLOR_VIOLET,
+  COLOR_BLUE, COLOR_GREEN, COLOR_ORANGE,
   SURFACE_LIGHT, TEXT_SUBTLE, BORDER_STRONG,
 } from '../brandTokens';
 
@@ -270,6 +267,7 @@ export default function ScenarioPlanningPage() {
                   ) : snapshots.length > 0 ? (
                     <Box>
                       <Text fw={600} size="sm" mb="sm">Headcount Projection</Text>
+                      <div role="img" aria-label="Area chart">
                       <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={snapshots}>
                           <defs>
@@ -297,6 +295,7 @@ export default function ScenarioPlanningPage() {
                           />
                         </AreaChart>
                       </ResponsiveContainer>
+                      </div>
                     </Box>
                   ) : null}
 

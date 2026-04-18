@@ -9,14 +9,14 @@
  *  • Admin section links to the consolidated /settings/org hub
  */
 import { useMemo } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useComputedColorScheme } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { IconHome, IconChevronRight, IconArrowLeft } from '@tabler/icons-react';
 import apiClient from '../../api/client';
 import {
-  DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS,
-  DEEP_BLUE_TINTS, BORDER_DEFAULT, SURFACE_SIDEBAR,
+  DEEP_BLUE, AQUA, AQUA_TINTS,
+  DEEP_BLUE_TINTS, BORDER_DEFAULT, SURFACE_SIDEBAR
 } from '../../brandTokens';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -40,7 +40,7 @@ const SEC = {
   PLANNING:  { label: 'Planning',  path: '/calendar' } as Crumb,
   INTEG:     { label: 'Delivery',  path: '/jira-pods' } as Crumb,
   SIM:       { label: 'Tools',     path: '/custom-dashboard' } as Crumb,
-  ADMIN:     { label: 'Admin',     path: '/settings/org' } as Crumb,
+  ADMIN:     { label: 'Admin',     path: '/settings/org' } as Crumb
 };
 
 /* ── Full route trail map ───────────────────────────────────────────── */
@@ -172,7 +172,7 @@ const ROUTE_TRAILS: Record<string, Crumb[]> = {
   '/custom-dashboard':                     [H, SEC.SIM,       { label: 'Custom Dashboard',           path: '/custom-dashboard' }],
   '/approvals':                            [H, SEC.STRATEGY,  { label: 'Approval Queue',             path: '/approvals' }],
   '/bulk-import':                          [H, SEC.SIM,       { label: 'Bulk Import',                path: '/bulk-import' }],
-  '/advanced-timeline':                    [H, SEC.PLANNING,  { label: 'Advanced Timeline',          path: '/advanced-timeline' }],
+  '/advanced-timeline':                    [H, SEC.PLANNING,  { label: 'Advanced Timeline',          path: '/advanced-timeline' }]
 };
 
 /* ── Resolve a live pathname against the trail map ─────────────────── */
@@ -197,7 +197,7 @@ function resolveTrail(pathname: string, search?: string): Crumb[] {
       H,
       ...parts.map((seg, i) => ({
         label: seg.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        path: '/' + parts.slice(0, i + 1).join('/'),
+        path: '/' + parts.slice(0, i + 1).join('/')
       })),
     ];
   }
@@ -228,14 +228,14 @@ function useDynamicLabel(pathname: string): string | null {
     queryKey: ['breadcrumb-project', entityId],
     queryFn: () => apiClient.get(`/projects/${entityId}`).then(r => r.data),
     enabled: isProjectDetail && !!entityId,
-    staleTime: 5 * 60_000,
+    staleTime: 5 * 60_000
   });
 
   const { data: pod } = useQuery<{ name: string }>({
     queryKey: ['breadcrumb-pod', entityId],
     queryFn: () => apiClient.get(`/pods/${entityId}`).then(r => r.data),
     enabled: (isPodDetail || isJiraPodDetail) && !!entityId,
-    staleTime: 5 * 60_000,
+    staleTime: 5 * 60_000
   });
 
   if (isProjectDetail && project?.name) return project.name;
@@ -276,18 +276,17 @@ export default function GlobalBreadcrumb() {
     background: isDark ? 'rgba(255,255,255,0.04)' : SURFACE_SIDEBAR,
     borderRadius: 10,
     border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : BORDER_DEFAULT}`,
-    fontFamily: FONT_FAMILY,
     fontSize: 13,
     lineHeight: '20px',
     flexWrap: 'wrap',
-    backdropFilter: isDark ? 'blur(8px)' : undefined,
+    backdropFilter: isDark ? 'blur(8px)' : undefined
   };
 
   const sepStyle: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center',
     margin: '0 3px',
     color: isDark ? 'rgba(255,255,255,0.2)' : DEEP_BLUE_TINTS[20],
-    flexShrink: 0,
+    flexShrink: 0
   };
 
   const linkStyle: React.CSSProperties = {
@@ -299,7 +298,7 @@ export default function GlobalBreadcrumb() {
     padding: '2px 5px',
     fontSize: 12,
     fontWeight: 500,
-    transition: 'background-color 150ms ease, color 150ms ease',
+    transition: 'background-color 150ms ease, color 150ms ease'
   };
 
   const sectionStyle: React.CSSProperties = {
@@ -308,7 +307,7 @@ export default function GlobalBreadcrumb() {
     fontWeight: 600,
     fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: '0.04em',
+    letterSpacing: '0.04em'
   };
 
   const activeStyle: React.CSSProperties = {
@@ -316,7 +315,7 @@ export default function GlobalBreadcrumb() {
     color: isDark ? '#fff' : DEEP_BLUE,
     fontWeight: 600,
     padding: '2px 5px',
-    fontSize: 13,
+    fontSize: 13
   };
 
   const backBtnStyle: React.CSSProperties = {
@@ -329,7 +328,7 @@ export default function GlobalBreadcrumb() {
     cursor: 'pointer',
     marginRight: 8,
     transition: 'background-color 150ms ease, color 150ms ease, border-color 150ms ease',
-    flexShrink: 0,
+    flexShrink: 0
   };
 
   const linkHoverBg = isDark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)';

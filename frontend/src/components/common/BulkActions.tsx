@@ -95,6 +95,7 @@ export default function BulkActions({
                 variant="subtle"
                 onClick={onClearSelection}
                 title="Clear selection"
+                aria-label="Close"
               >
                 <IconX size={16} />
               </ActionIcon>

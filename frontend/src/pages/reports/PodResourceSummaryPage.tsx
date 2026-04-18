@@ -7,14 +7,14 @@ import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS } from '../../brandTokens';
+import { DEEP_BLUE, SURFACE_ERROR, SURFACE_SUBTLE, SURFACE_SUCCESS } from '../../brandTokens';
 
 const ROLES = ['DEVELOPER', 'QA', 'BSA', 'TECH_LEAD'];
 const ROLE_COLORS: Record<string, string> = {
  DEVELOPER: 'blue',
  QA: 'orange',
  BSA: 'green',
- TECH_LEAD: 'violet',
+ TECH_LEAD: 'violet'
 };
 
 function getFteCellStyle(effectiveFte: number, homeFte: number, dark = false) {
@@ -43,7 +43,7 @@ export default function PodResourceSummaryPage() {
  return (
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>POD Resources</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>POD Resources</Title>
  </Group>
 
  <Title order={4}>Home Assignments</Title>
@@ -141,8 +141,7 @@ export default function PodResourceSummaryPage() {
  textAlign: 'center',
  ...(m < currentMonthIndex
  ? { opacity: 0.5, backgroundColor: pastBg }
- : getFteCellStyle(fte, pod.homeFte, dark)),
- }}
+ : getFteCellStyle(fte, pod.homeFte, dark))}}
  >
  <Text size="xs" fw={diff !== 0 ? 700 : 400}>
  {fmtFte(fte)}

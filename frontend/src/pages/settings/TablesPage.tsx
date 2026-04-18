@@ -2,23 +2,23 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import {
  Title, Stack, Group, Text, Badge, Box, TextInput, Table, ScrollArea,
  Loader, Center, Paper, ActionIcon, Tooltip, Pagination, Select,
- Kbd, Code, ThemeIcon, SimpleGrid, Alert, Anchor, UnstyledButton,
- Tabs, Divider, Textarea, Button, Menu, Modal,
+ Kbd, Code, ThemeIcon, Alert, UnstyledButton,
+ Tabs, Textarea, Button, Menu, Modal,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
  IconDatabase, IconSearch, IconTable, IconChevronUp, IconChevronDown,
- IconKey, IconInfoCircle, IconRefresh, IconSelector, IconPlayerPlay,
+ IconKey, IconRefresh, IconSelector, IconPlayerPlay,
  IconDeviceFloppy, IconTrash, IconBookmark, IconClock, IconAlertTriangle,
- IconCode, IconCheck, IconCopy,
+ IconCode, IconCheck,
 } from '@tabler/icons-react';
 import {
  useDbTables, useDbSchema, useDbTableData, useExecuteQuery, useSavedQueries,
- type DbColumnSchema, type QueryResult, type SavedQuery,
+ type DbColumnSchema, type SavedQuery,
 } from '../../api/dbBrowser';
 import { useQueryClient } from '@tanstack/react-query';
-import { AQUA, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_BORDER, SURFACE_SUBTLE} from '../../brandTokens';
+import { DARK_BG, DARK_BORDER, DEEP_BLUE, GRAY_BORDER, SURFACE_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ function DataPanel({ tableName }: { tableName: string }) {
  const val = formatCellValue(row[col]);
  const isNull = row[col] === null || row[col] === undefined;
  return (
- <Table.Td key={col} style={{ maxWidth: 300 }}>
+ <Table.Td key={col} maw={300}>
  {isNull
  ? <Text size="xs" c="dimmed" fs="italic">NULL</Text>
  : (
@@ -456,6 +456,7 @@ function QueryPanel() {
                        variant="subtle"
                        color="red"
                        onClick={e => { e.stopPropagation(); removeQuery(q.id); }}
+                       aria-label="Delete"
                      >
                        <IconTrash size={12} />
                      </ActionIcon>
@@ -531,7 +532,7 @@ function QueryPanel() {
                    const val = formatCellValue(row[col]);
                    const isNull = row[col] === null || row[col] === undefined;
                    return (
-                     <Table.Td key={col} style={{ maxWidth: 300 }}>
+                     <Table.Td key={col} maw={300}>
                        {isNull
                          ? <Text size="xs" c="dimmed" fs="italic">NULL</Text>
                          : (
@@ -642,14 +643,16 @@ export default function TablesPage() {
  <IconDatabase size={22} />
  </ThemeIcon>
  <Box>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Database Tables</Title>
+ <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>Database Tables</Title>
  <Text size="sm" c="dimmed">
  Browse tables, view schema, and run SQL queries — {tables.length} tables · {totalRows.toLocaleString()} total rows
  </Text>
  </Box>
  </Group>
  <Tooltip label="Refresh table list">
- <ActionIcon variant="light" onClick={handleRefresh} loading={isLoading}>
+ <ActionIcon variant="light" onClick={handleRefresh} loading={isLoading}
+      aria-label="Refresh"
+    >
  <IconRefresh size={16} />
  </ActionIcon>
  </Tooltip>
@@ -689,7 +692,7 @@ export default function TablesPage() {
  cursor: 'pointer',
  }}
  >
- <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+ <Group gap="xs" wrap="nowrap" miw={0}>
  <IconTable size={13} color={selectedTable === t.table_name ? 'var(--mantine-color-indigo-6)' : 'var(--mantine-color-dimmed)'} />
  <Text
  size="xs"

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Title, Text, Stack, Group, Button, Card, Badge, Table,
-  Progress, Tooltip, Alert, ActionIcon, Select, Loader, Center,
+  Text, Stack, Group, Button, Card, Badge, Table,
+  Progress, Tooltip, Alert, ActionIcon, Select, Center,
   Divider, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -11,7 +11,7 @@ import {
   IconCheck, IconExternalLink, IconChartBar,
 } from '@tabler/icons-react';
 import apiClient from '../api/client';
-import { AQUA, BORDER_STRONG, DEEP_BLUE, FONT_FAMILY, SURFACE_FAINT } from '../brandTokens';
+import { DEEP_BLUE, FONT_FAMILY, SURFACE_FAINT } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { PPPageLayout } from '../components/pp';
 
@@ -255,6 +255,7 @@ export default function SmartMappingPage() {
                           target="_blank"
                           rel="noreferrer"
                           onClick={e => e.stopPropagation()}
+                          aria-label="Open in new tab"
                         >
                           <IconExternalLink size={10} />
                         </ActionIcon>
@@ -317,6 +318,7 @@ export default function SmartMappingPage() {
                             variant="light"
                             loading={resolveMutation.isPending}
                             onClick={() => resolveMutation.mutate({ id: s.id, resolution: 'LINKED' })}
+                            aria-label="Copy link"
                           >
                             <IconLink size={12} />
                           </ActionIcon>
@@ -328,6 +330,7 @@ export default function SmartMappingPage() {
                             variant="light"
                             loading={resolveMutation.isPending}
                             onClick={() => resolveMutation.mutate({ id: s.id, resolution: 'IGNORED' })}
+                            aria-label="Close"
                           >
                             <IconX size={12} />
                           </ActionIcon>

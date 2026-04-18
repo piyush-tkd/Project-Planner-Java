@@ -11,7 +11,7 @@
 import React from 'react';
 import {
   Drawer, Stack, Text, SegmentedControl, Switch, Select,
-  Group, Divider, Button, Badge, useMantineColorScheme, useComputedColorScheme,
+  Group, Divider, Button, Badge, useMantineColorScheme,
 } from '@mantine/core';
 import {
   IconSun, IconMoon, IconDeviceLaptop,
@@ -19,7 +19,6 @@ import {
 } from '@tabler/icons-react';
 import {
   useUserPreferences,
-  DEFAULT_PREFERENCES,
   type ColorScheme,
   type TableDensity,
   type SidebarWidth,

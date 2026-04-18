@@ -1,4 +1,3 @@
-import { Role } from './common';
 
 export interface PodResponse {
   id: number;

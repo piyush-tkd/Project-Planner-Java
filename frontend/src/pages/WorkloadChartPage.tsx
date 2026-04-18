@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import {
-  Box, Title, Text, Group, Badge, Select, Button, Paper, Card,
+  Box, Text, Group, Badge, Select, Button, Paper, Card,
   SimpleGrid, Progress, Avatar, SegmentedControl,
-  Stack, Loader, Center,
+  Loader, Center,
 } from '@mantine/core';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -11,7 +11,7 @@ import {
 import {
   IconFilter, IconDownload,
 } from '@tabler/icons-react';
-import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SURFACE_GRAY, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE, AQUA_TINTS } from '../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SURFACE_GRAY, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE, AQUA_TINTS } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { PPPageLayout } from '../components/pp';
 import { useResources } from '../api/resources';
@@ -243,6 +243,7 @@ export default function WorkloadChartPage() {
             <Text fw={700} size="sm" mb="md" style={{ color: DEEP_BLUE }}>
               Utilization by Resource (% of capacity)
             </Text>
+            <div role="img" aria-label="Bar chart">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 data={chartData}
@@ -275,6 +276,7 @@ export default function WorkloadChartPage() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </div>
             {/* Custom legend below chart — no overlap */}
             <ChartLegend items={[
               { color: COLOR_GREEN, label: 'Healthy (50–84%)' },
@@ -359,6 +361,7 @@ export default function WorkloadChartPage() {
           <Text fw={700} size="sm" mb="lg" style={{ color: DEEP_BLUE }}>
             Utilization by POD — Capacity vs Allocated Hours
           </Text>
+          <div role="img" aria-label="Bar chart">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={podSummaryData} margin={{ top: 8, right: 16, bottom: 50, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} vertical={false} />
@@ -380,6 +383,7 @@ export default function WorkloadChartPage() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          </div>
           {/* Custom legend */}
           <ChartLegend items={[
             { color: DEEP_BLUE_TINTS[30], label: 'Capacity (hrs)' },
@@ -415,6 +419,7 @@ export default function WorkloadChartPage() {
           <Text fw={700} size="sm" mb="lg" style={{ color: DEEP_BLUE }}>
             Monthly Utilization Trend — % of total capacity used
           </Text>
+          <div role="img" aria-label="Bar chart">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyTrendData} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} vertical={false} />
@@ -427,6 +432,7 @@ export default function WorkloadChartPage() {
               <Bar animationDuration={600} dataKey="overAllocated" name="Over-allocated resources"  fill={COLOR_ERROR_STRONG}    radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
           <ChartLegend items={[
             { color: AQUA,      label: 'Avg Utilization %' },
             { color: COLOR_ERROR_STRONG, label: 'Over-allocated resources' },

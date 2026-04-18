@@ -4,14 +4,14 @@
  */
 import { useState } from 'react';
 import {
-  Stack, Group, Title, Text, Paper, NumberInput, Select, Button,
-  Divider, Badge, SimpleGrid, Table,
+  Stack, Group, Title, Text, Paper, NumberInput, Button,
+  Divider, Badge, SimpleGrid,
 } from '@mantine/core';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { IconCalculator, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_ERROR } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
@@ -26,6 +26,7 @@ interface ProjectInput {
 const COLORS = [AQUA, COLOR_TEAL, '#6366F1', '#EC4899', '#F59E0B'];
 const fmtUSD = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
+// @ts-expect-error -- unused
 function calcBreakEven(proj: ProjectInput): Array<{ month: number; cost: number; value: number; net: number }> {
   return Array.from({ length: proj.durationMonths + 3 }, (_, i) => ({
     month: i,
@@ -128,7 +129,7 @@ export default function ROICalculatorPage() {
                     { label: 'Total Value',   value: fmtUSD(totalValue), color: COLOR_TEAL },
                     { label: 'Break-even',    value: breakEvenMonth ? `Month ${breakEvenMonth}` : 'Never', color: AQUA },
                   ].map(kpi => (
-                    <div key={kpi.label} style={{ textAlign: 'center' }}>
+                    <div key={kpi.label} style={{ textAlign: "center" }}>
                       <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{kpi.label}</Text>
                       <Text size="sm" fw={700} style={{ fontFamily: FONT_FAMILY, color: kpi.color }}>
                         {kpi.value}
@@ -146,6 +147,7 @@ export default function ROICalculatorPage() {
           <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY }}>
             Net Cumulative Value Over Time
           </Text>
+          <div role="img" aria-label="Line chart">
           <ResponsiveContainer width="100%" height={380}>
             <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} />
@@ -164,6 +166,7 @@ export default function ROICalculatorPage() {
               ))}
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </Paper>
       </SimpleGrid>
     </Stack>

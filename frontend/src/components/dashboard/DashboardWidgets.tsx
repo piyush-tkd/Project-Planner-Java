@@ -1,4 +1,4 @@
-import React from 'react';
+import _React from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area,
   ScatterChart, Scatter, RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -92,11 +92,13 @@ function KpiTile(props: WidgetProps): JSX.Element {
   const trendIcon = trend === 'up' ? <IconTrendingUp size={20} color={COLOR_SUCCESS} /> : trend === 'down' ? <IconTrendingDown size={20} color={COLOR_ERROR_DARK} /> : null;
   const sparklineData = data.series?.[0]?.data || data.values;
   const sparkChart = sparklineData && sparklineData.length > 1 ? (
+    <div role="img" aria-label="Line chart">
     <ResponsiveContainer width="100%" height={40}>
       <LineChart data={sparklineData.map((v) => ({ value: v }))}>
         <Line type="monotone" dataKey="value" stroke={AQUA_HEX} dot={false} isAnimationActive={false} strokeWidth={2} />
       </LineChart>
     </ResponsiveContainer>
+    </div>
   ) : null;
   return (
     <Box p={SPACING[16]} bg={isDark ? DARK_SURFACE : 'white'} style={{ cursor: onDataPointClick ? 'pointer' : 'default' }} onClick={() => onDataPointClick?.(label, value, 0)}>
@@ -125,6 +127,7 @@ function LineChartWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Line chart">
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -137,6 +140,7 @@ function LineChartWidget(props: WidgetProps): JSX.Element {
         ))}
       </LineChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -149,6 +153,7 @@ function BarChartWidget(props: WidgetProps): JSX.Element {
   const textColor = isDark ? '#aaa' : '#666';
   const layout = config.layout || 'vertical';
   return (
+    <div role="img" aria-label="Bar chart">
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={chartData} layout={layout}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -161,6 +166,7 @@ function BarChartWidget(props: WidgetProps): JSX.Element {
         ))}
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -171,10 +177,11 @@ function PieChartWidget(props: WidgetProps): JSX.Element {
   const innerRadius = config.innerRadius ?? 0;
   const bgColor = isDark ? DARK_SURFACE : 'white';
   return (
+    <div role="img" aria-label="Pie chart">
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
         <Pie data={chartData} cx="50%" cy="50%" innerRadius={innerRadius} outerRadius={50} paddingAngle={2} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-          {chartData.map((entry, index) => (
+          {chartData.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill={getChartColor(index)} />
           ))}
         </Pie>
@@ -182,6 +189,7 @@ function PieChartWidget(props: WidgetProps): JSX.Element {
         <Legend />
       </PieChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -193,6 +201,7 @@ function AreaChartWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Area chart">
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={chartData}>
         <defs>
@@ -213,6 +222,7 @@ function AreaChartWidget(props: WidgetProps): JSX.Element {
         ))}
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -223,6 +233,7 @@ function ScatterPlotWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Scatter chart">
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -233,6 +244,7 @@ function ScatterPlotWidget(props: WidgetProps): JSX.Element {
         <Scatter data={data.rawData} fill={AQUA_HEX} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -242,6 +254,7 @@ function RadarChartWidget(props: WidgetProps): JSX.Element {
   const chartData = data.labels.map((label, idx) => ({ name: label, value: data.values[idx] }));
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Radar chart">
     <ResponsiveContainer width="100%" height={height}>
       <RadarChart data={chartData}>
         <PolarGrid stroke={isDark ? DARK_BORDER : '#e0e0e0'} />
@@ -250,6 +263,7 @@ function RadarChartWidget(props: WidgetProps): JSX.Element {
         <Legend />
       </RadarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -289,6 +303,7 @@ function GaugeWidget(props: WidgetProps): JSX.Element {
     <Box p={SPACING[16]}>
       <Stack gap={SPACING[16]} align="center">
         <Box style={{ position: 'relative', width: 150, height: 75 }}>
+          <div role="img" aria-label="Pie chart">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={[{ name: 'Used', value: ratio }, { name: 'Remaining', value: 100 - ratio }]} cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={40} outerRadius={60} dataKey="value">
@@ -297,6 +312,7 @@ function GaugeWidget(props: WidgetProps): JSX.Element {
               </Pie>
             </PieChart>
           </ResponsiveContainer>
+          </div>
           <Box style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
             <Text size="lg" fw={700} c={isDark ? '#fff' : DEEP_BLUE}>{value}</Text>
             <Text size="xs" c={isDark ? '#aaa' : '#666'}>/ {maxValue}</Text>
@@ -318,6 +334,7 @@ function WaterfallWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Bar chart">
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -331,6 +348,7 @@ function WaterfallWidget(props: WidgetProps): JSX.Element {
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -340,11 +358,13 @@ function TreemapWidget(props: WidgetProps): JSX.Element {
   const chartData = data.labels.map((label, idx) => ({ name: label, value: data.values[idx] }));
   const bgColor = isDark ? DARK_SURFACE : 'white';
   return (
+    <div role="img" aria-label="Treemap chart">
     <ResponsiveContainer width="100%" height={height}>
       <Treemap data={chartData} dataKey="value" stroke={isDark ? DARK_BORDER : '#e0e0e0'} fill={AQUA_HEX} isAnimationActive={false}>
         <Tooltip contentStyle={{ backgroundColor: bgColor, border: `1px solid ${isDark ? DARK_BORDER : '#e0e0e0'}` }} />
       </Treemap>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -354,6 +374,7 @@ function FunnelWidget(props: WidgetProps): JSX.Element {
   const chartData = data.labels.map((label, idx) => ({ name: label, value: data.values[idx] }));
   const bgColor = isDark ? DARK_SURFACE : 'white';
   return (
+    <div role="img" aria-label="Funnel chart">
     <ResponsiveContainer width="100%" height={height}>
       <FunnelChart>
         <Tooltip contentStyle={{ backgroundColor: bgColor, border: `1px solid ${isDark ? DARK_BORDER : '#e0e0e0'}` }} />
@@ -362,6 +383,7 @@ function FunnelWidget(props: WidgetProps): JSX.Element {
         </Funnel>
       </FunnelChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -379,11 +401,13 @@ function SparktileTile(props: WidgetProps): JSX.Element {
           <Text size="lg" fw={700} c={isDark ? '#fff' : DEEP_BLUE}>{value}</Text>
         </Stack>
         <Box style={{ width: 60, height: 30 }}>
+          <div role="img" aria-label="Line chart">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparkData.map((v) => ({ value: v }))}>
               <Line type="monotone" dataKey="value" stroke={trend === 'up' ? COLOR_SUCCESS : COLOR_ERROR_DARK} dot={false} isAnimationActive={false} strokeWidth={1.5} />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </Box>
         <Badge size="sm" color={trend === 'up' ? 'green' : trend === 'down' ? 'red' : 'gray'}>
           {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
@@ -557,6 +581,7 @@ function BubbleChartWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Scatter chart">
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -567,6 +592,7 @@ function BubbleChartWidget(props: WidgetProps): JSX.Element {
         <Scatter data={data.rawData} fill={AQUA_HEX} fillOpacity={0.6} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -584,6 +610,7 @@ function SankeyWidget(props: WidgetProps): JSX.Element {
   const gridColor = isDark ? DARK_BORDER : '#e0e0e0';
   const textColor = isDark ? '#aaa' : '#666';
   return (
+    <div role="img" aria-label="Bar chart">
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={chartData} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -593,6 +620,7 @@ function SankeyWidget(props: WidgetProps): JSX.Element {
         <Bar dataKey="value" fill={AQUA_HEX} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 

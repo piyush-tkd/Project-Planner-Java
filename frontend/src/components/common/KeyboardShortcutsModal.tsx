@@ -4,7 +4,7 @@
  * Shows all available shortcuts organized by category
  */
 import { Modal, Group, Text, Stack, Grid, Paper, Badge, useComputedColorScheme, Kbd } from '@mantine/core';
-import { AQUA, DEEP_BLUE } from '../../brandTokens';
+import { AQUA } from '../../brandTokens';
 
 interface KeyboardShortcutsModalProps {
   opened: boolean;

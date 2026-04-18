@@ -16,6 +16,7 @@ export default function CapacityBarChart({ data, unit = 'hours' }: CapacityBarCh
     isFte ? [`${value.toFixed(1)} FTE`, name] : [`${value.toLocaleString()} hrs`, name];
 
   return (
+    <div role="img" aria-label="Bar chart">
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
@@ -37,5 +38,6 @@ export default function CapacityBarChart({ data, unit = 'hours' }: CapacityBarCh
         <Bar dataKey="capacity" fill={COLOR_SUCCESS} name="Capacity" />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
-  Title,
   Text,
   Group,
   Badge,
@@ -23,7 +22,6 @@ import {
   NumberInput,
   Textarea,
   Skeleton,
-  Center,
   Alert,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
@@ -44,7 +42,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { DateInput } from '@mantine/dates';
 import apiClient from '../api/client';
-import { AQUA, AQUA_TINTS, COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_ALT, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, SURFACE_AMBER, SURFACE_BLUE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_SUBTLE} from '../brandTokens';
+import { AQUA, COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_ALT, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_SUBTLE} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useInlineEdit } from '../hooks/useInlineEdit';
 import {
@@ -122,9 +120,10 @@ const BOOKING_COLORS = [
 ];
 
 export default function ResourceBookingsPage() {
+  // @ts-expect-error -- unused
   const isDark = useDarkMode();
   const queryClient = useQueryClient();
-  const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
+  const { startEdit, stopEdit, isEditing } = useInlineEdit();
   const [weekOffset, setWeekOffset] = useState(0);
   const [filterPod, setFilterPod] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('timeline');
@@ -412,6 +411,7 @@ export default function ResourceBookingsPage() {
               variant="subtle"
               onClick={() => setWeekOffset((o) => o - 1)}
               color="dark"
+              aria-label="Previous"
             >
               <IconChevronLeft size={16} />
             </ActionIcon>
@@ -422,6 +422,7 @@ export default function ResourceBookingsPage() {
               variant="subtle"
               onClick={() => setWeekOffset((o) => o + 1)}
               color="dark"
+              aria-label="Next"
             >
               <IconChevronRight size={16} />
             </ActionIcon>
@@ -441,11 +442,14 @@ export default function ResourceBookingsPage() {
               leftSection={<IconFilter size={14} />}
               style={{ width: 180 }}
             />
-            <ActionIcon.Group>
+            <ActionIcon.Group
+      aria-label="List view"
+    >
               <ActionIcon
                 variant={viewMode === 'timeline' ? 'filled' : 'subtle'}
                 color={viewMode === 'timeline' ? 'teal' : 'gray'}
                 onClick={() => setViewMode('timeline')}
+                aria-label="List view"
               >
                 <IconList size={15} />
               </ActionIcon>
@@ -453,6 +457,7 @@ export default function ResourceBookingsPage() {
                 variant={viewMode === 'cards' ? 'filled' : 'subtle'}
                 color={viewMode === 'cards' ? 'teal' : 'gray'}
                 onClick={() => setViewMode('cards')}
+                aria-label="Grid layout"
               >
                 <IconLayoutGrid size={15} />
               </ActionIcon>
@@ -467,7 +472,7 @@ export default function ResourceBookingsPage() {
         /* Timeline View */
         <Paper withBorder radius="md" style={{ overflow: 'hidden', margin: '0 16px' }}>
           <ScrollArea type="auto">
-            <Box style={{ minWidth: 200 + weeks.length * CELL_W }}>
+            <Box miw={200 + weeks.length * CELL_W}>
               {/* Header row */}
               <Box
                 style={{
@@ -504,7 +509,6 @@ export default function ResourceBookingsPage() {
               {/* Resource rows */}
               {filteredResources.map((resource: Resource, ri: number) => {
                 const resourceBookings = bookings.filter((b: Booking) => String(b.resourceId) === String(resource.id));
-                const util = utilization[String(resource.id)] ?? 0;
                 return (
                   <Box
                     key={resource.id}
@@ -727,12 +731,13 @@ export default function ResourceBookingsPage() {
                             variant="subtle"
                             color="red"
                             onClick={() => handleDelete(b.id)}
+                            aria-label="Delete"
                           >
                             <IconTrash size={12} />
                           </ActionIcon>
                         </Group>
                         <Group gap="xs" mb="xs">
-                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Start</Text>
+                          <Text size="10px" c="dimmed" miw={50}>Start</Text>
                           <InlineDateCell
                             value={b.startDate}
                             onSave={async (newValue: string | null) => {
@@ -756,7 +761,7 @@ export default function ResourceBookingsPage() {
                           />
                         </Group>
                         <Group gap="xs" mb="xs">
-                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>End</Text>
+                          <Text size="10px" c="dimmed" miw={50}>End</Text>
                           <InlineDateCell
                             value={b.endDate}
                             onSave={async (newValue: string | null) => {
@@ -780,7 +785,7 @@ export default function ResourceBookingsPage() {
                           />
                         </Group>
                         <Group gap="xs" mb="xs">
-                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>FTE %</Text>
+                          <Text size="10px" c="dimmed" miw={50}>FTE %</Text>
                           <InlineNumberCell
                             value={b.allocationPct}
                             min={1}
@@ -807,7 +812,7 @@ export default function ResourceBookingsPage() {
                           />
                         </Group>
                         <Group gap="xs" mb="xs">
-                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Type</Text>
+                          <Text size="10px" c="dimmed" miw={50}>Type</Text>
                           <InlineSelectCell
                             value={b.bookingType}
                             options={[
@@ -837,7 +842,7 @@ export default function ResourceBookingsPage() {
                           />
                         </Group>
                         <Group gap="xs">
-                          <Text size="10px" c="dimmed" style={{ minWidth: 50 }}>Notes</Text>
+                          <Text size="10px" c="dimmed" miw={50}>Notes</Text>
                           <InlineTextCell
                             value={b.notes || ''}
                             onSave={async (newValue: string) => {

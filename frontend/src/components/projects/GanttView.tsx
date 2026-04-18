@@ -5,16 +5,14 @@ import {
 } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconCircle } from '@tabler/icons-react';
 import type { ProjectResponse } from '../../types/project';
-import { AQUA, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
+import { COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
 
 /* ── Constants ──────────────────────────────────────────────────────── */
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const COL_W = 72;           // px per month column (normal density)
 const ROW_H = 36;           // px per project row
 const ROW_H_COMPACT = 26;
 const NAME_COL_W = 200;     // px for the name/label column
 const TODAY_MONTH = new Date().getMonth() + 1; // 1-12
-const TODAY_YEAR  = new Date().getFullYear();
 
 /* ── Priority / Status color maps ───────────────────────────────────── */
 const PRIORITY_COLORS: Record<string, string> = {
@@ -150,12 +148,14 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
           <ActionIcon
             size="sm" variant="subtle" disabled={safeOffset === 0}
             onClick={() => setMonthOffset(o => Math.max(0, o - 3))}
+            aria-label="Previous"
           >
             <IconChevronLeft size={14} />
           </ActionIcon>
           <ActionIcon
             size="sm" variant="subtle" disabled={safeOffset >= maxOffset}
             onClick={() => setMonthOffset(o => Math.min(maxOffset, o + 3))}
+            aria-label="Next"
           >
             <IconChevronRight size={14} />
           </ActionIcon>
@@ -232,7 +232,6 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
                     size="xs"
                     fw={700}
                     style={{
-                      fontFamily: FONT_FAMILY,
                       color: DEEP_BLUE,
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
@@ -300,7 +299,6 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
                             size="xs"
                             fw={500}
                             style={{
-                              fontFamily: FONT_FAMILY,
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -375,7 +373,6 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
                                 fw={600}
                                 style={{
                                   color: '#fff',
-                                  fontFamily: FONT_FAMILY,
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -404,7 +401,7 @@ export default function GanttView({ projects, monthLabels, onEdit }: GanttViewPr
 
           {/* Empty state */}
           {projects.length === 0 && (
-            <Box p="xl" style={{ textAlign: 'center' }}>
+            <Box p="xl" ta="center">
               <Text c="dimmed" size="sm">No projects match the current filters.</Text>
             </Box>
           )}

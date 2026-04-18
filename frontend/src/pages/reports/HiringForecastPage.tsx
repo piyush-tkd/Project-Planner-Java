@@ -6,11 +6,11 @@ import { formatHours, formatFte } from '../../utils/formatting';
 import { formatRole } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import ExportableChart from '../../components/common/ExportableChart';
+import _ExportableChart from '../../components/common/ExportableChart';
 import ChartCard from '../../components/common/ChartCard';
 import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
-import { COLOR_BLUE_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE, FONT_FAMILY, TEXT_DIM } from '../../brandTokens';
+import { COLOR_BLUE_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function HiringForecastPage() {
@@ -51,7 +51,7 @@ export default function HiringForecastPage() {
  }, [filteredData]);
 
  const roleColors: Record<string, string> = {
- DEVELOPER: COLOR_BLUE_LIGHT, QA: '#ff922b', BSA: COLOR_GREEN_LIGHT, TECH_LEAD: COLOR_VIOLET_LIGHT,
+ DEVELOPER: COLOR_BLUE_LIGHT, QA: '#ff922b', BSA: COLOR_GREEN_LIGHT, TECH_LEAD: COLOR_VIOLET_LIGHT
  };
 
  const hasFilters = podFilter !== null || roleFilter !== null;
@@ -62,7 +62,7 @@ export default function HiringForecastPage() {
  return (
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Hiring Forecast</Title>
+ <Title order={2} style={{color: isDark ? '#fff' : DEEP_BLUE }}>Hiring Forecast</Title>
  </Group>
 
  <Group gap="sm" align="flex-end" wrap="wrap" className="stagger-children">
@@ -128,6 +128,7 @@ export default function HiringForecastPage() {
 
  {chartData.length > 0 && (
  <ChartCard title="Hiring Needs Over Time" minHeight={350}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={350}>
  <BarChart data={chartData}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -140,6 +141,7 @@ export default function HiringForecastPage() {
  ))}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
  </Stack>

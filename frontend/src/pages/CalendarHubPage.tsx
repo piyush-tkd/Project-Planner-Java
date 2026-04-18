@@ -1,15 +1,12 @@
 import { useState, useMemo } from 'react';
 import { PPPageLayout } from '../components/pp';
 import {
-  Title,
   Text,
   Stack,
   Group,
   Button,
   Badge,
   Paper,
-  SimpleGrid,
-  Center,
   Box,
   Skeleton,
 } from '@mantine/core';
@@ -150,7 +147,6 @@ export default function CalendarHubPage() {
             size="sm"
             onClick={() => toggleLayer(layer)}
             style={{
-              fontFamily: FONT_FAMILY,
               background: activeLayers.has(layer) ? color : undefined,
               color: activeLayers.has(layer) ? 'white' : color,
               borderColor: color,
@@ -230,7 +226,6 @@ export default function CalendarHubPage() {
                       size="sm"
                       fw={isCurrentDate ? 700 : 500}
                       style={{
-                        fontFamily: FONT_FAMILY,
                         color: dayNumColor(isCurrentDate),
                         lineHeight: 1.4,
                       }}
@@ -244,7 +239,6 @@ export default function CalendarHubPage() {
                           size="xs"
                           variant="light"
                           style={{
-                            fontFamily: FONT_FAMILY,
                             fontSize: '9px',
                             height: 'auto',
                             padding: '2px 5px',

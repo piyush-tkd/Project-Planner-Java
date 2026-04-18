@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Button, Paper, Switch, Select,
-  SimpleGrid, Divider, Badge, NumberInput, ThemeIcon, Skeleton,
+  SimpleGrid, Divider, Badge, ThemeIcon, Skeleton,
   Alert, ActionIcon, Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -19,7 +19,7 @@ import {
   IconBolt, IconCalendarEvent, IconMessageCircle,
   IconRocket, IconFlag, IconTarget,
 } from '@tabler/icons-react';
-import { AQUA, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
+import { COLOR_ORANGE_DARK, DEEP_BLUE, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import {
   useNotificationPreferences,
@@ -115,7 +115,7 @@ function SectionHeader({ icon, title, badge }: { icon: React.ReactNode; title: s
       </ThemeIcon>
       <div>
         <Group gap="xs" align="center">
-          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+          <Text fw={600} size="sm">
             {title}
           </Text>
           {badge && <Badge size="xs" variant="light" color="teal">{badge}</Badge>}
@@ -210,17 +210,19 @@ export default function NotificationPreferencesPage() {
       {/* Header */}
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
             Notification Preferences
           </Title>
-          <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="sm" c="dimmed" mt={4}>
             Control which events generate in-app and email notifications for your account.
           </Text>
         </div>
         <Group gap="xs">
           {dirty && (
             <Tooltip label="Discard changes">
-              <ActionIcon variant="default" size="lg" onClick={handleReset}>
+              <ActionIcon variant="default" size="lg" onClick={handleReset}
+      aria-label="Refresh"
+    >
                 <IconRefresh size={16} />
               </ActionIcon>
             </Tooltip>
@@ -250,7 +252,7 @@ export default function NotificationPreferencesPage() {
           title="In-app notifications"
           badge="real-time"
         />
-        <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="xs" c="dimmed" mb="md">
           These events will appear in your notification bell and activity feed.
         </Text>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -272,10 +274,10 @@ export default function NotificationPreferencesPage() {
                     {toggle.icon}
                   </ThemeIcon>
                   <div>
-                    <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
+                    <Text size="sm" fw={500}>
                       {toggle.label}
                     </Text>
-                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                    <Text size="xs" c="dimmed">
                       {toggle.description}
                     </Text>
                   </div>
@@ -308,10 +310,10 @@ export default function NotificationPreferencesPage() {
         <Stack gap="sm">
           <Group justify="space-between">
             <div>
-              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="sm" fw={500}>
                 Enable email notifications
               </Text>
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed">
                 Receive email alerts for the events you have enabled above.
               </Text>
             </div>
@@ -326,10 +328,10 @@ export default function NotificationPreferencesPage() {
           <Divider />
 
           <div>
-            <Text size="sm" fw={500} mb={6} style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="sm" fw={500} mb={6}>
               Digest cadence
             </Text>
-            <Text size="xs" c="dimmed" mb={8} style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" c="dimmed" mb={8}>
               Bundle notifications into a periodic digest instead of immediate emails.
             </Text>
             <Select
@@ -339,7 +341,7 @@ export default function NotificationPreferencesPage() {
               disabled={!val.emailEnabled}
               size="sm"
               w={220}
-              styles={{ input: { fontFamily: FONT_FAMILY } }}
+              styles={{ input: { } }}
             />
           </div>
         </Stack>
@@ -357,13 +359,13 @@ export default function NotificationPreferencesPage() {
           title="Quiet hours"
           badge="optional"
         />
-        <Text size="xs" c="dimmed" mb="md" style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="xs" c="dimmed" mb="md">
           Suppress all notifications during these hours. Leave blank to disable quiet hours.
         </Text>
 
         <Group gap="md" align="flex-end">
           <div>
-            <Text size="xs" fw={500} mb={4} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" fw={500} mb={4} c="dimmed">
               From (hour)
             </Text>
             <Select
@@ -374,12 +376,12 @@ export default function NotificationPreferencesPage() {
               placeholder="Start hour"
               size="sm"
               w={130}
-              styles={{ input: { fontFamily: FONT_FAMILY } }}
+              styles={{ input: { } }}
             />
           </div>
           <Text size="sm" c="dimmed" mb={6}>to</Text>
           <div>
-            <Text size="xs" fw={500} mb={4} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" fw={500} mb={4} c="dimmed">
               To (hour)
             </Text>
             <Select
@@ -390,7 +392,7 @@ export default function NotificationPreferencesPage() {
               placeholder="End hour"
               size="sm"
               w={130}
-              styles={{ input: { fontFamily: FONT_FAMILY } }}
+              styles={{ input: { } }}
             />
           </div>
         </Group>
@@ -404,7 +406,7 @@ export default function NotificationPreferencesPage() {
             variant="light"
             radius="sm"
           >
-            <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs">
               Notifications will be silenced between{' '}
               <strong>{String(val.quietStartHour).padStart(2, '0')}:00</strong>
               {' '}and{' '}
@@ -430,7 +432,7 @@ export default function NotificationPreferencesPage() {
           <Group justify="space-between">
             <Group gap="xs">
               <IconAlertTriangle size={15} color={isDark ? '#ffe066' : COLOR_ORANGE_DARK} />
-              <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#ffe066' : COLOR_ORANGE_DARK }}>
+              <Text size="sm" fw={500} style={{ color: isDark ? '#ffe066' : COLOR_ORANGE_DARK }}>
                 You have unsaved changes
               </Text>
             </Group>

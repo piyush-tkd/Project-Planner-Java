@@ -1,12 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  Container, Title, Text, TextInput, Paper, Group, Stack, Badge,
-  ActionIcon, Loader, Kbd, Transition, Box, ThemeIcon, SimpleGrid,
-  Tooltip, useComputedColorScheme, Anchor, rem,
-  Button, Autocomplete, Textarea,
+  Text, Paper, Group, Stack, Badge,
+  ActionIcon, Box, ThemeIcon, SimpleGrid,
+  Tooltip, Anchor,
+  Button, Textarea,
 } from '@mantine/core';
 import {
-  IconSearch, IconSparkles, IconArrowRight, IconBrain,
+  IconSparkles,
   IconRoute, IconForms, IconChartBar, IconBulb, IconHelp,
   IconUsers, IconBriefcase, IconHexagons,
   IconCalendarStats, IconChartAreaLine, IconAlertTriangle,
@@ -14,8 +14,8 @@ import {
   IconBuildingSkyscraper, IconFlag, IconClock, IconStatusChange,
   IconDownload, IconArrowsSplit, IconListCheck, IconCalendarEvent,
   IconRocket, IconSnowflake, IconLock, IconPercentage, IconCheck,
-  IconX, IconNotes, IconAlertCircle, IconExternalLink, IconChevronRight,
-  IconHistory, IconMoodEmpty, IconArrowUpRight, IconThumbUp, IconThumbDown,
+  IconX, IconNotes, IconExternalLink, IconChevronRight,
+  IconMoodEmpty, IconThumbUp, IconThumbDown,
 } from '@tabler/icons-react';
 import { useNlpFeedback, useNlpFeedbackUndo, NlpQueryResponse } from '../../api/nlp';
 import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
@@ -509,7 +509,6 @@ export function CardBody({
   const type = String(d._type ?? '');
 
   // Phase 1.10: Shape-based routing (prefer explicit shape from backend)
-  const shape = String(result.response?.shape ?? d._shape ?? '');
 
   // ── Resource Profile ──
   if (type === 'RESOURCE_PROFILE') {
@@ -1295,6 +1294,7 @@ export function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark
             radius="xl"
             onClick={() => handleFeedback(1)}
             disabled={submitted != null}
+            aria-label="Thumbs up"
           >
             <IconThumbUp size={14} />
           </ActionIcon>
@@ -1307,6 +1307,7 @@ export function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark
             radius="xl"
             onClick={() => handleFeedback(-1)}
             disabled={submitted != null}
+            aria-label="Thumbs down"
           >
             <IconThumbDown size={14} />
           </ActionIcon>
@@ -1342,7 +1343,6 @@ export function FeedbackRow({ queryLogId, isDark }: { queryLogId: number; isDark
             size="xs"
             styles={{
               input: {
-                fontFamily: FONT_FAMILY,
                 fontSize: '12px',
                 background: isDark ? 'var(--mantine-color-dark-6)' : '#fff',
               },

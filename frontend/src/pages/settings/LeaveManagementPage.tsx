@@ -13,7 +13,7 @@ import { useLeaveEntries, useImportLeave, useDeleteLeaveEntry } from '../../api/
 import { useResources } from '../../api/resources';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY, SURFACE_FAINT, BORDER_DEFAULT } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, SURFACE_FAINT } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const MONTHS = [
@@ -27,7 +27,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
   const [year, setYear] = useState(currentYear);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [replaceExisting, setReplaceExisting] = useState(true);
+  const [replaceExisting, _setReplaceExisting] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: entries = [], isLoading, error, refetch } = useLeaveEntries(year);
@@ -114,7 +114,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
       <Group justify="space-between" align="flex-start">
         {!embedded && (
           <div>
-            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+            <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
               Leave Management
             </Title>
             <Text size="sm" c="dimmed" mt={4}>
@@ -234,6 +234,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
                           onClick={() => deleteMut.mutate(row.id, {
                             onSuccess: () => notifications.show({ message: 'Leave entry removed', color: 'orange' }),
                           })}
+                          aria-label="Delete"
                         >
                           <IconTrash size={14} />
                         </ActionIcon>
@@ -263,7 +264,7 @@ export default function LeaveManagementPage({ embedded = false }: { embedded?: b
       <Modal
         opened={importModalOpen}
         onClose={() => { setImportModalOpen(false); setSelectedFile(null); }}
-        title={<Text fw={700} style={{ color: DEEP_BLUE }}>Import Leave Planner</Text>}
+        title={<Text fw={700} c={DEEP_BLUE}>Import Leave Planner</Text>}
         size="sm"
       >
         <Stack gap="sm">

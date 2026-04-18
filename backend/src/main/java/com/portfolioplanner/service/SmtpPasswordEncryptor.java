@@ -1,7 +1,9 @@
 package com.portfolioplanner.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -38,11 +40,57 @@ public class SmtpPasswordEncryptor {
     private static final int    GCM_IV_BYTES   = 12;   // 96-bit IV as per NIST recommendation
     private static final int    GCM_TAG_BITS   = 128;  // authentication tag length
 
+    /** Known-weak placeholder strings that must never reach production. */
+    private static final String PLACEHOLDER_MARKER = "changeme";
+
+    /** Safe dummy used during context init when the real key is absent. */
+    private static final String INIT_DUMMY_KEY = "init-only-never-used-in-production-padding-!!";
+
+    private final String rawEncryptionKey;
     private final SecretKey secretKey;
+    private final Environment environment;
 
     public SmtpPasswordEncryptor(
-            @Value("${app.smtp.encryption-key:changeme-replace-this-in-production}") String rawKey) {
-        this.secretKey = deriveKey(rawKey);
+            @Value("${app.smtp.encryption-key:}") String rawKey,
+            Environment environment) {
+        this.rawEncryptionKey = rawKey;
+        this.environment      = environment;
+        // Use a safe dummy key if absent so the Spring context finishes loading;
+        // validateKey() will abort startup in prod.
+        String effective = (rawKey == null || rawKey.isBlank()) ? INIT_DUMMY_KEY : rawKey;
+        this.secretKey = deriveKey(effective);
+    }
+
+    // ── Startup key validation ────────────────────────────────────────────────
+
+    @PostConstruct
+    void validateKey() {
+        boolean insecure = isInsecureKey(rawEncryptionKey);
+        boolean isProd   = isProductionProfile();
+
+        if (isProd && insecure) {
+            throw new IllegalStateException(
+                    "[Security] app.smtp.encryption-key must not be a placeholder value in production. " +
+                    "Set the SMTP_ENCRYPTION_KEY environment variable to a cryptographically random " +
+                    "string (e.g. openssl rand -hex 32). " +
+                    "The server will not start without a valid encryption key.");
+        }
+        if (insecure) {
+            log.warn("[Security] app.smtp.encryption-key is absent or using a placeholder. " +
+                     "This is acceptable in local development only. " +
+                     "Set SMTP_ENCRYPTION_KEY before deploying to any shared or production environment.");
+        }
+    }
+
+    private boolean isInsecureKey(String key) {
+        if (key == null || key.isBlank())                   return true;
+        if (key.toLowerCase().contains(PLACEHOLDER_MARKER)) return true;
+        return false;
+    }
+
+    private boolean isProductionProfile() {
+        return Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(p -> p.equals("prod") || p.equals("production") || p.equals("railway"));
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { Card, Text, Group, Slider, Button, SimpleGrid, Box, Divider } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
-import { AQUA, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_SUBTLE } from '../../brandTokens';
+import { DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { SchedulingRulesResponse } from '../../types';
 

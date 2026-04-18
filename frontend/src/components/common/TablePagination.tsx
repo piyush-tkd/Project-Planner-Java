@@ -6,7 +6,7 @@
  *   // render paginatedData in your table
  *   <TablePagination {...paginationProps} />
  */
-import { Group, Text, Select, ActionIcon, Kbd } from '@mantine/core';
+import { Group, Text, Select, ActionIcon } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from '@tabler/icons-react';
 import { FONT_FAMILY } from '../../brandTokens';
 
@@ -43,7 +43,7 @@ export default function TablePagination({
   return (
     <Group justify="space-between" mt="sm" px={4}>
       <Group gap="xs">
-        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="xs" c="dimmed">
           Showing {startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems}
         </Text>
       </Group>
@@ -56,7 +56,7 @@ export default function TablePagination({
           data={PAGE_SIZE_OPTIONS}
           withCheckIcon
           styles={{
-            input: { width: 110, fontFamily: FONT_FAMILY, fontSize: 12 },
+            input: { width: 110, fontSize: 12 },
           }}
         />
 

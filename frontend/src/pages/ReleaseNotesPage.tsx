@@ -229,7 +229,8 @@ function ReleaseSection({
  variant="subtle"
  style={{ color: 'white' }}
  onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
- >
+ aria-label="Expand"
+>
  {expanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
  </ActionIcon>
  </Group>
@@ -317,13 +318,13 @@ function ReleaseSection({
  <Table fz="xs" withColumnBorders highlightOnHover>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ minWidth: 100 }}>Key</Table.Th>
- <Table.Th style={{ minWidth: 80 }}>Type</Table.Th>
- <Table.Th style={{ minWidth: 430 }}>Summary</Table.Th>
- <Table.Th style={{ minWidth: 90 }}>Status</Table.Th>
- <Table.Th style={{ minWidth: 140 }}>Assignee</Table.Th>
- <Table.Th style={{ minWidth: 50, textAlign: 'right' }}>SP</Table.Th>
- <Table.Th style={{ minWidth: 60, textAlign: 'right' }}>Hours</Table.Th>
+ <Table.Th miw={100}>Key</Table.Th>
+ <Table.Th miw={80}>Type</Table.Th>
+ <Table.Th miw={430}>Summary</Table.Th>
+ <Table.Th miw={90}>Status</Table.Th>
+ <Table.Th miw={140}>Assignee</Table.Th>
+ <Table.Th miw={50} ta="right">SP</Table.Th>
+ <Table.Th miw={60} ta="right">Hours</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -405,7 +406,6 @@ function ReleaseSection({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ReleaseNotesPage() {
- const isDark = useDarkMode();
  const { data: jiraStatus } = useJiraStatus();
  const { data: releaseMetrics, isLoading: metricsLoading, isFetching: metricsFetching, refetch: refetchMetrics } = useReleaseMetrics();
  const { data: calendarReleases } = useReleases();

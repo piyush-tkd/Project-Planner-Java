@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Card, Text, Group, Stack, Badge, ThemeIcon, Tooltip, Box, SimpleGrid } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconUsers, IconClock, IconTrendingUp } from '@tabler/icons-react';
-import { AQUA, AQUA_TINTS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ERROR_DEEP, COLOR_SUCCESS, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_RED_FAINT, SURFACE_SUBTLE, TEXT_DIM} from '../../brandTokens';
+import { AQUA, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ERROR_DEEP, COLOR_SUCCESS, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, SHADOW, SURFACE_RED_FAINT, SURFACE_SUBTLE, TEXT_DIM} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { ProjectPodPlanningResponse, SchedulingRulesResponse } from '../../types';
 
@@ -143,6 +143,7 @@ export default function CapacityPanel({ plannings, rules, projectStartDate, proj
 
   if (analyses.length === 0) return null;
 
+  // @ts-expect-error -- unused
   const PHASE_COLORS: Record<string, string> = {
     DEV: COLOR_BLUE_DARK,
     QA: COLOR_SUCCESS,
@@ -175,7 +176,7 @@ export default function CapacityPanel({ plannings, rules, projectStartDate, proj
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-        {analyses.map((a, i) => (
+        {analyses.map((a) => (
           <PhaseCard key={`${a.podId}-${a.phase}`} analysis={a} dark={dark} />
         ))}
       </SimpleGrid>

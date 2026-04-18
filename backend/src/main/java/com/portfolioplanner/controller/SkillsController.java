@@ -2,68 +2,58 @@ package com.portfolioplanner.controller;
 
 import com.portfolioplanner.domain.model.Skill;
 import com.portfolioplanner.domain.model.SkillCategory;
-import com.portfolioplanner.domain.repository.SkillCategoryRepository;
-import com.portfolioplanner.domain.repository.SkillRepository;
+import com.portfolioplanner.service.SkillsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-/**
- * Skills taxonomy management — categories and skill definitions.
- * Resource skills are managed via ResourceSkillController at /api/resources/{id}/skills.
- */
 @RestController
 @RequestMapping("/api/skills")
 @RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
 public class SkillsController {
 
-    private final SkillCategoryRepository categoryRepository;
-    private final SkillRepository skillRepository;
+    private final SkillsService skillsService;
 
     @GetMapping("/categories")
     public List<SkillCategory> getCategories() {
-        return categoryRepository.findAll();
+        return skillsService.getCategories();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/categories")
     public SkillCategory createCategory(@RequestBody SkillCategory category) {
-        return categoryRepository.save(category);
+        return skillsService.createCategory(category);
     }
 
     @GetMapping
     public List<Skill> getSkills() {
-        return skillRepository.findAll();
+        return skillsService.getSkills();
     }
 
     @GetMapping("/category/{categoryId}")
     public List<Skill> getSkillsByCategory(@PathVariable Long categoryId) {
-        return skillRepository.findByCategoryId(categoryId);
+        return skillsService.getSkillsByCategory(categoryId);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public Skill createSkill(@RequestBody Skill skill) {
-        return skillRepository.save(skill);
+        return skillsService.createSkill(skill);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Skill> updateSkill(@PathVariable Long id, @RequestBody Skill updated) {
-        return skillRepository.findById(id)
-            .map(existing -> {
-                existing.setName(updated.getName());
-                existing.setDescription(updated.getDescription());
-                existing.setLevelScale(updated.getLevelScale());
-                return ResponseEntity.ok(skillRepository.save(existing));
-            })
-            .orElse(ResponseEntity.notFound().build());
+        return skillsService.updateSkill(id, updated).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSkill(@PathVariable Long id) {
-        if (!skillRepository.existsById(id)) return ResponseEntity.notFound().build();
-        skillRepository.deleteById(id);
+        if (!skillsService.deleteSkill(id)) return ResponseEntity.notFound().build();
         return ResponseEntity.noContent().build();
     }
 }

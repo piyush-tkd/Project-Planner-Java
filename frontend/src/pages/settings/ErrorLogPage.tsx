@@ -2,18 +2,18 @@ import { useState } from 'react';
 import {
  Container, Title, Text, Paper, Group, Stack, Badge, Button,
  Table, ActionIcon, Tooltip, Tabs, Box, Skeleton, ScrollArea,
- Modal, Code, SimpleGrid, ThemeIcon, Select, useMantineColorScheme,
+ Modal, Code, SimpleGrid, ThemeIcon, useMantineColorScheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
  IconAlertTriangle, IconBug, IconDeviceDesktop, IconServer,
- IconCheck, IconTrash, IconEye, IconClearAll, IconApi,
+ IconCheck, IconTrash, IconClearAll, IconApi,
 } from '@tabler/icons-react';
 import {
  useErrorLogs, useResolveError, useDeleteErrorLog, useClearResolvedErrors,
  AppErrorLog,
 } from '../../api/errorLogs';
-import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, GRAY_200, SURFACE_RED_FAINT} from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, GRAY_200, SURFACE_RED_FAINT} from '../../brandTokens';
 
 const SOURCE_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
  FRONTEND: { icon: <IconDeviceDesktop size={14} />, color: 'blue', label: 'Frontend' },
@@ -84,10 +84,10 @@ export default function ErrorLogPage() {
  <Container size="xl" py="md" className="page-enter stagger-children">
  <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
+ <Title order={2} style={{ color: headingColor, fontWeight: 700 }}>
  Error Log
  </Title>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" mt={4}>
  Application errors captured from frontend and backend
  </Text>
  </div>
@@ -97,9 +97,7 @@ export default function ErrorLogPage() {
  leftSection={<IconClearAll size={16} />}
  onClick={handleClearResolved}
  loading={clearResolved.isPending}
- disabled={counts.resolved === 0}
- style={{ fontFamily: FONT_FAMILY }}
- >
+ disabled={counts.resolved === 0}>
  Clear Resolved ({counts.resolved})
  </Button>
  </Group>
@@ -118,22 +116,23 @@ export default function ErrorLogPage() {
  {/* ── Tabs ── */}
  <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
- <Tabs.Tab value="all" style={{ fontFamily: FONT_FAMILY }}>All ({counts.all})</Tabs.Tab>
- <Tabs.Tab value="unresolved" leftSection={<IconBug size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="all">All ({counts.all})</Tabs.Tab>
+ <Tabs.Tab value="unresolved" leftSection={<IconBug size={14} />}>
  Unresolved ({counts.unresolved})
  </Tabs.Tab>
- <Tabs.Tab value="frontend" leftSection={<IconDeviceDesktop size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="frontend" leftSection={<IconDeviceDesktop size={14} />}>
  Frontend ({counts.frontend})
  </Tabs.Tab>
- <Tabs.Tab value="backend" leftSection={<IconServer size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="backend" leftSection={<IconServer size={14} />}>
  Backend ({counts.backend})
  </Tabs.Tab>
- <Tabs.Tab value="resolved" leftSection={<IconCheck size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="resolved" leftSection={<IconCheck size={14} />}>
  Resolved ({counts.resolved})
  </Tabs.Tab>
  </Tabs.List>
 
- <Tabs.Panel value={activeTab ?? 'all'}>
+ {(['all', 'unresolved', 'frontend', 'backend', 'resolved'] as const).map(tabValue => (
+ <Tabs.Panel key={tabValue} value={tabValue}>
  <Paper shadow="xs" radius="md" withBorder>
  <ScrollArea h={560}>
  {isLoading ? (
@@ -143,21 +142,21 @@ export default function ErrorLogPage() {
  <ThemeIcon size={48} radius="xl" variant="light" color="teal" mx="auto" mb="sm">
  <IconCheck size={24} />
  </ThemeIcon>
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No error logs found. The application is running smoothly!</Text>
+ <Text c="dimmed">No error logs found. The application is running smoothly!</Text>
  </Box>
  ) : (
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Timestamp</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Source</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Severity</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Type</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Message</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Component / Page</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>User</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
+ <Table.Th>Timestamp</Table.Th>
+ <Table.Th>Source</Table.Th>
+ <Table.Th>Severity</Table.Th>
+ <Table.Th>Type</Table.Th>
+ <Table.Th>Message</Table.Th>
+ <Table.Th>Component / Page</Table.Th>
+ <Table.Th>User</Table.Th>
+ <Table.Th>Status</Table.Th>
+ <Table.Th>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -170,7 +169,7 @@ export default function ErrorLogPage() {
  onClick={() => setDetailModal(log)}
  >
  <Table.Td>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'nowrap' }}>
+ <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
  {log.createdAt ? new Date(log.createdAt).toLocaleString() : '—'}
  </Text>
  </Table.Td>
@@ -185,17 +184,17 @@ export default function ErrorLogPage() {
  </Badge>
  </Table.Td>
  <Table.Td>
- <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs">
  {log.errorType ?? '—'}
  </Text>
  </Table.Td>
- <Table.Td style={{ maxWidth: 300 }}>
- <Text size="xs" lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
+ <Table.Td maw={300}>
+ <Text size="xs" lineClamp={2}>
  {log.message}
  </Text>
  </Table.Td>
  <Table.Td>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed">
  {log.component || log.pageUrl || '—'}
  </Text>
  </Table.Td>
@@ -214,14 +213,18 @@ export default function ErrorLogPage() {
  {!log.resolved && (
  <Tooltip label="Mark Resolved">
  <ActionIcon size="xs" variant="subtle" color="teal"
- onClick={(e) => { e.stopPropagation(); handleResolve(log.id); }}>
+ onClick={(e) => { e.stopPropagation(); handleResolve(log.id); }}
+      aria-label="Confirm"
+    >
  <IconCheck size={14} />
  </ActionIcon>
  </Tooltip>
  )}
  <Tooltip label="Delete">
  <ActionIcon size="xs" variant="subtle" color="red"
- onClick={(e) => { e.stopPropagation(); handleDelete(log.id); }}>
+ onClick={(e) => { e.stopPropagation(); handleDelete(log.id); }}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -236,6 +239,7 @@ export default function ErrorLogPage() {
  </ScrollArea>
  </Paper>
  </Tabs.Panel>
+ ))}
  </Tabs>
 
  {/* ── Detail Modal ── */}
@@ -245,7 +249,7 @@ export default function ErrorLogPage() {
  title={
  <Group gap={8}>
  <IconAlertTriangle size={20} color={COLOR_ERROR_DEEP} />
- <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: headingColor }}>Error Detail</Text>
+ <Text fw={600} style={{ color: headingColor }}>Error Detail</Text>
  </Group>
  }
  size="lg"
@@ -271,20 +275,20 @@ export default function ErrorLogPage() {
  </Group>
 
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Error Type</Text>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{detailModal.errorType ?? 'Unknown'}</Text>
+ <Text size="xs" c="dimmed">Error Type</Text>
+ <Text size="sm" fw={600}>{detailModal.errorType ?? 'Unknown'}</Text>
  </div>
 
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Message</Text>
+ <Text size="xs" c="dimmed">Message</Text>
  <Paper withBorder p="sm" radius="md" style={{ backgroundColor: isDark ? 'rgba(200, 42, 42, 0.1)' : SURFACE_RED_FAINT }}>
- <Text size="sm" style={{ fontFamily: FONT_FAMILY, color: isDark ? GRAY_200 : undefined }}>{detailModal.message}</Text>
+ <Text size="sm" style={{ color: isDark ? GRAY_200 : undefined }}>{detailModal.message}</Text>
  </Paper>
  </div>
 
  {detailModal.stackTrace && (
  <div>
- <Text size="xs" c="dimmed" mb={4} style={{ fontFamily: FONT_FAMILY }}>Stack Trace</Text>
+ <Text size="xs" c="dimmed" mb={4}>Stack Trace</Text>
  <Code block style={{ maxHeight: 200, overflow: 'auto', fontSize: 11 }}>
  {detailModal.stackTrace}
  </Code>
@@ -293,27 +297,27 @@ export default function ErrorLogPage() {
 
  <SimpleGrid cols={2}>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Page URL</Text>
+ <Text size="xs" c="dimmed">Page URL</Text>
  <Text size="sm">{detailModal.pageUrl ?? '—'}</Text>
  </div>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>API Endpoint</Text>
+ <Text size="xs" c="dimmed">API Endpoint</Text>
  <Text size="sm">{detailModal.apiEndpoint ?? '—'}</Text>
  </div>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Component</Text>
+ <Text size="xs" c="dimmed">Component</Text>
  <Text size="sm">{detailModal.component ?? '—'}</Text>
  </div>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>User</Text>
+ <Text size="xs" c="dimmed">User</Text>
  <Text size="sm">{detailModal.username ?? '—'}</Text>
  </div>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Timestamp</Text>
+ <Text size="xs" c="dimmed">Timestamp</Text>
  <Text size="sm">{new Date(detailModal.createdAt).toLocaleString()}</Text>
  </div>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>User Agent</Text>
+ <Text size="xs" c="dimmed">User Agent</Text>
  <Text size="xs" lineClamp={2}>{detailModal.userAgent ?? '—'}</Text>
  </div>
  </SimpleGrid>
@@ -322,16 +326,14 @@ export default function ErrorLogPage() {
  <Button
  variant="subtle" color="red"
  leftSection={<IconTrash size={14} />}
- onClick={() => handleDelete(detailModal.id)}
- style={{ fontFamily: FONT_FAMILY }}
- >
+ onClick={() => handleDelete(detailModal.id)}>
  Delete
  </Button>
  {!detailModal.resolved && (
  <Button
  leftSection={<IconCheck size={16} />}
  onClick={() => { handleResolve(detailModal.id); setDetailModal(null); }}
- style={{ backgroundColor: isDark ? AQUA : DEEP_BLUE, color: isDark ? DEEP_BLUE : '#fff', fontFamily: FONT_FAMILY }}
+ style={{ backgroundColor: isDark ? AQUA : DEEP_BLUE, color: isDark ? DEEP_BLUE : '#fff' }}
  >
  Mark Resolved
  </Button>
@@ -354,8 +356,8 @@ function SummaryCard({ label, value, color, icon }: { label: string; value: numb
  {icon}
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color }}>{value}</Text>
+ <Text size="xs" c="dimmed">{label}</Text>
+ <Text size="xl" fw={700} style={{ color }}>{value}</Text>
  </div>
  </Group>
  </Paper>

@@ -1,6 +1,5 @@
 import React from 'react';
 import styles from './PPMetricCard.module.css';
-import { AQUA } from '../../brandTokens';
 
 export interface PPMetricCardProps {
   /** Overline label */

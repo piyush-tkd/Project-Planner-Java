@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Box, Title, Text, Group, Stack, Badge, Button, Select, Paper, Table,
- ActionIcon, ThemeIcon, Alert, Loader, Progress, Tooltip, Skeleton,
+ Box, Text, Group, Stack, Badge, Button, Select, Paper, Table,
+ ActionIcon, ThemeIcon, Alert, Progress, Tooltip, Skeleton,
  SimpleGrid, RingProgress, ScrollArea, Divider, TextInput, Modal,
  SegmentedControl,
 } from '@mantine/core';
@@ -22,7 +22,7 @@ import {
  WorklogUserRow, WorklogIssueEntry,
 } from '../api/jira';
 import ChartCard from '../components/common/ChartCard';
-import { AQUA_HEX, AQUA, AQUA_TINTS, COLOR_ERROR_DARK, DARK_BG, DEEP_BLUE, FONT_FAMILY, SURFACE_GRAY, SURFACE_SUBTLE } from '../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_ERROR_DARK, DARK_BG, DEEP_BLUE, SURFACE_GRAY, SURFACE_SUBTLE } from '../brandTokens';
 
 // Build a colour and icon for each Jira issue type
 const TYPE_META: Record<string, { color: string; hex: string; icon: React.ReactNode }> = {
@@ -216,7 +216,9 @@ export default function JiraWorklogPage() {
  style={{ width: 200 }}
  rightSection={
  search ? (
- <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}>
+ <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}
+      aria-label="Close"
+    >
  <IconX size={12} />
  </ActionIcon>
  ) : null
@@ -272,7 +274,7 @@ export default function JiraWorklogPage() {
  <Stack gap={4} style={{ flex: 1 }}>
  {typeBreakdown.map(([type, hrs]) => (
  <Group key={type} gap="xs" wrap="nowrap">
- <Badge size="xs" color={typeMeta(type).color} style={{ minWidth: 80 }}>
+ <Badge size="xs" color={typeMeta(type).color} miw={80}>
  {type}
  </Badge>
  <Box style={{ flex: 1 }}>
@@ -400,6 +402,7 @@ export default function JiraWorklogPage() {
 
  {/* Bar chart */}
  <ChartCard title="Hours by Month" minHeight={260}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={240}>
  <BarChart data={historyChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -425,6 +428,7 @@ export default function JiraWorklogPage() {
  )}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  {/* Monthly detail table */}
@@ -443,7 +447,7 @@ export default function JiraWorklogPage() {
  <Table.Td>
  <Text size="sm">{pt.monthLabel}</Text>
  </Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">
  <Text size="sm" fw={600} c={pt.totalHours > 0 ? (isDark ? '#fff' : DEEP_BLUE) : 'dimmed'}>
  {pt.totalHours > 0 ? `${pt.totalHours} h` : '—'}
  </Text>
@@ -529,13 +533,15 @@ function UserRows({
  >
  {/* Expand toggle */}
  <Table.Td>
- <ActionIcon variant="subtle" size="xs" color="gray">
+ <ActionIcon variant="subtle" size="xs" color="gray"
+      aria-label="Expand"
+    >
  {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
  </ActionIcon>
  </Table.Td>
 
  {/* Rank */}
- <Table.Td style={{ textAlign: 'center' }}>
+ <Table.Td ta="center">
  <Text size="xs" fw={600} c="dimmed">{rank}</Text>
  </Table.Td>
 
@@ -585,7 +591,7 @@ function UserRows({
  </Table.Td>
 
  {/* Hours bar */}
- <Table.Td style={{ minWidth: 180 }}>
+ <Table.Td miw={180}>
  <Group gap="xs" wrap="nowrap">
  <Box style={{ flex: 1 }}>
  <Progress
@@ -619,7 +625,7 @@ function UserRows({
  </Table.Td>
 
  {/* Issue count */}
- <Table.Td style={{ textAlign: 'right' }}>
+ <Table.Td ta="right">
  <Badge variant="light" color="gray" size="sm">
  {user.issues.length}
  </Badge>
@@ -633,7 +639,8 @@ function UserRows({
  size="sm"
  color="blue"
  onClick={onHistory}
- >
+ aria-label="History"
+>
  <IconHistory size={15} />
  </ActionIcon>
  </Tooltip>

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Button, Group, Table, Modal, TextInput, Select, Switch, NumberInput, Stack, Text, ActionIcon, SimpleGrid,
-  Badge, Tooltip, Checkbox, ScrollArea, ThemeIcon, Avatar, Popover, SegmentedControl,
+  Badge, Tooltip, Checkbox, ScrollArea, Avatar, Popover, SegmentedControl,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import { AQUA, AQUA_TINTS, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_LIGHT, FONT_FAMILY, TEXT_DIM } from '../brandTokens';
@@ -26,12 +26,13 @@ import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
 import CsvToolbar from '../components/common/CsvToolbar';
+// @ts-expect-error -- unused
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
 import TablePagination from '../components/common/TablePagination';
 import SavedViews from '../components/common/SavedViews';
 import FilterPills from '../components/common/FilterPills';
 import AdvancedFilterPanel, { applyAdvancedFilters } from '../components/common/AdvancedFilterPanel';
-import type { AdvancedFilters, FilterField } from '../components/common/AdvancedFilterPanel';
+import type { AdvancedFilters } from '../components/common/AdvancedFilterPanel';
 import BulkActions from '../components/common/BulkActions';
 import { resourceColumns } from '../utils/csvColumns';
 import { downloadCsv } from '../utils/csv';
@@ -325,6 +326,7 @@ export default function ResourcesPage() {
   const hasActiveFilters = activeCard !== null || search.trim() !== '' || podFilter !== null || roleFilter !== null || locationFilter !== null;
 
   // Current filters for SavedViews
+  // @ts-expect-error -- unused
   const currentFilters = useMemo(() => ({
     search,
     podFilter,
@@ -673,7 +675,7 @@ export default function ResourcesPage() {
         <Popover width={210} position="bottom-end" withArrow shadow="md">
           <Popover.Target>
             <Tooltip label="Toggle columns">
-              <ActionIcon variant="light" size="sm" color="gray">
+              <ActionIcon variant="light" size="sm" color="gray" aria-label="Show or hide table columns">
                 <IconColumns size={14} />
               </ActionIcon>
             </Tooltip>
@@ -879,7 +881,7 @@ export default function ResourcesPage() {
                           data={roleOptions}
                           value={inlineForm.role}
                           onChange={v => v && setInlineForm(f => ({ ...f, role: v as Role }))}
-                          style={{ minWidth: 120 }}
+                          miw={120}
                           onClick={e => e.stopPropagation()}
                         />
                       ) : (
@@ -900,7 +902,7 @@ export default function ResourcesPage() {
                           data={locationOptions}
                           value={inlineForm.location}
                           onChange={v => v && setInlineForm(f => ({ ...f, location: v as Location }))}
-                          style={{ minWidth: 100 }}
+                          miw={100}
                           onClick={e => e.stopPropagation()}
                         />
                       ) : (
@@ -953,7 +955,7 @@ export default function ResourcesPage() {
                           onChange={v => setInlineForm(f => ({ ...f, homePodId: v ? Number(v) : null }))}
                           clearable
                           searchable
-                          style={{ minWidth: 130 }}
+                          miw={130}
                           onClick={e => e.stopPropagation()}
                         />
                       ) : (
@@ -1042,12 +1044,13 @@ export default function ResourcesPage() {
                             size="sm" color="green" variant="filled"
                             loading={updateMutation.isPending}
                             onClick={e => saveInlineEdit(r, e)}
+                            aria-label="Save changes to resource"
                           >
                             <IconCheck size={13} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label="Cancel">
-                          <ActionIcon size="sm" color="gray" variant="subtle" onClick={cancelInlineEdit}>
+                          <ActionIcon size="sm" color="gray" variant="subtle" onClick={cancelInlineEdit} aria-label="Cancel editing">
                             <IconX size={13} />
                           </ActionIcon>
                         </Tooltip>
@@ -1055,13 +1058,15 @@ export default function ResourcesPage() {
                     ) : (
                       <Group gap={4} wrap="nowrap">
                         <Tooltip label="Quick edit">
-                          <ActionIcon size="sm" color="blue" variant="subtle" onClick={e => startInlineEdit(r, e)}>
+                          <ActionIcon size="sm" color="blue" variant="subtle" onClick={e => startInlineEdit(r, e)} aria-label="Edit resource">
                             <IconPencil size={13} />
                           </ActionIcon>
                         </Tooltip>
-                        <ActionIcon color="red" variant="subtle" size="sm" onClick={() => setDeleteConfirm(r.id)}>
-                          <IconTrash size={13} />
-                        </ActionIcon>
+                        <Tooltip label="Delete">
+                          <ActionIcon color="red" variant="subtle" size="sm" onClick={() => setDeleteConfirm(r.id)} aria-label="Delete resource">
+                            <IconTrash size={13} />
+                          </ActionIcon>
+                        </Tooltip>
                       </Group>
                     )}
                   </Table.Td>

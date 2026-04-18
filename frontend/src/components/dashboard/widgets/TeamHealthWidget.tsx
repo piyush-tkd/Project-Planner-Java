@@ -50,6 +50,7 @@ const TeamHealthWidget = React.memo(({ projects, statusCounts }: TeamHealthWidge
   return (
     <WrikeCard title="Projects by Assignee" minH={260}>
       <Box p={20} pt={16}>
+        <div role="img" aria-label="Bar chart">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={byOwner} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={dark ? "rgba(255,255,255,0.06)" : SURFACE_LIGHT} />
@@ -62,6 +63,7 @@ const TeamHealthWidget = React.memo(({ projects, statusCounts }: TeamHealthWidge
             ))}
           </BarChart>
         </ResponsiveContainer>
+        </div>
         {/* Legend */}
         <Group gap={12} mt={12} wrap="wrap" justify="center">
           {statusCounts.map(s => (

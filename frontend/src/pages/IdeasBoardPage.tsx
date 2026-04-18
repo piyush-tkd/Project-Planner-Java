@@ -16,17 +16,15 @@ import {
   Select,
   Skeleton,
   Loader,
-  Center,
   ActionIcon,
   Menu,
   Image,
   Paper,
-  Tooltip,
   Alert,
 } from '@mantine/core';
 import {
   IconThumbUp, IconPlus, IconEdit, IconTrash, IconDots,
-  IconUpload, IconX, IconFileTypePdf, IconPaperclip, IconAlertTriangle,
+  IconUpload, IconX, IconFileTypePdf, IconAlertTriangle,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -118,6 +116,7 @@ function AttachmentPreview({
           style={{ position: 'absolute', top: -8, right: -8 }}
           onClick={onDelete}
           title="Remove attachment"
+          aria-label="Close"
         >
           <IconX size={10} />
         </ActionIcon>
@@ -336,7 +335,9 @@ export default function IdeasBoardPage() {
           </Text>
           <Menu shadow="md">
             <Menu.Target>
-              <ActionIcon variant="subtle" color="gray" size="sm">
+              <ActionIcon variant="subtle" color="gray" size="sm"
+      aria-label="More options"
+    >
                 <IconDots size={16} />
               </ActionIcon>
             </Menu.Target>
@@ -430,7 +431,7 @@ export default function IdeasBoardPage() {
 
       {/* Kanban Columns */}
       <Box style={{ overflowX: 'auto', paddingBottom: '20px' }}>
-        <Group align="flex-start" gap="lg" style={{ minWidth: 'max-content' }}>
+        <Group align="flex-start" gap="lg" miw="max-content">
           {columns.map(columnName => {
             const columnIdeas = ideas.filter((idea: IdeaCard) => idea.status === columnName);
             return (

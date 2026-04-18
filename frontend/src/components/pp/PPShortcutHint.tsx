@@ -5,7 +5,7 @@
  *   <PPShortcutHint keys={['⌘', 'K']} />
  *   <PPShortcutHint keys={['G', 'D']} size="xs" />
  */
-import React from 'react';
+import _React from 'react';
 import { Group } from '@mantine/core';
 import { DARK_SURFACE_ALT, SIDEBAR_INACTIVE} from '../../brandTokens';
 

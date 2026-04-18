@@ -27,6 +27,7 @@ public class AzureDevOpsController {
     // SETTINGS
     // ════════════════════════════════════════════════════════════════════
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/settings")
     public ResponseEntity<SettingsResponse> getSettings() {
         Optional<AzureDevOpsSettings> s = settingsService.get();
@@ -39,12 +40,14 @@ public class AzureDevOpsController {
         )).orElse(new SettingsResponse("", "", "", "", false)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/settings")
     public ResponseEntity<Map<String, Object>> saveSettings(@RequestBody SaveSettingsRequest req) {
         settingsService.save(req.orgUrl(), req.projectName(), req.personalAccessToken(), req.repositories());
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/settings/test")
     public ResponseEntity<Map<String, Object>> testConnection() {
         if (!settingsService.isConfigured()) {

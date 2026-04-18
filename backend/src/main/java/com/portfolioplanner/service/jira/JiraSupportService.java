@@ -203,6 +203,7 @@ public class JiraSupportService {
         String priorityIconUrl   = extractPriorityIconUrl(fields);
         String reporter          = extractDisplayName(fields, "reporter");
         String assignee          = extractDisplayName(fields, "assignee");
+        String assigneeAvatarUrl = extractAvatarUrl(fields, "assignee");
         List<String> labels      = extractLabels(fields);
         String created           = str(fields, "created");
         String updated           = str(fields, "updated");
@@ -216,7 +217,7 @@ public class JiraSupportService {
         return new SupportTicket(
                 key, summary, status, statusCategory,
                 priority, priorityIconUrl,
-                reporter, assignee, labels,
+                reporter, assignee, assigneeAvatarUrl, labels,
                 created, updated,
                 lastCommentDate, lastCommentSnippet,
                 statusChangedDate,
@@ -314,6 +315,19 @@ public class JiraSupportService {
         if (!(person instanceof Map)) return null;
         Object dn = ((Map<?, ?>) person).get("displayName");
         return dn instanceof String ? (String) dn : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractAvatarUrl(Map<String, Object> fields, String fieldKey) {
+        Object person = fields.get(fieldKey);
+        if (!(person instanceof Map)) return null;
+        Object avatars = ((Map<?, ?>) person).get("avatarUrls");
+        if (!(avatars instanceof Map)) return null;
+        // prefer 24x24, fall back to 16x16
+        Object url = ((Map<?, ?>) avatars).get("24x24");
+        if (url instanceof String) return (String) url;
+        url = ((Map<?, ?>) avatars).get("16x16");
+        return url instanceof String ? (String) url : null;
     }
 
     @SuppressWarnings("unchecked")
@@ -434,7 +448,7 @@ public class JiraSupportService {
     public record SupportTicket(
             String key, String summary, String status, String statusCategory,
             String priority, String priorityIconUrl,
-            String reporter, String assignee, List<String> labels,
+            String reporter, String assignee, String assigneeAvatarUrl, List<String> labels,
             String created, String updated,
             String lastCommentDate, String lastCommentSnippet,
             String lastStatusChangeDate,

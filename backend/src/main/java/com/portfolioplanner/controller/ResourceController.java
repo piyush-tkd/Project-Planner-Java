@@ -47,22 +47,26 @@ public class ResourceController {
         return ResponseEntity.ok(resourceService.getById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ResourceResponse> create(@Valid @RequestBody ResourceRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.create(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ResourceResponse> update(@PathVariable Long id, @Valid @RequestBody ResourceRequest request) {
         return ResponseEntity.ok(resourceService.update(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         resourceService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/actual-rate")
     public ResponseEntity<ResourceResponse> updateActualRate(@PathVariable Long id,
                                                              @RequestBody Map<String, BigDecimal> body) {
@@ -70,6 +74,7 @@ public class ResourceController {
         return ResponseEntity.ok(resourceService.updateActualRate(id, rate));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/assignment")
     public ResponseEntity<ResourceResponse> setAssignment(@PathVariable Long id,
                                                           @Valid @RequestBody ResourcePodAssignmentRequest request) {
@@ -86,6 +91,7 @@ public class ResourceController {
         return ResponseEntity.ok(availabilityService.getAvailability(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/availability")
     public ResponseEntity<AvailabilityResponse> setAvailability(@PathVariable Long id,
                                                                 @Valid @RequestBody List<ResourceAvailabilityRequest> requests) {

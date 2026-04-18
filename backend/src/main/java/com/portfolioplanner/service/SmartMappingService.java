@@ -42,6 +42,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SmartMappingService {
 
     /** Minimum composite score to persist a suggestion. */
@@ -59,7 +60,7 @@ public class SmartMappingService {
      *
      * @return count of new suggestions persisted
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public int runAnalysis() {
         List<Project> manualProjects = projectRepository.findBySourceType(SourceType.MANUAL);
         if (manualProjects.isEmpty()) {
@@ -141,7 +142,7 @@ public class SmartMappingService {
      * @param id         suggestion id
      * @param resolution "LINKED" | "IGNORED"
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public SmartMappingSuggestion resolve(Long id, String resolution) {
         SmartMappingSuggestion s = suggestionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Suggestion not found: " + id));

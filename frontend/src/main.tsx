@@ -17,7 +17,7 @@ import './global.css';
 import './styles/microinteractions.css';
 
 import {
-  DEEP_BLUE_HEX, AQUA_HEX, FONT_FAMILY, RADIUS, SHADOW,
+  DEEP_BLUE_HEX, AQUA_HEX, FONT_FAMILY,
   DEEP_BLUE_TINTS, AQUA_TINTS, LEGACY_BLUE_TINTS,
 } from './brandTokens';
 import { slateTheme } from './theme/slate';  // S3.1 — wire Slate design system

@@ -1,0 +1,254 @@
+import { useState } from 'react';
+import {
+  Stack, Group, Box, Text, Badge, Loader, Table, SimpleGrid, Alert, ScrollArea, Accordion, Tooltip, Pagination,
+} from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer } from 'recharts';
+import apiClient from '../../../api/client';
+import { AQUA_HEX } from '../../../brandTokens';
+import { MetricCard } from './MetricCard';
+import { AssigneeCell } from './AssigneeCell';
+import { jiraLink, fmt1, fmt0, fmtDate } from '../utils';
+
+function ThroughputGrid({ byPerson, avatars }: { byPerson: Record<string, any[]>; avatars: Record<string, string> }) {
+  const [page, setPage] = useState(1);
+  const PAGE = 15;
+  const entries = Object.entries(byPerson ?? {});
+  const paged = entries.slice((page - 1) * PAGE, page * PAGE);
+
+  return (
+    <Stack gap={4}>
+      <Group px={4} pb={4} style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}>
+        <Box style={{ flex: 1 }}><Text size="xs" fw={600} c="dimmed">Developer</Text></Box>
+        <Text size="xs" fw={600} c="dimmed" w={55} ta="center">Done</Text>
+        <Text size="xs" fw={600} c="dimmed" w={45} ta="center">Avg</Text>
+        <Text size="xs" fw={600} c="dimmed" w={52} ta="center">Rate</Text>
+        <Text size="xs" fw={600} c="dimmed">← Sprints (newest →)</Text>
+      </Group>
+
+      {paged.map(([name, sprintList]: [string, any]) => {
+        const arr = Array.isArray(sprintList) ? sprintList : [];
+        const done = arr.reduce((s: number, sp: any) => s + (sp.issues_completed ?? 0), 0);
+        const total = arr.reduce((s: number, sp: any) => s + (sp.total_assigned ?? sp.issues_completed ?? 0), 0);
+        const avg = arr.length ? done / arr.length : 0;
+        const rate = total > 0 ? Math.round(done / total * 100) : 0;
+        const last = arr[0]?.issues_completed ?? 0;
+        const prev = arr[1]?.issues_completed ?? 0;
+        const trend = arr.length > 1 ? (last > prev ? '↑' : last < prev ? '↓' : '→') : '';
+
+        return (
+          <Group key={name} px={4} py={2} gap={4} align="center" wrap="nowrap">
+            <Box style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <Group gap={4} wrap="nowrap">
+                <AssigneeCell name={name} avatars={avatars} />
+                {trend && <Text size="10px" c={trend==='↑'?'green':trend==='↓'?'red':'dimmed'} fw={700}>{trend}</Text>}
+              </Group>
+            </Box>
+            <Text size="xs" fw={600} w={55} ta="center">{done}</Text>
+            <Text size="xs" c="dimmed" w={45} ta="center">{avg.toFixed(1)}</Text>
+            <Box w={52} ta="center">
+              <Badge size="xs" variant="light" color={rate>=80?'green':rate>=60?'yellow':'red'}>{rate}%</Badge>
+            </Box>
+            <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
+              {[...arr].reverse().map((sp: any, i: number) => {
+                const d = sp.issues_completed ?? 0;
+                const t = sp.total_assigned ?? d;
+                const p = t > 0 ? d / t : 0;
+                return (
+                  <Tooltip key={i} label={`${(sp.sprint_name ?? '').slice(-14)}: ${d}/${t} done`} withArrow>
+                    <Box style={{
+                      width: 20, height: 20, borderRadius: 3, flexShrink: 0,
+                      background: d===0 ? 'var(--mantine-color-dark-5)' : p>=0.9?'#16a34a':p>=0.6?'#d97706':'#dc2626',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default',
+                    }}>
+                      <Text size="8px" fw={700} c="white" style={{ lineHeight: 1 }}>{d||''}</Text>
+                    </Box>
+                  </Tooltip>
+                );
+              })}
+            </Group>
+          </Group>
+        );
+      })}
+
+      {entries.length > PAGE && (
+        <Group justify="center" pt={4}>
+          <Pagination size="xs" value={page} onChange={setPage} total={Math.ceil(entries.length / PAGE)} />
+        </Group>
+      )}
+      <Text size="9px" c="dimmed" pt={2}>
+        🟩 ≥90% · 🟨 60-89% · 🟥 &lt;60% · ⬛ no issues that sprint · Avg = avg completed/sprint · Rate = overall done%
+      </Text>
+    </Stack>
+  );
+}
+
+export function ProductivityTab({ projectKey, avatars }: { projectKey: string | null; avatars: Record<string, string> }) {
+  const { data: throughput, isLoading: tpLoading } = useQuery({
+    queryKey: ['eng-analytics', 'productivity', 'individual-throughput', projectKey],
+    queryFn: async () => {
+      const res = await apiClient.get('/engineering-analytics/productivity/individual-throughput', {
+        params: { sprints: 20, projectKey: projectKey || undefined },
+      });
+      return res.data;
+    },
+    enabled: !!projectKey || projectKey === null,
+  });
+
+  const { data: estAccuracy, isLoading: estLoading } = useQuery({
+    queryKey: ['eng-analytics', 'productivity', 'estimation-accuracy', projectKey],
+    queryFn: async () => {
+      const res = await apiClient.get('/engineering-analytics/productivity/estimation-accuracy', {
+        params: { days: 90, projectKey: projectKey || undefined },
+      });
+      return res.data;
+    },
+    enabled: !!projectKey || projectKey === null,
+  });
+
+  const { data: wipData, isLoading: wipLoading } = useQuery({
+    queryKey: ['eng-analytics', 'productivity', 'throughput-wip', projectKey],
+    queryFn: async () => {
+      const res = await apiClient.get('/engineering-analytics/productivity/throughput-wip', {
+        params: { weeks: 12, projectKey: projectKey || undefined },
+      });
+      return res.data;
+    },
+    enabled: !!projectKey || projectKey === null,
+  });
+
+  if (tpLoading || estLoading) return <Loader />;
+
+  const estPct = estAccuracy?.avg_accuracy_pct ?? 0;
+  const wipChartData = Array.isArray(wipData)
+    ? wipData.map((r: any) => ({
+        week: fmtDate(r.week_start),
+        throughput: r.throughput ?? 0,
+        wip: r.wip_at_start ?? 0,
+      }))
+    : [];
+
+  return (
+    <Stack gap="lg">
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        <MetricCard
+          title="Estimation Accuracy"
+          description="Avg accuracy: actual ÷ estimated × 100%"
+          insight={`${estPct > 100 ? 'Under-estimated by avg ' + (estPct - 100).toFixed(0) + '%' : estPct < 100 ? 'Over-estimated by avg ' + (100 - estPct).toFixed(0) + '%' : 'Spot on'}`}
+        >
+          <Group gap="sm">
+            <Text fw={700} size="xl">{fmt1(estPct)}%</Text>
+            <Badge color={estPct >= 80 && estPct <= 120 ? 'green' : estPct < 80 ? 'blue' : 'orange'}>
+              {estPct >= 80 && estPct <= 120 ? 'GOOD' : estPct < 80 ? 'OVER-ESTIMATED' : 'UNDER-ESTIMATED'}
+            </Badge>
+          </Group>
+        </MetricCard>
+
+        <MetricCard
+          title="Throughput vs WIP"
+          description="Weekly: issues completed vs work in progress. As WIP rises, throughput typically falls (Little's Law)"
+          insight={wipChartData.length > 2
+            ? (() => {
+                const recent3 = wipChartData.slice(-3);
+                const avgWip = recent3.reduce((s: number, r: any) => s + r.wip, 0) / 3;
+                const avgTp = recent3.reduce((s: number, r: any) => s + r.throughput, 0) / 3;
+                return avgWip > 20 ? `HIGH WIP (avg ${avgWip.toFixed(0)}) may be limiting throughput (avg ${avgTp.toFixed(0)}/wk)`
+                  : `WIP is healthy (avg ${avgWip.toFixed(0)}), throughput avg ${avgTp.toFixed(0)}/wk`;
+              })()
+            : undefined}
+        >
+          {wipLoading ? <Loader size="sm" /> : wipChartData.length === 0 ? (
+            <Text size="xs" c="dimmed">No weekly data available yet.</Text>
+          ) : (
+            <Box h={180}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={wipChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="week" tick={{ fontSize: 9 }} tickFormatter={(v: string) => v.slice(0, 6)} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <RechartTooltip />
+                  <Line type="monotone" dataKey="throughput" stroke={AQUA_HEX} strokeWidth={2} dot={{ r: 3 }} name="Completed/wk" />
+                  <Line type="monotone" dataKey="wip" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" name="WIP" />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+        </MetricCard>
+      </SimpleGrid>
+
+      <MetricCard
+        title={`Individual Throughput${throughput?.total_people ? ` — ${throughput.total_people} people` : ''}`}
+        description="Issues completed per person per sprint. Green box = mostly done, yellow = partial, red = low output. Spot drops (blocked?) or gaps without blame."
+      >
+        {!throughput?.by_person || Object.keys(throughput.by_person).length === 0 ? (
+          <Alert color="blue">No sprint data found. Ensure closed/active sprints are synced for the selected project.</Alert>
+        ) : (
+          <ThroughputGrid byPerson={throughput.by_person} avatars={avatars} />
+        )}
+      </MetricCard>
+
+      {estAccuracy?.issues && estAccuracy.issues.length > 0 && (
+        <MetricCard
+          title="Worst Estimates"
+          description="Stories with largest estimation variance"
+        >
+          <ScrollArea>
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Issue</Table.Th>
+                  <Table.Th>Summary</Table.Th>
+                  <Table.Th ta="right">Est (hrs)</Table.Th>
+                  <Table.Th ta="right">Actual (hrs)</Table.Th>
+                  <Table.Th ta="right">Accuracy %</Table.Th>
+                  <Table.Th>Assignee</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {(estAccuracy.issues ?? []).slice(0, 5).map((s: any) => (
+                  <Table.Tr key={s.issue_key}>
+                    <Table.Td>
+                      <Text component="a" href={jiraLink(s.issue_key)} target="_blank"
+                        size="xs" ff="monospace" c="blue" td="underline">
+                        {s.issue_key}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td><Text size="xs" lineClamp={1}>{s.summary}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ fontSize: '13px' }}>{fmt0(s.estimated_hours)}</Table.Td>
+                    <Table.Td ta="right" style={{ fontSize: '13px' }}>{fmt0(s.actual_hours)}</Table.Td>
+                    <Table.Td ta="right" fw={600} c={s.accuracy_pct >= 80 && s.accuracy_pct <= 120 ? 'green' : 'red'}>
+                      {fmt1(s.accuracy_pct)}%
+                    </Table.Td>
+                    <Table.Td><AssigneeCell name={s.assignee_display_name} /></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        </MetricCard>
+      )}
+
+      <Accordion>
+        <Accordion.Item value="glossary">
+          <Accordion.Control>📖 Glossary & Methodology</Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap="sm" style={{ fontSize: '14px' }}>
+              <div>
+                <Text fw={600} size="sm">Estimation Accuracy</Text>
+                <Text size="xs" c="dimmed">Actual time ÷ Estimated time × 100%. 80-120% = good range. Consistent &lt;80% = over-estimation, &gt;120% = under-estimation</Text>
+              </div>
+              <div>
+                <Text fw={600} size="sm">Individual Throughput</Text>
+                <Text size="xs" c="dimmed">Issues completed per developer per sprint. Use to spot sudden drops (blocked) not for evaluation</Text>
+              </div>
+              <div>
+                <Text fw={600} size="sm">Throughput vs WIP</Text>
+                <Text size="xs" c="dimmed">As WIP (work in progress) increases, throughput decreases (Little's Law). Keep WIP bounded</Text>
+              </div>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+    </Stack>
+  );
+}

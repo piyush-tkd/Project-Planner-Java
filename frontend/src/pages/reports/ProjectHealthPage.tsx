@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import _React, { useMemo, useState } from 'react';
 import {
  Container,
  Title,
@@ -10,8 +10,7 @@ import {
  SegmentedControl,
  MultiSelect,
  Box,
- Tooltip,
- ThemeIcon,
+ Tooltip
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../../api/projects';
@@ -22,10 +21,11 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
 import { IconAlertTriangle, IconCheck, IconHeartRateMonitor } from '@tabler/icons-react';
-import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_ORANGE, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_ORANGE, DEEP_BLUE, GRAY_100, SURFACE_SUBTLE } from '../../brandTokens';
 import { normaliseProjectStatus } from '../../utils/formatting';
 
-interface ProjectResponse {
+// @ts-expect-error -- unused
+interface _ProjectResponse {
  id: number;
  name: string;
  priority: string;
@@ -43,7 +43,8 @@ interface ProjectResponse {
  sourceType?: string | null;
 }
 
-interface PodMonthUtilization {
+// @ts-expect-error -- unused
+interface _PodMonthUtilization {
  podId: number;
  podName: string;
  monthIndex: number;
@@ -88,7 +89,7 @@ export default function ProjectHealthPage() {
  const { data: projects, isLoading: projectsLoading } = useProjects();
  const { data: projectPodMatrix, isLoading: podsLoading } = useProjectPodMatrix();
  const { data: heatmapData, isLoading: heatmapLoading } = useUtilizationHeatmap();
- const { monthLabels, currentMonthIndex } = useMonthLabels();
+ const { currentMonthIndex } = useMonthLabels();
  const navigate = useNavigate();
 
  const [sortBy, setSortBy] = useState<SortBy>('score');
@@ -113,15 +114,15 @@ export default function ProjectHealthPage() {
  let isInCurrentMonth: boolean;
  const now = new Date();
  if (project.startDate || project.targetDate) {
-   const start = project.startDate ? new Date(project.startDate) : null;
-   const end   = project.targetDate ? new Date(project.targetDate) : null;
-   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-   isInCurrentMonth = (!start || start <= monthEnd) && (!end || end >= monthStart);
+ const start = project.startDate ? new Date(project.startDate) : null;
+ const end = project.targetDate ? new Date(project.targetDate) : null;
+ const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+ isInCurrentMonth = (!start || start <= monthEnd) && (!end || end >= monthStart);
  } else {
-   isInCurrentMonth =
-     currentMonthIndex >= (project.startMonth ?? 0) &&
-     currentMonthIndex < (project.startMonth ?? 0) + project.durationMonths;
+ isInCurrentMonth =
+ currentMonthIndex >= (project.startMonth ?? 0) &&
+ currentMonthIndex < (project.startMonth ?? 0) + project.durationMonths;
  }
 
  let score = 0;
@@ -189,7 +190,7 @@ export default function ProjectHealthPage() {
  pods: assignedPods,
  score,
  level,
- riskFactors,
+ riskFactors
  };
  });
 
@@ -205,7 +206,7 @@ export default function ProjectHealthPage() {
  CRITICAL: 1,
  HIGH: 2,
  MEDIUM: 3,
- LOW: 4,
+ LOW: 4
  };
  const aPriority = priorityOrder[a.priority.toUpperCase()] ?? 5;
  const bPriority = priorityOrder[b.priority.toUpperCase()] ?? 5;
@@ -214,7 +215,7 @@ export default function ProjectHealthPage() {
 
  return {
  healthScores: scores,
- statusOptions: Array.from(statusSet).sort(),
+ statusOptions: Array.from(statusSet).sort()
  };
  }, [projects, projectPodMatrix, heatmapData, sortBy, currentMonthIndex]);
 
@@ -271,8 +272,7 @@ export default function ProjectHealthPage() {
  height: '24px',
  backgroundColor: dark ? 'rgba(255,255,255,0.1)' : GRAY_100,
  borderRadius: '4px',
- overflow: 'hidden',
- }}
+ overflow: 'hidden'}}
  >
  <Box
  style={{
@@ -280,8 +280,7 @@ export default function ProjectHealthPage() {
  left: `${(timelineStart / 12) * 100}%`,
  width: `${((timelineEnd - timelineStart) / 12) * 100}%`,
  height: '100%',
- backgroundColor: AQUA,
- }}
+ backgroundColor: AQUA}}
  />
  <Box
  style={{
@@ -289,8 +288,7 @@ export default function ProjectHealthPage() {
  left: `${(currentMonthIndex / 12) * 100}%`,
  width: '2px',
  height: '100%',
- backgroundColor: DEEP_BLUE,
- }}
+ backgroundColor: DEEP_BLUE}}
  />
  </Box>
  </Tooltip>
@@ -349,7 +347,7 @@ export default function ProjectHealthPage() {
  <Stack gap="lg">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Project Health Scorecard
  </Title>
  <Text c="dimmed" size="sm">
@@ -421,8 +419,7 @@ export default function ProjectHealthPage() {
  width: '20px',
  height: '20px',
  backgroundColor: COLOR_GREEN_LIGHT,
- borderRadius: '4px',
- }}
+ borderRadius: '4px'}}
  />
  <Text size="sm">Healthy (80+)</Text>
  </Group>
@@ -432,8 +429,7 @@ export default function ProjectHealthPage() {
  width: '20px',
  height: '20px',
  backgroundColor: COLOR_ORANGE,
- borderRadius: '4px',
- }}
+ borderRadius: '4px'}}
  />
  <Text size="sm">At Risk (60-79)</Text>
  </Group>
@@ -443,8 +439,7 @@ export default function ProjectHealthPage() {
  width: '20px',
  height: '20px',
  backgroundColor: COLOR_ERROR_LIGHT,
- borderRadius: '4px',
- }}
+ borderRadius: '4px'}}
  />
  <Text size="sm">Critical (&lt;60)</Text>
  </Group>

@@ -2,24 +2,24 @@ import { useState, useMemo } from 'react';
 import {
   Box, Text, Group, Badge, Button, Card, SimpleGrid,
   TextInput, ActionIcon, Modal, Stack, Divider,
-  Paper, Select, Loader, Center, Alert,
+  Paper, Select, Loader, Center,
   ThemeIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconPlus, IconSearch, IconCopy,
-  IconTrash, IconRocket, IconCode, IconChartBar,
+  IconRocket, IconCode, IconChartBar,
   IconBriefcase, IconStar, IconStarFilled, IconCheck,
   IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
   useProjectTemplates, useToggleTemplateStar,
-  useMarkTemplateUsed, useDeleteTemplate,
+  useMarkTemplateUsed,
   type ProjectTemplateResponse, type TemplatePhase,
 } from '../api/projectTemplates';
 import { PPPageLayout } from '../components/pp';
-import { AQUA, COLOR_BLUE, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, DEEP_BLUE_TINTS, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { AQUA, COLOR_BLUE, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 // Use API type — alias for convenience
@@ -56,7 +56,6 @@ export default function ProjectTemplatesPage() {
   const { data: rawTemplates = [], isLoading } = useProjectTemplates();
   const toggleStarMutation  = useToggleTemplateStar();
   const markUsedMutation    = useMarkTemplateUsed();
-  const deleteMutation      = useDeleteTemplate();
 
   const templates: Template[] = useMemo(() => rawTemplates.map(parseTemplate), [rawTemplates]);
 
@@ -114,6 +113,7 @@ export default function ProjectTemplatesPage() {
               variant="subtle" size="sm"
               onClick={e => { e.stopPropagation(); toggleStar(template.id); }}
               color={template.starred ? 'yellow' : 'gray'}
+              aria-label="Favourite"
             >
               {template.starred ? <IconStarFilled size={14} /> : <IconStar size={14} />}
             </ActionIcon>

@@ -7,7 +7,7 @@ import {
 import {
   IconPlus, IconClock, IconX, IconCheck, IconTrash,
 } from '@tabler/icons-react';
-import { AQUA, BORDER_STRONG, COLOR_BLUE, COLOR_BLUE_DARK, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_GREEN_STRONG, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, SURFACE_BLUE, SURFACE_FAINT, SURFACE_SUCCESS_LIGHT, TEXT_DIM, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
+import { AQUA, BORDER_STRONG, COLOR_BLUE, COLOR_BLUE_DARK, COLOR_BLUE_STRONG, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_WARNING, DEEP_BLUE, SURFACE_BLUE, SURFACE_FAINT, SURFACE_SUCCESS_LIGHT, TEXT_DIM, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 
 const CUSTOM_LANES_KEY = 'pp_kanban_custom_lanes';
 const HIDDEN_LANES_KEY = 'pp_kanban_hidden_lanes';
@@ -88,6 +88,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
   'MINOR':   { label: 'Minor',   color: TEXT_GRAY, bg: SURFACE_FAINT },
 };
 
+// @ts-expect-error -- unused
 function PriorityBadge({ priority }: { priority: string }) {
   const cfg = PRIORITY_CONFIG[priority?.toUpperCase()] || { label: priority, color: TEXT_GRAY, bg: SURFACE_FAINT };
   return (
@@ -208,6 +209,7 @@ function KanbanCard({
             style={{ position: 'absolute', top: 34, right: 6, zIndex: 2 }}
             onClick={e => { e.stopPropagation(); onDelete(e); }}
             title="Delete project"
+            aria-label="Delete"
           >
             <IconTrash size={11} />
           </ActionIcon>
@@ -351,6 +353,7 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
     e.dataTransfer.dropEffect = 'move';
     setDragOverColumn(colKey);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // @ts-expect-error -- unused
     const afterId = e.clientY > rect.top + rect.height / 2 ? cardId : null;
     // "afterId = null" when above the first card means insert at top
     // We need to get prev card's id when hovering top half
@@ -550,6 +553,7 @@ export default function KanbanBoardView({ projects, onProjectClick, onStatusChan
                             color="red"
                             onClick={() => handleDeleteLane(col.key)}
                             title="Remove lane"
+                            aria-label="Close"
                           >
                             <IconX size={11} />
                           </ActionIcon>

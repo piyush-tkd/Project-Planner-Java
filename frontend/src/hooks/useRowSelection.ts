@@ -15,7 +15,7 @@ interface RowSelectionResult {
  * @returns Selection state and control functions
  */
 export function useRowSelection<T extends { id: number }>(
-  data: T[],
+  _data: T[],
 ): RowSelectionResult {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 

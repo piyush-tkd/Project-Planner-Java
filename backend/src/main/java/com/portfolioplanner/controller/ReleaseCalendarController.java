@@ -25,17 +25,20 @@ public class ReleaseCalendarController {
         return ResponseEntity.ok(releaseCalendarService.getAll());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ReleaseCalendarResponse> create(@Valid @RequestBody ReleaseCalendarRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(releaseCalendarService.create(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ReleaseCalendarResponse> update(@PathVariable Long id,
                                                            @Valid @RequestBody ReleaseCalendarRequest request) {
         return ResponseEntity.ok(releaseCalendarService.update(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         releaseCalendarService.delete(id);

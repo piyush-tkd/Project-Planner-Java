@@ -9,13 +9,15 @@ import {
  Stack,
  Alert,
  Divider,
+ Box,
 } from '@mantine/core';
 import { useComputedColorScheme } from '@mantine/core';
 import { IconAlertCircle, IconClockOff, IconShield } from '@tabler/icons-react';
 import { useAuth } from '../auth/AuthContext';
+import LogoMark from '../components/common/LogoMark';
 import apiClient from '../api/client';
 import {
- DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, DEEP_BLUE_TINTS, SURFACE_FAINT,
+ DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, DEEP_BLUE_TINTS,
  FONT_FAMILY, SHADOW,
 } from '../brandTokens';
 
@@ -73,7 +75,6 @@ export default function LoginPage() {
  display: 'flex',
  height: '100vh',
  width: '100vw',
- fontFamily: FONT_FAMILY,
  }}>
 
  {/* ── Left panel: brand / logo ── */}
@@ -96,16 +97,12 @@ export default function LoginPage() {
  pointerEvents: 'none',
  }} />
 
- {/* Logo mark — Aqua triangle, fully opaque stroke + fill */}
- <svg width="60" height="56" viewBox="0 0 52 48" fill="none" style={{ marginBottom: 20, position: 'relative', filter: `drop-shadow(0 0 12px ${AQUA_HEX}88)` }}>
-   <polygon points="26,0 52,48 0,48" fill="none" stroke={AQUA_HEX} strokeWidth="3.5" />
-   <polygon points="26,10 44,44 8,44" fill={AQUA_HEX} opacity="0.35" />
- </svg>
+ {/* Logo mark */}
+ <LogoMark size={64} style={{ marginBottom: 20, filter: `drop-shadow(0 0 12px #5DD5DB88)` }} />
 
  {/* Title — use explicit inline style with !important equivalent via direct string */}
  <div style={{
    color: '#FFFFFF',
-   fontFamily: FONT_FAMILY,
    fontWeight: 300,
    fontSize: 34,
    letterSpacing: '0.1em',
@@ -145,7 +142,6 @@ export default function LoginPage() {
  order={2}
  style={{
  color: isDark ? '#ffffff' : DEEP_BLUE,
- fontFamily: FONT_FAMILY,
  fontWeight: 300,
  fontSize: 32,
  marginBottom: 6,
@@ -157,7 +153,6 @@ export default function LoginPage() {
  <Text style={{
  color: isDark ? 'rgba(255,255,255,0.7)' : DEEP_BLUE_TINTS[50],
  fontSize: 14,
- fontFamily: FONT_FAMILY,
  marginBottom: 32,
  }}>
  Log in to manage your portfolio and view reports.
@@ -189,8 +184,16 @@ export default function LoginPage() {
 
  <form onSubmit={handleSubmit}>
  <Stack gap="md">
+ <Box>
+ <label htmlFor="username-input" style={{
+ fontWeight: 500,
+ fontSize: 13,
+ color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
+ display: 'block',
+ marginBottom: 4,
+ }}>Username</label>
  <TextInput
- label="Username"
+ id="username-input"
  placeholder="Enter your username"
  value={username}
  onChange={e => setUsername(e.currentTarget.value)}
@@ -198,15 +201,7 @@ export default function LoginPage() {
  autoFocus
  autoComplete="username"
  styles={{
- label: {
- fontFamily: FONT_FAMILY,
- fontWeight: 500,
- fontSize: 13,
- color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
- marginBottom: 4,
- },
  input: {
- fontFamily: FONT_FAMILY,
  fontSize: 14,
  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff',
  borderColor: isDark ? 'rgba(255,255,255,0.12)' : DEEP_BLUE_TINTS[10],
@@ -217,25 +212,25 @@ export default function LoginPage() {
  },
  }}
  />
+ </Box>
 
- <div>
+ <Box>
+ <label htmlFor="password-input" style={{
+ fontWeight: 500,
+ fontSize: 13,
+ color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
+ display: 'block',
+ marginBottom: 4,
+ }}>Password</label>
  <PasswordInput
- label="Password"
+ id="password-input"
  placeholder="••••••••••••"
  value={password}
  onChange={e => setPassword(e.currentTarget.value)}
  required
  autoComplete="current-password"
  styles={{
- label: {
- fontFamily: FONT_FAMILY,
- fontWeight: 500,
- fontSize: 13,
- color: isDark ? 'rgba(255,255,255,0.85)' : DEEP_BLUE,
- marginBottom: 4,
- },
  input: {
- fontFamily: FONT_FAMILY,
  fontSize: 14,
  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff',
  borderColor: isDark ? 'rgba(255,255,255,0.12)' : DEEP_BLUE_TINTS[10],
@@ -251,14 +246,13 @@ export default function LoginPage() {
  style={{
  fontSize: 13,
  color: isDark ? '#4ecca9' : AQUA,
- fontFamily: FONT_FAMILY,
  textDecoration: 'none',
  }}
  >
  Forgot password?
  </Link>
  </div>
- </div>
+ </Box>
 
  <button
  type="submit"
@@ -270,7 +264,6 @@ export default function LoginPage() {
    color: DEEP_BLUE_HEX,
    borderRadius: 6,
    height: 44,
-   fontFamily: FONT_FAMILY,
    fontWeight: 700,
    fontSize: 16,
    letterSpacing: '0.01em',
@@ -304,7 +297,6 @@ export default function LoginPage() {
          color: isDark ? '#fff' : DEEP_BLUE,
          borderRadius: 6,
          height: 44,
-         fontFamily: FONT_FAMILY,
          fontWeight: 500,
          fontSize: 15,
        }}

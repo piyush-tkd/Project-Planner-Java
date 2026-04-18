@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  Paper, Group, Text, Stack, Button, ActionIcon, Badge,
-  ThemeIcon, Box, Collapse,
+  Paper, Group, Text, Stack, ActionIcon, Badge,
+  ThemeIcon, Collapse
 } from '@mantine/core';
 import {
-  IconX, IconRefresh, IconChevronDown, IconChevronUp, IconSparkles,
+  IconX, IconRefresh, IconChevronDown, IconChevronUp, IconSparkles
 } from '@tabler/icons-react';
-import { AQUA, DEEP_BLUE, SURFACE_SUBTLE, TEXT_SUBTLE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, DEEP_BLUE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface PageInsightCardProps {
@@ -103,7 +103,6 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
   }
 
   // Subtle gradient border: aqua → purple
-  const borderGradientId = `pp-insight-gradient-${pageKey}`;
   const borderStyle = {
     position: 'relative' as const,
     overflow: 'hidden' as const,
@@ -111,7 +110,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
     border: `1px solid ${isDark ? 'rgba(45, 204, 211, 0.2)' : 'rgba(45, 204, 211, 0.3)'}`,
     borderImage: isDark 
       ? `linear-gradient(90deg, rgba(45, 204, 211, 0.3), rgba(147, 112, 219, 0.2)) 1`
-      : `linear-gradient(90deg, rgba(45, 204, 211, 0.4), rgba(147, 112, 219, 0.3)) 1`,
+      : `linear-gradient(90deg, rgba(45, 204, 211, 0.4), rgba(147, 112, 219, 0.3)) 1`
   };
 
   return (
@@ -120,7 +119,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
       p="md"
       style={{
         ...borderStyle,
-        marginBottom: 16,
+        marginBottom: 16
       }}
       withBorder={false}
     >
@@ -141,8 +140,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
               variant="light"
               style={{
                 background: isDark ? 'rgba(45, 204, 211, 0.15)' : 'rgba(45, 204, 211, 0.1)',
-                color: AQUA,
-                fontFamily: FONT_FAMILY,
+                color: AQUA
               }}
             >
               ✨ AI Insight
@@ -155,6 +153,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
               color="gray"
               onClick={handleRefresh}
               title="Refresh insight"
+              aria-label="Refresh"
             >
               <IconRefresh size={14} />
             </ActionIcon>
@@ -164,6 +163,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
               color="gray"
               onClick={() => setExpanded(!expanded)}
               title={expanded ? 'Collapse' : 'Expand'}
+              aria-label="Expand"
             >
               {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
             </ActionIcon>
@@ -173,6 +173,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
               color="gray"
               onClick={handleDismiss}
               title="Dismiss for today"
+              aria-label="Close"
             >
               <IconX size={14} />
             </ActionIcon>
@@ -185,8 +186,7 @@ export function PageInsightCard({ pageKey, data }: PageInsightCardProps) {
             size="sm"
             style={{
               color: isDark ? 'rgba(255, 255, 255, 0.85)' : 'var(--pp-text)',
-              lineHeight: 1.5,
-              fontFamily: FONT_FAMILY,
+              lineHeight: 1.5
             }}
           >
             {insight}

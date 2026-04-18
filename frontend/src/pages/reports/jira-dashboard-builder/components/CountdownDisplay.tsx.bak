@@ -1,0 +1,49 @@
+import { useState, useEffect } from 'react';
+import { Text } from '@mantine/core';
+import { DEEP_BLUE_HEX, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../../brandTokens';
+
+export function CountdownDisplay({ targetDate, label }: { targetDate: string; label?: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const target = new Date(targetDate).getTime();
+  const diff = Math.max(0, target - now);
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  const isPast = diff === 0;
+
+  const digitBox = (val: number, unit: string) => (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        background: isPast ? '#EF4444' : `linear-gradient(135deg, ${DEEP_BLUE_HEX} 0%, ${DEEP_BLUE_TINTS[80]} 100%)`,
+        borderRadius: 8, padding: '8px 12px', minWidth: 56,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      }}>
+        <Text size="1.6rem" fw={900} style={{ fontFamily: FONT_FAMILY, color: 'white', lineHeight: 1.1 }}>
+          {String(val).padStart(2, '0')}
+        </Text>
+      </div>
+      <Text size="9px" fw={600} tt="uppercase" c="dimmed" mt={4}>{unit}</Text>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 16 }}>
+      {label && <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={-4}>{label}</Text>}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {digitBox(days, 'Days')}
+        <Text size="xl" fw={800} style={{ color: DEEP_BLUE_TINTS[40], marginBottom: 16 }}>:</Text>
+        {digitBox(hours, 'Hours')}
+        <Text size="xl" fw={800} style={{ color: DEEP_BLUE_TINTS[40], marginBottom: 16 }}>:</Text>
+        {digitBox(minutes, 'Min')}
+        <Text size="xl" fw={800} style={{ color: DEEP_BLUE_TINTS[40], marginBottom: 16 }}>:</Text>
+        {digitBox(seconds, 'Sec')}
+      </div>
+      <Text size="xs" c="dimmed">{isPast ? 'Deadline passed!' : new Date(targetDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+    </div>
+  );
+}

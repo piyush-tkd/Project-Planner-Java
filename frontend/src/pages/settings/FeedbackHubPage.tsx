@@ -7,14 +7,14 @@ import {
 import { notifications } from '@mantine/notifications';
 import {
  IconMessageReport, IconBug, IconBulb, IconTrendingUp, IconDots,
- IconCheck, IconClock, IconPlayerPlay, IconX, IconTrash,
- IconPhoto, IconExternalLink, IconStarFilled, IconStar,
+ IconCheck, IconPlayerPlay, IconX, IconTrash,
+ IconPhoto, IconStarFilled, IconStar,
 } from '@tabler/icons-react';
 import {
  useAllFeedback, useUpdateFeedback, useDeleteFeedback, UserFeedback,
 } from '../../api/feedback';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, SURFACE_SUBTLE } from '../../brandTokens';
 
 const CATEGORY_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
  BUG: { icon: <IconBug size={14} />, color: 'red', label: 'Bug' },
@@ -100,10 +100,10 @@ export default function FeedbackHubPage() {
  <Container size="xl" py="md">
  <Group justify="space-between" align="flex-start" mb="lg">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Feedback Hub
  </Title>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" mt={4}>
  Tech debt, bugs, and improvement requests from users
  </Text>
  </div>
@@ -122,14 +122,14 @@ export default function FeedbackHubPage() {
  {/* ── Tabs ── */}
  <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
  <Tabs.List mb="md">
- <Tabs.Tab value="all" style={{ fontFamily: FONT_FAMILY }}>All ({counts.all})</Tabs.Tab>
- <Tabs.Tab value="new" leftSection={<IconMessageReport size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="all">All ({counts.all})</Tabs.Tab>
+ <Tabs.Tab value="new" leftSection={<IconMessageReport size={14} />}>
  New ({counts.new})
  </Tabs.Tab>
- <Tabs.Tab value="in-progress" leftSection={<IconPlayerPlay size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="in-progress" leftSection={<IconPlayerPlay size={14} />}>
  In Progress ({counts.inProgress})
  </Tabs.Tab>
- <Tabs.Tab value="done" leftSection={<IconCheck size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="done" leftSection={<IconCheck size={14} />}>
  Resolved ({counts.done})
  </Tabs.Tab>
  </Tabs.List>
@@ -144,22 +144,22 @@ export default function FeedbackHubPage() {
  <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
  <IconMessageReport size={24} />
  </ThemeIcon>
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No feedback items found.</Text>
+ <Text c="dimmed">No feedback items found.</Text>
  </Box>
  ) : (
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Category</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Feedback</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Page</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Screenshot</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>By</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Priority</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Rating</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Date</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
+ <Table.Th>Category</Table.Th>
+ <Table.Th>Feedback</Table.Th>
+ <Table.Th>Page</Table.Th>
+ <Table.Th>Screenshot</Table.Th>
+ <Table.Th>By</Table.Th>
+ <Table.Th>Priority</Table.Th>
+ <Table.Th>Rating</Table.Th>
+ <Table.Th>Status</Table.Th>
+ <Table.Th>Date</Table.Th>
+ <Table.Th>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -174,8 +174,8 @@ export default function FeedbackHubPage() {
  {cat.label}
  </Badge>
  </Table.Td>
- <Table.Td style={{ maxWidth: 300 }}>
- <Text size="sm" lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>{fb.message}</Text>
+ <Table.Td maw={300}>
+ <Text size="sm" lineClamp={2}>{fb.message}</Text>
  </Table.Td>
  <Table.Td>
  {fb.pageUrl ? (
@@ -219,7 +219,8 @@ export default function FeedbackHubPage() {
  <ActionIcon
  size="xs" variant="subtle" color="red"
  onClick={(e) => { e.stopPropagation(); handleDelete(fb.id); }}
- >
+ aria-label="Delete"
+>
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -242,7 +243,7 @@ export default function FeedbackHubPage() {
  title={
  <Group gap={8}>
  <IconMessageReport size={20} color={DEEP_BLUE} />
- <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Feedback Detail</Text>
+ <Text fw={600} style={{ color: dark ? '#fff' : DEEP_BLUE }}>Feedback Detail</Text>
  </Group>
  }
  size="lg"
@@ -261,14 +262,14 @@ export default function FeedbackHubPage() {
  </Group>
 
  <Paper withBorder p="sm" radius="md" style={{ backgroundColor: SURFACE_SUBTLE }}>
- <Text size="sm" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'pre-wrap' }}>
+ <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
  {detailModal.message}
  </Text>
  </Paper>
 
  {detailModal.screenshot && (
  <div>
- <Text size="sm" fw={500} mb={4} style={{ fontFamily: FONT_FAMILY }}>Screenshot</Text>
+ <Text size="sm" fw={500} mb={4}>Screenshot</Text>
  <Image
  src={detailModal.screenshot.startsWith('data:') ? detailModal.screenshot : `data:image/png;base64,${detailModal.screenshot}`}
  alt="Feedback screenshot"
@@ -290,7 +291,7 @@ export default function FeedbackHubPage() {
  ]}
  value={editStatus}
  onChange={(v) => setEditStatus(v ?? 'NEW')}
- styles={{ label: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { } }}
  />
  <Select
  label="Priority"
@@ -302,7 +303,7 @@ export default function FeedbackHubPage() {
  ]}
  value={editPriority}
  onChange={(v) => setEditPriority(v ?? 'MEDIUM')}
- styles={{ label: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { } }}
  />
  </Group>
 
@@ -312,23 +313,21 @@ export default function FeedbackHubPage() {
  minRows={3}
  value={editNotes}
  onChange={(e) => setEditNotes(e.currentTarget.value)}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
 
  <Group justify="flex-end">
  <Button
  variant="subtle" color="red"
  leftSection={<IconTrash size={14} />}
- onClick={() => handleDelete(detailModal.id)}
- style={{ fontFamily: FONT_FAMILY }}
- >
+ onClick={() => handleDelete(detailModal.id)}>
  Delete
  </Button>
  <Button
  leftSection={<IconCheck size={16} />}
  onClick={handleSave}
  loading={updateFeedback.isPending}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}
+ style={{ backgroundColor: DEEP_BLUE }}
  >
  Save Changes
  </Button>
@@ -350,8 +349,8 @@ function SummaryCard({ label, value, color, icon }: { label: string; value: numb
  {icon}
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color }}>{value}</Text>
+ <Text size="xs" c="dimmed">{label}</Text>
+ <Text size="xl" fw={700} style={{ color }}>{value}</Text>
  </div>
  </Group>
  </Paper>

@@ -19,12 +19,10 @@ import {
   Skeleton,
   ActionIcon,
   Menu,
-  NumberInput,
-  Tooltip,
   Alert,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
-import { IconAlertTriangle, IconListCheck, IconHelp, IconEdit, IconTrash, IconDots } from '@tabler/icons-react';
+import { IconAlertTriangle, IconListCheck, IconHelp, IconTrash, IconDots } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../api/client';
@@ -225,6 +223,7 @@ export default function RiskRegisterPage() {
     setModalOpen(true);
   };
 
+  // @ts-expect-error -- unused
   const openEditModal = (risk: Risk) => {
     setFormData({
       title: risk.title,
@@ -375,7 +374,6 @@ export default function RiskRegisterPage() {
         onChange={setActiveTab}
         styles={{
           tab: {
-            fontFamily: FONT_FAMILY,
             color: DEEP_BLUE,
             '&[data-active]': {
               color: AQUA,
@@ -581,7 +579,9 @@ export default function RiskRegisterPage() {
                       <Table.Td>
                         <Menu shadow="md">
                           <Menu.Target>
-                            <ActionIcon variant="subtle" color="gray" size="sm">
+                            <ActionIcon variant="subtle" color="gray" size="sm"
+      aria-label="More options"
+    >
                               <IconDots size={16} />
                             </ActionIcon>
                           </Menu.Target>
@@ -761,7 +761,9 @@ export default function RiskRegisterPage() {
                       <Table.Td>
                         <Menu shadow="md">
                           <Menu.Target>
-                            <ActionIcon variant="subtle" color="gray" size="sm">
+                            <ActionIcon variant="subtle" color="gray" size="sm"
+      aria-label="More options"
+    >
                               <IconDots size={16} />
                             </ActionIcon>
                           </Menu.Target>

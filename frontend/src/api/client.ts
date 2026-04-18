@@ -68,8 +68,13 @@ apiClient.interceptors.response.use(
 
     if (status === 401) {
       message = 'Session expired. Redirecting to login…';
-      // Clear stale token & redirect via AuthContext
-      fireAuthExpired();
+      // Don't fire if we're already on the login page (e.g. bad password attempt)
+      // or if it's the /auth/me bootstrap call that's allowed to fail silently.
+      const isLoginPage = window.location.pathname.startsWith('/login');
+      const isAuthEndpoint = requestUrl.includes('/auth/');
+      if (!isLoginPage && !isAuthEndpoint) {
+        fireAuthExpired();
+      }
     } else if (status === 403) {
       message = 'You do not have permission to perform this action.';
     } else if (status === 404) {

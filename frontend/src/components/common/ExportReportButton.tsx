@@ -56,7 +56,9 @@ export function ExportReportButton<T = unknown>({
     if (compact) {
       return (
         <Tooltip label="Print / Save as PDF" position="bottom">
-          <ActionIcon variant="default" size="lg" onClick={printPdf} className="no-print">
+          <ActionIcon variant="default" size="lg" onClick={printPdf} className="no-print"
+      aria-label="Print"
+    >
             <IconPrinter size={16} />
           </ActionIcon>
         </Tooltip>
@@ -78,7 +80,9 @@ export function ExportReportButton<T = unknown>({
   // With tabular data → dropdown with PDF + CSV + Excel
   const trigger = compact ? (
     <Tooltip label="Export" position="bottom">
-      <ActionIcon variant="default" size="lg" className="no-print">
+      <ActionIcon variant="default" size="lg" className="no-print"
+      aria-label="Download"
+    >
         <IconDownload size={16} />
       </ActionIcon>
     </Tooltip>

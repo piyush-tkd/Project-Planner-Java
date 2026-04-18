@@ -7,7 +7,7 @@ import { IconPlus, IconEdit, IconTrash, IconEye, IconEyeOff, IconAlertTriangle, 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 
 interface ChangelogEntry {
   id: number; version: string; title: string; description: string;
@@ -82,11 +82,11 @@ export default function ChangelogAdminPage() {
   });
 
   return (
-    <Stack gap="lg" style={{ fontFamily: FONT_FAMILY }}>
+    <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>Changelog Admin</Title>
-          <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          <Title order={2} c={DEEP_BLUE}>Changelog Admin</Title>
+          <Text size="sm" c="dimmed">
             Manage versioned release notes shown in "What's New"
           </Text>
         </div>
@@ -103,12 +103,12 @@ export default function ChangelogAdminPage() {
         <Table withTableBorder withColumnBorders fz="sm">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Version</Table.Th>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Title</Table.Th>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Type</Table.Th>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Status</Table.Th>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Date</Table.Th>
-              <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
+              <Table.Th>Version</Table.Th>
+              <Table.Th>Title</Table.Th>
+              <Table.Th>Type</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th>Date</Table.Th>
+              <Table.Th>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -147,15 +147,20 @@ export default function ChangelogAdminPage() {
                         variant="subtle" color={e.published ? 'orange' : 'teal'} size="sm"
                         loading={togglePublish.isPending}
                         onClick={() => togglePublish.mutate(e)}
+                        aria-label="View"
                       >
                         {e.published ? <IconEyeOff size={14} /> : <IconEye size={14} />}
                       </ActionIcon>
                     </Tooltip>
-                    <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openEdit(e)}>
+                    <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openEdit(e)}
+      aria-label="Edit"
+    >
                       <IconEdit size={14} />
                     </ActionIcon>
                     <ActionIcon variant="subtle" color="red" size="sm"
-                      onClick={() => deleteMutation.mutate(e.id)}>
+                      onClick={() => deleteMutation.mutate(e.id)}
+      aria-label="Delete"
+    >
                       <IconTrash size={14} />
                     </ActionIcon>
                   </Group>
@@ -179,7 +184,6 @@ export default function ChangelogAdminPage() {
               label="Version" placeholder="v14.0"
               value={form.version}
               onChange={e => setForm(f => ({ ...f, version: e.currentTarget.value }))}
-              styles={{ input: { fontFamily: FONT_FAMILY } }}
             />
             <Select
               label="Type"
@@ -191,7 +195,6 @@ export default function ChangelogAdminPage() {
               ]}
               value={form.changeType}
               onChange={v => setForm(f => ({ ...f, changeType: v ?? 'feature' }))}
-              styles={{ input: { fontFamily: FONT_FAMILY } }}
             />
           </Group>
           <TextInput
@@ -200,7 +203,6 @@ export default function ChangelogAdminPage() {
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.currentTarget.value }))}
             required
-            styles={{ input: { fontFamily: FONT_FAMILY } }}
           />
           <Textarea
             label="Description *"
@@ -208,7 +210,6 @@ export default function ChangelogAdminPage() {
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.currentTarget.value }))}
             required autosize minRows={3}
-            styles={{ input: { fontFamily: FONT_FAMILY } }}
           />
           <Switch
             label="Publish immediately"

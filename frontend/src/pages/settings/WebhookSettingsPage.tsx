@@ -10,7 +10,7 @@ import { useState, useMemo } from 'react';
 import {
   Title, Text, Stack, Group, Button, Paper, Badge, Table,
   Modal, TextInput, Select, Switch, ActionIcon,
-  Tooltip, Center, ThemeIcon, Alert, Code, Tabs, Skeleton,
+  Tooltip, ThemeIcon, Alert, Code, Tabs, Skeleton,
   NumberInput, SimpleGrid, Box, ScrollArea,
 } from '@mantine/core';
 import {
@@ -22,7 +22,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
-import { AQUA, DEEP_BLUE, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, GRAY_100 } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -306,15 +306,15 @@ export default function WebhookSettingsPage() {
       {/* ── Header ── */}
       <Group justify="space-between">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
             Webhooks
           </Title>
-          <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="sm" c="dimmed" mt={4}>
             Real-time HTTP callbacks for {ALL_EVENTS.length} event types across {EVENT_GROUPS.length} categories.
             HMAC-SHA256 signing • exponential backoff retry • full delivery log.
           </Text>
         </div>
-        <Button leftSection={<IconPlus size={15} />} onClick={openCreate} style={{ fontFamily: FONT_FAMILY }}>
+        <Button leftSection={<IconPlus size={15} />} onClick={openCreate}>
           Add Webhook
         </Button>
       </Group>
@@ -358,7 +358,7 @@ export default function WebhookSettingsPage() {
               <ThemeIcon size={56} radius="xl" variant="light" color="grape" mx="auto" mb="md">
                 <IconWebhook size={28} />
               </ThemeIcon>
-              <Title order={4} mb={4} style={{ fontFamily: FONT_FAMILY }}>No webhooks configured</Title>
+              <Title order={4} mb={4}>No webhooks configured</Title>
               <Text size="sm" c="dimmed" mb="md">
                 Add your first webhook to start receiving real-time notifications.
               </Text>
@@ -377,14 +377,14 @@ export default function WebhookSettingsPage() {
                     <Table.Th>Events</Table.Th>
                     <Table.Th>Signing</Table.Th>
                     <Table.Th>Status</Table.Th>
-                    <Table.Th style={{ width: 140 }}>Actions</Table.Th>
+                    <Table.Th w={140}>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {hooks.map(wh => (
                     <Table.Tr key={wh.id}>
                       <Table.Td>
-                        <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{wh.name}</Text>
+                        <Text fw={600} size="sm">{wh.name}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Badge size="sm" color={PROVIDER_COLORS[wh.provider] ?? 'gray'} variant="light">
@@ -420,18 +420,24 @@ export default function WebhookSettingsPage() {
                         <Group gap={4}>
                           <Tooltip label="Send test ping">
                             <ActionIcon size="sm" variant="light" color="teal"
-                              loading={testingId === wh.id} onClick={() => handleTest(wh.id)}>
+                              loading={testingId === wh.id} onClick={() => handleTest(wh.id)}
+      aria-label="Send"
+    >
                               <IconSend size={13} />
                             </ActionIcon>
                           </Tooltip>
                           <Tooltip label="Edit">
-                            <ActionIcon size="sm" variant="light" color="blue" onClick={() => openEdit(wh)}>
+                            <ActionIcon size="sm" variant="light" color="blue" onClick={() => openEdit(wh)}
+      aria-label="Edit"
+    >
                               <IconEdit size={13} />
                             </ActionIcon>
                           </Tooltip>
                           <Tooltip label="Delete">
                             <ActionIcon size="sm" variant="light" color="red"
-                              onClick={() => { if (confirm(`Delete webhook "${wh.name}"?`)) deleteMutation.mutate(wh.id); }}>
+                              onClick={() => { if (confirm(`Delete webhook "${wh.name}"?`)) deleteMutation.mutate(wh.id); }}
+      aria-label="Delete"
+    >
                               <IconTrash size={13} />
                             </ActionIcon>
                           </Tooltip>
@@ -473,7 +479,7 @@ export default function WebhookSettingsPage() {
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ width: 36 }}></Table.Th>
+                    <Table.Th w={36}></Table.Th>
                     <Table.Th>Webhook</Table.Th>
                     <Table.Th>Event</Table.Th>
                     <Table.Th>HTTP</Table.Th>
@@ -526,7 +532,7 @@ export default function WebhookSettingsPage() {
             <Stack gap="lg">
               <Group gap="xs">
                 <IconShieldLock size={18} color={AQUA} />
-                <Title order={4} style={{ fontFamily: FONT_FAMILY }}>Global Retry Policy</Title>
+                <Title order={4}>Global Retry Policy</Title>
               </Group>
               <Text size="sm" c="dimmed">
                 When a delivery fails (non-2xx or timeout), the system retries with exponential backoff.

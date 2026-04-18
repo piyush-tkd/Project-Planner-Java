@@ -16,7 +16,6 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL } from '../brandTokens';
-import { useDarkMode } from '../hooks/useDarkMode';
 import apiClient from '../api/client';
 
 const ROLE_TYPE_OPTIONS = [
@@ -55,7 +54,6 @@ function utilizationColor(pct: number): string {
 }
 
 export default function ResourcePoolsPage() {
-  const dark = useDarkMode();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

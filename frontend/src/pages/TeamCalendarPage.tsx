@@ -315,7 +315,6 @@ export default function TeamCalendarPage() {
  <th style={{
  background: DEEP_BLUE, color: 'white',
  padding: '12px 16px', textAlign: 'left',
- fontFamily: FONT_FAMILY,
  fontSize: 13, fontWeight: 700,
  position: 'sticky', left: 0, zIndex: 2,
  minWidth: 160,
@@ -332,7 +331,6 @@ export default function TeamCalendarPage() {
  color: 'white',
  padding: '12px 8px',
  textAlign: 'center',
- fontFamily: FONT_FAMILY,
  fontSize: 12, fontWeight: 700,
  minWidth: 90,
  borderLeft: isCurrent ? '2px solid #40c4c9' : '1px solid rgba(255,255,255,0.1)',
@@ -352,7 +350,6 @@ export default function TeamCalendarPage() {
  color: 'white',
  padding: '8px 6px',
  textAlign: 'center',
- fontFamily: FONT_FAMILY,
  fontSize: 11, fontWeight: 700,
  minWidth: 100,
  borderLeft: isCurrent ? '2px solid #40c4c9' : '1px solid rgba(255,255,255,0.1)',
@@ -395,7 +392,6 @@ export default function TeamCalendarPage() {
  padding: '10px 16px',
  fontWeight: 700, fontSize: 13,
  color: isDark ? '#fff' : DEEP_BLUE,
- fontFamily: FONT_FAMILY,
  borderRight: isDark ? '1px solid #373A40' : '1px solid #e9ecef',
  borderBottom: isDark ? '1px solid #373A40' : '1px solid #e9ecef',
  position: 'sticky', left: 0, zIndex: 1,
@@ -568,7 +564,6 @@ function HeatmapCell({
  <>
  <div style={{
  fontWeight: 700, fontSize: 14,
- fontFamily: FONT_FAMILY,
  lineHeight: 1.2,
  }}>
  {pct > 0 ? `${Math.round(pct)}%` : '—'}

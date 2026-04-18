@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
  Container, Title, Text, Paper, Group, Stack, Badge, Button,
- Table, ActionIcon, Tooltip, SimpleGrid, Box, Skeleton, Loader, Switch,
+ Table, ActionIcon, Tooltip, SimpleGrid, Box, Skeleton, Loader,
  Tabs, ThemeIcon, Progress, ScrollArea, Modal, Image, Alert,
  useMantineColorScheme,
 } from '@mantine/core';
@@ -9,9 +9,9 @@ import { notifications } from '@mantine/notifications';
 import {
  IconBrain, IconPlayerPlay, IconTrash, IconToggleLeft,
  IconChartBar, IconAlertTriangle, IconThumbDown, IconCheck,
- IconTrendingUp, IconDatabase, IconSparkles, IconRefresh,
+ IconTrendingUp, IconDatabase, IconSparkles,
  IconHistory, IconArrowUpRight, IconArrowDownRight, IconMinus,
- IconRobot, IconPhoto, IconKey, IconClock,
+ IconRobot, IconClock,
 } from '@tabler/icons-react';
 import {
  useRunNlpLearner, useNlpLowConfidenceLogs, useNlpNegativeRatedLogs,
@@ -19,7 +19,7 @@ import {
  useNlpFeedback, useNlpLearnerRunHistory, NlpLearnerStats, NlpLearnerRunHistory,
 } from '../../api/nlp';
 import { useQueryClient } from '@tanstack/react-query';
-import { AQUA, AQUA_TINTS, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_200} from '../../brandTokens';
+import { AQUA, COLOR_ERROR_DEEP, COLOR_ORANGE_DARK, DEEP_BLUE, GRAY_200} from '../../brandTokens';
 
 export default function NlpOptimizerPage() {
  const queryClient = useQueryClient();
@@ -121,10 +121,10 @@ export default function NlpOptimizerPage() {
  <Container size="xl" py="md" className="page-enter stagger-children">
  <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
+ <Title order={2} style={{ color: headingColor, fontWeight: 700 }}>
  NLP Optimizer
  </Title>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" mt={4}>
  Analyze query logs, mine patterns, and improve the NLP engine
  </Text>
  <Badge
@@ -132,9 +132,7 @@ export default function NlpOptimizerPage() {
  variant="light"
  color="teal"
  leftSection={<IconRobot size={12} />}
- mt={6}
- style={{ fontFamily: FONT_FAMILY }}
- >
+ mt={6}>
  Auto-learning active &middot; runs every 6h
  </Badge>
  </div>
@@ -143,7 +141,7 @@ export default function NlpOptimizerPage() {
  onClick={handleRunLearner}
  disabled={runLearner.isPending}
  size="md"
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}
+ style={{ backgroundColor: DEEP_BLUE }}
  >
  {runLearner.isPending ? 'Running Analysis…' : 'Run Learner'}
  </Button>
@@ -153,7 +151,7 @@ export default function NlpOptimizerPage() {
  {displayStats ? (
  <>
  {displayStats.lastRunAt && (
- <Text size="xs" c="dimmed" mb={6} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" mb={6}>
  Last run: {new Date(displayStats.lastRunAt).toLocaleString()}
  </Text>
  )}
@@ -186,8 +184,8 @@ export default function NlpOptimizerPage() {
  <ThemeIcon size={48} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
  <IconBrain size={24} />
  </ThemeIcon>
- <Text fw={600} style={{ fontFamily: FONT_FAMILY, color: headingColor }}>No Data Yet</Text>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text fw={600} style={{ color: headingColor }}>No Data Yet</Text>
+ <Text size="sm" c="dimmed" mt={4}>
  Click "Run Learner" to analyze query logs and generate insights
  </Text>
  </Paper>
@@ -196,7 +194,7 @@ export default function NlpOptimizerPage() {
  {/* ── Intent Distribution ── */}
  {displayStats && displayStats.intentDistribution && Object.keys(displayStats.intentDistribution).length > 0 && (
  <Paper shadow="xs" radius="md" p="md" mb="lg" withBorder>
- <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: headingColor }}>
+ <Text fw={600} size="sm" mb="sm" style={{ color: headingColor }}>
  Intent Distribution
  </Text>
  <Stack gap={6}>
@@ -206,7 +204,7 @@ export default function NlpOptimizerPage() {
  const pct = displayStats.totalQueries > 0 ? Math.round((count / displayStats.totalQueries) * 100) : 0;
  return (
  <Group key={intent} gap="sm" wrap="nowrap">
- <Text size="xs" w={120} style={{ fontFamily: FONT_FAMILY }}>{intent}</Text>
+ <Text size="xs" w={120}>{intent}</Text>
  <Progress value={pct} color={intent === 'UNKNOWN' ? 'orange' : AQUA} style={{ flex: 1 }} size="sm" radius="xl" />
  <Text size="xs" c="dimmed" w={60} ta="right">{count} ({pct}%)</Text>
  </Group>
@@ -219,14 +217,14 @@ export default function NlpOptimizerPage() {
  {/* ── Strategy Avg Confidence ── */}
  {displayStats && displayStats.strategyAvgConfidence && Object.keys(displayStats.strategyAvgConfidence).length > 0 && (
  <Paper shadow="xs" radius="md" p="md" mb="lg" withBorder>
- <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY, color: headingColor }}>
+ <Text fw={600} size="sm" mb="sm" style={{ color: headingColor }}>
  Average Confidence by Strategy
  </Text>
  <Group gap="lg">
  {Object.entries(displayStats.strategyAvgConfidence).map(([strategy, avg]) => (
  <Paper key={strategy} p="sm" radius="md" withBorder style={{ flex: 1, minWidth: 140 }}>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{strategy}</Text>
- <Text size="lg" fw={700} style={{ color: avg >= 0.75 ? '#2b8a3e' : COLOR_ORANGE_DARK, fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed">{strategy}</Text>
+ <Text size="lg" fw={700} style={{ color: avg >= 0.75 ? '#2b8a3e' : COLOR_ORANGE_DARK }}>
  {Math.round(avg * 100)}%
  </Text>
  </Paper>
@@ -238,24 +236,19 @@ export default function NlpOptimizerPage() {
  {/* ── Tabs: Low Confidence | Negative Rated | Learned Patterns | Run History ── */}
  <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
- <Tabs.Tab value="low-confidence" leftSection={<IconAlertTriangle size={14} />}
- style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="low-confidence" leftSection={<IconAlertTriangle size={14} />}>
  Low Confidence {lowConfLogs ? `(${lowConfLogs.length})` : ''}
  </Tabs.Tab>
- <Tabs.Tab value="negative-rated" leftSection={<IconThumbDown size={14} />}
- style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="negative-rated" leftSection={<IconThumbDown size={14} />}>
  Negative Rated {negRatedLogs ? `(${negRatedLogs.length})` : ''}
  </Tabs.Tab>
- <Tabs.Tab value="patterns" leftSection={<IconBrain size={14} />}
- style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="patterns" leftSection={<IconBrain size={14} />}>
  Learned Patterns {patterns ? `(${patterns.length})` : ''}
  </Tabs.Tab>
- <Tabs.Tab value="run-history" leftSection={<IconHistory size={14} />}
- style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="run-history" leftSection={<IconHistory size={14} />}>
  Run History {runHistory ? `(${runHistory.length})` : ''}
  </Tabs.Tab>
- <Tabs.Tab value="analytics" leftSection={<IconChartBar size={14} />}
- style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="analytics" leftSection={<IconChartBar size={14} />}>
  Analytics
  </Tabs.Tab>
  </Tabs.List>
@@ -270,30 +263,29 @@ export default function NlpOptimizerPage() {
  <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load low-confidence logs. Refresh to try again.</Alert></Box>
  ) : !lowConfLogs || lowConfLogs.length === 0 ? (
  <Box p="xl" ta="center">
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No low-confidence queries found.</Text>
+ <Text c="dimmed">No low-confidence queries found.</Text>
  </Box>
  ) : (
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Query</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Intent</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Confidence</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Strategy</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Rating</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Date</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
+ <Table.Th>Query</Table.Th>
+ <Table.Th>Intent</Table.Th>
+ <Table.Th>Confidence</Table.Th>
+ <Table.Th>Strategy</Table.Th>
+ <Table.Th>Rating</Table.Th>
+ <Table.Th>Date</Table.Th>
+ <Table.Th>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {lowConfLogs.map((log) => (
  <Table.Tr key={log.id}>
- <Table.Td style={{ fontFamily: FONT_FAMILY, maxWidth: 300 }}>
+ <Table.Td style={{ maxWidth: 300 }}>
  <Text size="sm" lineClamp={2}>{log.queryText}</Text>
  </Table.Td>
  <Table.Td>
- <Badge size="xs" color={log.intent === 'UNKNOWN' ? 'orange' : 'blue'} variant="light"
- style={{ fontFamily: FONT_FAMILY }}>
+ <Badge size="xs" color={log.intent === 'UNKNOWN' ? 'orange' : 'blue'} variant="light">
  {log.intent ?? 'NULL'}
  </Badge>
  </Table.Td>
@@ -317,13 +309,17 @@ export default function NlpOptimizerPage() {
  <Group gap={4}>
  <Tooltip label="Mark as good">
  <ActionIcon size="xs" variant="subtle" color="teal"
- onClick={() => handleFeedback(log.id, 1)}>
+ onClick={() => handleFeedback(log.id, 1)}
+      aria-label="Confirm"
+    >
  <IconCheck size={12} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Mark as bad">
  <ActionIcon size="xs" variant="subtle" color="red"
- onClick={() => handleFeedback(log.id, -1)}>
+ onClick={() => handleFeedback(log.id, -1)}
+      aria-label="Thumbs down"
+    >
  <IconThumbDown size={12} />
  </ActionIcon>
  </Tooltip>
@@ -349,28 +345,28 @@ export default function NlpOptimizerPage() {
  <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load negatively-rated logs. Refresh to try again.</Alert></Box>
  ) : !negRatedLogs || negRatedLogs.length === 0 ? (
  <Box p="xl" ta="center">
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>No negatively-rated queries found.</Text>
+ <Text c="dimmed">No negatively-rated queries found.</Text>
  </Box>
  ) : (
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Query</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>User Explanation</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Intent</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Confidence</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Strategy</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Screenshot</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Date</Table.Th>
+ <Table.Th>Query</Table.Th>
+ <Table.Th>User Explanation</Table.Th>
+ <Table.Th>Intent</Table.Th>
+ <Table.Th>Confidence</Table.Th>
+ <Table.Th>Strategy</Table.Th>
+ <Table.Th>Screenshot</Table.Th>
+ <Table.Th>Date</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {negRatedLogs.map((log) => (
  <Table.Tr key={log.id}>
- <Table.Td style={{ fontFamily: FONT_FAMILY, maxWidth: 280 }}>
+ <Table.Td style={{ maxWidth: 280 }}>
  <Text size="sm" lineClamp={2}>{log.queryText}</Text>
  </Table.Td>
- <Table.Td style={{ fontFamily: FONT_FAMILY, maxWidth: 280 }}>
+ <Table.Td style={{ maxWidth: 280 }}>
  {log.feedbackComment ? (
  <Text size="xs" c="red.6" lineClamp={3} style={{ fontStyle: 'italic' }}>
  {log.feedbackComment}
@@ -434,7 +430,7 @@ export default function NlpOptimizerPage() {
  <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load learned patterns. Refresh to try again.</Alert></Box>
  ) : !patterns || patterns.length === 0 ? (
  <Box p="xl" ta="center">
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text c="dimmed">
  No learned patterns yet. Click "Run Learner" to mine patterns from query logs.
  </Text>
  </Box>
@@ -442,23 +438,23 @@ export default function NlpOptimizerPage() {
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Pattern</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Type</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Intent</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Confidence</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Source</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Keywords</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Seen</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Votes</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Last Matched</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Active</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Actions</Table.Th>
+ <Table.Th>Pattern</Table.Th>
+ <Table.Th>Type</Table.Th>
+ <Table.Th>Intent</Table.Th>
+ <Table.Th>Confidence</Table.Th>
+ <Table.Th>Source</Table.Th>
+ <Table.Th>Keywords</Table.Th>
+ <Table.Th>Seen</Table.Th>
+ <Table.Th>Votes</Table.Th>
+ <Table.Th>Last Matched</Table.Th>
+ <Table.Th>Active</Table.Th>
+ <Table.Th>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {patterns.map((p) => (
  <Table.Tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
- <Table.Td style={{ fontFamily: FONT_FAMILY, maxWidth: 250 }}>
+ <Table.Td style={{ maxWidth: 250 }}>
  <Text size="sm" lineClamp={2}>{p.queryPattern}</Text>
  </Table.Td>
  <Table.Td>
@@ -487,9 +483,9 @@ export default function NlpOptimizerPage() {
  )}
  </Group>
  </Table.Td>
- <Table.Td style={{ maxWidth: 160 }}>
+ <Table.Td maw={160}>
  {p.keywords ? (
- <Text size="xs" c="dimmed" lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" lineClamp={2}>
  {p.keywords.split(',').map(k => k.trim()).join(', ')}
  </Text>
  ) : (
@@ -517,13 +513,17 @@ export default function NlpOptimizerPage() {
  <Group gap={4}>
  <Tooltip label={p.active ? 'Deactivate' : 'Activate'}>
  <ActionIcon size="xs" variant="subtle" color="blue"
- onClick={() => handleToggle(p.id)}>
+ onClick={() => handleToggle(p.id)}
+      aria-label="Toggle off"
+    >
  <IconToggleLeft size={14} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Delete">
  <ActionIcon size="xs" variant="subtle" color="red"
- onClick={() => handleDelete(p.id)}>
+ onClick={() => handleDelete(p.id)}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -548,7 +548,7 @@ export default function NlpOptimizerPage() {
  <Box p="lg"><Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Failed to load run history. Refresh to try again.</Alert></Box>
  ) : !runHistory || runHistory.length === 0 ? (
  <Box p="xl" ta="center">
- <Text c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text c="dimmed">
  No learner runs recorded yet. Click "Run Learner" to start.
  </Text>
  </Box>
@@ -556,18 +556,18 @@ export default function NlpOptimizerPage() {
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>#</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Trigger</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Run Date</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Duration</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Total Queries</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Unknown</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Low Conf.</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Active Patterns</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>New Patterns</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Positive</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Negative</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Trend</Table.Th>
+ <Table.Th>#</Table.Th>
+ <Table.Th>Trigger</Table.Th>
+ <Table.Th>Run Date</Table.Th>
+ <Table.Th>Duration</Table.Th>
+ <Table.Th>Total Queries</Table.Th>
+ <Table.Th>Unknown</Table.Th>
+ <Table.Th>Low Conf.</Table.Th>
+ <Table.Th>Active Patterns</Table.Th>
+ <Table.Th>New Patterns</Table.Th>
+ <Table.Th>Positive</Table.Th>
+ <Table.Th>Negative</Table.Th>
+ <Table.Th>Trend</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -598,7 +598,7 @@ export default function NlpOptimizerPage() {
  </Badge>
  </Table.Td>
  <Table.Td>
- <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs">
  {run.runAt ? new Date(run.runAt).toLocaleString() : '—'}
  </Text>
  </Table.Td>
@@ -664,7 +664,7 @@ export default function NlpOptimizerPage() {
  title="Feedback Screenshot"
  size="lg"
  centered
- styles={{ title: { fontFamily: FONT_FAMILY, fontWeight: 600, color: headingColor } }}
+ styles={{ title: { fontWeight: 600, color: headingColor } }}
  >
  {screenshotModal && (
  <Image
@@ -750,8 +750,8 @@ function StatCard({ label, value, icon, color, onClick, tooltip }: {
  {icon}
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{label}</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color }}>{value}</Text>
+ <Text size="xs" c="dimmed">{label}</Text>
+ <Text size="xl" fw={700} style={{ color }}>{value}</Text>
  </div>
  </Group>
  </Paper>
@@ -822,7 +822,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
  {/* Strategy Confidence */}
  <Paper shadow="xs" radius="md" withBorder p="md">
- <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ <Text fw={600} size="sm" mb="md" style={{ color: AQUA }}>
  Strategy Avg. Confidence
  </Text>
  {strategyDistribution.length === 0 ? (
@@ -832,7 +832,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
  {strategyDistribution.map(({ strategy, avgConf, color }) => (
  <Box key={strategy}>
  <Group justify="space-between" mb={4}>
- <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{strategy}</Text>
+ <Text size="xs">{strategy}</Text>
  <Badge size="xs" color={color} variant="light">{avgConf}%</Badge>
  </Group>
  <Progress value={avgConf} color={color} radius="sm" size="sm" />
@@ -844,7 +844,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
 
  {/* Intent Distribution */}
  <Paper shadow="xs" radius="md" withBorder p="md">
- <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ <Text fw={600} size="sm" mb="md" style={{ color: AQUA }}>
  Intent Distribution
  </Text>
  {intentEntries.length === 0 ? (
@@ -854,7 +854,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
  {intentEntries.map(({ intent, count, pct }) => (
  <Box key={intent}>
  <Group justify="space-between" mb={4}>
- <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{intent}</Text>
+ <Text size="xs">{intent}</Text>
  <Group gap={4}>
  <Text size="xs" c="dimmed">{count}</Text>
  <Badge size="xs" color="blue" variant="light">{pct}%</Badge>
@@ -870,7 +870,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
 
  {/* Query Volume Trend */}
  <Paper shadow="xs" radius="md" withBorder p="md">
- <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ <Text fw={600} size="sm" mb="md" style={{ color: AQUA }}>
  Query Volume — Last {volumeTrend.length} Runs
  </Text>
  {volumeTrend.length === 0 ? (
@@ -914,10 +914,10 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
  <Box
  style={{ borderTop: `1px solid ${borderColor}`, marginTop: 4, paddingTop: 4 }}
  >
- <Group gap={0} style={{ minWidth: 320 }}>
+ <Group gap={0} miw={320}>
  {volumeTrend.map((run) => (
  <Text key={run.id} size="xs" c="dimmed" ta="center"
- style={{ flex: 1, fontSize: 10, fontFamily: FONT_FAMILY }}>
+ style={{ flex: 1, fontSize: 10 }}>
  {new Date(run.runAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
  </Text>
  ))}
@@ -929,7 +929,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
 
  {/* Top Failure Queries */}
  <Paper shadow="xs" radius="md" withBorder p="md">
- <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY, color: AQUA }}>
+ <Text fw={600} size="sm" mb="md" style={{ color: AQUA }}>
  Top Failure Queries
  </Text>
  {topFailures.length === 0 ? (
@@ -944,7 +944,7 @@ function AnalyticsPanel({ displayStats, runHistory, lowConfLogs, negRatedLogs, i
  <Badge size="xs" color={f.reason === 'Negative rating' ? 'red' : 'orange'} variant="light">
  {f.reason}
  </Badge>
- <Text size="xs" style={{ fontFamily: FONT_FAMILY, flex: 1 }} lineClamp={2}>
+ <Text size="xs" style={{ flex: 1 }} lineClamp={2}>
  {f.queryText}
  </Text>
  {f.conf > 0 && (

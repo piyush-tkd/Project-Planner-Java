@@ -3,6 +3,7 @@ com/portfolioplanner/ai/data/ProjectDataRepository.class
 com/portfolioplanner/ai/AiApplication.class
 com/portfolioplanner/ai/config/AppConfig.class
 com/portfolioplanner/ai/api/dto/QueryResponse.class
+com/portfolioplanner/ai/llm/LlmChatResponse.class
 com/portfolioplanner/ai/api/dto/QueryRequest.class
 com/portfolioplanner/ai/chunking/ChunkingScheduler.class
 com/portfolioplanner/ai/api/AiHubController.class
@@ -10,3 +11,6 @@ com/portfolioplanner/ai/sync/SyncController.class
 com/portfolioplanner/ai/config/VectorStoreConfig.class
 com/portfolioplanner/ai/rag/RagService.class
 com/portfolioplanner/ai/chunking/ChunkingService.class
+com/portfolioplanner/ai/llm/LlmGatewayService.class
+com/portfolioplanner/ai/llm/LlmChatRequest.class
+com/portfolioplanner/ai/llm/LlmGatewayController.class

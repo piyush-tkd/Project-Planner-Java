@@ -6,7 +6,7 @@ import {
  Box, Title, Text, Group, Stack, Badge, Button, Grid, Paper,
  Progress, Skeleton, Alert, ThemeIcon, Tooltip,
  TextInput, Divider, SimpleGrid, Modal, Table, ScrollArea,
- Tabs, Textarea, ActionIcon, NumberInput, Select,
+ Tabs, Textarea, ActionIcon, Select,
 } from '@mantine/core';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/ui';
@@ -24,10 +24,10 @@ import {
  useSaveReleaseConfig, useReleaseConfig,
  ReleaseMetrics, IssueRow,
 } from '../api/jira';
-import { useReleases, useCreateRelease, useUpdateRelease, useDeleteRelease } from '../api/releases';
-import type { ReleaseCalendarResponse, ReleaseCalendarRequest } from '../types/project';
+import { useReleases, useUpdateRelease, useDeleteRelease } from '../api/releases';
+import type { ReleaseCalendarResponse } from '../types/project';
 import ChartCard from '../components/common/ChartCard';
-import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
 // ── Issue type colour map ──────────────────────────────────────────────
 // Covers the most common Jira issue types. Falls back to a neutral blue.
@@ -50,7 +50,6 @@ function issueTypeStyle(typeName: string) {
 
 const AMBER = COLOR_WARNING;
 const GREEN = COLOR_GREEN;
-const RED = COLOR_ERROR_STRONG;
 const GRAY = TEXT_SUBTLE;
 
 const CHART_COLORS = [
@@ -386,6 +385,7 @@ function ReleaseCard({
  {/* Status pie — clickable slices */}
  {statusData.length > 0 && (
  <ChartCard title="Status breakdown" minHeight={200}>
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={200}>
  <PieChart>
  <Pie
@@ -415,6 +415,7 @@ function ReleaseCard({
  <RTooltip contentStyle={{ fontSize: 11 }} />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
 
@@ -485,6 +486,7 @@ function ReleaseCard({
  <>
  <Divider />
  <ChartCard title="Issue count by type" minHeight={120}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={120}>
  <BarChart data={typeData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -505,6 +507,7 @@ function ReleaseCard({
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </>
  )}
@@ -560,6 +563,7 @@ function ReleaseCard({
  <>
  <Divider />
  <ChartCard title="Hours logged per person" minHeight={100}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={100}>
  <BarChart data={hoursData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -579,6 +583,7 @@ function ReleaseCard({
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </>
  )}
@@ -588,6 +593,7 @@ function ReleaseCard({
  <>
  <Divider />
  <ChartCard title="Issues per person" minHeight={100}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={100}>
  <BarChart data={assigneeData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -604,6 +610,7 @@ function ReleaseCard({
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </>
  )}
@@ -805,7 +812,7 @@ function ReleaseCalendarTable() {
                         ]}
                         value={inlineForm.type}
                         onChange={v => v && setInlineForm(f => ({ ...f, type: v }))}
-                        style={{ minWidth: 100 }}
+                        miw={100}
                         onClick={e => e.stopPropagation()}
                       />
                     ) : (
@@ -838,12 +845,15 @@ function ReleaseCalendarTable() {
                             size="sm" color="green" variant="filled"
                             loading={updateMutation.isPending}
                             onClick={() => saveInlineEdit(r)}
+                            aria-label="Confirm"
                           >
                             <IconCheck size={13} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label="Cancel">
-                          <ActionIcon size="sm" color="gray" variant="subtle" onClick={cancelInlineEdit}>
+                          <ActionIcon size="sm" color="gray" variant="subtle" onClick={cancelInlineEdit}
+      aria-label="Close"
+    >
                             <IconX size={13} />
                           </ActionIcon>
                         </Tooltip>
@@ -851,7 +861,9 @@ function ReleaseCalendarTable() {
                     ) : (
                       <Group gap={4} wrap="nowrap">
                         <Tooltip label="Quick edit">
-                          <ActionIcon size="sm" color="blue" variant="subtle" onClick={() => startInlineEdit(r)}>
+                          <ActionIcon size="sm" color="blue" variant="subtle" onClick={() => startInlineEdit(r)}
+      aria-label="Edit"
+    >
                             <IconPencil size={13} />
                           </ActionIcon>
                         </Tooltip>
@@ -859,6 +871,7 @@ function ReleaseCalendarTable() {
                           color="red" variant="subtle" size="sm"
                           onClick={() => setDeleteConfirm(r.id)}
                           loading={deleteMutation.isPending}
+                          aria-label="Delete"
                         >
                           <IconTrash size={13} />
                         </ActionIcon>

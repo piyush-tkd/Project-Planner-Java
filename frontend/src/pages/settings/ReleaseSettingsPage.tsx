@@ -15,7 +15,7 @@ import {
  ReleaseConfigResponse, ReleaseConfigRequest,
 } from '../../api/jira';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SURFACE_SUCCESS_LIGHT } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, SURFACE_SUCCESS_LIGHT } from '../../brandTokens';
 
 // ── Per-pod version picker ────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ function PodVersionPicker({ config, selectedVersions, onChange }: PodVersionPick
  <IconTag size={14} color="white" />
  </ThemeIcon>
  <div>
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text fw={600} size="sm" style={{ color: dark ? '#fff' : DEEP_BLUE }}>
  {config.podDisplayName}
  </Text>
  <Group gap={4} mt={2}>
@@ -73,7 +73,8 @@ function PodVersionPicker({ config, selectedVersions, onChange }: PodVersionPick
  color="teal"
  loading={isLoading}
  onClick={() => refetchVersions()}
- >
+ aria-label="Refresh"
+>
  <IconRefresh size={13} />
  </ActionIcon>
  </Tooltip>
@@ -88,7 +89,7 @@ function PodVersionPicker({ config, selectedVersions, onChange }: PodVersionPick
  onChange={onChange}
  clearable
  size="sm"
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
 
  {selectedVersions.length > 0 && (
@@ -207,7 +208,7 @@ export default function ReleaseSettingsPage() {
  <IconTag size={22} color="white" />
  </ThemeIcon>
  <div>
- <Title order={3} style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ <Title order={3} style={{ color: dark ? '#fff' : DEEP_BLUE }}>
  Release Version Settings
  </Title>
  <Text size="sm" c="dimmed">

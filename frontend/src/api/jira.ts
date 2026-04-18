@@ -744,6 +744,7 @@ export interface SupportTicket {
   priorityIconUrl: string | null;
   reporter: string | null;
   assignee: string | null;
+  assigneeAvatarUrl: string | null;
   labels: string[];
   created: string | null;
   updated: string | null;

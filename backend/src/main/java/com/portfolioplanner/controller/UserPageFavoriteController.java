@@ -1,24 +1,23 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.domain.model.UserPageFavorite;
-import com.portfolioplanner.domain.repository.UserPageFavoriteRepository;
+import com.portfolioplanner.service.UserPageFavoriteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST API for per-user page favorites (starred pages).
  *
- * GET    /api/favorites              → list current user's favorites
- * POST   /api/favorites              → add a favorite  { pagePath, pageLabel }
- * DELETE /api/favorites/{encodedPath} → remove a favorite by path
- * PUT    /api/favorites/reorder      → update sort order  [{ pagePath, sortOrder }]
+ * GET    /api/favorites               → list current user's favorites
+ * POST   /api/favorites               → add a favorite  { pagePath, pageLabel }
+ * DELETE /api/favorites?path=...      → remove a favorite by path
+ * PUT    /api/favorites/reorder       → update sort order  [{ pagePath, sortOrder }]
  */
 @RestController
 @RequestMapping("/api/favorites")
@@ -26,7 +25,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("isAuthenticated()")
 public class UserPageFavoriteController {
 
-    private final UserPageFavoriteRepository repo;
+    private final UserPageFavoriteService favoriteService;
 
     // ── DTOs ──────────────────────────────────────────────────────────────────
 
@@ -44,55 +43,35 @@ public class UserPageFavoriteController {
 
     @GetMapping
     public List<FavoriteDto> list(Authentication auth) {
-        String username = auth.getName();
-        return repo.findByUsernameOrderBySortOrderAscCreatedAtAsc(username)
+        return favoriteService.listForUser(auth.getName())
                 .stream().map(FavoriteDto::from).collect(Collectors.toList());
     }
 
     // ── POST /api/favorites ───────────────────────────────────────────────────
 
     @PostMapping
-    @Transactional
     public FavoriteDto add(@RequestBody AddRequest req, Authentication auth) {
-        String username = auth.getName();
-        // Idempotent: if already favorited, just return existing
-        return repo.findByUsernameAndPagePath(username, req.pagePath())
-                .map(FavoriteDto::from)
-                .orElseGet(() -> {
-                    UserPageFavorite fav = new UserPageFavorite();
-                    fav.setUsername(username);
-                    fav.setPagePath(req.pagePath());
-                    fav.setPageLabel(req.pageLabel());
-                    // Sort order = current count so new items go to end
-                    long count = repo.findByUsernameOrderBySortOrderAscCreatedAtAsc(username).size();
-                    fav.setSortOrder((int) count);
-                    return FavoriteDto.from(repo.save(fav));
-                });
+        return FavoriteDto.from(
+                favoriteService.addFavorite(auth.getName(), req.pagePath(), req.pageLabel()));
     }
 
     // ── DELETE /api/favorites?path=... ────────────────────────────────────────
 
     @DeleteMapping
-    @Transactional
     public ResponseEntity<Void> remove(@RequestParam String path, Authentication auth) {
-        String username = auth.getName();
-        repo.deleteByUsernameAndPagePath(username, path);
+        favoriteService.removeFavorite(auth.getName(), path);
         return ResponseEntity.noContent().build();
     }
 
     // ── PUT /api/favorites/reorder ────────────────────────────────────────────
 
     @PutMapping("/reorder")
-    @Transactional
     public ResponseEntity<Void> reorder(@RequestBody List<ReorderItem> items, Authentication auth) {
-        String username = auth.getName();
-        for (ReorderItem item : items) {
-            repo.findByUsernameAndPagePath(username, item.pagePath())
-                    .ifPresent(fav -> {
-                        fav.setSortOrder(item.sortOrder());
-                        repo.save(fav);
-                    });
-        }
+        favoriteService.reorder(
+                auth.getName(),
+                items.stream()
+                        .map(i -> new UserPageFavoriteService.ReorderItem(i.pagePath(), i.sortOrder()))
+                        .collect(Collectors.toList()));
         return ResponseEntity.ok().build();
     }
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { notifications } from '@mantine/notifications';
 import {
- Title, Stack, Grid, Card, Text, Button, Group, Table, Badge,
+ Stack, Grid, Card, Text, Button, Group, Table, Badge,
  Checkbox, NumberInput, Collapse, ActionIcon, Tooltip, Alert,
  SimpleGrid, SegmentedControl, ThemeIcon, Divider, ScrollArea,
 } from '@mantine/core';
@@ -16,7 +16,7 @@ import { getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { formatHours } from '../../utils/formatting';
 import { ProjectStatus } from '../../types';
-import { DEEP_BLUE, FONT_FAMILY, SURFACE_RED_FAINT, SURFACE_SUBTLE, SURFACE_SUCCESS_LIGHT} from '../../brandTokens';
+import { SURFACE_RED_FAINT, SURFACE_SUBTLE, SURFACE_SUCCESS_LIGHT} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/ui';
 import { PPPageLayout } from '../../components/pp';
@@ -159,7 +159,9 @@ export default function ScenarioSimulatorPage() {
  <Group gap="sm">
  {anyChanges && (
  <Tooltip label="Reset all changes">
- <ActionIcon variant="light" color="gray" onClick={resetAll}>
+ <ActionIcon variant="light" color="gray" onClick={resetAll}
+      aria-label="Refresh"
+    >
  <IconRefresh size={16} />
  </ActionIcon>
  </Tooltip>
@@ -246,7 +248,9 @@ export default function ScenarioSimulatorPage() {
  {s.included && (
  <Tooltip label={s.expanded ? 'Hide overrides' : 'Adjust timeline'}>
  <ActionIcon variant="subtle" size="sm"
- onClick={() => patchState(p.id, { expanded: !s.expanded })}>
+ onClick={() => patchState(p.id, { expanded: !s.expanded })}
+      aria-label="Expand"
+    >
  {s.expanded ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
  </ActionIcon>
  </Tooltip>

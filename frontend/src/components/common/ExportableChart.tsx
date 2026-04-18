@@ -23,6 +23,7 @@ export default function ExportableChart({ title, children }: ExportableChartProp
           style={{ zIndex: 10 }}
           loading={exporting}
           onClick={() => exportChart()}
+          aria-label="Camera"
         >
           <IconCamera size={16} />
         </ActionIcon>

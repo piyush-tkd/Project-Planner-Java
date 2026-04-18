@@ -128,7 +128,7 @@ function RuleCard({
             >
               <IconBolt size={18} />
             </ThemeIcon>
-            <Box style={{ minWidth: 0 }}>
+            <Box miw={0}>
               <Text fw={700} size="sm" style={{ color: dark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
                 {rule.name}
               </Text>
@@ -147,14 +147,20 @@ function RuleCard({
               color="cyan"
             />
             <Tooltip label="Test-fire rule">
-              <ActionIcon size="sm" variant="subtle" color="teal" onClick={onFire}>
+              <ActionIcon size="sm" variant="subtle" color="teal" onClick={onFire}
+      aria-label="Player Play"
+    >
                 <IconPlayerPlay size={14} />
               </ActionIcon>
             </Tooltip>
-            <ActionIcon size="sm" variant="subtle" color="blue" onClick={onEdit}>
+            <ActionIcon size="sm" variant="subtle" color="blue" onClick={onEdit}
+      aria-label="Edit"
+    >
               <IconEdit size={14} />
             </ActionIcon>
-            <ActionIcon size="sm" variant="subtle" color="red" onClick={onDelete}>
+            <ActionIcon size="sm" variant="subtle" color="red" onClick={onDelete}
+      aria-label="Delete"
+    >
               <IconTrash size={14} />
             </ActionIcon>
           </Group>

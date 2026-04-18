@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Pre-commit hook — fast gate (lint + compile only, <30s)
+# To bypass in an emergency: git commit --no-verify (team convention: don't)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$REPO_ROOT/scripts/verify.sh" --fast

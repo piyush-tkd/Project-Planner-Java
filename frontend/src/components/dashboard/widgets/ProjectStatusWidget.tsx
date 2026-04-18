@@ -49,6 +49,7 @@ const ProjectStatusWidget = React.memo(({ projects }: ProjectStatusWidgetProps) 
     <WrikeCard title="Projects by Status">
       <Box p={20}>
         <Group align="center" justify="center" gap="xl">
+          <div role="img" aria-label="Pie chart">
           <ResponsiveContainer width={160} height={160}>
             <PieChart>
               <Pie animationDuration={600} data={statusCounts} dataKey="value" cx="50%" cy="50%"
@@ -65,6 +66,7 @@ const ProjectStatusWidget = React.memo(({ projects }: ProjectStatusWidgetProps) 
               <Tooltip formatter={(value: number, name: string) => [`${value} projects`, name]} />
             </PieChart>
           </ResponsiveContainer>
+          </div>
           <Stack gap={6}>
             {statusCounts.map((entry) => {
               const statusKey = Object.keys(STATUS_META).find(k => STATUS_META[k].label === entry.name);

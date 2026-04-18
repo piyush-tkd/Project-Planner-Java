@@ -1,14 +1,13 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.domain.model.WebhookConfig;
-import com.portfolioplanner.domain.repository.WebhookConfigRepository;
-import com.portfolioplanner.service.WebhookService;
+import com.portfolioplanner.service.WebhookConfigService;
+import com.portfolioplanner.service.WebhookConfigService.WebhookRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -23,27 +22,26 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/admin/webhooks")
-@PreAuthorize("hasRole('ADMIN')")   // S2.3 — webhook config is admin-only
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class WebhookConfigController {
 
-    private final WebhookConfigRepository repo;
-    private final WebhookService webhookService;
+    private final WebhookConfigService webhookConfigService;
 
     // ── DTO ──────────────────────────────────────────────────────────────────
 
     public record WebhookDto(
-            Long   id,
-            String name,
-            String url,
-            String provider,
-            String secret,
+            Long    id,
+            String  name,
+            String  url,
+            String  provider,
+            String  secret,
             boolean enabled,
-            String events,
-            String createdAt
+            String  events,
+            String  createdAt
     ) {}
 
-    public record WebhookRequest(
+    public record WebhookApiRequest(
             String  name,
             String  url,
             String  provider,
@@ -52,80 +50,48 @@ public class WebhookConfigController {
             String  events
     ) {}
 
-    // ── GET list ─────────────────────────────────────────────────────────────
+    // ── Endpoints ─────────────────────────────────────────────────────────────
 
     @GetMapping
     public List<WebhookDto> list() {
-        return repo.findAllByOrderByCreatedAtDesc()
-                   .stream().map(this::toDto).toList();
+        return webhookConfigService.listAll().stream().map(this::toDto).toList();
     }
-
-    // ── POST create ──────────────────────────────────────────────────────────
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public WebhookDto create(@RequestBody WebhookRequest req) {
-        WebhookConfig wh = new WebhookConfig();
-        applyRequest(wh, req);
-        return toDto(repo.save(wh));
+    public WebhookDto create(@RequestBody WebhookApiRequest req) {
+        return toDto(webhookConfigService.create(toServiceRequest(req)));
     }
-
-    // ── PUT update ───────────────────────────────────────────────────────────
 
     @PutMapping("/{id}")
-    public WebhookDto update(@PathVariable Long id, @RequestBody WebhookRequest req) {
-        WebhookConfig wh = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        applyRequest(wh, req);
-        return toDto(repo.save(wh));
+    public WebhookDto update(@PathVariable Long id, @RequestBody WebhookApiRequest req) {
+        return toDto(webhookConfigService.update(id, toServiceRequest(req)));
     }
-
-    // ── DELETE ───────────────────────────────────────────────────────────────
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        if (!repo.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-        repo.deleteById(id);
+        webhookConfigService.delete(id);
     }
-
-    // ── POST test ping ────────────────────────────────────────────────────────
 
     @PostMapping("/{id}/test")
     public ResponseEntity<Void> testPing(@PathVariable Long id) {
-        WebhookConfig wh = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!wh.isEnabled()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Webhook is disabled");
-        }
-        // Fire a synthetic test event
-        webhookService.fireProjectStatusChanged(0L, "Test Project", "PLANNING", "ACTIVE");
+        webhookConfigService.testPing(id);
         return ResponseEntity.ok().build();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void applyRequest(WebhookConfig wh, WebhookRequest req) {
-        if (req.name()     != null) wh.setName(req.name());
-        if (req.url()      != null) wh.setUrl(req.url());
-        if (req.provider() != null) wh.setProvider(req.provider().toUpperCase());
-        if (req.secret()   != null) wh.setSecret(req.secret().isBlank() ? null : req.secret());
-        if (req.enabled()  != null) wh.setEnabled(req.enabled());
-        if (req.events()   != null) wh.setEvents(req.events());
+    private WebhookRequest toServiceRequest(WebhookApiRequest req) {
+        return new WebhookRequest(req.name(), req.url(), req.provider(),
+                req.secret(), req.enabled(), req.events());
     }
 
     private WebhookDto toDto(WebhookConfig wh) {
         return new WebhookDto(
-                wh.getId(),
-                wh.getName(),
-                wh.getUrl(),
-                wh.getProvider(),
+                wh.getId(), wh.getName(), wh.getUrl(), wh.getProvider(),
                 wh.getSecret() != null ? "••••••••" : null,
-                wh.isEnabled(),
-                wh.getEvents(),
-                wh.getCreatedAt() != null ? wh.getCreatedAt().toString() : null
-        );
+                wh.isEnabled(), wh.getEvents(),
+                wh.getCreatedAt() != null ? wh.getCreatedAt().toString() : null);
     }
 }

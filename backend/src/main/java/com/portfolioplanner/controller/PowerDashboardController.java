@@ -188,8 +188,10 @@ public class PowerDashboardController {
         for (Map<String, Object> w : widgets) {
             try {
                 Object configRaw = w.get("config");
-                Map<String, Object> config = (Map<String, Object>) new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(parseJsonbField(configRaw).toString(), Map.class);
+                Object parsedCfg = parseJsonbField(configRaw);
+                if (!(parsedCfg instanceof Map)) continue;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> config = (Map<String, Object>) parsedCfg;
 
                 // Only check widgets with thresholds
                 Number warnNum  = (Number) config.get("threshold_warning");
@@ -693,6 +695,7 @@ public class PowerDashboardController {
         return ResponseEntity.ok(templates);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/templates/{templateId}/create")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> createFromTemplate(

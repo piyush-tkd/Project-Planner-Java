@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
-import { onAuthExpired } from './authEvents';
+import { onAuthExpired, allowAuthExpiredEvents } from './authEvents';
 
 interface AuthState {
   /**
@@ -71,6 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [initialising, setInitialising] = useState(hasStoredSession);
 
+  // Ref that always reflects the current token so the auth-expired handler
+  // can safely bail out if logout already happened (avoids closure staleness).
+  const tokenRef = useRef<string | null>(null);
+
   // ── Cookie bootstrap ──────────────────────────────────────────────────────
   // On page refresh, if localStorage says the user had a session, validate the
   // HttpOnly cookie by calling /auth/me.  If it succeeds we restore the token
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(DISPLAY_KEY, data.displayName ?? '');
         localStorage.setItem(ROLE_KEY,    data.role);
         localStorage.setItem(PAGES_KEY,   JSON.stringify(data.allowedPages));
+        tokenRef.current = '__cookie__';
         setAuth({
           token:        '__cookie__',   // truthy sentinel — actual JWT is in the HttpOnly cookie
           username:     data.username,
@@ -103,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(DISPLAY_KEY);
         localStorage.removeItem(ROLE_KEY);
         localStorage.removeItem(PAGES_KEY);
+        tokenRef.current = null;
         setAuth({ token: null, username: null, displayName: null, role: null, allowedPages: null });
       })
       .finally(() => setInitialising(false));
@@ -125,6 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ROLE_KEY,    data.role);
     localStorage.setItem(PAGES_KEY,   JSON.stringify(data.allowedPages));
 
+    // Allow future session expirations to be detected now that we have a fresh token.
+    allowAuthExpiredEvents();
+    tokenRef.current = data.token;
     setAuth({
       token:        data.token,   // keep in-memory for this tab session
       username:     data.username,
@@ -156,8 +165,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
-    // Ask the backend to clear the HttpOnly cookie (Set-Cookie: access_token=; Max-Age=0)
-    apiClient.post('/auth/logout').catch(() => {});
+    // Guard: if we're already logged out, skip the server call entirely.
+    // This prevents queued 401-triggered logout requests from firing after
+    // the user has already re-authenticated (the "logout storm" bug).
+    if (tokenRef.current !== null) {
+      // Ask the backend to clear the HttpOnly cookie (Set-Cookie: access_token=; Max-Age=0)
+      apiClient.post('/auth/logout').catch(() => {});
+      tokenRef.current = null;
+    }
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(DISPLAY_KEY);
     localStorage.removeItem(ROLE_KEY);
@@ -165,8 +180,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ token: null, username: null, displayName: null, role: null, allowedPages: null });
   }, []);
 
-  // Auto-logout + redirect when a 401 is received (JWT expired or cookie missing)
+  // Auto-logout + redirect when a 401 is received (JWT expired or cookie missing).
+  // Uses tokenRef (not auth.token) so the handler always sees the current value
+  // even when called from a stale closure — guards against duplicate fire-and-forget
+  // logout calls that could wipe a freshly-issued cookie.
   useEffect(() => onAuthExpired(() => {
+    if (tokenRef.current === null) return;  // already logged out — ignore duplicate event
     logout();
     navigate('/login', { state: { expired: true }, replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps

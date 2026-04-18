@@ -13,8 +13,7 @@
 import React from 'react';
 import { Box, Group, Stack, Divider } from '@mantine/core';
 import {
-  AQUA, CARD_PADDING, CARD_RADIUS, CARD_RADIUS_SM, CARD_RADIUS_LG,
-  FONT_FAMILY,
+  AQUA, CARD_PADDING, CARD_RADIUS, CARD_RADIUS_SM, CARD_RADIUS_LG
 } from '../../brandTokens';
 import { useThemeTokens } from '../../hooks/useThemeTokens';
 
@@ -59,7 +58,7 @@ export function PPCard({
   onClick,
   fullHeight = false,
   className,
-  style,
+  style
 }: PPCardProps) {
   const t = useThemeTokens();
 
@@ -76,10 +75,9 @@ export function PPCard({
     borderLeft:   accent ? `3px solid ${AQUA}` : undefined,
     height:       fullHeight ? '100%' : undefined,
     cursor:       isClickable ? 'pointer' : undefined,
-    fontFamily:   FONT_FAMILY,
     transition:   'box-shadow 180ms ease, border-color 180ms ease',
     overflow:     'hidden',
-    ...style,
+    ...style
   };
 
   function handleMouseEnter(e: React.MouseEvent<HTMLDivElement>) {

@@ -3,7 +3,7 @@ import { notifications } from '@mantine/notifications';
 import {
  Title, Text, Button, Table, Badge, ActionIcon, Modal, TextInput,
  Select, Switch, Group, Stack, Tabs, Paper, SimpleGrid, Checkbox,
- Tooltip, Alert, Divider,
+ Tooltip, Alert,
 } from '@mantine/core';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
@@ -13,7 +13,6 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
-import { FONT_FAMILY } from '../../brandTokens';
 import { useRoles, useCreateRole, useDeleteRole, rolesToSelectOptions, type RoleDefinition } from '../../api/roles';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
@@ -285,7 +284,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  {!embedded && (
  <Group justify="space-between" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY }}>
+ <Title order={2}>
  User Management
  </Title>
  <Text size="sm" c="dimmed" mt={2}>
@@ -327,14 +326,14 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Table.Th>Display Name</Table.Th>
  <Table.Th>Role</Table.Th>
  <Table.Th>Status</Table.Th>
- <Table.Th style={{ width: 90 }}>Actions</Table.Th>
+ <Table.Th w={90}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {users.map(u => (
  <Table.Tr key={u.id}>
  <Table.Td>
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+ <Text fw={600} size="sm">
  {u.username}
  </Text>
  </Table.Td>
@@ -356,7 +355,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Table.Td>
  <Group gap={4}>
  <Tooltip label="Edit">
- <ActionIcon variant="subtle" size="sm" onClick={() => openEdit(u)}>
+ <ActionIcon variant="subtle" size="sm" onClick={() => openEdit(u)} aria-label="Edit user">
  <IconPencil size={15} />
  </ActionIcon>
  </Tooltip>
@@ -366,6 +365,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  color="red"
  size="sm"
  onClick={() => setDeleteTarget(u)}
+ aria-label="Delete user"
  >
  <IconTrash size={15} />
  </ActionIcon>
@@ -392,7 +392,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Tabs.Panel value="roles" pt="md">
  <Stack gap="md">
  <Group justify="space-between">
- <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed">
   Manage roles. System roles cannot be deleted. Custom roles inherit page permissions you configure in the Permissions tab.
  </Text>
  <Button size="sm" leftSection={<IconPlus size={14} />} onClick={() => setRoleModal(true)}>
@@ -409,7 +409,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
    <Table.Th>Name</Table.Th>
    <Table.Th>Description</Table.Th>
    <Table.Th>Type</Table.Th>
-   <Table.Th style={{ width: 70 }}>Actions</Table.Th>
+   <Table.Th w={70}>Actions</Table.Th>
   </Table.Tr>
   </Table.Thead>
   <Table.Tbody>
@@ -419,7 +419,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
     <Badge color={r.color} variant="light" size="sm">{r.name}</Badge>
    </Table.Td>
    <Table.Td>
-    <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{r.displayName}</Text>
+    <Text size="sm" fw={500}>{r.displayName}</Text>
    </Table.Td>
    <Table.Td>
     <Text size="sm" c="dimmed">{r.description ?? '—'}</Text>
@@ -435,6 +435,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
      variant="subtle" color="red" size="sm"
      disabled={r.system}
      onClick={() => !r.system && setDeleteRoleTarget(r)}
+     aria-label={`Delete ${r.displayName} role`}
     >
      <IconTrash size={14} />
     </ActionIcon>
@@ -458,7 +459,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  data={roleSelectOptions.filter(o => o.value !== 'SUPER_ADMIN' && o.value !== 'ADMIN')}
  value={permRole}
  onChange={v => setPermRole(v ?? 'READ_WRITE')}
- style={{ width: 240 }}
+ w={240}
  />
  </Group>
 
@@ -505,7 +506,7 @@ export default function UserManagementPage({ embedded = false }: { embedded?: bo
  <Paper key={key} withBorder radius="sm" p="sm"
    style={grp === "Legacy" ? { opacity: 0.55, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" } : undefined}>
  <Group justify="space-between">
- <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" fw={500}>
  {label}
  </Text>
  <Switch

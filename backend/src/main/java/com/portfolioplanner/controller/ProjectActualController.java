@@ -1,7 +1,7 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.domain.repository.ProjectActualRepository;
 import com.portfolioplanner.dto.response.ProjectActualResponse;
+import com.portfolioplanner.service.ProjectActualService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,35 +14,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("isAuthenticated()")
 public class ProjectActualController {
 
-    private final ProjectActualRepository projectActualRepository;
+    private final ProjectActualService service;
 
-    /** Returns all actuals across all projects, ordered by project then month. */
     @GetMapping
     public List<ProjectActualResponse> getAll() {
-        return projectActualRepository.findAll().stream()
-                .map(a -> new ProjectActualResponse(
-                        a.getId(),
-                        a.getProject().getId(),
-                        a.getProject().getName(),
-                        a.getMonthKey(),
-                        a.getActualHours()))
-                .sorted(java.util.Comparator
-                        .comparing(ProjectActualResponse::projectName)
-                        .thenComparing(ProjectActualResponse::monthKey))
-                .toList();
+        return service.getAll();
     }
 
-    /** Returns actuals for a single project. */
     @GetMapping("/by-project/{projectId}")
     public List<ProjectActualResponse> getByProject(@PathVariable Long projectId) {
-        return projectActualRepository.findByProjectId(projectId).stream()
-                .map(a -> new ProjectActualResponse(
-                        a.getId(),
-                        a.getProject().getId(),
-                        a.getProject().getName(),
-                        a.getMonthKey(),
-                        a.getActualHours()))
-                .sorted(java.util.Comparator.comparing(ProjectActualResponse::monthKey))
-                .toList();
+        return service.getByProject(projectId);
     }
 }

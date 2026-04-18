@@ -206,7 +206,7 @@ export default function ResetPasswordPage() {
           )}
 
           {!done && (
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', marginTop: 24 }}>
               <Link to="/login" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 fontSize: 13, color: isDark ? '#4ecca9' : AQUA, fontFamily: FONT_FAMILY, textDecoration: 'none',

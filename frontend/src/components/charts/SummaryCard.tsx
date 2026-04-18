@@ -83,7 +83,6 @@ export default function SummaryCard({
             fw={800}
             c={color ?? (active ? DEEP_BLUE : undefined)}
             style={{
-              fontFamily: FONT_FAMILY,
               fontSize: 28,
               lineHeight: 1.1,
               letterSpacing: '-0.02em',
@@ -103,7 +102,6 @@ export default function SummaryCard({
                 color: trendColor,
                 fontSize: 12,
                 fontWeight: 700,
-                fontFamily: FONT_FAMILY,
               }}>
                 {trend}
               </span>
@@ -113,6 +111,7 @@ export default function SummaryCard({
         {sparkData && sparkData.length > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <div style={{ height: 36, width: 80, flexShrink: 0 }}>
+              <div role="img" aria-label="Line chart">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={sparkData.map((v, i) => ({ x: i, y: v }))}
@@ -129,6 +128,7 @@ export default function SummaryCard({
                   />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             </div>
             <span
               style={{
@@ -150,7 +150,6 @@ export default function SummaryCard({
           mt={8}
           style={{
             color: active ? AQUA : 'transparent',
-            fontFamily: FONT_FAMILY,
             fontWeight: 600,
             letterSpacing: '0.04em',
             fontSize: 10,

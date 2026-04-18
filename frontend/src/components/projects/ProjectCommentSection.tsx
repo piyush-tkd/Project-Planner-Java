@@ -95,7 +95,6 @@ function CommentRow({ comment, projectId, isReply = false }: CommentRowProps) {
           style={{
             backgroundColor: DEEP_BLUE,
             color: '#fff',
-            fontFamily: FONT_FAMILY,
             fontWeight: 600,
             fontSize: isReply ? 11 : 13,
             flexShrink: 0,
@@ -126,6 +125,7 @@ function CommentRow({ comment, projectId, isReply = false }: CommentRowProps) {
                   <ActionIcon
                     size="xs" variant="subtle" color="gray"
                     onClick={() => { setEditing(true); setEditBody(comment.body); }}
+                    aria-label="Edit"
                   >
                     <IconEdit size={12} />
                   </ActionIcon>
@@ -135,6 +135,7 @@ function CommentRow({ comment, projectId, isReply = false }: CommentRowProps) {
                     size="xs" variant="subtle" color="red"
                     loading={deleteMut.isPending}
                     onClick={handleDelete}
+                    aria-label="Delete"
                   >
                     <IconTrash size={12} />
                   </ActionIcon>
@@ -174,7 +175,6 @@ function CommentRow({ comment, projectId, isReply = false }: CommentRowProps) {
             <Text
               size="sm"
               style={{
-                fontFamily: FONT_FAMILY,
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 lineHeight: 1.5,

@@ -1,4 +1,4 @@
-import { Table, Group, UnstyledButton } from '@mantine/core';
+import { Table, UnstyledButton } from '@mantine/core';
 import { IconChevronUp, IconChevronDown, IconSelector } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { COLOR_BLUE_DARK, GRAY_300 } from '../../brandTokens';

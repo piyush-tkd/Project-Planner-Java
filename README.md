@@ -20,10 +20,11 @@ A full-stack capacity planning, portfolio management, and NLP-powered analytics 
 10. [Production Deployment](#production-deployment)
 11. [Project Structure](#project-structure)
 12. [API Reference](#api-reference)
-13. [Running Tests](#running-tests)
-14. [Default Credentials](#default-credentials)
-15. [Bruno API Collection](#bruno-api-collection)
-16. [Troubleshooting](#troubleshooting)
+13. [Monitoring](#monitoring)
+14. [Running Tests](#running-tests)
+15. [Default Credentials](#default-credentials)
+16. [Bruno API Collection](#bruno-api-collection)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -182,8 +183,15 @@ Navigate to **http://localhost:5173** in your browser. Log in with the default c
 
 ### Backend (`application.yml` defaults shown — override with env vars)
 
+> ⚠ **Required in production — app will refuse to start without these:**
+> `JWT_SECRET` and `SMTP_ENCRYPTION_KEY` must be set to cryptographically random strings
+> (≥ 32 characters each) when running with `SPRING_PROFILES_ACTIVE=prod`.
+> Generate: `openssl rand -hex 32`
+
 | Variable | Default | Description |
 |---|---|---|
+| `JWT_SECRET` | _(none — **required in prod**)_ | HMAC-SHA256 signing key for JWT tokens. Min 32 chars. |
+| `SMTP_ENCRYPTION_KEY` | _(none — **required in prod**)_ | AES-256-GCM key for encrypting stored SMTP passwords. |
 | `DB_USERNAME` | `piyushbaheti` | PostgreSQL username |
 | `DB_PASSWORD` | _(empty)_ | PostgreSQL password |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/portfolio_planner` | Full JDBC URL (use this for remote DB) |
@@ -941,6 +949,54 @@ All other endpoints require a valid JWT in the `Authorization: Bearer <token>` h
 | POST | `/api/error-logs` | Log an error |
 | GET | `/api/audit-logs` | Get audit trail |
 | POST | `/api/import` | Upload Excel file |
+
+---
+
+## Monitoring
+
+The backend exposes Spring Actuator endpoints for health checks and Prometheus-compatible metrics.
+
+### Endpoints
+
+| Endpoint | Access | Description |
+|---|---|---|
+| `GET /actuator/health` | **Public** | Aggregated health (UP/DOWN/OUT_OF_SERVICE). Safe for load-balancer probes. |
+| `GET /actuator/health/liveness` | Public | Liveness probe — is the JVM alive? |
+| `GET /actuator/health/readiness` | Public | Readiness probe — is the app ready to serve traffic? (includes DB check) |
+| `GET /actuator/metrics` | `ROLE_ADMIN` | Micrometer metric names |
+| `GET /actuator/metrics/{name}` | `ROLE_ADMIN` | Individual metric with tags |
+| `GET /actuator/prometheus` | `ROLE_ADMIN` | Prometheus scrape endpoint |
+| `GET /actuator/info` | `ROLE_ADMIN` | App version and environment info |
+
+> **Note:** `env`, `beans`, `heapdump`, and `loggers` are deliberately not exposed.
+
+### Custom Health Indicators
+
+- **`db`** — PostgreSQL connectivity (built-in; included in the readiness group).
+- **`jira`** — Jira API reachability (`/rest/api/3/serverInfo`). Result cached 60 s.
+- **`ollama`** — Ollama LLM reachability via the `portfolio-planner-ai` sidecar. Result cached 60 s.
+
+### Micrometer Common Tags
+
+Every metric emitted carries:
+- `application=portfolio-planner`
+- `environment=<active Spring profile>`
+
+### Scraping with Prometheus
+
+Add a scrape job to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: portfolio-planner
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["localhost:8080"]
+    # The scraper user must have ROLE_ADMIN; pass Basic Auth or a bearer token:
+    # basic_auth:
+    #   username: admin
+    #   password: <password>
+```
 
 ---
 

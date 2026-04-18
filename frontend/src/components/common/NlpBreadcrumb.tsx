@@ -4,7 +4,7 @@
  * Reads `location.state.fromNlp` set by NlpLandingPage navigation.
  */
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Group, Text, UnstyledButton } from '@mantine/core';
+import { Text, UnstyledButton } from '@mantine/core';
 import { IconBrain, IconChevronLeft } from '@tabler/icons-react';
 import { AQUA, AQUA_TINTS, FONT_FAMILY } from '../../brandTokens';
 

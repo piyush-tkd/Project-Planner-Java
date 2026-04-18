@@ -25,7 +25,7 @@ public class JiraResourceMapping {
     @Column(name = "jira_account_id")
     private String jiraAccountId;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "resource_id")
     private Resource resource;
 

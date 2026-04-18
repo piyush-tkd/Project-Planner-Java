@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Container, Title, Card, Chip, Stack, Text, Group, Drawer,
-  Button, Select, TextInput, Loader, Center, Alert,
+  Button, Select, TextInput, Loader, Center,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
+import { FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import apiClient from '../api/client';
 import EmptyState from '../components/common/EmptyState';
-import { IconStars, IconPlugConnected } from '@tabler/icons-react';
+import { IconStars } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
 // ── Types ──────────────────────────────────────────────────────────────────

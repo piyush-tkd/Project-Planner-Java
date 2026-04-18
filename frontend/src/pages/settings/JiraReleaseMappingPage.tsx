@@ -1,22 +1,22 @@
 import { useState, useMemo } from 'react';
 import {
- Title, Text, Group, Button, Badge, Table, TextInput, Select, MultiSelect,
+ Title, Text, Group, Button, Badge, Table, TextInput, MultiSelect,
  Alert, ActionIcon, Tooltip, Stack, Paper, SimpleGrid, ScrollArea,
- ThemeIcon, Modal, Box,
+ Modal,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
- IconPackage, IconSearch, IconWand, IconCheck, IconX, IconArrowRight,
- IconRefresh, IconDeviceFloppy, IconEdit, IconTrash, IconLink,
+ IconPackage, IconSearch, IconWand, IconX, IconArrowRight,
+ IconRefresh, IconDeviceFloppy, IconLink,
 } from '@tabler/icons-react';
 import {
  useReleaseMappings, useFixVersionsScan, useAutoMatchReleases,
- useSaveReleaseMapping, useDeleteReleaseMapping, useSaveBulkReleaseMapping,
+ useDeleteReleaseMapping, useSaveBulkReleaseMapping,
  type ReleaseMappingResponse,
 } from '../../api/jiraReleaseMapping';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA_HEX } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function JiraReleaseMappingPage() {
@@ -24,12 +24,11 @@ export default function JiraReleaseMappingPage() {
  const { data: mappings, isLoading, error, refetch } = useReleaseMappings();
  const { data: fixVersions } = useFixVersionsScan();
  const autoMatchMut = useAutoMatchReleases();
- const saveMut = useSaveReleaseMapping();
  const deleteMut = useDeleteReleaseMapping();
  const bulkSaveMut = useSaveBulkReleaseMapping();
 
  const [search, setSearch] = useState('');
- const [editingRelease, setEditingRelease] = useState<number | null>(null);
+ const [_editingRelease, _setEditingRelease] = useState<number | null>(null);
  const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
  const [linkModalOpen, setLinkModalOpen] = useState(false);
  const [linkTarget, setLinkTarget] = useState<ReleaseMappingResponse | null>(null);
@@ -106,7 +105,7 @@ export default function JiraReleaseMappingPage() {
  <Stack gap="md">
  <Group justify="space-between" align="flex-start">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+ <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
  Jira Release Mapping
  </Title>
  <Text size="sm" c="dimmed" mt={4}>Link release calendar entries to Jira fix versions</Text>
@@ -164,7 +163,7 @@ export default function JiraReleaseMappingPage() {
  leftSection={<IconSearch size={14} />}
  value={search}
  onChange={e => setSearch(e.target.value)}
- style={{ maxWidth: 300 }}
+ maw={300}
  size="xs"
  />
 
@@ -174,12 +173,12 @@ export default function JiraReleaseMappingPage() {
  <Table.Thead>
  <Table.Tr>
  <Table.Th>Release</Table.Th>
- <Table.Th style={{ width: 100 }}>Release Date</Table.Th>
- <Table.Th style={{ width: 30 }}></Table.Th>
+ <Table.Th w={100}>Release Date</Table.Th>
+ <Table.Th w={30}></Table.Th>
  <Table.Th>Linked Jira Fix Versions</Table.Th>
- <Table.Th style={{ width: 90 }}>Match Type</Table.Th>
- <Table.Th style={{ width: 80 }}>Status</Table.Th>
- <Table.Th style={{ width: 80 }}>Actions</Table.Th>
+ <Table.Th w={90}>Match Type</Table.Th>
+ <Table.Th w={80}>Status</Table.Th>
+ <Table.Th w={80}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -214,7 +213,9 @@ export default function JiraReleaseMappingPage() {
  <Badge size="xs" color="teal" variant="light">{v.projectKey}</Badge>
  <Text size="xs">{v.versionName}</Text>
  <Tooltip label="Remove link">
- <ActionIcon size="xs" color="red" variant="subtle" onClick={() => handleDeleteLink(v.mappingId)}>
+ <ActionIcon size="xs" color="red" variant="subtle" onClick={() => handleDeleteLink(v.mappingId)}
+      aria-label="Close"
+    >
  <IconX size={10} />
  </ActionIcon>
  </Tooltip>
@@ -241,7 +242,9 @@ export default function JiraReleaseMappingPage() {
  </Table.Td>
  <Table.Td>
  <Tooltip label="Edit links">
- <ActionIcon size="sm" color="blue" variant="light" onClick={() => openLinkModal(m)}>
+ <ActionIcon size="sm" color="blue" variant="light" onClick={() => openLinkModal(m)}
+      aria-label="Copy link"
+    >
  <IconLink size={13} />
  </ActionIcon>
  </Tooltip>

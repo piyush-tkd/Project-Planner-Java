@@ -163,6 +163,7 @@ export default function EngineeringEconomicsPage() {
               <Text component="span" size="xs" c="dimmed" ml="xs">({monthlyData.length} months)</Text>
             </Text>
             {monthlyData.length > 0 ? (
+              <div role="img" aria-label="Bar chart">
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} />
@@ -178,6 +179,7 @@ export default function EngineeringEconomicsPage() {
                   <Bar dataKey="opex"  name="OpEx"  fill={DEEP_BLUE_HEX} stackId="a" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             ) : (
               <Text size="sm" c="dimmed" ta="center" py="xl">No cost data available yet.</Text>
             )}
@@ -243,6 +245,7 @@ export default function EngineeringEconomicsPage() {
             <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY }}>CapEx vs OpEx Split</Text>
             {totalCost > 0 ? (
               <>
+                <div role="img" aria-label="Pie chart">
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
@@ -261,6 +264,7 @@ export default function EngineeringEconomicsPage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                </div>
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
                   {pieData.map(item => (
                     <Paper key={item.name} withBorder p="md" radius="md" style={{ borderLeft: `4px solid ${item.color}` }}>

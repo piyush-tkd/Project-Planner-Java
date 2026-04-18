@@ -6,10 +6,8 @@
  *  - "badge"  : coloured pill with label text (default)
  *  - "score"  : badge + numeric score (e.g. "Healthy · 84")
  */
-import { Tooltip, Badge, Group, Text, RingProgress } from '@mantine/core';
+import { Tooltip, Badge, Text, RingProgress } from '@mantine/core';
 import { RagStatus, RAG_COLORS, RAG_MANTINE, RAG_LABEL, ProjectHealthDto } from '../../api/projectHealth';
-import { FONT_FAMILY } from '../../brandTokens';
-
 interface HealthBadgeProps {
   rag:      RagStatus;
   score?:   number | null;
@@ -23,7 +21,7 @@ export default function HealthBadge({
   score,
   variant = 'badge',
   size = 'sm',
-  tooltip,
+  tooltip
 }: HealthBadgeProps) {
   const color  = RAG_COLORS[rag];
   const mColor = RAG_MANTINE[rag];
@@ -40,7 +38,7 @@ export default function HealthBadge({
         borderRadius:    '50%',
         background:      color,
         flexShrink:      0,
-        boxShadow:       `0 0 0 2px ${color}33`,
+        boxShadow:       `0 0 0 2px ${color}33`
       }}
     />
   );
@@ -56,7 +54,6 @@ export default function HealthBadge({
         variant="light"
         color={mColor}
         leftSection={dot}
-        style={{ fontFamily: FONT_FAMILY }}
       >
         {label} · {score}
       </Badge>
@@ -68,7 +65,6 @@ export default function HealthBadge({
         variant="light"
         color={mColor}
         leftSection={dot}
-        style={{ fontFamily: FONT_FAMILY }}
       >
         {label}
       </Badge>
@@ -97,7 +93,7 @@ export function HealthScoreRing({ health, size = 80 }: ScoreRingProps) {
         roundCaps
         sections={[{ value: 100, color: 'gray' }]}
         label={
-          <Text ta="center" size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          <Text ta="center" size="xs" c="dimmed">
             N/A
           </Text>
         }
@@ -113,7 +109,7 @@ export function HealthScoreRing({ health, size = 80 }: ScoreRingProps) {
       roundCaps
       sections={[{ value: health.overallScore, color }]}
       label={
-        <Text ta="center" fw={700} size={size > 70 ? 'sm' : 'xs'} c={color} style={{ fontFamily: FONT_FAMILY }}>
+        <Text ta="center" fw={700} size={size > 70 ? 'sm' : 'xs'} c={color}>
           {health.overallScore}
         </Text>
       }

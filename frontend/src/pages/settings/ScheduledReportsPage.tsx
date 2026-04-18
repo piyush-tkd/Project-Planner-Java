@@ -12,18 +12,18 @@ import {
   Title, Text, Stack, Group, Button, Paper, Badge, Table,
   Modal, TextInput, Select, Switch, TagsInput, ActionIcon,
   Tooltip, ThemeIcon, Tabs, NumberInput, SimpleGrid, Box,
-  SegmentedControl, Alert, Code, Center, Divider, Skeleton,
+  SegmentedControl, Alert, Skeleton,
 } from '@mantine/core';
 import {
   IconCalendarStats, IconPlus, IconTrash, IconEdit, IconSend,
-  IconCheck, IconAlertTriangle, IconClock, IconMail,
+  IconCheck, IconClock, IconMail,
   IconFileTypePdf, IconFileTypeCsv, IconFileSpreadsheet,
   IconPlayerPlay, IconCircleCheck, IconCircleX,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import apiClient from '../../api/client';
-import { AQUA, DEEP_BLUE, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, GRAY_100 } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ export default function ScheduledReportsPage() {
       {/* Header */}
       <Group justify="space-between">
         <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
             Scheduled Reports
           </Title>
           <Text size="sm" c="dimmed" mt={4}>
@@ -359,7 +359,7 @@ export default function ScheduledReportsPage() {
                     <Table.Th>Next Run</Table.Th>
                     <Table.Th>Last Status</Table.Th>
                     <Table.Th>Enabled</Table.Th>
-                    <Table.Th style={{ width: 120 }}>Actions</Table.Th>
+                    <Table.Th w={120}>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -410,18 +410,24 @@ export default function ScheduledReportsPage() {
                           <Group gap={4}>
                             <Tooltip label="Run now">
                               <ActionIcon size="sm" variant="light" color="teal"
-                                loading={runningId === r.id} onClick={() => handleRunNow(r.id)}>
+                                loading={runningId === r.id} onClick={() => handleRunNow(r.id)}
+      aria-label="Player Play"
+    >
                                 <IconPlayerPlay size={13} />
                               </ActionIcon>
                             </Tooltip>
                             <Tooltip label="Edit">
-                              <ActionIcon size="sm" variant="light" color="blue" onClick={() => openEdit(r)}>
+                              <ActionIcon size="sm" variant="light" color="blue" onClick={() => openEdit(r)}
+      aria-label="Edit"
+    >
                                 <IconEdit size={13} />
                               </ActionIcon>
                             </Tooltip>
                             <Tooltip label="Delete">
                               <ActionIcon size="sm" variant="light" color="red"
-                                onClick={() => { if (confirm(`Delete "${r.name}"?`)) deleteMutation.mutate(r.id); }}>
+                                onClick={() => { if (confirm(`Delete "${r.name}"?`)) deleteMutation.mutate(r.id); }}
+      aria-label="Delete"
+    >
                                 <IconTrash size={13} />
                               </ActionIcon>
                             </Tooltip>
@@ -526,7 +532,7 @@ export default function ScheduledReportsPage() {
                   data={DOW_OPTIONS}
                   value={String(form.dayOfWeek)}
                   onChange={v => setForm(f => ({ ...f, dayOfWeek: Number(v) }))}
-                  style={{ width: 150 }}
+                  w={150}
                 />
               )}
               {form.cadence === 'MONTHLY' && (
@@ -535,7 +541,7 @@ export default function ScheduledReportsPage() {
                   min={1} max={28}
                   value={form.dayOfMonth}
                   onChange={v => setForm(f => ({ ...f, dayOfMonth: Number(v) }))}
-                  style={{ width: 120 }}
+                  w={120}
                 />
               )}
               <TextInput
@@ -543,7 +549,7 @@ export default function ScheduledReportsPage() {
                 placeholder="08:00"
                 value={form.timeOfDay}
                 onChange={e => setForm(f => ({ ...f, timeOfDay: e.currentTarget.value }))}
-                style={{ width: 100 }}
+                w={100}
               />
             </Group>
           </Box>

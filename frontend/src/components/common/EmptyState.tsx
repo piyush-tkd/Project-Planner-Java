@@ -9,9 +9,9 @@
  *   - Animated icon container
  */
 import { ReactNode } from 'react';
-import { Box, ThemeIcon, Text, Button, Stack, Group, Anchor, List, ThemeIcon as TI } from '@mantine/core';
-import { IconMoodEmpty, IconInfoCircle, IconExternalLink } from '@tabler/icons-react';
-import { AQUA, FONT_FAMILY } from '../../brandTokens';
+import { Box, ThemeIcon, Text, Button, Stack, Group, Anchor, List } from '@mantine/core';
+import { IconMoodEmpty, IconInfoCircle } from '@tabler/icons-react';
+import { FONT_FAMILY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface EmptyAction {
@@ -92,7 +92,6 @@ export default function EmptyState({
         border: `2px dashed ${borderColor}`,
         borderRadius: 12,
         textAlign: 'center',
-        fontFamily: FONT_FAMILY,
         background: bgColor,
       }}
     >

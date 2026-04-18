@@ -10,7 +10,7 @@
  */
 import { ReactNode } from 'react';
 import { Stack, Title, Text, Group, SimpleGrid, Paper, ThemeIcon, useComputedColorScheme } from '@mantine/core';
-import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../../brandTokens';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW } from '../../brandTokens';
 
 export interface SummaryCardItem {
   label: string;
@@ -76,15 +76,15 @@ function SummaryCard({ label, value, icon, color, trend, trendColor, isDark }: S
           </ThemeIcon>
         )}
         <div>
-          <Text size="xs" c="dimmed" tt="uppercase" fw={500} style={{ fontFamily: FONT_FAMILY, letterSpacing: '0.03em' }}>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={500} style={{ letterSpacing: '0.03em' }}>
             {label}
           </Text>
           <Group gap={8} align="baseline">
-            <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE, lineHeight: 1.2 }}>
+            <Text size="xl" fw={700} style={{ color: isDark ? '#fff' : DEEP_BLUE, lineHeight: 1.2 }}>
               {value}
             </Text>
             {trend && (
-              <Text size="xs" fw={600} c={trendColor || 'dimmed'} style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" fw={600} c={trendColor || 'dimmed'}>
                 {trend}
               </Text>
             )}

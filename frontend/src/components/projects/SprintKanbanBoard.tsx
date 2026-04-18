@@ -15,15 +15,15 @@
  */
 import { useState, useRef, useCallback, useMemo } from 'react';
 import {
-  Paper, Text, Group, Badge, Stack, Box, ScrollArea, ActionIcon,
-  Tooltip, ThemeIcon,
+  Paper, Text, Group, Badge, Stack, Box, ScrollArea,
+  ThemeIcon,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconBriefcase, IconBug, IconSubtask, IconCheck, IconClock,
   IconUser, IconDots, IconArrowsUpDown,
 } from '@tabler/icons-react';
-import { AQUA, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
+import { AQUA, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, FONT_FAMILY, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { IssueRow } from '../../api/jira';
 

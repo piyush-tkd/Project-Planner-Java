@@ -3,11 +3,10 @@ package com.portfolioplanner.service.nlp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolioplanner.dto.response.NlpCatalogResponse;
+import com.portfolioplanner.service.AiServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
@@ -23,11 +22,16 @@ public class CloudLlmStrategy implements NlpStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(CloudLlmStrategy.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AiServiceClient aiServiceClient;
 
     private String provider = "ANTHROPIC";
     private String model = "claude-haiku-4-5-20251001";
     private String apiKey = "";
     private int maxTimeoutMs = 5000;
+
+    public CloudLlmStrategy(AiServiceClient aiServiceClient) {
+        this.aiServiceClient = aiServiceClient;
+    }
 
     @Override
     public String name() {
@@ -63,68 +67,17 @@ public class CloudLlmStrategy implements NlpStrategy {
     }
 
     private NlpResult classifyWithAnthropic(String query, NlpCatalogResponse catalog) throws Exception {
-        String systemPrompt = buildSystemPrompt(catalog);
-
-        Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "max_tokens", 1024,
-                "system", systemPrompt,
-                "messages", List.of(
-                        Map.of("role", "user", "content", query)
-                )
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", apiKey);
-        headers.set("anthropic-version", "2023-06-01");
-
-        RestTemplate rt = new RestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
-
-        ResponseEntity<String> resp = rt.postForEntity(
-                "https://api.anthropic.com/v1/messages", entity, String.class);
-
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-            log.warn("Anthropic API returned: {}", resp.getStatusCode());
-            return lowConfidenceResult();
-        }
-
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        String responseText = root.path("content").get(0).path("text").asText("");
-        return parseJsonResponse(responseText, catalog);
+        String content = aiServiceClient.chat(
+                "ANTHROPIC", model, apiKey, buildSystemPrompt(catalog), query, 1024, null);
+        if (content == null || content.isBlank()) return lowConfidenceResult();
+        return parseJsonResponse(content, catalog);
     }
 
     private NlpResult classifyWithOpenAI(String query, NlpCatalogResponse catalog) throws Exception {
-        String systemPrompt = buildSystemPrompt(catalog);
-
-        Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "max_tokens", 1024,
-                "response_format", Map.of("type", "json_object"),
-                "messages", List.of(
-                        Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", query)
-                )
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
-
-        RestTemplate rt = new RestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
-
-        ResponseEntity<String> resp = rt.postForEntity(
-                "https://api.openai.com/v1/chat/completions", entity, String.class);
-
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-            return lowConfidenceResult();
-        }
-
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        String responseText = root.path("choices").get(0).path("message").path("content").asText("");
-        return parseJsonResponse(responseText, catalog);
+        String content = aiServiceClient.chat(
+                "OPENAI", model, apiKey, buildSystemPrompt(catalog), query, 1024, null);
+        if (content == null || content.isBlank()) return lowConfidenceResult();
+        return parseJsonResponse(content, catalog);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -938,56 +891,13 @@ public class CloudLlmStrategy implements NlpStrategy {
         return null;
     }
 
-    private String generateWithAnthropic(String systemPrompt, String userMessage) throws Exception {
-        return generateWithAnthropicKey(model, apiKey, systemPrompt, userMessage);
-    }
-
-    private String generateWithOpenAI(String systemPrompt, String userMessage) throws Exception {
-        return generateWithOpenAIKey(model, apiKey, systemPrompt, userMessage);
-    }
-
     private String generateWithAnthropicKey(String mdl, String key,
-                                             String systemPrompt, String userMessage) throws Exception {
-        Map<String, Object> requestBody = Map.of(
-            "model", mdl,
-            "max_tokens", 2048,
-            "system", systemPrompt,
-            "messages", List.of(Map.of("role", "user", "content", userMessage))
-        );
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", key);
-        headers.set("anthropic-version", "2023-06-01");
-
-        RestTemplate rt = new RestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
-        ResponseEntity<String> resp = rt.postForEntity("https://api.anthropic.com/v1/messages", entity, String.class);
-
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        return root.path("content").get(0).path("text").asText(null);
+                                             String systemPrompt, String userMessage) {
+        return aiServiceClient.chat("ANTHROPIC", mdl, key, systemPrompt, userMessage, 2048, null);
     }
 
     private String generateWithOpenAIKey(String mdl, String key,
-                                          String systemPrompt, String userMessage) throws Exception {
-        Map<String, Object> requestBody = Map.of(
-            "model", mdl,
-            "max_tokens", 2048,
-            "messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", userMessage)
-            )
-        );
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(key);
-
-        RestTemplate rt = new RestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
-        ResponseEntity<String> resp = rt.postForEntity("https://api.openai.com/v1/chat/completions", entity, String.class);
-
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        return root.path("choices").get(0).path("message").path("content").asText(null);
+                                          String systemPrompt, String userMessage) {
+        return aiServiceClient.chat("OPENAI", mdl, key, systemPrompt, userMessage, 2048, null);
     }
 }

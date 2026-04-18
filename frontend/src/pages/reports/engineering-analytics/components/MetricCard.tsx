@@ -1,0 +1,26 @@
+import React from 'react';
+import { Paper, Stack, Text } from '@mantine/core';
+import { SHADOW } from '../../../../brandTokens';
+
+export function MetricCard({
+ title, description, children, insight,
+}: {
+ title: string; description: string; children: React.ReactNode; insight?: string;
+}) {
+ return (
+ <Paper withBorder radius="md" p="lg" style={{ boxShadow: SHADOW.card }}>
+ <Stack gap="sm">
+ <div>
+ <Text fw={700} size="md">{title}</Text>
+ <Text size="xs" c="dimmed">{description}</Text>
+ </div>
+ {children}
+ {insight && (
+ <Text size="xs" c="dimmed" style={{ fontStyle: 'italic' }}>
+ {insight}
+ </Text>
+ )}
+ </Stack>
+ </Paper>
+ );
+}

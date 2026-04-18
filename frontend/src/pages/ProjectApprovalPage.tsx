@@ -15,7 +15,7 @@ import {
   Title, Text, Stack, Group, Button, Paper, Badge,
   Textarea, Modal, ActionIcon, Tooltip, Alert, Skeleton,
   ThemeIcon, SimpleGrid, Divider, Tabs,
-  Table, ScrollArea, Anchor, TextInput, Select,
+  Table, ScrollArea, Anchor, TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -24,7 +24,7 @@ import {
   IconListCheck, IconShield, IconBolt, IconArrowRight,
   IconHistory, IconExternalLink,
 } from '@tabler/icons-react';
-import { AQUA, COLOR_ERROR, DEEP_BLUE, FONT_FAMILY, GRAY_100} from '../brandTokens';
+import { AQUA, COLOR_ERROR, FONT_FAMILY, GRAY_100} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
@@ -139,7 +139,9 @@ export default function ProjectApprovalPage() {
             {pending.length} pending
           </Badge>
           <Tooltip label="Refresh queue">
-            <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh}>
+            <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh}
+      aria-label="Refresh"
+    >
               <IconRefresh size={16} />
             </ActionIcon>
           </Tooltip>
@@ -249,7 +251,7 @@ export default function ProjectApprovalPage() {
                         <Table.Th>Requested By</Table.Th>
                         <Table.Th>Submitted</Table.Th>
                         <Table.Th>Note</Table.Th>
-                        <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+                        <Table.Th ta="right">Actions</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>

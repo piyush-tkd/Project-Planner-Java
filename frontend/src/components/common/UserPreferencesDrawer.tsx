@@ -56,7 +56,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <Box>
       <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs"
-        style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, fontSize: 10 }}>
+        style={{ letterSpacing: '0.08em', fontSize: 10 }}>
         {title}
       </Text>
       <Box

@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { PPPageLayout } from '../components/pp';
-import { AQUA_HEX, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY, COLOR_TEAL, COLOR_WARNING } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY } from '../brandTokens';
 import { IconPlus, IconSearch, IconArrowRight, IconAlertCircle, IconPencil, IconTrash, IconExternalLink } from '@tabler/icons-react';
 import TeamTypeBadge from '../components/teams/TeamTypeBadge';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -349,6 +349,7 @@ export default function TeamsPage() {
                               size="sm"
                               variant="subtle"
                               onClick={() => navigate(`/teams/${team.id}`)}
+                              aria-label="Go forward"
                             >
                               <IconArrowRight size={14} />
                             </ActionIcon>
@@ -359,6 +360,7 @@ export default function TeamsPage() {
                               variant="subtle"
                               color="blue"
                               onClick={() => openEdit(team)}
+                              aria-label="Edit"
                             >
                               <IconPencil size={14} />
                             </ActionIcon>
@@ -370,6 +372,7 @@ export default function TeamsPage() {
                               color={isCore ? 'gray' : 'red'}
                               disabled={isCore}
                               onClick={() => !isCore && setDeleteTarget(team)}
+                              aria-label="Delete"
                             >
                               <IconTrash size={14} />
                             </ActionIcon>

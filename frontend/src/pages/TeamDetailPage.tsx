@@ -14,7 +14,6 @@ import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconUsers, IconPlus, IconPencil, IconCheck } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, AQUA_HEX, DEEP_BLUE_HEX, FONT_FAMILY, SHADOW, COLOR_TEAL, COLOR_WARNING } from '../brandTokens';
 import apiClient from '../api/client';
-import { useDarkMode } from '../hooks/useDarkMode';
 import TeamTypeBadge from '../components/teams/TeamTypeBadge';
 import ResourceAllocationDrawer from '../components/resources/ResourceAllocationDrawer';
 import { useCreateAllocation, useAllocationTypes } from '../api/allocations';
@@ -32,7 +31,6 @@ interface TeamMember {
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const dark = useDarkMode();
 
   const [drawerResource, setDrawerResource] = useState<{ id: number; name: string; role: string } | null>(null);
   const [addOpen, setAddOpen]               = useState(false);
@@ -50,7 +48,7 @@ export default function TeamDetailPage() {
   const { data: allResources = [] }  = useResources();
   const { data: allocationTypes = [] } = useAllocationTypes();
 
-  const { data: team, isLoading: teamLoading, isError: teamError } = useQuery<any>({
+  const { data: team, isLoading: teamLoading, isError: _teamError } = useQuery<any>({
     queryKey: ['pod', id],
     queryFn: () => apiClient.get(`/pods/${id}`).then(r => r.data),
     enabled: !!id,
@@ -255,7 +253,9 @@ export default function TeamDetailPage() {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <ActionIcon size="xs" variant="subtle" onClick={() => setDrawerResource(r)}>
+                    <ActionIcon size="xs" variant="subtle" onClick={() => setDrawerResource(r)}
+      aria-label="Edit"
+    >
                       <IconPencil size={12} />
                     </ActionIcon>
                   </Table.Td>

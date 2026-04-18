@@ -1,22 +1,20 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.domain.model.*;
-import com.portfolioplanner.domain.repository.*;
+import com.portfolioplanner.service.SprintBacklogService;
+import com.portfolioplanner.service.SprintBacklogService.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
-
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
 
 /**
  * Sprint Backlog — returns per-POD sprint + backlog data from local DB cache.
  *
  * GET /api/backlog/pods          → list of all enabled pods (for tab rendering)
+ * GET /api/backlog/sprint-names  → lightweight list of sprint names + states across all enabled pods
  * GET /api/backlog/{podId}       → sprints + issues for a specific pod
  */
 @RestController
@@ -25,290 +23,49 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("isAuthenticated()")
 public class SprintBacklogController {
 
-    private final JiraPodRepository             podRepo;
-    private final JiraSyncedSprintRepository    sprintRepo;
-    private final JiraSyncedIssueRepository     issueRepo;
-    private final JiraSprintIssueRepository     sprintIssueRepo;
-    private final JiraIssueFixVersionRepository fixVersionRepo;
+    private final SprintBacklogService sprintBacklogService;
+    private final JdbcTemplate jdbc;
 
-    // ── DTOs ──────────────────────────────────────────────────────────────────
-
-    public record PodSummary(Long id, String displayName, List<String> projectKeys) {}
-
-    public record IssueRow(
-        String key,
-        String summary,
-        String issueType,
-        String statusName,
-        String statusCategory,
-        String priorityName,
-        String assignee,
-        String assigneeAvatarUrl,   // Jira 48x48 avatar URL (may be null)
-        Double storyPoints,
-        String epicName,
-        String epicKey,
-        String fixVersionName,      // first fix version (may be null)
-        Boolean subtask,
-        String parentKey,
-        List<IssueRow> subtasks,    // nested subtask rows; empty for subtasks themselves
-        String createdAt            // ISO date — Jira issue creation date (scope creep detection)
-    ) {}
-
-    public record SprintGroup(
-        Long   sprintJiraId,
-        Long   boardId,
-        String name,
-        String state,
-        String startDate,
-        String endDate,
-        String goal,
-        int    todoCount,
-        int    inProgressCount,
-        int    doneCount,
-        int    totalCount,
-        List<IssueRow> issues
-    ) {}
-
-    public record BacklogGroup(
-        int    totalCount,
-        List<IssueRow> issues
-    ) {}
-
-    public record BacklogResponse(
-        Long         podId,
-        String       podDisplayName,
-        List<String> projectKeys,
-        List<SprintGroup> sprints,
-        BacklogGroup backlog,
-        String       syncedAt
-    ) {}
-
-    // ── Endpoints ─────────────────────────────────────────────────────────────
-
-    /** List all enabled PODs — used to render tabs in the frontend */
     @GetMapping("/pods")
     public ResponseEntity<List<PodSummary>> getPods() {
-        List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
-        List<PodSummary> result = pods.stream().map(p -> new PodSummary(
-            p.getId(),
-            p.getPodDisplayName(),
-            p.getBoards().stream().map(JiraPodBoard::getJiraProjectKey).collect(Collectors.toList())
-        )).collect(Collectors.toList());
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(sprintBacklogService.listPods());
     }
 
     /**
-     * Full backlog for one POD.
+     * Lightweight sprint list — name + state only, no issues.
+     * Scoped to enabled PODs. Closed sprints limited to last 90 days.
+     * Ordered: active first, then closed by end_date desc.
+     */
+    @GetMapping("/sprint-names")
+    public ResponseEntity<List<Map<String, String>>> sprintNames() {
+        List<Map<String, String>> rows = jdbc.query(
+            "SELECT name, state FROM (" +
+            "  SELECT js.name, js.state, MAX(js.end_date) AS max_end " +
+            "  FROM jira_sprint js " +
+            "  JOIN jira_pod_board jpb ON js.project_key = jpb.jira_project_key " +
+            "  JOIN jira_pod jp ON jpb.pod_id = jp.id " +
+            "  WHERE jp.enabled = true " +
+            "    AND js.state IN ('active', 'closed') " +
+            "    AND (js.state = 'active' OR js.end_date > NOW() - INTERVAL '90 days') " +
+            "  GROUP BY js.name, js.state" +
+            ") sub " +
+            "ORDER BY CASE state WHEN 'active' THEN 0 ELSE 1 END, max_end DESC NULLS LAST",
+            (rs, rowNum) -> {
+                Map<String, String> m = new LinkedHashMap<>();
+                m.put("name",  rs.getString("name"));
+                m.put("state", rs.getString("state"));
+                return m;
+            });
+        return ResponseEntity.ok(rows);
+    }
+
+    /**
      * @param view  active (default) | future | closed | all
-     *              active  = currently running sprints only
-     *              future  = active + upcoming sprints
-     *              closed  = recently completed sprints (last 90 days)
-     *              all     = active + future + closed
      */
     @GetMapping("/{podId}")
-    public ResponseEntity<BacklogResponse> getBacklog(
+    public ResponseEntity<BacklogResult> getBacklog(
             @PathVariable Long podId,
             @RequestParam(defaultValue = "future") String view) {
-        JiraPod pod = podRepo.findById(podId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "POD not found"));
-
-        List<String> keys = pod.getBoards().stream()
-            .map(JiraPodBoard::getJiraProjectKey)
-            .collect(Collectors.toList());
-
-        if (keys.isEmpty()) {
-            return ResponseEntity.ok(new BacklogResponse(
-                podId, pod.getPodDisplayName(), keys, List.of(),
-                new BacklogGroup(0, List.of()), null));
-        }
-
-        // ── Sprint selection based on view param ──────────────────────────────
-        List<JiraSyncedSprint> activeSprints = sprintRepo.findByProjectKeyInAndState(keys, "active");
-        List<JiraSyncedSprint> futureSprints = sprintRepo.findByProjectKeyInAndState(keys, "future");
-        List<JiraSyncedSprint> closedSprints = new ArrayList<>();
-
-        // Tighten staleness guard to 7 days (only truly recent stale-active sprints shown)
-        LocalDateTime staleCutoff = LocalDateTime.now().minusDays(7);
-        activeSprints = activeSprints.stream()
-            .filter(s -> s.getEndDate() == null || s.getEndDate().isAfter(staleCutoff))
-            .collect(Collectors.toList());
-
-        if ("closed".equals(view) || "all".equals(view)) {
-            LocalDateTime closedCutoff = LocalDateTime.now().minusDays(90);
-            closedSprints = sprintRepo.findByProjectKeyInAndState(keys, "closed").stream()
-                .filter(s -> s.getEndDate() == null || s.getEndDate().isAfter(closedCutoff))
-                .sorted(Comparator.comparing(
-                    (JiraSyncedSprint s) -> s.getEndDate() != null ? s.getEndDate() : LocalDateTime.MIN)
-                    .reversed())
-                .collect(Collectors.toList());
-        }
-
-        // Combine based on view: active first, then future, then closed (most recent first)
-        futureSprints.sort(Comparator.comparing(
-            s -> s.getStartDate() != null ? s.getStartDate() : LocalDateTime.MAX));
-
-        List<JiraSyncedSprint> allSprints = new ArrayList<>();
-        if (!"closed".equals(view))           allSprints.addAll(activeSprints);
-        if ("future".equals(view) || "all".equals(view)) allSprints.addAll(futureSprints);
-        if ("closed".equals(view) || "all".equals(view)) allSprints.addAll(closedSprints);
-
-        // Collect sprint IDs
-        List<Long> sprintIds = allSprints.stream()
-            .map(JiraSyncedSprint::getSprintJiraId)
-            .collect(Collectors.toList());
-
-        // ── Load ALL issues for this pod ────────────────────────────────────────
-        List<JiraSyncedIssue> allIssues = issueRepo.findByProjectKeyIn(keys);
-
-        // Index issues by key for fast lookup
-        Map<String, JiraSyncedIssue> issueByKey = allIssues.stream()
-            .collect(Collectors.toMap(JiraSyncedIssue::getIssueKey, i -> i, (a, b) -> a));
-
-        // Bulk load fix versions — keep first version per issue key
-        List<String> allIssueKeys = allIssues.stream().map(JiraSyncedIssue::getIssueKey).collect(Collectors.toList());
-        Map<String, String> fvByKey = allIssueKeys.isEmpty() ? Map.of() :
-            fixVersionRepo.findByIssueKeyIn(allIssueKeys).stream()
-                .collect(Collectors.toMap(
-                    JiraIssueFixVersion::getIssueKey,
-                    JiraIssueFixVersion::getVersionName,
-                    (a, b) -> a   // keep first if multiple fix versions
-                ));
-
-        // ── Build sprint groups from sprint_issue join table ───────────────────
-        List<SprintGroup> sprintGroups = new ArrayList<>();
-        Set<String> assignedToSprintKeys = new HashSet<>();
-
-        for (JiraSyncedSprint sprint : allSprints) {
-            List<JiraSprintIssue> links = sprintIssueRepo.findBySprintJiraId(sprint.getSprintJiraId());
-            List<String> linkedKeys = links.stream()
-                .map(JiraSprintIssue::getIssueKey)
-                .collect(Collectors.toList());
-
-            // Fallback: if join table is empty, use sprintId on issue
-            if (linkedKeys.isEmpty()) {
-                linkedKeys = allIssues.stream()
-                    .filter(i -> sprint.getSprintJiraId().equals(i.getSprintId()))
-                    .map(JiraSyncedIssue::getIssueKey)
-                    .collect(Collectors.toList());
-            }
-
-            assignedToSprintKeys.addAll(linkedKeys);
-
-            // Build subtask map: parentKey → list of subtask rows (for this sprint)
-            Map<String, List<IssueRow>> sprintSubtasksByParent = linkedKeys.stream()
-                .map(issueByKey::get)
-                .filter(Objects::nonNull)
-                .filter(i -> Boolean.TRUE.equals(i.getSubtask()) && i.getParentKey() != null)
-                .collect(Collectors.groupingBy(
-                    JiraSyncedIssue::getParentKey,
-                    Collectors.mapping(i -> toRow(i, fvByKey), Collectors.toList())
-                ));
-
-            // Build parent rows with subtasks attached
-            List<IssueRow> rows = linkedKeys.stream()
-                .map(issueByKey::get)
-                .filter(Objects::nonNull)
-                .filter(i -> !Boolean.TRUE.equals(i.getSubtask()))
-                .map(i -> toRowWithSubtasks(i, sprintSubtasksByParent, fvByKey))
-                .collect(Collectors.toList());
-
-            // Sprint header counts use parent issues only (matches Jira behaviour)
-            int todo   = (int) rows.stream().filter(r -> "to do".equalsIgnoreCase(r.statusCategory()) || r.statusCategory() == null).count();
-            int inProg = (int) rows.stream().filter(r -> "indeterminate".equalsIgnoreCase(r.statusCategory())).count();
-            int done   = (int) rows.stream().filter(r -> "done".equalsIgnoreCase(r.statusCategory())).count();
-
-            sprintGroups.add(new SprintGroup(
-                sprint.getSprintJiraId(),
-                sprint.getBoardId(),
-                sprint.getName(),
-                sprint.getState(),
-                sprint.getStartDate() != null ? sprint.getStartDate().toLocalDate().toString() : null,
-                sprint.getEndDate()   != null ? sprint.getEndDate().toLocalDate().toString()   : null,
-                sprint.getGoal(),
-                todo, inProg, done, rows.size(),
-                rows
-            ));
-        }
-
-        // ── Backlog: issues not assigned to any active/future sprint, not done ──
-        // Build subtask map for backlog issues
-        Map<String, List<IssueRow>> backlogSubtasksByParent = allIssues.stream()
-            .filter(i -> Boolean.TRUE.equals(i.getSubtask()) && i.getParentKey() != null)
-            .filter(i -> !assignedToSprintKeys.contains(i.getIssueKey()))
-            .filter(i -> !"done".equalsIgnoreCase(i.getStatusCategory()))
-            .collect(Collectors.groupingBy(
-                JiraSyncedIssue::getParentKey,
-                Collectors.mapping(i -> toRow(i, fvByKey), Collectors.toList())
-            ));
-
-        List<IssueRow> backlogRows = allIssues.stream()
-            .filter(i -> !Boolean.TRUE.equals(i.getSubtask()))
-            .filter(i -> !assignedToSprintKeys.contains(i.getIssueKey()))
-            .filter(i -> !"done".equalsIgnoreCase(i.getStatusCategory()))
-            .map(i -> toRowWithSubtasks(i, backlogSubtasksByParent, fvByKey))
-            .collect(Collectors.toList());
-
-        // Sort backlog: highest priority first (P1 > P2 > ...), then by key
-        backlogRows.sort(Comparator
-            .comparingInt((IssueRow r) -> priorityOrder(r.priorityName()))
-            .thenComparing(IssueRow::key));
-
-        String syncedAt = allIssues.stream()
-            .map(JiraSyncedIssue::getSyncedAt)
-            .filter(Objects::nonNull)
-            .max(Comparator.naturalOrder())
-            .map(Object::toString)
-            .orElse(null);
-
-        return ResponseEntity.ok(new BacklogResponse(
-            podId,
-            pod.getPodDisplayName(),
-            keys,
-            sprintGroups,
-            new BacklogGroup(backlogRows.size(), backlogRows),
-            syncedAt
-        ));
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /** Basic row — no subtasks attached (used for subtask entries themselves). */
-    private IssueRow toRow(JiraSyncedIssue i, Map<String, String> fvByKey) {
-        return new IssueRow(
-            i.getIssueKey(), i.getSummary(), i.getIssueType(),
-            i.getStatusName(), i.getStatusCategory(), i.getPriorityName(),
-            i.getAssigneeDisplayName(), i.getAssigneeAvatarUrl(),
-            i.getStoryPoints(), i.getEpicName(), i.getEpicKey(),
-            fvByKey.get(i.getIssueKey()),
-            i.getSubtask(), i.getParentKey(), List.of(),
-            i.getCreatedAt() != null ? i.getCreatedAt().toLocalDate().toString() : null
-        );
-    }
-
-    /** Row with subtasks nested — used for parent (non-subtask) issues. */
-    private IssueRow toRowWithSubtasks(JiraSyncedIssue i, Map<String, List<IssueRow>> subtasksByParent,
-                                        Map<String, String> fvByKey) {
-        return new IssueRow(
-            i.getIssueKey(), i.getSummary(), i.getIssueType(),
-            i.getStatusName(), i.getStatusCategory(), i.getPriorityName(),
-            i.getAssigneeDisplayName(), i.getAssigneeAvatarUrl(),
-            i.getStoryPoints(), i.getEpicName(), i.getEpicKey(),
-            fvByKey.get(i.getIssueKey()),
-            i.getSubtask(), i.getParentKey(),
-            subtasksByParent.getOrDefault(i.getIssueKey(), List.of()),
-            i.getCreatedAt() != null ? i.getCreatedAt().toLocalDate().toString() : null
-        );
-    }
-
-    private static int priorityOrder(String priority) {
-        if (priority == null) return 99;
-        return switch (priority.toLowerCase()) {
-            case "highest", "critical", "blocker" -> 1;
-            case "high"                           -> 2;
-            case "medium"                         -> 3;
-            case "low"                            -> 4;
-            case "lowest"                         -> 5;
-            default                               -> 9;
-        };
+        return ResponseEntity.ok(sprintBacklogService.getBacklog(podId, view));
     }
 }

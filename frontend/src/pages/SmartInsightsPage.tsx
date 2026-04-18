@@ -10,8 +10,8 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Title, Text, Group, Stack, Box, SimpleGrid, Paper, ThemeIcon,
-  Badge, RingProgress, Progress, Tooltip, Anchor, Alert,
+  Text, Group, Stack, Box, SimpleGrid, Paper, ThemeIcon,
+  Badge, RingProgress, Progress, Anchor, Alert,
   Table, ScrollArea,
 } from '@mantine/core';
 import {
@@ -29,7 +29,7 @@ import {
 import { useProjects } from '../api/projects';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PageError from '../components/common/PageError';
-import { DEEP_BLUE, AQUA, FONT_FAMILY, AQUA_TINTS } from '../brandTokens';
+import { FONT_FAMILY, AQUA_TINTS } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import type { ProjectResponse } from '../types/project';
 import { PPPageLayout } from '../components/pp';

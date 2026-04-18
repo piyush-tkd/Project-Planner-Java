@@ -180,7 +180,7 @@ function KeyRow({ shortcut, dark }: { shortcut: Shortcut; dark: boolean }) {
       <Group gap={4} wrap="nowrap">
         {shortcut.keys.map((k, i) => (
           <Group key={i} gap={4} wrap="nowrap">
-            {i > 0 && <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>then</Text>}
+            {i > 0 && <Text size="xs" c="dimmed">then</Text>}
             <Kbd
               size="sm"
               style={{
@@ -189,7 +189,6 @@ function KeyRow({ shortcut, dark }: { shortcut: Shortcut; dark: boolean }) {
                 border: `1px solid ${dark ? 'rgba(45,204,211,0.3)' : AQUA}`,
                 borderRadius: 4,
                 padding: '3px 7px',
-                fontFamily: FONT_FAMILY,
                 fontSize: 12,
                 fontWeight: 600,
                 minWidth: 28,
@@ -201,7 +200,7 @@ function KeyRow({ shortcut, dark }: { shortcut: Shortcut; dark: boolean }) {
           </Group>
         ))}
       </Group>
-      <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, textAlign: 'right', flex: 1, marginLeft: 12 }}>
+      <Text size="xs" c="dimmed" style={{ textAlign: 'right', flex: 1, marginLeft: 12 }}>
         {shortcut.description}
       </Text>
     </Group>
@@ -238,7 +237,7 @@ export default function KeyboardShortcutsPanel({
       onClose={onClose}
       title={
         <Group gap="xs">
-          <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+          <Text fw={700} size="lg" style={{ color: dark ? '#fff' : DEEP_BLUE }}>
             Keyboard Shortcuts
           </Text>
           <Badge size="sm" variant="light" color="teal">{

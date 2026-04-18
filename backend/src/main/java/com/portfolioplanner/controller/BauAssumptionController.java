@@ -24,6 +24,7 @@ public class BauAssumptionController {
         return ResponseEntity.ok(bauService.getAll());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping
     public ResponseEntity<List<BauAssumptionResponse>> bulkUpdate(
             @Valid @RequestBody List<BauAssumptionRequest> requests) {

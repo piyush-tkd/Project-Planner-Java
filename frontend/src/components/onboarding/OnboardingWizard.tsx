@@ -6,7 +6,7 @@
  * Step 4: Connect Jira
  * Step 5: Create first project
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Modal,
   Button,
@@ -23,7 +23,7 @@ import {
   useComputedColorScheme,
 } from '@mantine/core';
 import { IconX } from '@tabler/icons-react';
-import { AQUA, DEEP_BLUE } from '../../brandTokens';
+import { AQUA } from '../../brandTokens';
 
 interface Step {
   id: number;
@@ -156,6 +156,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                     variant="subtle"
                     color="red"
                     onClick={() => handleRemoveTeamMember(idx)}
+                    aria-label="Close"
                   >
                     <IconX size={16} />
                   </ActionIcon>

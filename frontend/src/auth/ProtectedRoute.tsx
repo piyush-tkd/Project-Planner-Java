@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext';
 import { Center, Loader, Stack, ThemeIcon, Title, Text, Button } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { FONT_FAMILY } from '../brandTokens';
 
 interface Props {
   /** Optional page key to enforce page-level permission check. */

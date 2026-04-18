@@ -1,19 +1,17 @@
 package com.portfolioplanner.controller;
 
 import com.portfolioplanner.service.jira.JiraCredentialsService;
-import com.portfolioplanner.domain.model.JiraProjectMapping;
 import com.portfolioplanner.domain.model.JiraPod;
 import com.portfolioplanner.domain.model.JiraPodBoard;
-import com.portfolioplanner.domain.model.Project;
-import com.portfolioplanner.domain.repository.JiraProjectMappingRepository;
-import com.portfolioplanner.domain.repository.JiraPodRepository;
-import com.portfolioplanner.domain.repository.ProjectRepository;
 import com.portfolioplanner.service.jira.JiraActualsService;
 import com.portfolioplanner.service.jira.JiraActualsService.*;
 import com.portfolioplanner.service.jira.JiraClient;
+import com.portfolioplanner.service.JiraMappingService;
+import com.portfolioplanner.service.JiraMappingService.SaveMappingRequest;
+import com.portfolioplanner.service.JiraMappingService.MappingResponse;
+import com.portfolioplanner.service.JiraPodConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,11 +26,10 @@ public class JiraController {
 
     private final JiraActualsService actualsService;
     private final JiraClient jiraClient;
-    private final JiraProjectMappingRepository mappingRepo;
-    private final JiraPodRepository podRepo;
-    private final ProjectRepository projectRepo;
     private final JiraCredentialsService creds;
     private final com.portfolioplanner.service.jira.JiraSyncScheduler jiraSyncScheduler;
+    private final JiraMappingService mappingService;
+    private final JiraPodConfigService podConfigService;
 
     /** Check whether Jira credentials are configured */
     @GetMapping("/status")
@@ -47,6 +44,7 @@ public class JiraController {
      * Live connectivity test — calls /rest/api/3/myself and returns the raw
      * Jira user object so you can confirm auth works, or returns an error message.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/test")
     public ResponseEntity<Map<String, Object>> testConnection() {
         if (!creds.isConfigured()) {
@@ -72,71 +70,28 @@ public class JiraController {
         return ResponseEntity.ok(actualsService.suggestMappings());
     }
 
-    /** List all saved mappings */
     @GetMapping("/mappings")
-    @Transactional(readOnly = true)
     public ResponseEntity<List<MappingResponse>> getMappings() {
-        List<JiraProjectMapping> mappings = mappingRepo.findByActiveTrueOrderByJiraProjectKey();
-        List<MappingResponse> result = mappings.stream()
-                .map(m -> new MappingResponse(
-                        m.getId(),
-                        m.getProject().getId(),
-                        m.getProject().getName(),
-                        m.getJiraProjectKey(),
-                        m.getMatchType(),
-                        m.getMatchValue(),
-                        m.getActive()))
-                .toList();
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(mappingService.getMappings());
     }
 
-    /** Save or update a mapping */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/mappings")
-    @Transactional
     public ResponseEntity<MappingResponse> saveMapping(@RequestBody SaveMappingRequest req) {
-        Project project = projectRepo.findById(req.ppProjectId())
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + req.ppProjectId()));
-
-        JiraProjectMapping mapping = mappingRepo
-                .findByProjectIdAndJiraProjectKey(req.ppProjectId(), req.jiraProjectKey())
-                .orElseGet(JiraProjectMapping::new);
-
-        mapping.setProject(project);
-        mapping.setJiraProjectKey(req.jiraProjectKey());
-        mapping.setMatchType(req.matchType());
-        mapping.setMatchValue(req.matchValue());
-        mapping.setActive(true);
-        mapping = mappingRepo.save(mapping);
-
-        return ResponseEntity.ok(new MappingResponse(
-                mapping.getId(),
-                project.getId(),
-                project.getName(),
-                mapping.getJiraProjectKey(),
-                mapping.getMatchType(),
-                mapping.getMatchValue(),
-                mapping.getActive()));
+        return ResponseEntity.ok(mappingService.saveMapping(req));
     }
 
-    /** Bulk-save multiple mappings at once */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/mappings/bulk")
-    @Transactional
     public ResponseEntity<List<MappingResponse>> saveMappingsBulk(
             @RequestBody List<SaveMappingRequest> requests) {
-        List<MappingResponse> saved = requests.stream()
-                .map(req -> saveMapping(req).getBody())
-                .toList();
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(mappingService.saveMappingsBulk(requests));
     }
 
-    /** Delete a mapping */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/mappings/{id}")
-    @Transactional
     public ResponseEntity<Void> deleteMapping(@PathVariable Long id) {
-        mappingRepo.findById(id).ifPresent(m -> {
-            m.setActive(false);
-            mappingRepo.save(m);
-        });
+        mappingService.deleteMapping(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -262,6 +217,7 @@ public class JiraController {
      * Updates name, startDate, and targetDate from Jira. User-managed fields
      * (priority, notes, budget, owner) are never overwritten.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/sync/projects")
     public ResponseEntity<Map<String, Object>> syncProjects() {
         com.portfolioplanner.service.jira.JiraSyncScheduler.SyncResult result =
@@ -277,6 +233,7 @@ public class JiraController {
      * Bust all Jira API caches so the next calls re-fetch live data.
      * Returns 200 OK with a count of caches cleared.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/cache/clear")
     public ResponseEntity<Map<String, Object>> clearCache() {
         jiraClient.evictAllCaches();
@@ -292,6 +249,7 @@ public class JiraController {
      * Call this to diagnose why SP numbers look wrong.
      * Example: GET /api/jira/debug/board/123
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/board/{boardId}")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> debugBoard(@PathVariable long boardId) {
@@ -362,6 +320,7 @@ public class JiraController {
      * Use this to find exactly where inflated SP totals are coming from.
      * Example: GET /api/jira/debug/board/15/sp-audit
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/board/{boardId}/sp-audit")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> spAudit(@PathVariable long boardId) {
@@ -440,6 +399,7 @@ public class JiraController {
      *
      * Example: GET /api/jira/debug/board/15/sp-trace
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/board/{boardId}/sp-trace")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> spTrace(@PathVariable long boardId) {
@@ -524,6 +484,7 @@ public class JiraController {
      *
      * Example: GET /api/jira/debug/board/15/sprint-report
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/board/{boardId}/sprint-report")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> debugSprintReport(@PathVariable long boardId) {
@@ -599,6 +560,7 @@ public class JiraController {
      *
      * Example: GET /api/jira/debug/pods/sp
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/debug/pods/sp")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> debugPodsSprintReports() {
@@ -607,7 +569,7 @@ public class JiraController {
         // Evict caches — same as Refresh button
         jiraClient.evictAllCaches();
 
-        List<JiraPod> pods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
+        List<JiraPod> pods = podConfigService.getEnabledPods();
         List<Map<String, Object>> results = new java.util.ArrayList<>();
 
         for (JiraPod pod : pods) {
@@ -681,6 +643,7 @@ public class JiraController {
      * Returns the currently active Jira credentials (token masked for security).
      * The caller can use this to pre-fill the settings form.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/credentials")
     public ResponseEntity<Map<String, Object>> getCredentials() {
         var db = creds.dbCredentials();
@@ -703,6 +666,7 @@ public class JiraController {
      * Saves Jira credentials entered via the UI.
      * Pass an empty {@code apiToken} to keep the existing token unchanged.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/credentials")
     public ResponseEntity<Map<String, Object>> saveCredentials(
             @RequestBody CredentialsSaveRequest req) {
@@ -728,20 +692,4 @@ public class JiraController {
             String baseUrl,
             String email,
             String apiToken) {}
-
-    public record SaveMappingRequest(
-            Long ppProjectId,
-            String jiraProjectKey,
-            String matchType,   // EPIC_NAME | LABEL | EPIC_KEY | PROJECT_NAME
-            String matchValue) {}
-
-    public record MappingResponse(
-            Long id,
-            Long ppProjectId,
-            String ppProjectName,
-            String jiraProjectKey,
-            String matchType,
-            String matchValue,
-            Boolean active) {}
-    // SimpleProject DTO is defined in JiraActualsService and imported via wildcard above
 }

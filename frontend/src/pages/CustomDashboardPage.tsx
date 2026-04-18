@@ -9,11 +9,11 @@
  * - Dynamic widget data fetching
  * - Cross-filtering support
  */
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Text, Stack, Group, Button, Paper, Badge, ActionIcon, Tooltip,
-  Modal, Card, ThemeIcon, Divider, Title, Select, TextInput,
-  Menu, Drawer, Tabs, Alert, Skeleton, RingProgress, Grid,
+  Modal, Card, ThemeIcon, Title, TextInput,
+  Menu, Drawer, Tabs, Grid,
 } from '@mantine/core';
 import { Reorder } from 'framer-motion';
 import { PPPageLayout } from '../components/pp';
@@ -26,19 +26,16 @@ import {
 import { DashboardProvider, useDashboard } from '../store/dashboardStore';
 import {
   useDashboards,
-  useCreateDashboard,
   useUpdateDashboard,
-  useDeleteDashboard,
-  useDashboardTemplates,
 } from '../api/dashboards';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconX, IconCheck, IconRefresh, IconLayoutDashboard,
   IconEdit, IconGripVertical, IconSettings, IconDownload,
-  IconPrinter, IconFilter, IconClock, IconAlertCircle, IconChevronDown,
-  IconMinus, IconEqual, IconTrash, IconConfetti,
+  IconPrinter, IconClock, IconAlertCircle,
+  IconMinus, IconConfetti,
 } from '@tabler/icons-react';
-import { AQUA, GRAY_100, SURFACE_SUBTLE, FONT_FAMILY, DEEP_BLUE } from '../brandTokens';
+import { AQUA, GRAY_100, SURFACE_SUBTLE, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useProjects } from '../api/projects';
 import { useResources } from '../api/resources';
@@ -655,12 +652,16 @@ function WidgetCard({
         {isEditMode && (
           <Group gap={4}>
             <Tooltip label="Configure">
-              <ActionIcon size="xs" variant="subtle" color="blue" onClick={onConfigure}>
+              <ActionIcon size="xs" variant="subtle" color="blue" onClick={onConfigure}
+      aria-label="Settings"
+    >
                 <IconSettings size={12} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Delete">
-              <ActionIcon size="xs" variant="subtle" color="red" onClick={onDelete}>
+              <ActionIcon size="xs" variant="subtle" color="red" onClick={onDelete}
+      aria-label="Close"
+    >
                 <IconX size={12} />
               </ActionIcon>
             </Tooltip>
@@ -828,7 +829,9 @@ function DashboardToolbar({
               <Title order={3} style={{ fontFamily: FONT_FAMILY, margin: 0 }}>
                 {dashboardName}
               </Title>
-              <ActionIcon size="xs" variant="subtle" onClick={() => setIsEditingName(true)}>
+              <ActionIcon size="xs" variant="subtle" onClick={() => setIsEditingName(true)}
+      aria-label="Edit"
+    >
                 <IconEdit size={12} />
               </ActionIcon>
             </Group>
@@ -891,7 +894,9 @@ function DashboardToolbar({
           </Button>
           <Menu>
             <Menu.Target>
-              <ActionIcon size="sm" variant="light">
+              <ActionIcon size="sm" variant="light"
+      aria-label="Download"
+    >
                 <IconDownload size={14} />
               </ActionIcon>
             </Menu.Target>
@@ -1131,7 +1136,6 @@ function CustomDashboardPageInner() {
     activeDashboardId,
     setActiveDashboardId,
     globalFilters,
-    refreshCounter,
     triggerRefresh,
   } = useDashboard();
 

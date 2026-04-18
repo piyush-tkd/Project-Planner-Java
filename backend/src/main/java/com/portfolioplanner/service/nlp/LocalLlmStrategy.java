@@ -3,18 +3,18 @@ package com.portfolioplanner.service.nlp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolioplanner.dto.response.NlpCatalogResponse;
+import com.portfolioplanner.service.AiServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Local LLM strategy using Ollama-compatible API (http://localhost:11434/api/generate).
- * Availability depends on Ollama running locally.
+ * Local LLM strategy — delegates inference to portfolio-planner-ai (port 8081),
+ * which in turn calls Ollama. Availability depends on portfolio-planner-ai
+ * being running and Ollama being reachable from that service.
  *
  * Enhanced with:
  * - Semantic vector search for selective context injection (instead of full catalog dump)
@@ -36,9 +36,9 @@ public class LocalLlmStrategy implements NlpStrategy {
     private final NlpJiraToolExecutor jiraToolExecutor;
     private final NlpResponseBuilder responseBuilder;
     private final AliasResolver aliasResolver;
+    private final AiServiceClient aiServiceClient;
 
     // These are set by NlpConfigService when config loads/changes
-    private String modelUrl = "http://localhost:11434";
     private String model = "llama3:8b";
     private int timeoutMs = 10000;
     private volatile boolean lastHealthCheck = false;
@@ -46,34 +46,21 @@ public class LocalLlmStrategy implements NlpStrategy {
     /** Minimum cosine similarity for a vector search result to be included in LLM context. */
     private static final double VECTOR_CONTEXT_SIMILARITY_THRESHOLD = 0.45;
 
+    private volatile long lastHealthCheckTime = 0;
+    private static final long HEALTH_CHECK_CACHE_MS = 30_000;
+
     public LocalLlmStrategy(NlpVectorSearchService vectorSearchService,
                              NlpToolRegistry toolRegistry,
                              NlpJiraToolExecutor jiraToolExecutor,
                              NlpResponseBuilder responseBuilder,
-                             AliasResolver aliasResolver) {
+                             AliasResolver aliasResolver,
+                             AiServiceClient aiServiceClient) {
         this.vectorSearchService = vectorSearchService;
         this.toolRegistry = toolRegistry;
         this.jiraToolExecutor = jiraToolExecutor;
         this.responseBuilder = responseBuilder;
         this.aliasResolver = aliasResolver;
-    }
-
-    /** Cached RestTemplate with proper timeout. Recreated if config changes. */
-    private volatile RestTemplate ollamaRestTemplate;
-    private volatile long lastHealthCheckTime = 0;
-    private static final long HEALTH_CHECK_CACHE_MS = 30_000; // Cache health check for 30 seconds
-
-    private RestTemplate getOllamaRestTemplate() {
-        RestTemplate rt = ollamaRestTemplate;
-        if (rt == null) {
-            rt = new RestTemplate();
-            var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(Math.min(timeoutMs, 3000)); // 3s connect timeout
-            factory.setReadTimeout(timeoutMs);                     // configured read timeout
-            rt.setRequestFactory(factory);
-            ollamaRestTemplate = rt;
-        }
-        return rt;
+        this.aiServiceClient = aiServiceClient;
     }
 
     @Override
@@ -83,29 +70,21 @@ public class LocalLlmStrategy implements NlpStrategy {
 
     @Override
     public boolean isAvailable() {
-        // Cache health check to avoid hammering Ollama on every query
+        // Cache health check to avoid hitting the AI service on every query
         long now = System.currentTimeMillis();
         if (now - lastHealthCheckTime < HEALTH_CHECK_CACHE_MS) {
             return lastHealthCheck;
         }
-        try {
-            RestTemplate rt = getOllamaRestTemplate();
-            ResponseEntity<String> resp = rt.getForEntity(modelUrl + "/api/tags", String.class);
-            lastHealthCheck = resp.getStatusCode().is2xxSuccessful();
-            lastHealthCheckTime = now;
-            return lastHealthCheck;
-        } catch (Exception e) {
-            lastHealthCheck = false;
-            lastHealthCheckTime = now;
-            return false;
-        }
+        lastHealthCheck = aiServiceClient.isOllamaHealthy();
+        lastHealthCheckTime = now;
+        return lastHealthCheck;
     }
 
     public void configure(String modelUrl, String model, int timeoutMs) {
-        this.modelUrl = modelUrl;
+        // modelUrl is now managed by portfolio-planner-ai; retained here only
+        // so NlpConfigService can still call configure() without changes.
         this.model = model;
         this.timeoutMs = timeoutMs;
-        this.ollamaRestTemplate = null; // Force recreation with new timeout
     }
 
     @Override
@@ -411,42 +390,12 @@ public class LocalLlmStrategy implements NlpStrategy {
     }
 
     /**
-     * Make a single call to Ollama /api/generate and return the response text.
-     * Uses a shared RestTemplate with proper timeout configuration.
+     * Delegate an Ollama inference call to portfolio-planner-ai.
+     * Returns raw model text, or null on failure.
      */
     private String callOllama(String query, String systemPrompt) {
-        try {
-            String payload = objectMapper.writeValueAsString(Map.of(
-                    "model", model,
-                    "prompt", query,
-                    "system", systemPrompt,
-                    "stream", false,
-                    "format", "json",
-                    "options", Map.of(
-                            "temperature", 0.1,
-                            "num_predict", 1024
-                    )
-            ));
-
-            RestTemplate rt = getOllamaRestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-
-            ResponseEntity<String> resp = rt.postForEntity(
-                    modelUrl + "/api/generate", entity, String.class);
-
-            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-                log.warn("LOCAL_LLM returned non-200: {}", resp.getStatusCode());
-                return null;
-            }
-
-            JsonNode root = objectMapper.readTree(resp.getBody());
-            return root.path("response").asText("");
-        } catch (Exception e) {
-            log.warn("LOCAL_LLM Ollama call failed: {}", e.getMessage());
-            return null;
-        }
+        // Delegate to portfolio-planner-ai — no direct Ollama calls from the main app.
+        return aiServiceClient.chat("OLLAMA", model, null, systemPrompt, query, 1024, "json");
     }
 
     /**

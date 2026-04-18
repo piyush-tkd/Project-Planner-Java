@@ -500,6 +500,9 @@ public class EngineeringAnalyticsController {
             ? "AND project_key = '" + projectKey.replace("'", "''") + "'"
             : "";
 
+        // Use COALESCE(resolution_date, updated_at) for completion date —
+        // Jira only sets resolution_date for "Resolved" status; issues moved directly to a Done
+        // status category (drag-to-done) often have resolution_date = NULL.
         List<Map<String, Object>> weekly = jdbc.queryForList(
             "WITH week_series AS (" +
             "  SELECT generate_series(" +
@@ -509,11 +512,11 @@ public class EngineeringAnalyticsController {
             "  )::date AS week_start" +
             ")," +
             "weekly_throughput AS (" +
-            "  SELECT date_trunc('week', resolution_date)::date AS wk, COUNT(*) AS completed" +
+            "  SELECT date_trunc('week', COALESCE(resolution_date, updated_at))::date AS wk, COUNT(*) AS completed" +
             "  FROM jira_issue" +
-            "  WHERE resolution_date IS NOT NULL AND status_category = 'done'" +
+            "  WHERE status_category = 'done'" +
             "    AND LOWER(issue_type) NOT IN ('epic','sub-task')" +
-            "    AND resolution_date >= now() - interval '" + weeks + " weeks'" +
+            "    AND COALESCE(resolution_date, updated_at) >= now() - interval '" + weeks + " weeks'" +
             "    " + projectCol +
             "  GROUP BY 1" +
             ")" +
@@ -522,7 +525,6 @@ public class EngineeringAnalyticsController {
             "  COALESCE(wt.completed, 0) AS throughput," +
             "  (SELECT COUNT(*) FROM jira_issue wi" +
             "   WHERE wi.created_at::date < ws.week_start" +
-            "     AND (wi.resolution_date IS NULL OR wi.resolution_date::date >= ws.week_start)" +
             "     AND wi.status_category NOT IN ('done','new')" +
             "     AND LOWER(wi.issue_type) NOT IN ('epic','sub-task')" +
             "     " + projectCol + ") AS wip_at_start" +
@@ -588,6 +590,57 @@ public class EngineeringAnalyticsController {
             "accurate", accurate,
             "days_range", days
         ));
+    }
+
+    /**
+     * Developer Report — per-sprint breakdown for one developer.
+     * SPs closed, bugs/incidents done, hours logged (from worklogs), missing log flags.
+     */
+    @GetMapping("/productivity/developer-report")
+    public ResponseEntity<List<Map<String, Object>>> developerReport(
+            @RequestParam String developer,
+            @RequestParam(required = false) String projectKey,
+            @RequestParam(defaultValue = "10") int sprints) {
+
+        String devSafe = developer.replace("'", "''");
+        String projectFilter = projectKey != null ? "AND i.project_key = '" + projectKey.replace("'", "''") + "'" : "";
+        String sprintProjectFilter = projectKey != null ? "AND project_key = '" + projectKey.replace("'", "''") + "'" : "";
+
+        List<Map<String, Object>> data = jdbc.queryForList(
+            "SELECT" +
+            "  js.name                                                                  AS sprint_name," +
+            "  js.complete_date," +
+            "  COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category = 'done')   AS issues_done," +
+            "  COALESCE(SUM(i.story_points) FILTER (WHERE i.status_category = 'done'), 0) AS sp_closed," +
+            "  COUNT(DISTINCT i.issue_key) FILTER (" +
+            "      WHERE LOWER(i.issue_type) IN ('bug','incident') AND i.status_category = 'done') AS bugs_done," +
+            "  ROUND(COALESCE(SUM(wl.dev_hours), 0)::numeric, 1)                       AS hours_logged," +
+            "  COUNT(DISTINCT i.issue_key) FILTER (" +
+            "      WHERE i.status_category = 'done' AND COALESCE(wl.dev_hours, 0) = 0) AS issues_missing_logs" +
+            " FROM jira_issue i" +
+            " JOIN jira_sprint_issue si ON si.issue_key = i.issue_key" +
+            " JOIN jira_sprint js ON js.sprint_jira_id = si.sprint_jira_id" +
+            " LEFT JOIN (" +
+            "     SELECT issue_key, SUM(time_spent_seconds) / 3600.0 AS dev_hours" +
+            "     FROM jira_issue_worklog" +
+            "     WHERE author_display_name = '" + devSafe + "'" +
+            "     GROUP BY issue_key" +
+            " ) wl ON wl.issue_key = i.issue_key" +
+            " WHERE js.state = 'closed'" +
+            "   AND i.assignee_display_name = '" + devSafe + "'" +
+            "   AND LOWER(i.issue_type) NOT IN ('epic','sub-task')" +
+            "   " + projectFilter +
+            "   AND js.sprint_jira_id IN (" +
+            "       SELECT sprint_jira_id FROM jira_sprint" +
+            "       WHERE state = 'closed' AND complete_date IS NOT NULL" +
+            "       " + sprintProjectFilter +
+            "       ORDER BY complete_date DESC LIMIT " + sprints +
+            "   )" +
+            " GROUP BY js.sprint_jira_id, js.name, js.complete_date" +
+            " ORDER BY js.complete_date DESC NULLS LAST"
+        );
+
+        return ResponseEntity.ok(data);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -743,7 +796,9 @@ public class EngineeringAnalyticsController {
         List<Map<String, Object>> data = jdbc.queryForList("""
             SELECT
                 i.issue_key, i.summary,
-                COALESCE(i.story_points, 0) AS story_points,
+                i.assignee_display_name AS assignee,
+                i.assignee_avatar_url,
+                i.story_points,
                 (SELECT COUNT(*) FROM jira_issue s2
                  WHERE s2.parent_key = i.issue_key AND LOWER(s2.issue_type) = 'sub-task') AS subtask_count,
                 COALESCE(
@@ -776,7 +831,7 @@ public class EngineeringAnalyticsController {
         Map<String, Double> avgByBucket = new LinkedHashMap<>();
         Map<String, Long>   countByBucket = new LinkedHashMap<>();
         data.forEach(r -> {
-            int sp = ((Number) r.get("story_points")).intValue();
+            int sp = r.get("story_points") instanceof Number n ? n.intValue() : 0;
             String bucket = sp <= 1 ? "1 SP" : sp <= 3 ? "2-3 SP" : sp <= 5 ? "4-5 SP" : "6+ SP";
             avgByBucket.merge(bucket, nvl(r.get("cycle_hours")), Double::sum);
             countByBucket.merge(bucket, 1L, Long::sum);
@@ -932,6 +987,44 @@ public class EngineeringAnalyticsController {
     }
 
     /**
+     * Open issues whose parent epic is already closed.
+     * These are orphaned — the epic looks done but work remains.
+     */
+    @GetMapping("/tracking/orphaned-issues")
+    public ResponseEntity<List<Map<String, Object>>> orphanedIssues(
+            @RequestParam(required = false) String projectKey) {
+
+        String projectFilter = projectKey != null ? "AND s.project_key = '" + projectKey + "'" : "";
+
+        return ResponseEntity.ok(jdbc.queryForList("""
+            SELECT
+                s.issue_key,
+                s.summary,
+                s.issue_type,
+                s.status_name,
+                s.status_category,
+                s.priority_name,
+                s.assignee_display_name AS assignee,
+                s.assignee_avatar_url,
+                s.project_key,
+                e.issue_key   AS epic_key,
+                e.summary     AS epic_name,
+                e.status_name AS epic_status
+            FROM jira_issue s
+            JOIN jira_issue e ON (
+                    s.epic_key   = e.issue_key
+                 OR s.parent_key = e.issue_key
+                )
+            WHERE LOWER(e.issue_type)    = 'epic'
+              AND e.status_category      = 'done'
+              AND s.status_category     != 'done'
+              AND LOWER(s.issue_type) NOT IN ('epic', 'sub-task')
+              """ + projectFilter + """
+            ORDER BY s.project_key, e.issue_key, s.priority_name
+            """));
+    }
+
+    /**
      * P2 — Release Readiness Score
      * For each fix_version: completion %, blockers, outstanding count.
      */
@@ -943,10 +1036,14 @@ public class EngineeringAnalyticsController {
 
         return ResponseEntity.ok(jdbc.queryForList("""
             SELECT
-                fv.fix_version AS version_name,
-                COUNT(DISTINCT i.issue_key) AS total_issues,
-                COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category = 'done') AS done,
-                COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category != 'done') AS remaining,
+                fv.version_name,
+                MAX(fv.version_id)                    AS version_id,
+                MAX(fv.release_date)                  AS release_date,
+                BOOL_OR(fv.released)                  AS released,
+                MIN(i.project_key)                    AS project_key,
+                COUNT(DISTINCT i.issue_key)            AS total_issues,
+                COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category = 'done')    AS done,
+                COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category != 'done')   AS remaining,
                 ROUND(COUNT(DISTINCT i.issue_key) FILTER (WHERE i.status_category = 'done')::numeric /
                     NULLIF(COUNT(DISTINCT i.issue_key), 0) * 100, 1) AS completion_pct,
                 COUNT(DISTINCT i.issue_key) FILTER (
@@ -956,9 +1053,8 @@ public class EngineeringAnalyticsController {
             JOIN jira_issue_fix_version fv ON fv.issue_key = i.issue_key
             WHERE LOWER(i.issue_type) NOT IN ('epic','sub-task')
               """ + projectFilter + """
-            GROUP BY fv.fix_version
-            ORDER BY completion_pct DESC
-            LIMIT 20
+            GROUP BY fv.version_name
+            ORDER BY release_date ASC NULLS LAST, completion_pct ASC
             """));
     }
 
@@ -1159,34 +1255,67 @@ public class EngineeringAnalyticsController {
     }
 
     /**
-     * P2 — Developer Growth Tracking
-     * Over 6 months, is a developer's cycle time improving? Are they taking harder stories?
+     * P2 — Developer Cycle Time Tracking
+     * Per developer, per month: issues done, avg story points, avg cycle days.
+     * Returns grouped: [{ developer, months: [...] }], filtered to active devs (>=3 issues), top 50.
+     * Cycle time = created_at → COALESCE(resolution_date, updated_at), because Jira does not always
+     * set resolution_date for issues moved to Done status category.
      */
     @GetMapping("/forecasting/developer-growth")
     public ResponseEntity<List<Map<String, Object>>> developerGrowth(
             @RequestParam(required = false) String projectKey,
             @RequestParam(defaultValue = "6") int months) {
 
-        String projectFilter = projectKey != null ? "AND i.project_key = '" + projectKey + "'" : "";
+        String projectFilter = projectKey != null ? "AND i.project_key = '" + projectKey.replace("'", "''") + "'" : "";
 
-        return ResponseEntity.ok(jdbc.queryForList("""
+        List<Map<String, Object>> rows = jdbc.queryForList("""
             SELECT
-                i.assignee_display_name AS developer,
-                DATE_TRUNC('month', i.created_at) AS month,
+                TRIM(i.assignee_display_name) AS developer,
+                TO_CHAR(DATE_TRUNC('month', i.created_at), 'YYYY-MM') AS month,
                 COUNT(i.issue_key) AS issues_completed,
                 ROUND(AVG(COALESCE(i.story_points, 0))::numeric, 1) AS avg_complexity,
-                ROUND(AVG(EXTRACT(EPOCH FROM (i.resolution_date - i.created_at)) / 86400.0)::numeric, 1)
-                    AS avg_cycle_days
+                ROUND(AVG(EXTRACT(EPOCH FROM (
+                    COALESCE(i.resolution_date, i.updated_at) - i.created_at
+                )) / 86400.0)::numeric, 1) AS avg_cycle_days
             FROM jira_issue i
             WHERE i.status_category = 'done'
-              AND i.resolution_date IS NOT NULL
-              AND i.assignee_display_name IS NOT NULL
+              AND TRIM(i.assignee_display_name) IS NOT NULL
+              AND TRIM(i.assignee_display_name) NOT IN ('', 'Unassigned')
               AND i.created_at >= NOW() - INTERVAL '1 month' * ?
               AND LOWER(i.issue_type) NOT IN ('epic','sub-task')
               """ + projectFilter + """
-            GROUP BY i.assignee_display_name, DATE_TRUNC('month', i.created_at)
-            ORDER BY i.assignee_display_name, month
-            """, months));
+            GROUP BY TRIM(i.assignee_display_name), DATE_TRUNC('month', i.created_at)
+            ORDER BY TRIM(i.assignee_display_name), month
+            """, months);
+
+        // Pivot: developer → monthly list, normalise key to guard against any residual case variation
+        Map<String, List<Map<String, Object>>> byDev = new LinkedHashMap<>();
+        rows.forEach(r -> {
+            String dev = str(r.get("developer"), "Unknown").trim();
+            // use lower-cased key for dedup; preserve original casing from first occurrence
+            String normKey = dev.toLowerCase();
+            byDev.computeIfAbsent(normKey, k -> new ArrayList<>()).add(r);
+        });
+
+        // Build result, filter to devs with >= 3 total issues
+        List<Map<String, Object>> result = new ArrayList<>();
+        byDev.forEach((normKey, monthList) -> {
+            long total = monthList.stream()
+                .mapToLong(r -> ((Number) r.getOrDefault("issues_completed", 0)).longValue()).sum();
+            if (total >= 3) {
+                // Use the display name from the first row, not the normalised key
+                String displayName = str(monthList.get(0).get("developer"), normKey);
+                result.add(Map.of("developer", displayName, "months", monthList, "total_issues", total));
+            }
+        });
+
+        // Sort by total issues desc
+        result.sort((a, b) -> Long.compare(
+            ((Number) b.get("total_issues")).longValue(),
+            ((Number) a.get("total_issues")).longValue()
+        ));
+
+        return ResponseEntity.ok(result);
     }
 
     /**

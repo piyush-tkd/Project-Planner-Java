@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import {
-  Box, Title, Text, Group, Badge, Button, Paper, Card,
+  Box, Text, Group, Badge, Button, Paper, Card,
   Select, Tooltip, Stack, SimpleGrid, Divider,
-  ScrollArea, SegmentedControl, Progress, Center, Skeleton,
+  ScrollArea, SegmentedControl, Progress, Skeleton,
 } from '@mantine/core';
 import {
-  IconGitBranch, IconArrowRight, IconAlertTriangle,
+  IconGitBranch, IconAlertTriangle,
   IconCircleCheck, IconFilter, IconDownload, IconUsers,
   IconCode, IconTestPipe,
 } from '@tabler/icons-react';
@@ -369,7 +369,7 @@ export default function GanttDependenciesPage() {
 
   return (
     <PPPageLayout title="Gantt & Dependencies" subtitle="Critical path visualisation and cross-team resource dependencies" animate>
-    <Box className="page-enter" style={{ paddingBottom: 32 }}>
+    <Box className="page-enter" pb={32}>
 
       {/* Toolbar */}
       <Group justify="flex-end" mb="lg">
@@ -439,7 +439,7 @@ export default function GanttDependenciesPage() {
       {view === 'gantt' && (
         <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
           <ScrollArea type="auto">
-            <Box style={{ minWidth: LABEL_WIDTH + TOTAL_WEEKS * WEEK_WIDTH }}>
+            <Box miw={LABEL_WIDTH + TOTAL_WEEKS * WEEK_WIDTH}>
 
               {/* Column header */}
               <Box style={{ display: 'flex', background: DEEP_BLUE, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 10 }}>

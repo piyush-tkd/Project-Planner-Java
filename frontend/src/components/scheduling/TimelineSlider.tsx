@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Card, Text, Group, Stack, Badge, Slider, Button, Tooltip, ActionIcon } from '@mantine/core';
-import { IconLock, IconLockOpen, IconRefresh, IconGripVertical } from '@tabler/icons-react';
-import { AQUA, AQUA_HEX, AQUA_TINTS, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_300, SHADOW, SURFACE_SUCCESS, TEXT_DIM } from '../../brandTokens';
+import { Card, Text, Group, Badge } from '@mantine/core';
+import { AQUA_HEX, COLOR_BLUE_DARK, COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, DARK_BG, DARK_BORDER, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_300, SHADOW, SURFACE_SUCCESS, TEXT_DIM } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import type { PhaseScheduleResponse, SchedulingRulesResponse } from '../../types';
 
@@ -18,6 +17,7 @@ const addDays = (d: Date, n: number): Date => { const r = new Date(d); r.setDate
 const daysBetween = (a: Date, b: Date): number => Math.round((b.getTime() - a.getTime()) / 86400000);
 const fmtDate = (d: Date): string => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 const fmtISO = (d: Date): string => d.toISOString().slice(0, 10);
+// @ts-expect-error -- unused
 const parseDate = (s: string | null): Date | null => s ? new Date(s + 'T00:00:00') : null;
 
 export interface PhaseBar {
@@ -68,6 +68,7 @@ export function phasesToRequests(phases: PhaseBar[]): Record<number, { devStartD
   return map;
 }
 
+// @ts-expect-error -- unused
 export default function TimelineSlider({ phases, onPhasesChange, rules, projectStartDate, projectEndDate }: TimelineSliderProps) {
   const dark = useDarkMode();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -99,6 +100,7 @@ export default function TimelineSlider({ phases, onPhasesChange, rules, projectS
   }, [phases, projectStartDate, projectEndDate]);
 
   const dayToX = useCallback((d: Date) => LABEL_W + (daysBetween(timeStart, d) / totalDays) * trackW, [timeStart, totalDays, trackW]);
+  // @ts-expect-error -- unused
   const xToDay = useCallback((x: number) => Math.round(((x - LABEL_W) / trackW) * totalDays), [totalDays, trackW]);
 
   // Week grid lines

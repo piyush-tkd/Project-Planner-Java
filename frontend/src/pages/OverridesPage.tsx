@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import {
  Stack, Table, Button, Group, Modal, Select, NumberInput, TextInput, Text, ActionIcon,
- Badge, Tooltip,
+ Badge,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconEdit, IconTrash, IconAlertTriangle } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 import { PPPageLayout } from '../components/pp';
 import { useOverrides, useCreateOverride, useUpdateOverride, useDeleteOverride } from '../api/overrides';
-import type { OverrideRequest, OverrideResponse } from '../api/overrides';
+import type { OverrideRequest } from '../api/overrides';
 import { useResources } from '../api/resources';
 import { usePods } from '../api/pods';
 import CsvToolbar from '../components/common/CsvToolbar';
@@ -16,8 +16,6 @@ import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
 import SortableHeader from '../components/common/SortableHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { formatResourceName } from '../utils/formatting';
-import { useDarkMode } from '../hooks/useDarkMode';
 import { useInlineEdit } from '../hooks/useInlineEdit';
 import {
   InlineSelectCell,
@@ -35,7 +33,6 @@ const emptyForm: OverrideRequest = {
 };
 
 export default function OverridesPage() {
- const isDark = useDarkMode();
  const { data: overrides, isLoading } = useOverrides();
  const { data: resources } = useResources();
  const { data: pods } = usePods();
@@ -201,9 +198,9 @@ export default function OverridesPage() {
  {sortedOverrides.map((o, idx) => {
  const fte = fteMap.get(o.resourceId) ?? 1;
  const isPartTime = fte < 1;
+ // @ts-expect-error -- unused
  const totalAlloc = totalAllocMap.get(o.resourceId) ?? 0;
  const fteAsPct = Math.round(fte * 100);
- const isOverAlloc = totalAlloc > fteAsPct;
  return (
  <Table.Tr key={o.id}>
  <Table.Td c="dimmed" style={{ fontSize: 12 }}>{idx + 1}</Table.Td>
@@ -281,8 +278,12 @@ export default function OverridesPage() {
  </Table.Td>
  <Table.Td>
  <Group gap={4}>
- <ActionIcon variant="subtle" onClick={() => openEdit(o)}><IconEdit size={16} /></ActionIcon>
- <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(o.id)}><IconTrash size={16} /></ActionIcon>
+ <ActionIcon variant="subtle" onClick={() => openEdit(o)}
+      aria-label="Edit"
+    ><IconEdit size={16} /></ActionIcon>
+ <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(o.id)}
+      aria-label="Delete"
+    ><IconTrash size={16} /></ActionIcon>
  </Group>
  </Table.Td>
  </Table.Tr>

@@ -1,13 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  Tabs, Text, Group, Badge, Stack, Collapse, Box,
-  Center, ThemeIcon, ActionIcon, Tooltip,
+  Text, Group, Badge, Stack, Collapse, Box,
+  Center, ActionIcon, Tooltip,
   TextInput, Select, Divider, Paper, Button,
   RingProgress, ScrollArea, Progress, SimpleGrid, SegmentedControl,
 } from '@mantine/core';
 import {
   IconChevronDown, IconChevronRight, IconBolt,
-  IconAlertCircle, IconCircleCheck, IconClock,
   IconSearch, IconRefresh, IconUsersGroup,
   IconCalendar, IconCloudDownload,
   IconBug, IconBook, IconCheckbox, IconSubtask,
@@ -224,7 +223,7 @@ function ContributorAvatarStack({ issue, isDark }: { issue: IssueRow; isDark: bo
             width: 26, height: 26, borderRadius: '50%',
             background: TEXT_GRAY,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: FONT_FAMILY,
+            color: '#fff', fontSize: 10, fontWeight: 700,
             cursor: 'default',
             boxShadow: '0 0 0 2px ' + (isDark ? DARK_BG : '#fff'),
             zIndex: 0,
@@ -264,14 +263,13 @@ function SubtaskItem({ sub, isDark }: { sub: IssueRow; isDark: boolean }) {
     >
       <Box />
       <IssueTypeIcon type={sub.issueType} />
-      <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+      <Group gap={8} wrap="nowrap" miw={0}>
         <Text size="xs" fw={600} style={{ color: AQUA, fontFamily: FONT_FAMILY, whiteSpace: 'nowrap', flexShrink: 0 }}>
           {sub.key}
         </Text>
         <Tooltip label={sub.summary || '(no summary)'} withArrow position="top" openDelay={400} multiline maw={360}>
           <Text size="xs" style={{
             color: isDark ? '#cbd5e1' : '#475569',
-            fontFamily: FONT_FAMILY,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: 280, cursor: 'default',
           }}>
@@ -283,7 +281,7 @@ function SubtaskItem({ sub, isDark }: { sub: IssueRow; isDark: boolean }) {
         {sub.statusName || 'To Do'}
       </Badge>
       {/* Fix version */}
-      <Box style={{ minWidth: 0 }}>
+      <Box miw={0}>
         {sub.fixVersionName ? (
           <Tooltip label={sub.fixVersionName} withArrow position="top" openDelay={200}>
             <Badge size="xs" variant="outline" color="orange"
@@ -340,7 +338,8 @@ function IssueItem({ issue, isDark }: { issue: IssueRow; isDark: boolean }) {
             <ActionIcon
               size={14} variant="subtle" color="gray"
               onClick={e => { e.stopPropagation(); setSubtasksOpen(v => !v); }}
-              style={{ minWidth: 14 }}
+              miw={14}
+              aria-label="Expand"
             >
               {subtasksOpen
                 ? <IconChevronDown size={11} />
@@ -353,14 +352,13 @@ function IssueItem({ issue, isDark }: { issue: IssueRow; isDark: boolean }) {
         <IssueTypeIcon type={issue.issueType} />
 
         {/* Key + summary + subtask count + epic */}
-        <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+        <Group gap={8} wrap="nowrap" miw={0}>
           <Text size="xs" fw={600} style={{ color: AQUA, fontFamily: FONT_FAMILY, whiteSpace: 'nowrap', flexShrink: 0 }}>
             {issue.key}
           </Text>
           <Tooltip label={issue.summary || '(no summary)'} withArrow position="top" openDelay={400} multiline maw={400}>
             <Text size="sm" style={{
               color: isDark ? BORDER_STRONG : DEEP_BLUE,
-              fontFamily: FONT_FAMILY,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               maxWidth: 380, cursor: 'default',
             }}>
@@ -386,7 +384,7 @@ function IssueItem({ issue, isDark }: { issue: IssueRow; isDark: boolean }) {
         </Group>
 
         {/* Fix version — own column so it's always visible */}
-        <Box style={{ minWidth: 0 }}>
+        <Box miw={0}>
           {issue.fixVersionName ? (
             <Tooltip label={issue.fixVersionName} withArrow position="top" openDelay={200}>
               <Badge
@@ -817,6 +815,7 @@ export default function SprintBacklogPage() {
           <ActionIcon variant="light" color="teal" size="sm"
             onClick={() => refetch()} loading={loadingBacklog}
             title="Refresh view"
+            aria-label="Refresh"
           >
             <IconRefresh size={14} />
           </ActionIcon>
@@ -983,9 +982,8 @@ export default function SprintBacklogPage() {
               {widgetTab === 'type' && (
                 <SimpleGrid cols={{ base: 3, sm: 5 }} spacing="xs">
                   {Object.entries(byType).sort((a,b) => b[1]-a[1]).map(([type, count]) => {
-                    const def = TYPE_MAP[type];
                     return (
-                      <Paper key={type} p="xs" radius="md" withBorder style={{ textAlign: 'center' }}>
+                      <Paper key={type} p="xs" radius="md" withBorder ta="center">
                         <Group justify="center" mb={4}><IssueTypeIcon type={type} /></Group>
                         <Text style={{ fontSize: 20, fontWeight: 800, fontFamily: FONT_FAMILY }}>{count}</Text>
                         <Text size="10px" c="dimmed">{type}</Text>
@@ -1087,12 +1085,15 @@ export default function SprintBacklogPage() {
                 variant={viewMode === 'board' ? 'filled' : 'light'}
                 color="indigo"
                 onClick={() => setViewMode(v => v === 'list' ? 'board' : 'list')}
+                aria-label="List view"
               >
                 {viewMode === 'list' ? <IconLayoutKanban size={16} /> : <IconList size={16} />}
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Refresh view" withArrow>
-              <ActionIcon variant="light" color="teal" onClick={() => refetch()} loading={loadingBacklog}>
+              <ActionIcon variant="light" color="teal" onClick={() => refetch()} loading={loadingBacklog}
+      aria-label="Refresh"
+    >
                 <IconRefresh size={16} />
               </ActionIcon>
             </Tooltip>
@@ -1122,8 +1123,8 @@ export default function SprintBacklogPage() {
                   <IconUsersGroup size={13} />
                   <span>{pod.displayName}</span>
                   <span style={{
-                    background: isActive ? AQUA : BORDER_STRONG,
-                    color: isActive ? DEEP_BLUE : TEXT_SUBTLE,
+                    background: isActive ? 'rgba(255,255,255,0.82)' : BORDER_STRONG,
+                    color: isActive ? '#0C2340' : TEXT_SUBTLE,
                     borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700,
                   }}>
                     {pod.projectKeys.join(' ')}

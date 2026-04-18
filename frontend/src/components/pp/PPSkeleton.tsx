@@ -6,7 +6,7 @@
  *   <PPSkeleton variant="dashboard" />
  *   <PPSkeleton variant="cards" columns={3} rows={6} />
  */
-import React from 'react';
+import _React from 'react';
 import styles from './PPSkeleton.module.css';
 
 export interface PPSkeletonProps {

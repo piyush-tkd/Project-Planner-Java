@@ -45,7 +45,6 @@ export function useKeyboardShortcuts(shortcuts: Shortcut[]): void {
         if (ignoreWhenTyping && isTyping) continue;
 
         const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
-        const metaMatch = shortcut.meta ? (e.metaKey || e.ctrlKey) : true;
         const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey || true; // shift is opt-in
         const altMatch = shortcut.alt ? e.altKey : true;
 

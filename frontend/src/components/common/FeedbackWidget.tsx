@@ -6,7 +6,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconMessageReport, IconSend, IconPhoto, IconTrash, IconCheck, IconUpload,
+  IconMessageReport, IconSend, IconCheck, IconUpload,
   IconStar, IconStarFilled,
 } from '@tabler/icons-react';
 import { useSubmitFeedback } from '../../api/feedback';
@@ -30,7 +30,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
   return (
     <div>
-      <Text size="sm" fw={500} mb={4} style={{ fontFamily: FONT_FAMILY }}>
+      <Text size="sm" fw={500} mb={4}>
         Rating
       </Text>
       <Group gap={4}>
@@ -43,12 +43,13 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
             onMouseEnter={() => setHover(star)}
             onMouseLeave={() => setHover(0)}
             style={{ color: star <= display ? '#F5A623' : '#CED4DA', transition: 'color 0.15s ease, transform 0.15s ease', transform: star <= display ? 'scale(1.15)' : 'scale(1)' }}
+            aria-label="Favourite"
           >
             {star <= display ? <IconStarFilled size={22} /> : <IconStar size={22} />}
           </ActionIcon>
         ))}
         {display > 0 && (
-          <Text size="xs" c="dimmed" ml={4} style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="xs" c="dimmed" ml={4}>
             {STAR_LABELS[display - 1]}
           </Text>
         )}
@@ -189,6 +190,7 @@ export default function FeedbackWidget() {
               ? '0 4px 14px rgba(12, 35, 64, 0.5)'
               : '0 4px 14px rgba(31, 168, 174, 0.45)';
           }}
+          aria-label="Message"
         >
           <IconMessageReport size={22} color="#ffffff" />
         </ActionIcon>

@@ -7,7 +7,7 @@
  */
 import {
   Drawer, Stack, Title, Text, Group, ScrollArea, Loader, Center,
-  Badge, ActionIcon, Tooltip, ThemeIcon, Box, Divider,
+  Badge, ActionIcon, Tooltip, ThemeIcon, Box, Divider
 } from '@mantine/core';
 import {
   IconRefresh,
@@ -22,10 +22,10 @@ import {
   IconAlertTriangle,
   IconPlayerPlay,
   IconWifi,
-  IconWifiOff,
+  IconWifiOff
 } from '@tabler/icons-react';
 import { useActivityFeed, ActivityItem } from '../../hooks/useActivityFeed';
-import { FONT_FAMILY, AQUA, DEEP_BLUE } from '../../brandTokens';
+import {  AQUA } from '../../brandTokens';
 
 // ── Type → icon mapping ────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ const TYPE_ICON: Record<ActivityItem['type'], React.ReactNode> = {
   deleted:          <IconTrash size={14} />,
   flagged:          <IconFlag size={14} />,
   risk_added:       <IconAlertTriangle size={14} />,
-  automation_fired: <IconPlayerPlay size={14} />,
+  automation_fired: <IconPlayerPlay size={14} />
 };
 
 const TYPE_COLOR: Record<ActivityItem['type'], string> = {
@@ -46,14 +46,14 @@ const TYPE_COLOR: Record<ActivityItem['type'], string> = {
   deleted:          'red',
   flagged:          'orange',
   risk_added:       'yellow',
-  automation_fired: 'violet',
+  automation_fired: 'violet'
 };
 
 const ENTITY_ICON: Record<ActivityItem['entityType'], React.ReactNode> = {
   project:  <IconBriefcase size={13} />,
   resource: <IconUsers size={13} />,
   pod:      <IconHexagons size={13} />,
-  rule:     <IconBolt size={13} />,
+  rule:     <IconBolt size={13} />
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -93,18 +93,17 @@ function FeedRow({ item }: { item: ActivityItem }) {
               size="sm"
               fw={600}
               style={{
-                fontFamily: FONT_FAMILY,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                flex: 1,
+                flex: 1
               }}
             >
               {item.entityName}
             </Text>
             <Group gap={4} style={{ flexShrink: 0 }}>
               {ENTITY_ICON[item.entityType]}
-              <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="xs" c="dimmed">
                 {item.entityType}
               </Text>
             </Group>
@@ -113,7 +112,7 @@ function FeedRow({ item }: { item: ActivityItem }) {
           <Text
             size="xs"
             c="dimmed"
-            style={{ fontFamily: FONT_FAMILY, lineHeight: 1.4 }}
+            style={{ lineHeight: 1.4 }}
           >
             {item.message}
           </Text>
@@ -122,14 +121,14 @@ function FeedRow({ item }: { item: ActivityItem }) {
             <Text
               size="xs"
               c="dimmed"
-              style={{ fontFamily: FONT_FAMILY, opacity: 0.7 }}
+              style={{ opacity: 0.7 }}
             >
               by {item.actor}
             </Text>
             <Text
               size="xs"
               c="dimmed"
-              style={{ fontFamily: FONT_FAMILY, opacity: 0.7 }}
+              style={{ opacity: 0.7 }}
             >
               {relativeTime(item.timestamp)}
             </Text>
@@ -165,7 +164,7 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
       title={
         <Group gap="xs" justify="space-between" style={{ width: '100%' }}>
           <Group gap="xs">
-            <Title order={4} style={{ fontFamily: FONT_FAMILY }}>
+            <Title order={4}>
               Activity Feed
             </Title>
             <Tooltip
@@ -182,7 +181,7 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
               </ThemeIcon>
             </Tooltip>
             {!isLive && (
-              <Badge size="xs" color="gray" variant="outline" style={{ fontFamily: FONT_FAMILY }}>
+              <Badge size="xs" color="gray" variant="outline">
                 synthetic
               </Badge>
             )}
@@ -194,6 +193,7 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
               size="sm"
               onClick={() => refetch()}
               color="gray"
+              aria-label="Refresh"
             >
               <IconRefresh size={14} />
             </ActionIcon>
@@ -206,7 +206,7 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
           <Center h={200}>
             <Stack align="center" gap="xs">
               <Loader size="sm" color={AQUA} />
-              <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+              <Text size="sm" c="dimmed">
                 Loading activity…
               </Text>
             </Stack>
@@ -231,7 +231,6 @@ export default function ActivityFeedDrawer({ opened, onClose }: Props) {
                 size="xs"
                 c="dimmed"
                 ta="center"
-                style={{ fontFamily: FONT_FAMILY }}
               >
                 {isLive
                   ? 'Refreshes every 30 seconds'

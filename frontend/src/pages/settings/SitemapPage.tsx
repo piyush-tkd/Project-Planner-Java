@@ -1,4 +1,4 @@
-import { Title, Text, Stack, Group, Card, Badge, Grid, Box, Container } from '@mantine/core';
+import { Title, Text, Stack, Group, Card, Badge, Grid, Container } from '@mantine/core';
 import { IconMapPin } from '@tabler/icons-react';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { AQUA, DEEP_BLUE } from '../../brandTokens';

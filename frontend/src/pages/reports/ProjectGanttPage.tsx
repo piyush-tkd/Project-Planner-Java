@@ -2,14 +2,14 @@ import { useMemo, useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Title, Stack, Text, Table, Box, Group, Chip, ScrollArea, Tooltip, Button } from '@mantine/core';
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
+ DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useProjects } from '../../api/projects';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, FONT_FAMILY, SURFACE_FAINT, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE } from '../../brandTokens';
+import { COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ORANGE_DEEP, DEEP_BLUE, SURFACE_FAINT, SURFACE_LIGHT, TEXT_GRAY, TEXT_SUBTLE } from '../../brandTokens';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -17,20 +17,20 @@ import { EmptyState } from '../../components/ui';
 import { IconLayoutGrid, IconGripVertical } from '@tabler/icons-react';
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: COLOR_ERROR_DARK,
-  P1: COLOR_ORANGE_DEEP,
-  P2: COLOR_BLUE_STRONG,
-  P3: TEXT_GRAY,
+ P0: COLOR_ERROR_DARK,
+ P1: COLOR_ORANGE_DEEP,
+ P2: COLOR_BLUE_STRONG,
+ P3: TEXT_GRAY
 };
 
 // Visual treatment per status — opacity + pattern overlay
 const STATUS_STYLE: Record<string, { opacity: number; stripes?: boolean; label: string; chipColor: string }> = {
-  NOT_STARTED:  { opacity: 0.45, stripes: true,  label: 'Not Started',  chipColor: 'gray' },
-  IN_DISCOVERY: { opacity: 0.65, stripes: true,  label: 'In Discovery', chipColor: 'violet' },
-  ACTIVE:       { opacity: 1.00, stripes: false, label: 'Active',       chipColor: 'green' },
-  ON_HOLD:      { opacity: 0.50, stripes: true,  label: 'On Hold',      chipColor: 'yellow' },
-  COMPLETED:    { opacity: 0.30, stripes: false, label: 'Completed',    chipColor: 'blue' },
-  CANCELLED:    { opacity: 0.20, stripes: false, label: 'Cancelled',    chipColor: 'red' },
+ NOT_STARTED: { opacity: 0.45, stripes: true, label: 'Not Started', chipColor: 'gray' },
+ IN_DISCOVERY: { opacity: 0.65, stripes: true, label: 'In Discovery', chipColor: 'violet' },
+ ACTIVE: { opacity: 1.00, stripes: false, label: 'Active', chipColor: 'green' },
+ ON_HOLD: { opacity: 0.50, stripes: true, label: 'On Hold', chipColor: 'yellow' },
+ COMPLETED: { opacity: 0.30, stripes: false, label: 'Completed', chipColor: 'blue' },
+ CANCELLED: { opacity: 0.20, stripes: false, label: 'Cancelled', chipColor: 'red' }
 };
 
 const PRIORITIES = ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST', 'BLOCKER', 'MINOR'];
@@ -39,312 +39,307 @@ const DEFAULT_STATUSES = ['NOT_STARTED', 'IN_DISCOVERY', 'ACTIVE', 'ON_HOLD'];
 
 // Sortable row component with drag handle
 function SortableProjectRow({ project, months, currentMonthIndex, dark }: {
-  project: any; months: number[]; currentMonthIndex: number; dark: boolean;
+ project: any; months: number[]; currentMonthIndex: number; dark: boolean;
 }) {
-  const navigate = useNavigate();
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: String(project.id) });
-  const [showDragHandle, setShowDragHandle] = useState(false);
+ const navigate = useNavigate();
+ const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: String(project.id) });
+ const [showDragHandle, setShowDragHandle] = useState(false);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-    transition: 'opacity 150ms ease',
-  };
+ const style = {
+ transform: CSS.Transform.toString(transform),
+ opacity: isDragging ? 0.5 : 1,
+ transition: 'opacity 150ms ease'
+ };
 
-  const startIdx = project.startMonth ?? 0;
-  const endIdx = startIdx + project.durationMonths - 1;
-  const color = PRIORITY_COLORS[project.priority] ?? TEXT_GRAY;
-  const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
-  const useStripes = st.stripes;
+ const startIdx = project.startMonth ?? 0;
+ const endIdx = startIdx + project.durationMonths - 1;
+ const color = PRIORITY_COLORS[project.priority] ?? TEXT_GRAY;
+ const st = STATUS_STYLE[project.status] ?? STATUS_STYLE.ACTIVE;
+ const useStripes = st.stripes;
 
-  return (
-    <Table.Tr
-      ref={setNodeRef}
-      style={style}
-      onMouseEnter={() => setShowDragHandle(true)}
-      onMouseLeave={() => setShowDragHandle(false)}
-      onClick={() => !isDragging && navigate(`/projects/${project.id}`)}
-    >
-      <Table.Td style={{ padding: '8px 4px', width: 40, textAlign: 'center' }}>
-        <Box
-          {...attributes}
-          {...listeners}
-          style={{
-            opacity: showDragHandle ? 1 : 0,
-            transition: 'opacity 150ms ease',
-            cursor: isDragging ? 'grabbing' : 'grab',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <IconGripVertical size={16} color={TEXT_GRAY} />
-        </Box>
-      </Table.Td>
-      <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        <Tooltip label={project.name} openDelay={400}>
-          <span>{project.name}</span>
-        </Tooltip>
-      </Table.Td>
-      <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
-      <Table.Td><StatusBadge status={project.status} /></Table.Td>
-      <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
-      {months.map(m => {
-        const inRange = m >= startIdx && m <= endIdx;
-        const isFirst = m === startIdx;
-        const isLast = m === endIdx || m === Math.min(endIdx, 12);
-        const isPast = m < currentMonthIndex;
-        const isCurrent = m === currentMonthIndex;
+ return (
+ <Table.Tr
+ ref={setNodeRef}
+ style={style}
+ onMouseEnter={() => setShowDragHandle(true)}
+ onMouseLeave={() => setShowDragHandle(false)}
+ onClick={() => !isDragging && navigate(`/projects/${project.id}`)}
+ >
+ <Table.Td style={{ padding: '8px 4px', width: 40, textAlign: 'center' }}>
+ <Box
+ {...attributes}
+ {...listeners}
+ style={{
+ opacity: showDragHandle ? 1 : 0,
+ transition: 'opacity 150ms ease',
+ cursor: isDragging ? 'grabbing' : 'grab',
+ display: 'flex',
+ alignItems: 'center',
+ justifyContent: 'center'}}
+ >
+ <IconGripVertical size={16} color={TEXT_GRAY} />
+ </Box>
+ </Table.Td>
+ <Table.Td fw={600} style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+ <Tooltip label={project.name} openDelay={400}>
+ <span>{project.name}</span>
+ </Tooltip>
+ </Table.Td>
+ <Table.Td><PriorityBadge priority={project.priority} /></Table.Td>
+ <Table.Td><StatusBadge status={project.status} /></Table.Td>
+ <Table.Td style={{ fontSize: 11 }}>{project.owner}</Table.Td>
+ {months.map(m => {
+ const inRange = m >= startIdx && m <= endIdx;
+ const isFirst = m === startIdx;
+ const isLast = m === endIdx || m === Math.min(endIdx, 12);
+ const isPast = m < currentMonthIndex;
+ const isCurrent = m === currentMonthIndex;
 
-        if (!inRange) {
-          return (
-            <Table.Td
-              key={m}
-              style={{
-                padding: 0,
-                background: isCurrent
-                  ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
-                  : isPast
-                    ? (dark ? 'rgba(255,255,255,0.02)' : SURFACE_LIGHT)
-                    : (dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT),
-              }}
-            />
-          );
-        }
+ if (!inRange) {
+ return (
+ <Table.Td
+ key={m}
+ style={{
+ padding: 0,
+ background: isCurrent
+ ? (dark ? 'rgba(45,204,211,0.06)' : 'rgba(45,204,211,0.05)')
+ : isPast
+ ? (dark ? 'rgba(255,255,255,0.02)' : SURFACE_LIGHT)
+ : (dark ? 'rgba(255,255,255,0.04)' : SURFACE_FAINT)}}
+ />
+ );
+ }
 
-        const barBg = useStripes
-          ? `repeating-linear-gradient(45deg, ${color} 0px, ${color} 4px, ${color}88 4px, ${color}88 9px)`
-          : color;
+ const barBg = useStripes
+ ? `repeating-linear-gradient(45deg, ${color} 0px, ${color} 4px, ${color}88 4px, ${color}88 9px)`
+ : color;
 
-        return (
-          <Table.Td
-            key={m}
-            style={{
-              padding: 0,
-              background: barBg,
-              opacity: isPast ? Math.min(st.opacity, 0.4) : st.opacity,
-              borderRadius: `${isFirst ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isFirst ? '5px' : '0'}`,
-            }}
-          >
-            {isFirst && endIdx - startIdx >= 2 && (
-              <Text size="xs" c="white" fw={700} style={{ padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '24px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                {project.name}
-              </Text>
-            )}
-          </Table.Td>
-        );
-      })}
-      <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
-    </Table.Tr>
-  );
+ return (
+ <Table.Td
+ key={m}
+ style={{
+ padding: 0,
+ background: barBg,
+ opacity: isPast ? Math.min(st.opacity, 0.4) : st.opacity,
+ borderRadius: `${isFirst ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isLast ? '5px' : '0'} ${isFirst ? '5px' : '0'}`}}
+ >
+ {isFirst && endIdx - startIdx >= 2 && (
+ <Text size="xs" c="white" fw={700} style={{ padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '24px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+ {project.name}
+ </Text>
+ )}
+ </Table.Td>
+ );
+ })}
+ <Table.Td style={{ fontSize: 11, textAlign: 'center' }}>{project.durationMonths}m</Table.Td>
+ </Table.Tr>
+ );
 }
 
 export default function ProjectGanttPage() {
-  const { data: projects, isLoading } = useProjects();
-  const { monthLabels, currentMonthIndex } = useMonthLabels();
-  const navigate = useNavigate();
-  const dark = useDarkMode();
-  const dndId = useId();
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>(PRIORITIES);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(DEFAULT_STATUSES);
-  const [customOrder, setCustomOrder] = useState<string[]>([]);
+ const { data: projects, isLoading } = useProjects();
+ const { monthLabels, currentMonthIndex } = useMonthLabels();
+ const dark = useDarkMode();
+ const dndId = useId();
+ const months = Array.from({ length: 12 }, (_, i) => i + 1);
+ const [selectedPriorities, setSelectedPriorities] = useState<string[]>(PRIORITIES);
+ const [selectedStatuses, setSelectedStatuses] = useState<string[]>(DEFAULT_STATUSES);
+ const [customOrder, setCustomOrder] = useState<string[]>([]);
 
-  // Set up DnD sensors with PointerSensor
-  const sensors = useSensors(
-    useSensor(PointerSensor, { distance: { x: 8, y: 8 } } as any)
-  );
+ // Set up DnD sensors with PointerSensor
+ const sensors = useSensors(
+ useSensor(PointerSensor, { distance: { x: 8, y: 8 } } as any)
+ );
 
-  const visibleProjects = useMemo(() => {
-    if (!projects) return [];
-    const filtered = projects
-      .filter(p =>
-        selectedPriorities.includes(p.priority) &&
-        selectedStatuses.includes(p.status)
-      )
-      .sort((a, b) => {
-        const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-        return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || (a.startMonth ?? 0) - (b.startMonth ?? 0);
-      });
+ const visibleProjects = useMemo(() => {
+ if (!projects) return [];
+ const filtered = projects
+ .filter(p =>
+ selectedPriorities.includes(p.priority) &&
+ selectedStatuses.includes(p.status)
+ )
+ .sort((a, b) => {
+ const po: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+ return (po[a.priority] ?? 9) - (po[b.priority] ?? 9) || (a.startMonth ?? 0) - (b.startMonth ?? 0);
+ });
 
-    // Apply custom order if set
-    if (customOrder.length > 0) {
-      const customOrderMap = new Map(customOrder.map((id, idx) => [id, idx]));
-      return filtered.sort((a, b) => {
-        const aIdx = customOrderMap.get(String(a.id)) ?? Infinity;
-        const bIdx = customOrderMap.get(String(b.id)) ?? Infinity;
-        return aIdx - bIdx;
-      });
-    }
+ // Apply custom order if set
+ if (customOrder.length > 0) {
+ const customOrderMap = new Map(customOrder.map((id, idx) => [id, idx]));
+ return filtered.sort((a, b) => {
+ const aIdx = customOrderMap.get(String(a.id)) ?? Infinity;
+ const bIdx = customOrderMap.get(String(b.id)) ?? Infinity;
+ return aIdx - bIdx;
+ });
+ }
 
-    return filtered;
-  }, [projects, selectedPriorities, selectedStatuses, customOrder]);
+ return filtered;
+ }, [projects, selectedPriorities, selectedStatuses, customOrder]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+ const handleDragEnd = (event: DragEndEvent) => {
+ const { active, over } = event;
+ if (!over || active.id === over.id) return;
 
-    const oldIndex = visibleProjects.findIndex(p => String(p.id) === active.id);
-    const newIndex = visibleProjects.findIndex(p => String(p.id) === over.id);
+ const oldIndex = visibleProjects.findIndex(p => String(p.id) === active.id);
+ const newIndex = visibleProjects.findIndex(p => String(p.id) === over.id);
 
-    if (oldIndex >= 0 && newIndex >= 0) {
-      const newOrder = arrayMove(
-        visibleProjects.map(p => String(p.id)),
-        oldIndex,
-        newIndex
-      );
-      setCustomOrder(newOrder);
-    }
-  };
+ if (oldIndex >= 0 && newIndex >= 0) {
+ const newOrder = arrayMove(
+ visibleProjects.map(p => String(p.id)),
+ oldIndex,
+ newIndex
+ );
+ setCustomOrder(newOrder);
+ }
+ };
 
-  const handleResetOrder = () => {
-    setCustomOrder([]);
-  };
+ const handleResetOrder = () => {
+ setCustomOrder([]);
+ };
 
-  if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
-  if (!projects || projects.length === 0) {
-    return (
-      <EmptyState
-        icon={<IconLayoutGrid size={40} stroke={1.5} />}
-        title="No projects to display"
-        description="Add projects with start months and durations to see them laid out on the Gantt timeline."
-      />
-    );
-  }
+ if (isLoading) return <LoadingSpinner variant="chart" message="Loading Gantt chart..." />;
+ if (!projects || projects.length === 0) {
+ return (
+ <EmptyState
+ icon={<IconLayoutGrid size={40} stroke={1.5} />}
+ title="No projects to display"
+ description="Add projects with start months and durations to see them laid out on the Gantt timeline."
+ />
+ );
+ }
 
-  return (
-    <Stack className="page-enter stagger-children">
-      <Group className="slide-in-left" justify="space-between" align="flex-start">
-        <div>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Project Gantt</Title>
-          <Text size="sm" c="dimmed">
-            {visibleProjects.length} of {projects?.length ?? 0} projects · sorted by priority then start month
-          </Text>
-        </div>
-      </Group>
+ return (
+ <Stack className="page-enter stagger-children">
+ <Group className="slide-in-left" justify="space-between" align="flex-start">
+ <div>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Project Gantt</Title>
+ <Text size="sm" c="dimmed">
+ {visibleProjects.length} of {projects?.length ?? 0} projects · sorted by priority then start month
+ </Text>
+ </div>
+ </Group>
 
-      {/* ── Filters ── */}
-      <Stack gap={6} className="stagger-children">
-        <Group gap="xs" align="center">
-          <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Priority:</Text>
-          <Chip.Group multiple value={selectedPriorities} onChange={setSelectedPriorities}>
-            <Group gap={6}>
-              {PRIORITIES.map(pri => (
-                <Chip key={pri} value={pri} size="xs" variant="filled" color={
-                  pri === 'HIGHEST' || pri === 'BLOCKER' ? 'red' : pri === 'HIGH' ? 'orange' : pri === 'MEDIUM' ? 'blue' : pri === 'LOW' ? 'indigo' : 'gray'
-                }>
-                  {pri.charAt(0) + pri.slice(1).toLowerCase()}
-                </Chip>
-              ))}
-            </Group>
-          </Chip.Group>
-        </Group>
+ {/* ── Filters ── */}
+ <Stack gap={6} className="stagger-children">
+ <Group gap="xs" align="center">
+ <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Priority:</Text>
+ <Chip.Group multiple value={selectedPriorities} onChange={setSelectedPriorities}>
+ <Group gap={6}>
+ {PRIORITIES.map(pri => (
+ <Chip key={pri} value={pri} size="xs" variant="filled" color={
+ pri === 'HIGHEST' || pri === 'BLOCKER' ? 'red' : pri === 'HIGH' ? 'orange' : pri === 'MEDIUM' ? 'blue' : pri === 'LOW' ? 'indigo' : 'gray'
+ }>
+ {pri.charAt(0) + pri.slice(1).toLowerCase()}
+ </Chip>
+ ))}
+ </Group>
+ </Chip.Group>
+ </Group>
 
-        <Group gap="xs" align="center">
-          <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Status:</Text>
-          <Chip.Group multiple value={selectedStatuses} onChange={setSelectedStatuses}>
-            <Group gap={6}>
-              {ALL_STATUSES.map(s => (
-                <Chip key={s} value={s} size="xs" variant="filled" color={STATUS_STYLE[s].chipColor}>
-                  {STATUS_STYLE[s].label}
-                </Chip>
-              ))}
-            </Group>
-          </Chip.Group>
-        </Group>
-      </Stack>
+ <Group gap="xs" align="center">
+ <Text size="xs" fw={600} c="dimmed" style={{ minWidth: 90 }}>Status:</Text>
+ <Chip.Group multiple value={selectedStatuses} onChange={setSelectedStatuses}>
+ <Group gap={6}>
+ {ALL_STATUSES.map(s => (
+ <Chip key={s} value={s} size="xs" variant="filled" color={STATUS_STYLE[s].chipColor}>
+ {STATUS_STYLE[s].label}
+ </Chip>
+ ))}
+ </Group>
+ </Chip.Group>
+ </Group>
+ </Stack>
 
-      {/* ── Legend ── */}
-      <Group gap={20} mb={4}>
-        <Group gap={16}>
-          {Object.entries(PRIORITY_COLORS).map(([pri, color]) => (
-            <Box key={pri} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Box style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
-              <Text size="xs">{pri}</Text>
-            </Box>
-          ))}
-        </Group>
-        <Text size="xs" c="dimmed">|</Text>
-        <Group gap={14}>
-          <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Box style={{ width: 28, height: 10, background: 'repeating-linear-gradient(45deg, #888 0px, #888 3px, transparent 3px, transparent 7px)', borderRadius: 2 }} />
-            <Text size="xs" c="dimmed">Planning / On Hold</Text>
-          </Box>
-          <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Box style={{ width: 28, height: 10, background: '#888', borderRadius: 2 }} />
-            <Text size="xs" c="dimmed">Active</Text>
-          </Box>
-        </Group>
-      </Group>
+ {/* ── Legend ── */}
+ <Group gap={20} mb={4}>
+ <Group gap={16}>
+ {Object.entries(PRIORITY_COLORS).map(([pri, color]) => (
+ <Box key={pri} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+ <Box style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
+ <Text size="xs">{pri}</Text>
+ </Box>
+ ))}
+ </Group>
+ <Text size="xs" c="dimmed">|</Text>
+ <Group gap={14}>
+ <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+ <Box style={{ width: 28, height: 10, background: 'repeating-linear-gradient(45deg, #888 0px, #888 3px, transparent 3px, transparent 7px)', borderRadius: 2 }} />
+ <Text size="xs" c="dimmed">Planning / On Hold</Text>
+ </Box>
+ <Box style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+ <Box style={{ width: 28, height: 10, background: '#888', borderRadius: 2 }} />
+ <Text size="xs" c="dimmed">Active</Text>
+ </Box>
+ </Group>
+ </Group>
 
-      {customOrder.length > 0 && (
-        <Group justify="flex-end">
-          <Button variant="light" size="xs" onClick={handleResetOrder}>
-            Reset order
-          </Button>
-        </Group>
-      )}
+ {customOrder.length > 0 && (
+ <Group justify="flex-end">
+ <Button variant="light" size="xs" onClick={handleResetOrder}>
+ Reset order
+ </Button>
+ </Group>
+ )}
 
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <ScrollArea>
-          <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th style={{ width: 40 }}></Table.Th>
-                <Table.Th style={{ width: 200 }}>Project</Table.Th>
-                <Table.Th style={{ width: 50 }}>Pri</Table.Th>
-                <Table.Th style={{ width: 90 }}>Status</Table.Th>
-                <Table.Th style={{ width: 70 }}>Owner</Table.Th>
-                {months.map(m => (
-                  <Table.Th
-                    key={m}
-                    style={{
-                      textAlign: 'center',
-                      fontSize: 11,
-                      width: 65,
-                      background: m === currentMonthIndex
-                        ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
-                        : undefined,
-                      ...(m < currentMonthIndex ? { color: TEXT_SUBTLE, fontWeight: 400, fontStyle: 'italic' } : {}),
-                    }}
-                  >
-                    {monthLabels[m] ?? `M${m}`}
-                  </Table.Th>
-                ))}
-                <Table.Th style={{ width: 60 }}>Dur</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              <SortableContext
-                items={visibleProjects.map(p => String(p.id))}
-                strategy={verticalListSortingStrategy}
-              >
-                {visibleProjects.map(project => (
-                  <SortableProjectRow
-                    key={project.id}
-                    project={project}
-                    months={months}
-                    currentMonthIndex={currentMonthIndex}
-                    dark={dark}
-                  />
-                ))}
-              </SortableContext>
-              {visibleProjects.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={months.length + 5}>
-                    <Text ta="center" c="dimmed" py="md">No projects match the selected filters</Text>
-                  </Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
-      </DndContext>
-    </Stack>
-  );
+ <DndContext
+ id={dndId}
+ sensors={sensors}
+ collisionDetection={closestCenter}
+ onDragEnd={handleDragEnd}
+ >
+ <ScrollArea>
+ <Table fz="xs" withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
+ <Table.Thead>
+ <Table.Tr>
+ <Table.Th style={{ width: 40 }}></Table.Th>
+ <Table.Th style={{ width: 200 }}>Project</Table.Th>
+ <Table.Th style={{ width: 50 }}>Pri</Table.Th>
+ <Table.Th style={{ width: 90 }}>Status</Table.Th>
+ <Table.Th style={{ width: 70 }}>Owner</Table.Th>
+ {months.map(m => (
+ <Table.Th
+ key={m}
+ style={{
+ textAlign: 'center',
+ fontSize: 11,
+ width: 65,
+ background: m === currentMonthIndex
+ ? (dark ? 'rgba(45,204,211,0.12)' : 'rgba(45,204,211,0.08)')
+ : undefined,
+ ...(m < currentMonthIndex ? { color: TEXT_SUBTLE, fontWeight: 400, fontStyle: 'italic' } : {})}}
+ >
+ {monthLabels[m] ?? `M${m}`}
+ </Table.Th>
+ ))}
+ <Table.Th style={{ width: 60 }}>Dur</Table.Th>
+ </Table.Tr>
+ </Table.Thead>
+ <Table.Tbody>
+ <SortableContext
+ items={visibleProjects.map(p => String(p.id))}
+ strategy={verticalListSortingStrategy}
+ >
+ {visibleProjects.map(project => (
+ <SortableProjectRow
+ key={project.id}
+ project={project}
+ months={months}
+ currentMonthIndex={currentMonthIndex}
+ dark={dark}
+ />
+ ))}
+ </SortableContext>
+ {visibleProjects.length === 0 && (
+ <Table.Tr>
+ <Table.Td colSpan={months.length + 5}>
+ <Text ta="center" c="dimmed" py="md">No projects match the selected filters</Text>
+ </Table.Td>
+ </Table.Tr>
+ )}
+ </Table.Tbody>
+ </Table>
+ </ScrollArea>
+ </DndContext>
+ </Stack>
+ );
 }

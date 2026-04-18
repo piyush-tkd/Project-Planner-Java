@@ -201,14 +201,14 @@ export default function ExcelUploadModal({ opened, onClose }: ExcelUploadModalPr
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Entity</Table.Th>
-                    <Table.Th style={{ textAlign: 'right' }}>Count</Table.Th>
+                    <Table.Th ta="right">Count</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {Object.entries(result.counts).map(([key, count]) => (
                     <Table.Tr key={key}>
                       <Table.Td>{ENTITY_LABELS[key] ?? key}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>{count}</Table.Td>
+                      <Table.Td ta="right">{count}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>

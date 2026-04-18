@@ -3,8 +3,6 @@
  * Sprint 4: PP-406
  */
 import { Badge } from '@mantine/core';
-import { FONT_FAMILY } from '../../brandTokens';
-
 interface TeamTypeBadgeProps {
   type: 'core' | 'project' | 'Core Team' | 'Project Team' | string;
   size?: 'xs' | 'sm' | 'md' | 'lg';
@@ -17,7 +15,8 @@ export default function TeamTypeBadge({ type, size = 'sm' }: TeamTypeBadgeProps)
       size={size}
       color={isCore ? 'blue' : 'pink'}
       variant="light"
-      style={{ fontFamily: FONT_FAMILY, fontWeight: 600, letterSpacing: '0.02em' }}
+      fw={600}
+      style={{ letterSpacing: '0.02em' }}
     >
       {isCore ? 'Core' : 'Project'}
     </Badge>

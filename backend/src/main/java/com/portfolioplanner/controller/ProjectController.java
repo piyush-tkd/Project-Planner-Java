@@ -74,6 +74,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.patchStatus(id, newStatus));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         projectService.delete(id);

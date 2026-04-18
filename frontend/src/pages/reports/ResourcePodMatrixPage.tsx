@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
  Container,
  Title,
@@ -10,21 +10,16 @@ import {
  Group,
  Tooltip,
  Modal,
- Badge,
  Box,
- ThemeIcon,
- Accordion,
- Paper,
- Avatar,
+ Avatar
 } from '@mantine/core';
-import { useNavigate } from 'react-router-dom';
 import { useResourceAllocation } from '../../api/reports';
 import { useResources } from '../../api/resources';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { AQUA, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, DEEP_BLUE, GRAY_100 } from '../../brandTokens';
 
 interface ResourceAllocationData {
  resourceId: number;
@@ -92,7 +87,7 @@ export default function ResourcePodMatrixPage() {
 
  return {
  groupedData: grouped,
- pods: Array.from(podSet).sort(),
+ pods: Array.from(podSet).sort()
  };
  }, [allocations]);
 
@@ -158,8 +153,7 @@ export default function ResourcePodMatrixPage() {
  color: 'white',
  fontWeight: 600,
  zIndex: 1,
- minWidth: '140px',
- }}
+ minWidth: '140px'}}
  >
  <Group gap={6} wrap="nowrap">
  {(() => {
@@ -183,8 +177,7 @@ export default function ResourcePodMatrixPage() {
  color: 'white',
  fontWeight: 600,
  zIndex: 1,
- minWidth: '100px',
- }}
+ minWidth: '100px'}}
  >
  {podName}
  </Table.Td>
@@ -202,8 +195,7 @@ export default function ResourcePodMatrixPage() {
  backgroundColor: bgColor,
  textAlign: 'center',
  color: dark ? 'rgba(255,255,255,0.5)' : '#999',
- minWidth: '80px',
- }}
+ minWidth: '80px'}}
  >
  —
  </Table.Td>
@@ -218,8 +210,7 @@ export default function ResourcePodMatrixPage() {
  style={{
  backgroundColor: bgColor,
  textAlign: 'center',
- minWidth: '80px',
- }}
+ minWidth: '80px'}}
  >
  <Tooltip
  label={`${data.allocatedHours}h / ${data.availableHours}h`}
@@ -235,7 +226,7 @@ export default function ResourcePodMatrixPage() {
  monthIndex: monthIdx,
  allocatedHours: data.allocatedHours,
  availableHours: data.availableHours,
- utilizationPct: data.utilizationPct,
+ utilizationPct: data.utilizationPct
  });
  setModalOpen(true);
  }}
@@ -248,8 +239,7 @@ export default function ResourcePodMatrixPage() {
  color: 'white',
  fontWeight: 600,
  fontSize: '12px',
- width: '100%',
- }}
+ width: '100%'}}
  >
  {data.utilizationPct}%
  </Box>
@@ -266,7 +256,7 @@ export default function ResourcePodMatrixPage() {
  <Stack gap="lg">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Resource · POD Matrix
  </Title>
  <Text c="dimmed" size="sm">
@@ -307,8 +297,7 @@ export default function ResourcePodMatrixPage() {
  backgroundColor: dark ? 'rgba(30,41,59,0.95)' : DEEP_BLUE,
  color: 'white',
  zIndex: 2,
- minWidth: '140px',
- }}
+ minWidth: '140px'}}
  >
  Resource
  </Table.Th>
@@ -319,8 +308,7 @@ export default function ResourcePodMatrixPage() {
  backgroundColor: dark ? 'rgba(30,41,59,0.95)' : DEEP_BLUE,
  color: 'white',
  zIndex: 2,
- minWidth: '100px',
- }}
+ minWidth: '100px'}}
  >
  POD
  </Table.Th>
@@ -335,8 +323,7 @@ export default function ResourcePodMatrixPage() {
  color: 'white',
  textAlign: 'center',
  minWidth: '80px',
- fontWeight: 600,
- }}
+ fontWeight: 600}}
  >
  {monthLabels[monthIdx]}
  </Table.Th>
@@ -393,14 +380,12 @@ export default function ResourcePodMatrixPage() {
  height: '20px',
  backgroundColor: GRAY_100,
  borderRadius: '4px',
- overflow: 'hidden',
- }}
+ overflow: 'hidden'}}
  >
  <Box
  style={{
  width: `${selectedCell.utilizationPct}%`,
- backgroundColor: getUtilizationColor(selectedCell.utilizationPct, dark),
- }}
+ backgroundColor: getUtilizationColor(selectedCell.utilizationPct, dark)}}
  />
  </Box>
  </div>

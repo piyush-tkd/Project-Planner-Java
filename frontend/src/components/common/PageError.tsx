@@ -1,4 +1,4 @@
-import { Stack, Text, Title, Button, Group } from '@mantine/core';
+import { Stack, Text, Title, Button } from '@mantine/core';
 import { IconMoodSad, IconRefresh } from '@tabler/icons-react';
 import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../../brandTokens';
 
@@ -31,7 +31,6 @@ export default function PageError({ context, error, onRetry }: PageErrorProps) {
       justifyContent: 'center',
       minHeight: 320,
       padding: 32,
-      fontFamily: FONT_FAMILY,
     }}>
       <Stack align="center" gap="md" maw={440}>
         <div style={{
@@ -49,14 +48,13 @@ export default function PageError({ context, error, onRetry }: PageErrorProps) {
 
         <Title order={3} ta="center" style={{
           color: DEEP_BLUE,
-          fontFamily: FONT_FAMILY,
           fontWeight: 400,
         }}>
           {witty}
         </Title>
 
         {context && (
-          <Text size="sm" c="dimmed" ta="center" style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="sm" c="dimmed" ta="center">
             We couldn't finish: <strong>{context}</strong>
           </Text>
         )}

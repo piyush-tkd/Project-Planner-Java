@@ -14,7 +14,7 @@ import {
  useJiraCredentials, useSaveJiraCredentials, useJiraStatus, useClearJiraCache,
  useCapexSettings, useSaveCapexSettings,
 } from '../../api/jira';
-import { DEEP_BLUE, AQUA, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, AQUA } from '../../brandTokens';
 import apiClient from '../../api/client';
 
 // ── CapEx Field Section ────────────────────────────────────────────────
@@ -39,7 +39,7 @@ function CapexFieldSection() {
  <IconKey size={15} color="white" />
  </ThemeIcon>
  <div>
- <Text fw={700} style={{ color: DEEP_BLUE }}>CapEx / OpEx Field</Text>
+ <Text fw={700} c={DEEP_BLUE}>CapEx / OpEx Field</Text>
  <Text size="xs" c="dimmed">Custom field used to classify IDS vs NON-IDS tickets</Text>
  </div>
  </Group>
@@ -176,7 +176,7 @@ export default function JiraCredentialsPage() {
  <IconKey size={22} color="white" />
  </ThemeIcon>
  <div>
- <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ <Title order={3} c={DEEP_BLUE}>
  Jira Credentials
  </Title>
  <Text size="sm" c="dimmed">
@@ -230,7 +230,7 @@ export default function JiraCredentialsPage() {
  href="https://id.atlassian.com/manage-profile/security/api-tokens"
  target="_blank"
  size="sm"
- style={{ color: AQUA }}
+ c={AQUA}
  >
  id.atlassian.com → Security → API tokens
  <IconLink size={11} style={{ marginLeft: 3, verticalAlign: 'middle' }} />
@@ -246,7 +246,7 @@ export default function JiraCredentialsPage() {
  value={baseUrl}
  onChange={e => handleChange('baseUrl', e.currentTarget.value)}
  leftSection={<IconLink size={15} />}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
 
  <TextInput
@@ -255,7 +255,7 @@ export default function JiraCredentialsPage() {
  placeholder="you@yourcompany.com"
  value={email}
  onChange={e => handleChange('email', e.currentTarget.value)}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
 
  <PasswordInput
@@ -268,7 +268,7 @@ export default function JiraCredentialsPage() {
  placeholder={saved?.hasToken ? '(unchanged)' : 'Paste API token…'}
  value={apiToken}
  onChange={e => handleChange('apiToken', e.currentTarget.value)}
- styles={{ input: { fontFamily: FONT_FAMILY } }}
+ styles={{ input: { } }}
  />
 
  <Divider />

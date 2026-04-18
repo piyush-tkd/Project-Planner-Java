@@ -68,6 +68,7 @@ public class JiraCapexController {
     }
 
     /** Returns the currently configured CapEx field ID. */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/settings")
     public ResponseEntity<Map<String, Object>> getSettings() {
         String fieldId = creds.getCapexFieldId();
@@ -77,6 +78,7 @@ public class JiraCapexController {
     }
 
     /** Saves the CapEx field ID to the DB. */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/settings")
     public ResponseEntity<Map<String, Object>> saveSettings(
             @RequestBody Map<String, String> body) {

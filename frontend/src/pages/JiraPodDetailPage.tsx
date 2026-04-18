@@ -2,24 +2,24 @@ import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Box, Title, Text, Group, Stack, Badge, Button, Paper,
- Progress, Loader, Alert, ThemeIcon, Divider, SimpleGrid, Skeleton,
+ Box, Text, Group, Stack, Badge, Button, Paper,
+ Progress, Alert, SimpleGrid, Skeleton,
  ActionIcon, Tooltip, Modal, ScrollArea, Table, TextInput,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
- IconChartBar, IconArrowLeft, IconExternalLink,
- IconAlertTriangle, IconTicket, IconClockHour4,
+ IconArrowLeft, IconExternalLink,
+ IconAlertTriangle, IconClockHour4,
  IconCircleCheck, IconList, IconCircleDot,
- IconSquareCheck, IconTrendingUp, IconSearch, IconX, IconRefresh,
+ IconSearch, IconX, IconRefresh,
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useJiraPods, useJiraStatus, usePodVelocity, useSprintIssues, SprintIssueRow } from '../api/jira';
-import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
 const AMBER = COLOR_WARNING;
 const GREEN = COLOR_GREEN;
@@ -265,7 +265,6 @@ export default function JiraPodDetailPage() {
  const backlogUrl = jiraBaseUrl && pod.boardKeys[0]
  ? `${jiraBaseUrl.replace(/\/$/, '')}/browse/${pod.boardKeys[0]}?backlog`
  : null;
- const boardUrl = backlogUrl;
 
  const velocityData = velocity.map(v => ({
  sprint: v.sprintName.length > 18 ? '…' + v.sprintName.slice(-16) : v.sprintName,
@@ -448,6 +447,7 @@ export default function JiraPodDetailPage() {
  {loadingVelocity ? (
  <Skeleton height={220} radius="sm" />
  ) : velocityData.length > 0 ? (
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={220}>
  <BarChart data={velocityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -459,6 +459,7 @@ export default function JiraPodDetailPage() {
  <Bar animationDuration={600} dataKey="Completed" fill={AQUA_HEX} radius={[2, 2, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  ) : (
  <Text size="sm" c="dimmed" ta="center" py="xl">No closed sprints data</Text>
  )}
@@ -470,6 +471,7 @@ export default function JiraPodDetailPage() {
  <Text fw={700} size="sm" style={{ color: DEEP_BLUE }} mb="md">
  Issue Types (Active Sprint)
  </Text>
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={260}>
  <PieChart>
  <Pie animationDuration={600} data={typeData} dataKey="value" nameKey="name" cx="50%" cy="42%"
@@ -480,6 +482,7 @@ export default function JiraPodDetailPage() {
  <RTooltip contentStyle={{ fontSize: 11 }} />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  )}
 
@@ -489,6 +492,7 @@ export default function JiraPodDetailPage() {
  <Text fw={700} size="sm" style={{ color: DEEP_BLUE }} mb="md">
  Status Breakdown
  </Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={statusData} margin={{ top: 4, right: 8, left: -20, bottom: 24 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -502,6 +506,7 @@ export default function JiraPodDetailPage() {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  )}
 
@@ -511,6 +516,7 @@ export default function JiraPodDetailPage() {
  <Text fw={700} size="sm" style={{ color: DEEP_BLUE }} mb="md">
  Priority Breakdown
  </Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={priorityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -528,6 +534,7 @@ export default function JiraPodDetailPage() {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  )}
  </SimpleGrid>
@@ -595,7 +602,9 @@ export default function JiraPodDetailPage() {
  {backlogUrl && (
  <Tooltip label="Open Jira backlog">
  <ActionIcon size="sm" variant="subtle"
- component="a" href={backlogUrl} target="_blank" rel="noreferrer">
+ component="a" href={backlogUrl} target="_blank" rel="noreferrer"
+      aria-label="Open in new tab"
+    >
  <IconExternalLink size={13} />
  </ActionIcon>
  </Tooltip>

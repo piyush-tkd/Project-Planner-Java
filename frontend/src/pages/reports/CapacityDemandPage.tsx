@@ -3,14 +3,14 @@ import {
  Title, Stack, Table, Text, Card, SimpleGrid, Group, Badge,
  MultiSelect, SegmentedControl, Tabs, ScrollArea} from '@mantine/core';
 import {
- Line, LineChart, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+ Line, LineChart, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours, formatPercent, formatGapHours, formatFte, formatGapFte } from '../../utils/formatting';
 import { getUtilizationBgColor, getGapCellColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY} from '../../brandTokens';
+import { COLOR_BLUE, COLOR_ERROR_STRONG, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE} from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { PageInsightCard } from '../../components/common/PageInsightCard';
@@ -88,7 +88,7 @@ export default function CapacityDemandPage() {
  capacityFte: wh > 0 ? totalCap / wh : 0,
  demandFte: wh > 0 ? totalDem / wh : 0,
  utilizationPct: util,
- workingHours: wh,
+ workingHours: wh
  };
  });
  }, [gapData, pods, months, monthLabels, workingHoursPerMonth]);
@@ -102,7 +102,7 @@ export default function CapacityDemandPage() {
  : Math.round(d.totalDemandHours),
  capacity: isFte
  ? Math.round(d.capacityFte * 10) / 10
- : Math.round(d.totalCapacityHours),
+ : Math.round(d.totalCapacityHours)
  }));
  }, [filteredSummary, isFte]);
 
@@ -152,7 +152,7 @@ export default function CapacityDemandPage() {
  demandFte: Math.round(((g?.demandHours ?? 0) / wh) * 10) / 10,
  gap: (g?.gapHours ?? 0),
  gapFte: (g?.gapFte ?? 0),
- workingHours: wh,
+ workingHours: wh
  };
  });
  const totalCap = chartData.reduce((s, d) => s + d.capacity, 0);
@@ -168,14 +168,13 @@ export default function CapacityDemandPage() {
  if (error) return <PageError context="loading capacity demand data" error={error} />;
 
  const fmtValWithWh = (v: number, wh: number) => unit === 'hours' ? formatHours(v) : formatFte(wh > 0 ? v / wh : 0);
- const fmtGapWithWh = (v: number, wh: number) => unit === 'hours' ? formatGapHours(v) : formatGapFte(wh > 0 ? v / wh : 0);
 
  return (
  <Stack className="page-enter stagger-children">
  <PageInsightCard pageKey="capacity" />
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Capacity vs Demand</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Capacity vs Demand</Title>
  <Text size="sm" c="dimmed">Full-year capacity and demand analysis — total org + POD-level breakdown</Text>
  </div>
  </Group>
@@ -209,6 +208,7 @@ export default function CapacityDemandPage() {
  {selectedPods.length === 0 ? 'All PODs combined' : `${pods.length} POD${pods.length > 1 ? 's' : ''} selected`}
  {' — '}{isFte ? 'FTE per month' : 'hours per month'}
  </Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <LineChart data={orgChartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -220,6 +220,7 @@ export default function CapacityDemandPage() {
  <Line animationDuration={600} type="monotone" dataKey="demand" stroke={COLOR_VIOLET} strokeWidth={2.5} dot={{ r: 3.5 }} name="Demand" />
  </LineChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
 
@@ -227,6 +228,7 @@ export default function CapacityDemandPage() {
  <ChartCard title="Capacity by POD" minHeight={320}>
  <ExportableChart title="Capacity by POD">
  <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project-available hours'}</Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <BarChart data={podCapChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -239,12 +241,14 @@ export default function CapacityDemandPage() {
  ))}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
 
  <ChartCard title="Demand by POD" minHeight={320}>
  <ExportableChart title="Demand by POD">
  <Text size="xs" c="dimmed" mb="sm">Stacked by POD — {isFte ? 'FTE' : 'project demand hours'}</Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <BarChart data={podDemChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -257,6 +261,7 @@ export default function CapacityDemandPage() {
  ))}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
  </SimpleGrid>
@@ -288,8 +293,7 @@ export default function CapacityDemandPage() {
  <Table.Td style={{
  textAlign: 'right',
  backgroundColor: getGapCellColor(d.netGapHours, dark),
- fontWeight: 600,
- }}>
+ fontWeight: 600}}>
  {unit === 'hours' ? formatGapHours(d.netGapHours) : formatGapFte(d.netGapFte)}
  </Table.Td>
  <Table.Td style={{ textAlign: 'right', backgroundColor: getUtilizationBgColor(d.utilizationPct, dark) }}>
@@ -336,6 +340,7 @@ export default function CapacityDemandPage() {
  <SimpleGrid cols={{ base: 1, md: 2 }}>
  <ChartCard title={`${pod} — Capacity vs Demand`} minHeight={270}>
  <ExportableChart title={`${pod} — Capacity vs Demand`}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={250}>
  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -347,6 +352,7 @@ export default function CapacityDemandPage() {
  <Bar animationDuration={600} dataKey={isFte ? 'demandFte' : 'demand'} fill={COLOR_VIOLET} name="Demand" />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
 
@@ -371,8 +377,7 @@ export default function CapacityDemandPage() {
  <Table.Td style={{
  textAlign: 'right',
  backgroundColor: getGapCellColor(d.gap, dark),
- fontWeight: 600,
- }}>
+ fontWeight: 600}}>
  {unit === 'hours' ? formatGapHours(d.gap) : formatGapFte(d.gapFte)}
  </Table.Td>
  </Table.Tr>

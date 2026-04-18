@@ -1,13 +1,14 @@
 -- Reference data: PODs, effort patterns, tshirt sizes, role mix, timeline config
 
--- PODs with complexity multipliers
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Portal V1', 1.0, 1);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Portal V2', 1.0, 2);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Integrations', 1.4, 3);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Accessioning', 1.2, 4);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Epic', 1.1, 5);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('LIS/Reporting', 1.15, 6);
-INSERT INTO pod (name, complexity_multiplier, display_order) VALUES ('Enterprise Systems', 1.05, 7);
+-- PODs with complexity multipliers (explicit IDs to match seed data expectations)
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (120, 'Portal V1', 1.0, 1);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (121, 'Portal V2', 1.0, 2);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (122, 'Integrations', 1.4, 3);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (123, 'Accessioning', 1.2, 4);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (124, 'Epic', 1.1, 5);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (125, 'LIS/Reporting', 1.15, 6);
+INSERT INTO pod (id, name, complexity_multiplier, display_order) VALUES (126, 'Enterprise Systems', 1.05, 7);
+SELECT setval('pod_id_seq', 126, true);
 
 -- Role effort mix
 INSERT INTO role_effort_mix (role, mix_pct) VALUES ('DEVELOPER', 60.0);

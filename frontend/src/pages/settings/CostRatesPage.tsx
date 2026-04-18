@@ -17,18 +17,18 @@ import { useState, useMemo } from 'react';
 import {
   Box, Title, Text, Group, Button, Badge, Paper, Stack, Divider,
   TextInput, NumberInput, Select, ActionIcon, Tooltip, Modal,
-  Table, ScrollArea, SimpleGrid, Card, SegmentedControl, Switch,
-  ThemeIcon, Center, Tabs, Skeleton, Alert,
+  Table, ScrollArea, SimpleGrid, SegmentedControl,
+  ThemeIcon, Tabs, Skeleton, Alert,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCurrencyDollar, IconPlus, IconTrash, IconPencil, IconCheck,
+  IconCurrencyDollar, IconPlus, IconTrash, IconPencil,
   IconCopy, IconStar, IconStarFilled, IconCalculator, IconDownload,
-  IconX, IconInfoCircle, IconBuildingBank, IconAlertCircle, IconRefresh,
+  IconBuildingBank, IconAlertCircle, IconRefresh,
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AQUA, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, DEEP_BLUE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useInlineEdit } from '../../hooks/useInlineEdit';
 import {
@@ -79,13 +79,15 @@ function LiveRatesPanel() {
             <IconBuildingBank size={15} />
           </ThemeIcon>
           <Box>
-            <Text fw={700} size="sm" style={{ fontFamily: FONT_FAMILY }}>Live Cost Rates</Text>
+            <Text fw={700} size="sm">Live Cost Rates</Text>
             <Text size="xs" c="dimmed">Connected to backend — source of truth for budget calculations</Text>
           </Box>
         </Group>
         <Group gap="xs">
           <Badge size="sm" color="teal" variant="light">● Live</Badge>
-          <ActionIcon size="sm" variant="subtle" onClick={() => refetch()}><IconRefresh size={14} /></ActionIcon>
+          <ActionIcon size="sm" variant="subtle" onClick={() => refetch()}
+      aria-label="Refresh"
+    ><IconRefresh size={14} /></ActionIcon>
           <Button size="xs" leftSection={<IconPlus size={13} />} onClick={() => { setEditId(null); setForm({ role: '', location: 'NORTH_AMERICA', hourlyRate: 80 }); openAdd(); }}>
             Add Rate
           </Button>
@@ -116,8 +118,12 @@ function LiveRatesPanel() {
                 <Table.Td><Text size="sm" fw={600}>${Number(r.hourlyRate).toFixed(2)}/hr</Text></Table.Td>
                 <Table.Td>
                   <Group gap={4} wrap="nowrap">
-                    <ActionIcon size="xs" variant="subtle" onClick={() => startEdit(r)}><IconPencil size={12} /></ActionIcon>
-                    <ActionIcon size="xs" variant="subtle" color="red" loading={deleteMutation.isPending} onClick={() => deleteMutation.mutate(r.id)}><IconTrash size={12} /></ActionIcon>
+                    <ActionIcon size="xs" variant="subtle" onClick={() => startEdit(r)}
+      aria-label="Edit"
+    ><IconPencil size={12} /></ActionIcon>
+                    <ActionIcon size="xs" variant="subtle" color="red" loading={deleteMutation.isPending} onClick={() => deleteMutation.mutate(r.id)}
+      aria-label="Delete"
+    ><IconTrash size={12} /></ActionIcon>
                   </Group>
                 </Table.Td>
               </Table.Tr>
@@ -270,7 +276,7 @@ const TSHIRT_OPTIONS = [
 ];
 
 function RateRow({
-  rate, sym, cardId, onSaveCell, onDelete, isEditing, onStartEdit, onStopEdit,
+  rate, sym, onSaveCell, onDelete, isEditing, onStartEdit, onStopEdit,
 }: {
   rate: RoleRate;
   sym: string;
@@ -393,7 +399,9 @@ function RateRow({
         />
       </Table.Td>
       <Table.Td>
-        <ActionIcon size="sm" variant="subtle" color="red" onClick={onDelete}>
+        <ActionIcon size="sm" variant="subtle" color="red" onClick={onDelete}
+      aria-label="Delete"
+    >
           <IconTrash size={13} />
         </ActionIcon>
       </Table.Td>
@@ -448,7 +456,7 @@ function CostModeller({ cards }: { cards: RateCard[] }) {
           data={cards.map(c => ({ value: c.id, label: c.name }))}
           value={cardId}
           onChange={v => v && setCardId(v)}
-          style={{ width: 260 }}
+          w={260}
         />
         <Box>
           <Text size="xs" fw={500} mb={4}>Unit</Text>
@@ -505,7 +513,7 @@ function CostModeller({ cards }: { cards: RateCard[] }) {
                       data={levelOptionsFor(row.role)}
                       value={row.level}
                       onChange={v => v && setRoleRows(rows => rows.map((r, j) => j === i ? { ...r, level: v } : r))}
-                      style={{ width: 100 }}
+                      w={100}
                     />
                   </Table.Td>
                   <Table.Td>
@@ -514,7 +522,7 @@ function CostModeller({ cards }: { cards: RateCard[] }) {
                       value={row.units}
                       min={0.5} step={0.5}
                       onChange={v => setRoleRows(rows => rows.map((r, j) => j === i ? { ...r, units: Number(v) ?? r.units } : r))}
-                      style={{ width: 80 }}
+                      w={80}
                     />
                   </Table.Td>
                   <Table.Td>
@@ -525,7 +533,9 @@ function CostModeller({ cards }: { cards: RateCard[] }) {
                   </Table.Td>
                   <Table.Td>
                     <ActionIcon size="sm" color="red" variant="subtle"
-                      onClick={() => setRoleRows(rows => rows.filter((_, j) => j !== i))}>
+                      onClick={() => setRoleRows(rows => rows.filter((_, j) => j !== i))}
+      aria-label="Delete"
+    >
                       <IconTrash size={13} />
                     </ActionIcon>
                   </Table.Td>
@@ -545,7 +555,7 @@ function CostModeller({ cards }: { cards: RateCard[] }) {
           <Paper px="md" py="xs" style={{ background: AQUA + '18', border: `1px solid ${AQUA}44`, borderRadius: 8 }}>
             <Group gap={8}>
               <Text size="sm" c="dimmed">Total {unit} cost:</Text>
-              <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>
+              <Text size="lg" fw={800} c={DEEP_BLUE}>
                 {sym}{totalCost.toLocaleString()}
               </Text>
             </Group>
@@ -569,7 +579,7 @@ export default function CostRatesPage() {
   const [newCardCurrency, setNewCardCurrency] = useState<Currency>('USD');
 
   // Inline editing state for the table
-  const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
+  const { startEdit, stopEdit, isEditing } = useInlineEdit();
 
   const card = useMemo(() => cards.find(c => c.id === activeCard), [cards, activeCard]);
   const sym  = card ? CURRENCY_SYMBOLS[card.currency] : '$';
@@ -664,7 +674,7 @@ export default function CostRatesPage() {
     <Box p="lg">
       <Group mb="lg" justify="space-between">
         <Box>
-          <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+          <Title order={2} c={dark ? '#fff' : DEEP_BLUE}>
             Cost Rate Tables
           </Title>
           <Text size="sm" c="dimmed" mt={2}>
@@ -676,7 +686,7 @@ export default function CostRatesPage() {
             Export CSV
           </Button>
           <Button size="xs" leftSection={<IconPlus size={14} />} onClick={openNew}
-            style={{ background: DEEP_BLUE }}>
+            bg={DEEP_BLUE}>
             New Rate Card
           </Button>
         </Group>
@@ -712,7 +722,7 @@ export default function CostRatesPage() {
                     ) : (
                       <IconStar size={14} color="#94a3b8" />
                     )}
-                    <Text size="sm" fw={600} truncate style={{ maxWidth: 150 }}>
+                    <Text size="sm" fw={600} truncate maw={150}>
                       {c.name}
                     </Text>
                   </Group>
@@ -737,7 +747,7 @@ export default function CostRatesPage() {
             <Group justify="space-between" mb="md">
               <Box>
                 <Group gap="xs" mb={4}>
-                  <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY }}>{card.name}</Text>
+                  <Text size="xl" fw={700}>{card.name}</Text>
                   {card.isDefault && (
                     <Badge size="sm" color="yellow" leftSection={<IconStarFilled size={10} />}>
                       Default
@@ -749,13 +759,17 @@ export default function CostRatesPage() {
               <Group gap="xs">
                 {!card.isDefault && (
                   <Tooltip label="Set as default">
-                    <ActionIcon variant="light" color="yellow" onClick={() => setDefault(card.id)}>
+                    <ActionIcon variant="light" color="yellow" onClick={() => setDefault(card.id)}
+      aria-label="Favourite"
+    >
                       <IconStar size={15} />
                     </ActionIcon>
                   </Tooltip>
                 )}
                 <Tooltip label="Duplicate card">
-                  <ActionIcon variant="light" color="blue" onClick={() => duplicateCard(card.id)}>
+                  <ActionIcon variant="light" color="blue" onClick={() => duplicateCard(card.id)}
+      aria-label="Copy"
+    >
                     <IconCopy size={15} />
                   </ActionIcon>
                 </Tooltip>
@@ -764,6 +778,7 @@ export default function CostRatesPage() {
                     variant="light" color="red"
                     disabled={card.isDefault || cards.length <= 1}
                     onClick={() => deleteCard(card.id)}
+                    aria-label="Delete"
                   >
                     <IconTrash size={15} />
                   </ActionIcon>
@@ -786,7 +801,7 @@ export default function CostRatesPage() {
                     <ThemeIcon size="sm" variant="light" color="teal">{stat.icon}</ThemeIcon>
                     <Text size="xs" c="dimmed">{stat.label}</Text>
                   </Group>
-                  <Text size="lg" fw={700} style={{ fontFamily: FONT_FAMILY }}>{stat.value}</Text>
+                  <Text size="lg" fw={700}>{stat.value}</Text>
                 </Paper>
               ))}
             </SimpleGrid>
@@ -862,7 +877,7 @@ export default function CostRatesPage() {
       <Modal
         opened={newModalOpen}
         onClose={closeNew}
-        title={<Text fw={700} style={{ fontFamily: FONT_FAMILY }}>Create Rate Card</Text>}
+        title={<Text fw={700}>Create Rate Card</Text>}
         size="sm"
       >
         <Stack gap="sm">
@@ -891,7 +906,7 @@ export default function CostRatesPage() {
           <Divider />
           <Group justify="flex-end">
             <Button variant="default" size="sm" onClick={closeNew}>Cancel</Button>
-            <Button size="sm" onClick={createCard} style={{ background: DEEP_BLUE }}>
+            <Button size="sm" onClick={createCard} bg={DEEP_BLUE}>
               Create Card
             </Button>
           </Group>

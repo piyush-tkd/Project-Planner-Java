@@ -8,7 +8,7 @@ import { useCapacityGap } from '../../api/reports';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useTableSort } from '../../hooks/useTableSort';
 import { formatHours, formatProjectDate } from '../../utils/formatting';
-import { COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { COLOR_ERROR, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET, DEEP_BLUE } from '../../brandTokens';
 import SortableHeader from '../../components/common/SortableHeader';
 import SummaryCard from '../../components/charts/SummaryCard';
 import PriorityBadge from '../../components/common/PriorityBadge';
@@ -80,7 +80,7 @@ export default function DeadlineGapPage() {
  risk,
  launch,
  startDate: project.startDate ?? null,
- targetDate: project.targetDate ?? null,
+ targetDate: project.targetDate ?? null
  } as ProjectHealth;
  }).sort((a, b) => b.loadPct - a.loadPct);
  }, [projects, gapData, monthLabels]);
@@ -96,7 +96,7 @@ export default function DeadlineGapPage() {
  return projectHealth.slice(0, 20).map(p => ({
  name: p.name.length > 25 ? p.name.slice(0, 22) + '...' : p.name,
  totalDemand: p.totalDemand,
- podCapacity: p.podCapacity,
+ podCapacity: p.podCapacity
  }));
  }, [projectHealth]);
 
@@ -130,7 +130,7 @@ export default function DeadlineGapPage() {
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Deadline Gap</Title>
+ <Title order={2} style={{color: isDark ? '#fff' : DEEP_BLUE }}>Deadline Gap</Title>
  <Text size="sm" c="dimmed">
  How much of each project's demand can be served by available capacity during its window — lower load % = more headroom
  </Text>
@@ -150,6 +150,7 @@ export default function DeadlineGapPage() {
  <ChartCard title="Project Demand Load Ranking" minHeight={320}>
  <ExportableChart title="Project Demand Load Ranking">
  <Text size="xs" c="dimmed" mb="sm">Demand / available POD capacity during project window — higher % = more impact on POD</Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 40 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -161,6 +162,7 @@ export default function DeadlineGapPage() {
  <Bar animationDuration={600} dataKey="podCapacity" fill="rgba(30,64,175,0.25)" name="POD Capacity Available" />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
  )}

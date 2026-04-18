@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   ActionIcon, Indicator, Popover, Stack, Text, Group, Badge,
-  Button, Divider, Anchor, ScrollArea, ThemeIcon, Box,
+  Button, Anchor, ScrollArea, ThemeIcon, Box,
 } from '@mantine/core';
 import { IconBell, IconBellOff, IconExternalLink, IconCheck } from '@tabler/icons-react';
 import { useAlertCounts } from '../../hooks/useAlertCounts';
@@ -97,6 +97,7 @@ export default function NotificationBell() {
             size="lg"
             onClick={() => setOpen(o => !o)}
             style={{ color: count > 0 ? COLOR_ERROR_LIGHT : 'rgba(255,255,255,0.75)' }}
+            aria-label="Notifications"
           >
             {count > 0 ? <IconBell size={19} /> : <IconBellOff size={19} />}
           </ActionIcon>
@@ -219,6 +220,7 @@ function TicketRow({
             <ActionIcon
               size="xs" variant="subtle" color="gray"
               component="a" href={jiraUrl} target="_blank" rel="noopener"
+              aria-label="Open in new tab"
             >
               <IconExternalLink size={12} />
             </ActionIcon>
@@ -227,6 +229,7 @@ function TicketRow({
             size="xs" variant="subtle" color="gray"
             onClick={onDismiss}
             title="Mark as read"
+            aria-label="Confirm"
           >
             <IconCheck size={12} />
           </ActionIcon>

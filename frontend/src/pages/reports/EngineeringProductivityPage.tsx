@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
  Title, Stack, Text, Group, Card, SimpleGrid, Badge, Table, Select,
- Progress, ThemeIcon, SegmentedControl, ScrollArea, Button, Paper, UnstyledButton,
+ Progress, ThemeIcon, SegmentedControl, ScrollArea, Button, Paper, UnstyledButton
 } from '@mantine/core';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
- ResponsiveContainer, PieChart, Pie, Cell,
+ ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import {
  IconCurrencyDollar, IconRocket, IconTargetArrow,
  IconBug, IconClock, IconChecklist,
- IconFlame, IconExternalLink, IconChevronRight,
+ IconFlame, IconExternalLink, IconChevronRight
 } from '@tabler/icons-react';
 import { useProductivityMetrics, useDoraMetrics, type DoraMetricValue } from '../../api/reports';
 import { useNavigate } from 'react-router-dom';
@@ -18,8 +18,8 @@ import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
-import { AQUA_HEX, AQUA, COLOR_AMBER, COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_LIGHT, COLOR_SUCCESS, GRAY_300, SURFACE_FAINT, TEXT_DIM } from '../../brandTokens';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_LIGHT, COLOR_SUCCESS, GRAY_300, SURFACE_FAINT, TEXT_DIM } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -39,21 +39,21 @@ function fmtHours(h: number): string {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
- elite: 'green', high: 'blue', medium: 'yellow', low: 'red',
+ elite: 'green', high: 'blue', medium: 'yellow', low: 'red'
 };
 
 const LEVEL_HEX: Record<string, string> = {
- elite: COLOR_SUCCESS, high: COLOR_BLUE_LIGHT, medium: COLOR_AMBER, low: COLOR_ERROR,
+ elite: COLOR_SUCCESS, high: COLOR_BLUE_LIGHT, medium: COLOR_AMBER, low: COLOR_ERROR
 };
 
 const STATUS_COLORS: Record<string, string> = {
  COMPLETED: 'green', ACTIVE: 'blue', IN_DISCOVERY: 'violet',
- NOT_STARTED: 'gray', ON_HOLD: 'orange', CANCELLED: 'red',
+ NOT_STARTED: 'gray', ON_HOLD: 'orange', CANCELLED: 'red'
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
  P0: 'red', P1: 'orange', P2: 'blue', P3: 'gray',
- CRITICAL: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'gray',
+ CRITICAL: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'gray'
 };
 
 const PIE_COLORS = [AQUA, DEEP_BLUE, COLOR_BLUE_LIGHT, COLOR_AMBER, COLOR_ERROR_LIGHT, TEXT_DIM];
@@ -63,43 +63,42 @@ function DoraCard({ label, icon, metric, onClick }: { label: string; icon: React
  const borderColor = LEVEL_HEX[metric.level] ?? TEXT_DIM;
  return (
  <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%' }}>
-   <Paper
-     withBorder
-     radius="md"
-     p="lg"
-     style={{
-       borderTop: `3px solid ${borderColor}`,
-       transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-       cursor: 'pointer',
-     }}
-     onMouseEnter={e => {
-       e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
-       e.currentTarget.style.transform = 'translateY(-2px)';
-     }}
-     onMouseLeave={e => {
-       e.currentTarget.style.boxShadow = '';
-       e.currentTarget.style.transform = '';
-     }}
-   >
-     <Group justify="space-between" mb="sm" wrap="nowrap">
-       <Group gap="sm" wrap="nowrap">
-         <ThemeIcon size={36} radius="md" variant="light" color={LEVEL_COLORS[metric.level] ?? 'gray'}>
-           {icon}
-         </ThemeIcon>
-         <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
-       </Group>
-       <IconChevronRight size={14} style={{ color: GRAY_300, flexShrink: 0 }} />
-     </Group>
-     <Group align="baseline" gap={6} mb={6}>
-       <Text size="2rem" fw={800} style={{ lineHeight: 1.1 }}>
-         {metric.label ?? metric.value}
-       </Text>
-       {!metric.label && <Text size="sm" c="dimmed">{metric.unit}</Text>}
-     </Group>
-     <Badge size="sm" color={LEVEL_COLORS[metric.level] ?? 'gray'} variant="light">
-       {metric.level}
-     </Badge>
-   </Paper>
+ <Paper
+ withBorder
+ radius="md"
+ p="lg"
+ style={{
+ borderTop: `3px solid ${borderColor}`,
+ transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+ cursor: 'pointer'}}
+ onMouseEnter={e => {
+ e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+ e.currentTarget.style.transform = 'translateY(-2px)';
+ }}
+ onMouseLeave={e => {
+ e.currentTarget.style.boxShadow = '';
+ e.currentTarget.style.transform = '';
+ }}
+ >
+ <Group justify="space-between" mb="sm" wrap="nowrap">
+ <Group gap="sm" wrap="nowrap">
+ <ThemeIcon size={36} radius="md" variant="light" color={LEVEL_COLORS[metric.level] ?? 'gray'}>
+ {icon}
+ </ThemeIcon>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>{label}</Text>
+ </Group>
+ <IconChevronRight size={14} style={{ color: GRAY_300, flexShrink: 0 }} />
+ </Group>
+ <Group align="baseline" gap={6} mb={6}>
+ <Text size="2rem" fw={800} style={{ lineHeight: 1.1 }}>
+ {metric.label ?? metric.value}
+ </Text>
+ {!metric.label && <Text size="sm" c="dimmed">{metric.unit}</Text>}
+ </Group>
+ <Badge size="sm" color={LEVEL_COLORS[metric.level] ?? 'gray'} variant="light">
+ {metric.level}
+ </Badge>
+ </Paper>
  </UnstyledButton>
  );
 }
@@ -124,7 +123,7 @@ export default function EngineeringProductivityPage() {
  return data.investment.spendByPod.slice(0, 10).map(p => ({
  pod: p.pod.length > 14 ? p.pod.slice(0, 14) + '…' : p.pod,
  fullName: p.pod,
- spend: Math.round(p.annualSpend),
+ spend: Math.round(p.annualSpend)
  }));
  }, [data]);
 
@@ -132,7 +131,7 @@ export default function EngineeringProductivityPage() {
  if (!data?.output?.statusBreakdown) return [];
  return Object.entries(data.output.statusBreakdown).map(([status, count]) => ({
  name: status.replace(/_/g, ' '),
- value: count,
+ value: count
  }));
  }, [data]);
 
@@ -140,7 +139,7 @@ export default function EngineeringProductivityPage() {
  if (!data?.output?.priorityBreakdown) return [];
  return Object.entries(data.output.priorityBreakdown).map(([priority, count]) => ({
  name: priority,
- value: count,
+ value: count
  }));
  }, [data]);
 
@@ -156,7 +155,7 @@ export default function EngineeringProductivityPage() {
  owner: o.owner.length > 14 ? o.owner.slice(0, 14) + '…' : o.owner,
  fullName: o.owner,
  hours: o.totalHours,
- pct: o.pct,
+ pct: o.pct
  }));
  }, [data]);
 
@@ -173,7 +172,7 @@ export default function EngineeringProductivityPage() {
  {/* ── Header ─────────────────────────────────────────────────────── */}
  <Group justify="space-between" align="flex-end" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Engineering Productivity</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Engineering Productivity</Title>
  <Text size="sm" c="dimmed">Executive view — investment, output, efficiency, and impact</Text>
  </div>
  <Select
@@ -223,6 +222,7 @@ export default function EngineeringProductivityPage() {
 
  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
  <ChartCard title="Spend by POD" minHeight={280}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={280}>
  <BarChart data={podBarData} margin={{ top: 4, right: 16, left: 8, bottom: 50 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -236,15 +236,17 @@ export default function EngineeringProductivityPage() {
  <Bar animationDuration={600} dataKey="spend" fill={AQUA_HEX} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  <ChartCard title="Spend by Project (Top 10)" minHeight={280}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={280}>
  <BarChart
  data={investment.spendByProject.slice(0, 10).map(p => ({
  name: p.name.length > 16 ? p.name.slice(0, 16) + '…' : p.name,
  fullName: p.name,
- cost: p.totalCost,
+ cost: p.totalCost
  }))}
  margin={{ top: 4, right: 16, left: 8, bottom: 50 }}
  >
@@ -259,6 +261,7 @@ export default function EngineeringProductivityPage() {
  <Bar animationDuration={600} dataKey="cost" fill={COLOR_BLUE_LIGHT} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </SimpleGrid>
 
@@ -296,6 +299,7 @@ export default function EngineeringProductivityPage() {
 
  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
  <ChartCard title="Projects by Status" minHeight={300}>
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={300}>
  <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
  <Pie
@@ -309,8 +313,8 @@ export default function EngineeringProductivityPage() {
  >
  {statusPieData.map((entry, i) => {
  const STATUS_PIE: Record<string, string> = {
-   'ACTIVE': AQUA, 'IN DISCOVERY': DEEP_BLUE, 'NOT STARTED': COLOR_BLUE_LIGHT,
-   'ON HOLD': COLOR_AMBER, 'COMPLETED': COLOR_SUCCESS, 'CANCELLED': COLOR_ERROR_LIGHT,
+ 'ACTIVE': AQUA, 'IN DISCOVERY': DEEP_BLUE, 'NOT STARTED': COLOR_BLUE_LIGHT,
+ 'ON HOLD': COLOR_AMBER, 'COMPLETED': COLOR_SUCCESS, 'CANCELLED': COLOR_ERROR_LIGHT
  };
  return <Cell key={i} fill={STATUS_PIE[entry.name] ?? PIE_COLORS[i % PIE_COLORS.length]} />;
  })}
@@ -318,9 +322,11 @@ export default function EngineeringProductivityPage() {
  <RechartTooltip />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  <ChartCard title="Projects by Priority" minHeight={300}>
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={300}>
  <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
  <Pie
@@ -345,6 +351,7 @@ export default function EngineeringProductivityPage() {
  <RechartTooltip />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </SimpleGrid>
 
@@ -586,6 +593,7 @@ export default function EngineeringProductivityPage() {
 
  {/* Effort by Owner */}
  <ChartCard title="Engineering Effort by Business Owner" minHeight={280}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={280}>
  <BarChart data={ownerBarData} margin={{ top: 4, right: 16, left: 8, bottom: 50 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -599,6 +607,7 @@ export default function EngineeringProductivityPage() {
  <Bar animationDuration={600} dataKey="hours" fill={COLOR_AMBER} radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </Stack>
  );

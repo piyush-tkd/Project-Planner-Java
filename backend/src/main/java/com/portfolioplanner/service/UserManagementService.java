@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserManagementService {
 
     private static final String ADMIN       = "ADMIN";
@@ -42,7 +43,7 @@ public class UserManagementService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
     }
 
-    @Transactional
+    @Transactional(readOnly = false)
     public AppUser createUser(CreateUserRequest req) {
         if (userRepo.findByUsername(req.username()).isPresent()) {
             throw new ValidationException("Username already exists: " + req.username());
@@ -56,7 +57,7 @@ public class UserManagementService {
         return userRepo.save(user);
     }
 
-    @Transactional
+    @Transactional(readOnly = false)
     public AppUser updateUser(Long id, UpdateUserRequest req) {
         var user = getUser(id);
 
@@ -76,7 +77,7 @@ public class UserManagementService {
         return userRepo.save(user);
     }
 
-    @Transactional
+    @Transactional(readOnly = false)
     public void deleteUser(Long id) {
         var user = getUser(id);
         // Prevent deleting the last privileged admin
@@ -120,7 +121,7 @@ public class UserManagementService {
      * Upserts a single page permission for the given role.
      * ADMIN/SUPER_ADMIN permissions cannot be modified.
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public void setPermission(String role, String pageKey, boolean allowed) {
         if (UNRESTRICTED_ROLES.contains(role.toUpperCase())) {
             throw new ValidationException("ADMIN/SUPER_ADMIN always has full access — permissions cannot be restricted.");
@@ -137,7 +138,7 @@ public class UserManagementService {
     /**
      * Bulk update of all permissions for a role.
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public void setPermissions(String role, Map<String, Boolean> permissions) {
         permissions.forEach((pageKey, allowed) -> setPermission(role, pageKey, allowed));
     }
@@ -156,7 +157,7 @@ public class UserManagementService {
     /**
      * Upserts a single privilege row for the given role/section/page/tab.
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public RolePrivilege setPrivilege(String role, String sectionKey, String pageKey,
                                       String tabKey, String accessType) {
         if (UNRESTRICTED_ROLES.contains(role.toUpperCase())) {

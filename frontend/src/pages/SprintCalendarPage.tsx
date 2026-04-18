@@ -9,13 +9,13 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
- IconPlus, IconEdit, IconTrash, IconCalendarEvent, IconInfoCircle,
+ IconPlus, IconEdit, IconTrash, IconInfoCircle,
  IconPackage, IconAlertTriangle, IconExternalLink, IconCheck,
  IconChevronDown, IconChevronUp, IconTag,
 } from '@tabler/icons-react';
 import { useSprints, useCreateSprint, useUpdateSprint, useDeleteSprint } from '../api/sprints';
 import { useSprintCalendarIssues, useJiraStatus, type ReleaseMetrics, type IssueRow } from '../api/jira';
-import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DARK_BG, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import { COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
 import type { SprintRequest, SprintResponse } from '../types/project';
 import { useDarkMode } from '../hooks/useDarkMode';
 
@@ -89,7 +89,9 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  {donePct}% Done
  </Badge>
  <ActionIcon variant="subtle" style={{ color: 'white' }} size="sm"
- onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}>
+ onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
+      aria-label="Expand"
+    >
  {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
  </ActionIcon>
  </Group>
@@ -135,12 +137,12 @@ function PodIssueCard({ metrics, jiraBaseUrl }: { metrics: ReleaseMetrics; jiraB
  <Table fz="xs" withColumnBorders highlightOnHover>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ minWidth: 90 }}>Key</Table.Th>
- <Table.Th style={{ minWidth: 70 }}>Type</Table.Th>
- <Table.Th style={{ minWidth: 320 }}>Summary</Table.Th>
- <Table.Th style={{ minWidth: 80 }}>Status</Table.Th>
- <Table.Th style={{ minWidth: 120 }}>Assignee</Table.Th>
- <Table.Th style={{ minWidth: 40, textAlign: 'right' }}>SP</Table.Th>
+ <Table.Th miw={90}>Key</Table.Th>
+ <Table.Th miw={70}>Type</Table.Th>
+ <Table.Th miw={320}>Summary</Table.Th>
+ <Table.Th miw={80}>Status</Table.Th>
+ <Table.Th miw={120}>Assignee</Table.Th>
+ <Table.Th miw={40} ta="right">SP</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -383,8 +385,12 @@ function SprintTable({ sprints, onEdit, onDelete, onViewIssues, highlight }: Spr
  </Table.Td>
  <Table.Td onClick={e => e.stopPropagation()}>
  <Group gap="xs">
- <ActionIcon variant="subtle" onClick={() => onEdit(s)}><IconEdit size={14} /></ActionIcon>
- <ActionIcon color="red" variant="subtle" onClick={() => onDelete(s.id)}><IconTrash size={14} /></ActionIcon>
+ <ActionIcon variant="subtle" onClick={() => onEdit(s)}
+      aria-label="Edit"
+    ><IconEdit size={14} /></ActionIcon>
+ <ActionIcon color="red" variant="subtle" onClick={() => onDelete(s.id)}
+      aria-label="Delete"
+    ><IconTrash size={14} /></ActionIcon>
  </Group>
  </Table.Td>
  </Table.Tr>
@@ -396,7 +402,6 @@ function SprintTable({ sprints, onEdit, onDelete, onViewIssues, highlight }: Spr
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SprintCalendarPage() {
- const isDark = useDarkMode();
  const { data: sprints, isLoading } = useSprints();
  const createSprint = useCreateSprint();
  const updateSprint = useUpdateSprint();

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
  Title, Text, Group, Button, Select, Badge,
- Alert, Loader, ActionIcon, Tooltip, Paper, Divider,
+ Alert, ActionIcon, Tooltip, Paper, Divider,
  ThemeIcon, Box, Stack, MultiSelect, Anchor, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -16,7 +16,7 @@ import {
  PodConfigRequest,
 } from '../../api/jira';
 import { usePods } from '../../api/pods';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, TEXT_SUBTLE } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, TEXT_SUBTLE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface PodRow {
@@ -143,7 +143,7 @@ export default function JiraSettingsPage() {
  <IconTicket size={22} color="white" />
  </ThemeIcon>
  <div>
- <Title order={3} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ <Title order={3} c={DEEP_BLUE}>
  Jira Board Settings
  </Title>
  <Text size="sm" c="dimmed">
@@ -200,7 +200,9 @@ export default function JiraSettingsPage() {
  </Group>
  <Group gap="xs">
  <Tooltip label="Refresh board list from Jira">
- <ActionIcon variant="light" loading={projectsLoading} onClick={() => refetchProjects()}>
+ <ActionIcon variant="light" loading={projectsLoading} onClick={() => refetchProjects()}
+      aria-label="Refresh"
+    >
  <IconRefresh size={16} />
  </ActionIcon>
  </Tooltip>
@@ -439,7 +441,8 @@ function PodRow({
  size="sm"
  mt={6}
  onClick={onRemove}
- >
+ aria-label="Delete"
+>
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>

@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import {
-  Title, Text, Group, Button, Badge, Table, ActionIcon, Tooltip,
+  Title, Text, Group, Button, Table, ActionIcon, Tooltip,
   Stack, Paper, SimpleGrid, Select, Modal, TextInput, SegmentedControl,
   ThemeIcon, Box,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCalendarEvent, IconPlus, IconTrash, IconEdit, IconFlag,
+  IconCalendarEvent, IconPlus, IconTrash, IconFlag,
   IconMapPin, IconCheck, IconX,
 } from '@tabler/icons-react';
 import { useHolidays, useSaveHoliday, useUpdateHoliday, useDeleteHoliday, HolidayResponse } from '../../api/holidays';
@@ -15,7 +15,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import { InlineTextCell, InlineDateCell, InlineSelectCell } from '../../components/common/InlineCell';
 import { useInlineEdit } from '../../hooks/useInlineEdit';
-import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE, DEEP_BLUE_HEX, AQUA, AQUA_HEX } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const MONTHS = [
@@ -23,12 +23,14 @@ const MONTHS = [
   'July','August','September','October','November','December',
 ];
 
+// @ts-expect-error -- unused
 const LOCATION_COLOR: Record<string, string> = {
   US:    'blue',
   INDIA: 'orange',
   ALL:   'violet',
 };
 
+// @ts-expect-error -- unused
 const LOCATION_LABEL: Record<string, string> = {
   US:    '🇺🇸 US',
   INDIA: '🇮🇳 India',
@@ -61,6 +63,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
   const saveMut    = useSaveHoliday();
   const updateMut  = useUpdateHoliday();
   const deleteMut  = useDeleteHoliday();
+  // @ts-expect-error -- unused
   const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
 
   // Group by location → month
@@ -88,6 +91,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
     setModalOpen(true);
   }
 
+  // @ts-expect-error -- unused
   function openEdit(h: HolidayResponse) {
     setForm({
       id: h.id,
@@ -210,7 +214,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
       <Group justify="space-between" align="flex-start">
         {!embedded && (
           <div>
-            <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>
+            <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
               Holiday Calendar
             </Title>
             <Text size="sm" c="dimmed" mt={4}>
@@ -349,6 +353,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
                             color="red"
                             loading={deleteMut.isPending}
                             onClick={() => handleDelete(h.id)}
+                            aria-label="Delete"
                           >
                             <IconTrash size={14} />
                           </ActionIcon>
@@ -377,7 +382,7 @@ export default function HolidayCalendarPage({ embedded = false }: { embedded?: b
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={<Text fw={700} style={{ color: DEEP_BLUE }}>{form.id ? 'Edit Holiday' : 'Add Holiday'}</Text>}
+        title={<Text fw={700} c={DEEP_BLUE}>{form.id ? 'Edit Holiday' : 'Add Holiday'}</Text>}
         size="sm"
       >
         <Stack gap="sm">

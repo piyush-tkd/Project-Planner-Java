@@ -31,6 +31,7 @@ public class JiraReleaseMappingController {
     }
 
     /** Run auto-match: finds name/date matches between releases and fix versions */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/auto-match")
     public ResponseEntity<List<ReleaseMappingResponse>> autoMatch() {
         return ResponseEntity.ok(mappingService.autoMatch());
@@ -44,6 +45,7 @@ public class JiraReleaseMappingController {
     }
 
     /** Bulk-save: replace all links for a single release calendar entry */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{releaseCalendarId}")
     public ResponseEntity<Map<String, String>> saveBulk(
             @PathVariable Long releaseCalendarId,
@@ -53,6 +55,7 @@ public class JiraReleaseMappingController {
     }
 
     /** Delete a single mapping link */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMapping(@PathVariable Long id) {
         mappingService.deleteMapping(id);

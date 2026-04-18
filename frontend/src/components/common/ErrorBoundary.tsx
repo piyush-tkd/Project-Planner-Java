@@ -1,8 +1,8 @@
 import React from 'react';
-import { Button, Stack, Text, Title, Group } from '@mantine/core';
+import { Button, Text, Title, Group } from '@mantine/core';
 import { IconRefresh, IconHome, IconBug } from '@tabler/icons-react';
 import { logErrorToServer } from '../../api/errorLogs';
-import { DEEP_BLUE, AQUA, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW } from '../../brandTokens';
+import { DEEP_BLUE, AQUA, FONT_FAMILY, SHADOW } from '../../brandTokens';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -87,11 +87,10 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
             border: '1px solid var(--mantine-color-default-border)',
             borderRadius: 12,
             background: 'var(--mantine-color-default)',
-            fontFamily: FONT_FAMILY,
             gap: 8,
           }}>
             <IconBug size={22} color={AQUA} stroke={1.5} />
-            <Text size="xs" fw={600} c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" fw={600} c="dimmed">
               Widget failed to render
             </Text>
             {this.state.error?.message && (
@@ -104,7 +103,7 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
                 {this.state.error.stack.split('\n').slice(0, 6).join('\n')}
               </Text>
             )}
-            <Button size="xs" variant="subtle" color="gray" onClick={this.handleReset} style={{ fontFamily: FONT_FAMILY }}>
+            <Button size="xs" variant="subtle" color="gray" onClick={this.handleReset}>
               Retry
             </Button>
           </div>
@@ -119,7 +118,6 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
           justifyContent: 'center',
           minHeight: '65vh',
           padding: 32,
-          fontFamily: FONT_FAMILY,
         }}>
           {/* Keyframe animation injected inline — safe for class components */}
           <style>{`
@@ -174,7 +172,6 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
 
             <Title order={2} style={{
               color: 'var(--mantine-color-text)',
-              fontFamily: FONT_FAMILY,
               fontWeight: 300,
               fontSize: 26,
               marginBottom: 10,
@@ -184,7 +181,6 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
             </Title>
 
             <Text size="sm" c="dimmed" style={{
-              fontFamily: FONT_FAMILY,
               marginBottom: 28,
               lineHeight: 1.7,
               maxWidth: 380,
@@ -201,7 +197,6 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
                   fontSize: 12,
                   color: 'var(--mantine-color-dimmed)',
                   cursor: 'pointer',
-                  fontFamily: FONT_FAMILY,
                   marginBottom: 8,
                   userSelect: 'none',
                 }}>

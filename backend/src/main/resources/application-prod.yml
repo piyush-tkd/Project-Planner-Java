@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production profile overrides — active when SPRING_PROFILES_ACTIVE=prod
+#
+# ALL values here MUST come from environment variables.
+# No literal defaults. Missing vars will either fail Spring binding (for
+# required properties) or be caught by the startup secret validator
+# (JwtUtil, SmtpPasswordEncryptor) which throws IllegalStateException and
+# prevents the server from accepting requests.
+#
+# ⚠ App WILL NOT start without JWT_SECRET and SMTP_ENCRYPTION_KEY.
+#   Both must be cryptographically random strings (≥ 32 chars each).
+#   Generate: openssl rand -hex 32
+# ─────────────────────────────────────────────────────────────────────────────
+
+spring:
+  datasource:
+    url:      ${SPRING_DATASOURCE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true    # HTTPS only in production
+
+app:
+  jwt:
+    secret:        ${JWT_SECRET}         # ⚠ Required — no default
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  smtp:
+    encryption-key: ${SMTP_ENCRYPTION_KEY}  # ⚠ Required — no default
+  frontend-base-url: ${APP_FRONTEND_URL}
+
+jira:
+  base-url:  ${JIRA_BASE_URL:}
+  email:     ${JIRA_EMAIL:}
+  api-token: ${JIRA_API_TOKEN:}
+
+spring:
+  flyway:
+    validate-on-migrate: true    # reject any migration whose checksum doesn't match the stored value
+    out-of-order: false          # disallow migrations running in non-sequential order
+
+logging:
+  level:
+    com.portfolioplanner: INFO    # quieter than DEBUG in prod

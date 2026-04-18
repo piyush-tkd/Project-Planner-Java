@@ -7,7 +7,7 @@ import { useDarkMode } from '../hooks/useDarkMode';
 import {
  Box, Text, Group, Stack, Badge, Button, Grid, Paper,
  Progress, Alert, ThemeIcon, Tooltip, Collapse,
- TextInput, SegmentedControl, Divider, SimpleGrid, ActionIcon, Skeleton,
+ TextInput, SegmentedControl, Divider, ActionIcon, Skeleton,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -21,7 +21,7 @@ import {
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
- ResponsiveContainer, Legend, Cell, PieChart, Pie, LabelList,
+ ResponsiveContainer, Legend, Cell, LabelList,
 } from 'recharts';
 import {
  useJiraStatus, useJiraPods, useClearJiraCache,
@@ -30,7 +30,7 @@ import {
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
-import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_STRONG, COLOR_AMBER_DARK, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SLATE_700, SURFACE_GRAY, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
+import { AQUA_HEX, AQUA, BORDER_STRONG, COLOR_AMBER_DARK, COLOR_BLUE_STRONG, COLOR_EMERALD, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, SLATE_700, SURFACE_GRAY, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
 const AMBER = COLOR_WARNING;
 const GREEN = COLOR_GREEN;
@@ -255,6 +255,7 @@ export default function PodDashboardPage() {
  <Widget id="sprint-sp" title="Sprint Story Points">
  {spCompareData.length > 0 && (
  <ChartCard title="Sprint Story Points — All PODs" minHeight={Math.max(200, spCompareData.length * 36)}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={Math.max(200, spCompareData.length * 36)}>
  <BarChart
  data={spCompareData}
@@ -280,6 +281,7 @@ export default function PodDashboardPage() {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
 
@@ -303,10 +305,13 @@ export default function PodDashboardPage() {
  >
  <Group justify="space-between" mb={6}>
  <Text size="xs" fw={600}>{pod.podDisplayName}</Text>
- <ActionIcon size="xs" variant="subtle" color="gray">
+ <ActionIcon size="xs" variant="subtle" color="gray"
+      aria-label="Go forward"
+    >
  <IconArrowRight size={12} />
  </ActionIcon>
  </Group>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={100}>
  <BarChart data={typeData} margin={{ top: 16, right: 4, left: -28, bottom: 0 }}>
  <XAxis dataKey="name" tick={{ fontSize: 8 }} />
@@ -324,6 +329,7 @@ export default function PodDashboardPage() {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  </Grid.Col>
  );
@@ -346,6 +352,7 @@ export default function PodDashboardPage() {
  </Badge>
  }
  >
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={topTeam} margin={{ top: 2, right: 8, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -360,6 +367,7 @@ export default function PodDashboardPage() {
  </Bar>
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
  </Widget>
@@ -450,7 +458,8 @@ function PodCard({
  size="sm" variant="subtle" color="gray"
  component="a" href={boardUrl} target="_blank" rel="noreferrer"
  onClick={e => e.stopPropagation()}
- >
+ aria-label="Open in new tab"
+>
  <IconExternalLink size={13} />
  </ActionIcon>
  </Tooltip>
@@ -589,6 +598,7 @@ function PodCard({
  <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs">
  Velocity (last {velocityData.length} sprints)
  </Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={110}>
  <BarChart data={velocityData} margin={{ top: 0, right: 4, left: -24, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -599,6 +609,7 @@ function PodCard({
  <Bar animationDuration={600} dataKey="Completed" fill={color} radius={[2, 2, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </>
  ) : (
  <Text size="xs" c="dimmed" ta="center">No closed sprints found</Text>
@@ -722,7 +733,8 @@ function PodTable({
  size="xs" variant="subtle" color="gray"
  component="a" href={boardUrl} target="_blank" rel="noreferrer"
  onClick={e => e.stopPropagation()}
- >
+ aria-label="Open in new tab"
+>
  <IconExternalLink size={11} />
  </ActionIcon>
  )}

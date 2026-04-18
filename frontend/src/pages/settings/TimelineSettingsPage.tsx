@@ -9,7 +9,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CsvToolbar from '../../components/common/CsvToolbar';
 import { workingHoursColumns } from '../../utils/csvColumns';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 export default function TimelineSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
@@ -53,11 +53,11 @@ export default function TimelineSettingsPage({ embedded = false }: { embedded?: 
  <Stack className={embedded ? undefined : 'page-enter stagger-children'}>
  {!embedded && (
  <Group className="slide-in-left">
-   <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Timeline Settings</Title>
+   <Title order={2} style={{ color: isDark ? '#fff' : DEEP_BLUE }}>Timeline Settings</Title>
  </Group>
  )}
  {embedded && (
- <Text fw={600} size="sm" style={{ color: isDark ? '#fff' : DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ <Text fw={600} size="sm" style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
    Timeline &amp; Working Hours
  </Text>
  )}
@@ -124,7 +124,7 @@ export default function TimelineSettingsPage({ embedded = false }: { embedded?: 
  onChange={v => setWorkingHours(prev => ({ ...prev, [`M${m}`]: Number(v) }))}
  min={0}
  max={300}
- style={{ maxWidth: 150 }}
+ maw={150}
  />
  </Table.Td>
  </Table.Tr>

@@ -100,6 +100,7 @@ export function DashboardFilterBar({ isVisible, onToggle }: DashboardFilterBarPr
               color="blue"
               variant="transparent"
               onClick={clearCrossFilter}
+              aria-label="Close"
             >
               <IconX size={14} />
             </ActionIcon>

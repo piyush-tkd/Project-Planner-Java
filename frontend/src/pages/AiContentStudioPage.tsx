@@ -12,7 +12,7 @@
  */
 import { useState, useMemo } from 'react';
 import {
-  Title, Text, Stack, Group, Button, Paper, Textarea, Select,
+  Text, Stack, Group, Button, Paper, Textarea, Select,
   ThemeIcon, Box, SimpleGrid, CopyButton,
   ActionIcon, Tooltip, Alert, UnstyledButton,
 } from '@mantine/core';
@@ -209,7 +209,6 @@ export default function AiContentStudioPage() {
           root: {
             background: disabled ? undefined : bgColor,
             color: textColor,
-            fontFamily: FONT_FAMILY,
             fontWeight: 600,
             border: 'none',
           },
@@ -255,6 +254,7 @@ export default function AiContentStudioPage() {
                     variant="light"
                     color={copied ? 'teal' : 'gray'}
                     onClick={copy}
+                    aria-label="Confirm"
                   >
                     {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
                   </ActionIcon>
@@ -273,6 +273,7 @@ export default function AiContentStudioPage() {
                   if (type === 'risk_brief')      generate(type, '',           setRiskOutput);
                   if (type === 'meeting_actions') generate(type, meetingNotes, setMeetingOutput);
                 }}
+                aria-label="Refresh"
               >
                 <IconRefresh size={13} />
               </ActionIcon>
@@ -345,7 +346,6 @@ export default function AiContentStudioPage() {
                     fw={700}
                     style={{
                       color: isActive ? (isDark ? tab.accentColor : tab.accentColor === AQUA ? DEEP_BLUE : tab.accentColor) : textPrimary,
-                      fontFamily: FONT_FAMILY,
                       lineHeight: 1.2,
                     }}
                   >
@@ -355,7 +355,6 @@ export default function AiContentStudioPage() {
                     size="xs"
                     style={{
                       color: textSecondary,
-                      fontFamily: FONT_FAMILY,
                       marginTop: 2,
                       lineHeight: 1.3,
                       whiteSpace: 'nowrap',

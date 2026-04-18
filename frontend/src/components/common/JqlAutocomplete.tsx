@@ -70,7 +70,6 @@ const JQL_OPERATORS = [
   { op: 'is not EMPTY', label: 'is not EMPTY',              hint: 'Field has a value' },
 ];
 
-const JQL_KEYWORDS = ['AND', 'OR', 'NOT', 'ORDER BY'];
 
 const CONNECTOR_KEYWORDS = ['AND', 'OR', 'ORDER BY'];
 
@@ -106,8 +105,8 @@ function analyseContext(text: string, cursorPos: number): {
   const before = text.slice(0, cursorPos);
 
   // Find the start of the current "token" (word being typed)
+  // @ts-expect-error -- unused
   const lastSpaceIdx = before.search(/\S\s+\S*$/);
-  const wordStart = lastSpaceIdx >= 0 ? lastSpaceIdx + 1 + before.slice(lastSpaceIdx + 1).search(/\S/) : 0;
   const afterLastSpace = before.slice(before.lastIndexOf(' ') + 1);
   const currentWord = afterLastSpace;
 
@@ -425,12 +424,12 @@ export function JqlAutocomplete({
     <Box style={{ position: 'relative' }}>
       {/* ── Label + description ── */}
       {label && (
-        <Text size="sm" fw={500} mb={2} style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="sm" fw={500} mb={2}>
           {label}
         </Text>
       )}
       {description && (
-        <Text size="xs" c="dimmed" mb={4} style={{ fontFamily: FONT_FAMILY }}>
+        <Text size="xs" c="dimmed" mb={4}>
           {description}
         </Text>
       )}
@@ -491,13 +490,13 @@ export function JqlAutocomplete({
               justifyContent: 'space-between',
             }}
           >
-            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+            <Text size="xs" c="dimmed">
               {context.kind === 'field'    && '⬡ Field names'}
               {context.kind === 'operator' && '⚡ Operators'}
               {context.kind === 'value'    && `✦ Values for "${context.fieldForValues}"`}
               {context.kind === 'keyword'  && '⟋ Keywords'}
             </Text>
-            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, opacity: 0.6 }}>
+            <Text size="xs" c="dimmed" style={{ opacity: 0.6 }}>
               ↑↓ navigate · ↵ select · Esc close
             </Text>
           </Box>
@@ -545,7 +544,6 @@ export function JqlAutocomplete({
                       style={{
                         minWidth: 42,
                         textTransform: 'uppercase',
-                        fontFamily: FONT_FAMILY,
                         fontSize: 9,
                         fontWeight: 700,
                         letterSpacing: '0.04em',
@@ -577,7 +575,6 @@ export function JqlAutocomplete({
                         size="xs"
                         c="dimmed"
                         style={{
-                          fontFamily: FONT_FAMILY,
                           opacity: 0.6,
                           flexShrink: 0,
                           maxWidth: 120,
@@ -592,7 +589,7 @@ export function JqlAutocomplete({
 
                     {/* Custom field tag */}
                     {s.category === 'custom' && (
-                      <Badge size="xs" color="violet" variant="light" style={{ flexShrink: 0, fontFamily: FONT_FAMILY }}>
+                      <Badge size="xs" color="violet" variant="light" style={{ flexShrink: 0 }}>
                         custom
                       </Badge>
                     )}
@@ -615,7 +612,7 @@ export function JqlAutocomplete({
               }}
             >
               {[['↵ / Tab', 'insert'], ['Esc', 'close'], ['Space', 'continue typing']].map(([key, desc]) => (
-                <Text key={key} size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, opacity: 0.55 }}>
+                <Text key={key} size="xs" c="dimmed" style={{ opacity: 0.55 }}>
                   <span style={{ fontFamily: 'monospace', background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)', borderRadius: 3, padding: '0 4px', marginRight: 3 }}>{key}</span>
                   {desc}
                 </Text>

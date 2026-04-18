@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Box, Title, Text, Group, Stack, Badge, Button, Paper,
- Loader, Alert, ThemeIcon, Tooltip, Divider, Skeleton,
+ Box, Text, Group, Stack, Badge, Button, Paper,
+ Alert, ThemeIcon, Tooltip, Skeleton,
  TextInput, ScrollArea, Table, SimpleGrid,
  Modal, ActionIcon, SegmentedControl, Progress,
  Select, Collapse,
@@ -23,15 +23,14 @@ import {
 } from 'recharts';
 import {
  useJiraStatus, useCapexReport, useCapexSettings, useSaveCapexSettings,
- useJiraFields, CapexIssue, CapexMonthReport, WorklogAuthorRow, LocationSummary,
+ useJiraFields, CapexIssue, LocationSummary,
 } from '../api/jira';
 import WidgetGrid, { Widget } from '../components/layout/WidgetGrid';
 import ChartCard from '../components/common/ChartCard';
-import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, AQUA_TINTS, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
+import { AQUA_HEX, DEEP_BLUE_HEX, AQUA, COLOR_AMBER_DARK, COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_GREEN, COLOR_ORANGE_DEEP, COLOR_TEAL, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, SURFACE_AMBER, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_GRAY, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUCCESS_LIGHT, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE } from '../brandTokens';
 
 const AMBER = COLOR_WARNING;
 const GREEN = COLOR_GREEN;
-const RED = COLOR_ERROR_STRONG;
 const GRAY = TEXT_SUBTLE;
 const PURPLE = COLOR_VIOLET;
 const INDIA_COLOR = COLOR_VIOLET; // purple
@@ -176,7 +175,9 @@ function CapexSettingsModal({
  <Text size="sm" fw={500}>Pick field from Jira</Text>
  <Tooltip label="Refresh field list" withArrow>
  <ActionIcon size="xs" variant="subtle" color="gray"
- onClick={() => refetchFields()} loading={fetchingFields}>
+ onClick={() => refetchFields()} loading={fetchingFields}
+      aria-label="Refresh"
+    >
  <IconRefresh size={11} />
  </ActionIcon>
  </Tooltip>
@@ -489,7 +490,9 @@ function CompactIssueSection({
  size="xs"
  leftSection={<IconSearch size={12} />}
  rightSection={search
- ? <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}><IconX size={12} /></ActionIcon>
+ ? <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}
+      aria-label="Close"
+    ><IconX size={12} /></ActionIcon>
  : null}
  value={search}
  onChange={e => setSearch(e.currentTarget.value)}
@@ -868,6 +871,7 @@ export default function JiraCapexPage() {
  {/* Pie: hours by category */}
  <ChartCard title="Hours by Category" minHeight={260}>
  {pieData.length > 0 ? (
+ <div role="img" aria-label="Pie chart">
  <ResponsiveContainer width="100%" height={260}>
  <PieChart>
  <Pie
@@ -898,6 +902,7 @@ export default function JiraCapexPage() {
  />
  </PieChart>
  </ResponsiveContainer>
+ </div>
  ) : (
  <Text c="dimmed" ta="center" size="sm" mt="xl">No hours data</Text>
  )}
@@ -914,12 +919,14 @@ export default function JiraCapexPage() {
  variant="subtle"
  color="gray"
  onClick={() => setPodExpanded(e => !e)}
- >
+ aria-label="Expand"
+>
  {podExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
  </ActionIcon>
  }
  >
  <Collapse in={podExpanded}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={200}>
  <BarChart data={podBarData} margin={{ top: 0, right: 4, left: -20, bottom: 40 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -945,6 +952,7 @@ export default function JiraCapexPage() {
  ))}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Collapse>
  </ChartCard>
  )}
@@ -1043,6 +1051,7 @@ export default function JiraCapexPage() {
  {locationBarData.length > 0 && (
  <Paper withBorder p="sm" radius="sm" mb="md">
  <Text size="xs" fw={600} c="dimmed" mb="xs">IDS vs NON-IDS Hours by Location</Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={180}>
  <BarChart data={locationBarData} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -1060,6 +1069,7 @@ export default function JiraCapexPage() {
  )}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  )}
 
@@ -1074,6 +1084,7 @@ export default function JiraCapexPage() {
  {authorExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
  </Group>
  <Collapse in={authorExpanded}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={220}>
  <BarChart data={authorBarData}
  margin={{ top: 0, right: 4, left: -20, bottom: 60 }}
@@ -1101,6 +1112,7 @@ export default function JiraCapexPage() {
  )}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </Collapse>
  </Paper>
  )}
@@ -1195,7 +1207,9 @@ export default function JiraCapexPage() {
  size="xs"
  leftSection={<IconSearch size={12} />}
  rightSection={search
- ? <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}><IconX size={12} /></ActionIcon>
+ ? <ActionIcon size="xs" variant="subtle" onClick={() => setSearch('')}
+      aria-label="Close"
+    ><IconX size={12} /></ActionIcon>
  : null}
  value={search}
  onChange={e => setSearch(e.currentTarget.value)}

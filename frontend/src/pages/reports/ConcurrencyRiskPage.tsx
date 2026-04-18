@@ -7,7 +7,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours } from '../../utils/formatting';
 import { getConcurrencyColorByLevel } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE} from '../../brandTokens';
+import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_ORANGE_ALT, COLOR_TEAL, COLOR_VIOLET_ALT, COLOR_WARNING, DEEP_BLUE, SURFACE_SUBTLE} from '../../brandTokens';
 import SummaryCard from '../../components/charts/SummaryCard';
 import MonthHeader from '../../components/common/MonthHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -76,7 +76,7 @@ export default function ConcurrencyRiskPage() {
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Concurrency Risk</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Concurrency Risk</Title>
  <Text size="sm" c="dimmed">Months where multiple projects compete for the same POD — hover cells for risk level</Text>
  </div>
  </Group>
@@ -131,8 +131,7 @@ export default function ConcurrencyRiskPage() {
  textAlign: 'center',
  ...(m < currentMonthIndex
  ? { opacity: 0.5, backgroundColor: pastBg }
- : { backgroundColor: count > 0 ? getConcurrencyColorByLevel(riskLevel, dark) : undefined }),
- }}
+ : { backgroundColor: count > 0 ? getConcurrencyColorByLevel(riskLevel, dark) : undefined })}}
  >
  {count > 0 ? (
  <Tooltip label={`${count} projects — Risk: ${riskLevel}`}>
@@ -155,6 +154,7 @@ export default function ConcurrencyRiskPage() {
  <ChartCard title="Peak Demand Chart — Projects Stacked by POD" minHeight={370}>
  <ExportableChart title="Peak Demand by POD">
  <Text size="xs" c="dimmed" mb="sm">Total demand hours per month — stacked by POD</Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={350}>
  <BarChart data={demandChartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -167,6 +167,7 @@ export default function ConcurrencyRiskPage() {
  ))}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
  </Stack>

@@ -75,6 +75,7 @@ export default function SupplyDemandPage() {
             <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY }}>
               Supply vs Demand by Role
             </Text>
+            <div role="img" aria-label="Bar chart">
             <ResponsiveContainer width="100%" height={340}>
               <BarChart data={filteredData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} />
@@ -82,7 +83,6 @@ export default function SupplyDemandPage() {
                 <YAxis tick={{ fontSize: 12, fontFamily: FONT_FAMILY, fill: textColor }} />
                 <Tooltip
                   contentStyle={{
-                    fontFamily: FONT_FAMILY,
                     borderRadius: 8,
                     border: `1px solid ${AQUA}30`,
                     background: dark ? '#1e293b' : '#fff',
@@ -95,6 +95,7 @@ export default function SupplyDemandPage() {
                 <Bar dataKey="demand" name="Demand (Requested)" fill={AQUA_HEX}      radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </Paper>
 
           <Paper withBorder p="md" radius="lg" style={{ boxShadow: SHADOW.card }}>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Title, Stack, Text, Card, SimpleGrid, Table, SegmentedControl, Group, Select, Switch, ScrollArea} from '@mantine/core';
 import {
  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
- ResponsiveContainer, ReferenceLine, Cell,
+ ResponsiveContainer, ReferenceLine, Cell
 } from 'recharts';
 import { IconClock, IconFlame, IconCalendarStats, IconTrendingUp } from '@tabler/icons-react';
 import { useCapacityGap } from '../../api/reports';
@@ -10,7 +10,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { formatHours, formatPercent } from '../../utils/formatting';
 import { getUtilizationBgColor } from '../../utils/colors';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, DEEP_BLUE_HEX, DEEP_BLUE, FONT_FAMILY} from '../../brandTokens';
+import { COLOR_BLUE, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_ERROR_STRONG, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_ALT, COLOR_VIOLET_LIGHT, DEEP_BLUE_HEX, DEEP_BLUE} from '../../brandTokens';
 import SummaryCard from '../../components/charts/SummaryCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ExportableChart from '../../components/common/ExportableChart';
@@ -46,7 +46,7 @@ export default function PodCapacityPage() {
  monthIndex: m,
  capacity: Math.round(cap),
  demand: Math.round(dem),
- utilization: Math.round(util),
+ utilization: Math.round(util)
  };
  });
  }, [gapData, activePod, monthLabels, months]);
@@ -77,7 +77,7 @@ export default function PodCapacityPage() {
  avgUtil: Math.round(avgUtil),
  peakMonth: src[peakIdx]?.month ?? '',
  peakUtil: src[peakIdx]?.utilization ?? 0,
- gap: totalCap - totalDem,
+ gap: totalCap - totalDem
  };
  }, [podMonthData, visibleMonthData, activeMonth, hidePast]);
 
@@ -87,7 +87,7 @@ export default function PodCapacityPage() {
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>POD Capacity</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>POD Capacity</Title>
  <Text size="sm" c="dimmed">Per-POD capacity vs demand detail — select a POD to drill in</Text>
  </div>
  </Group>
@@ -155,6 +155,7 @@ export default function PodCapacityPage() {
  <Text size="xs" c="dimmed" mb="sm">
  Total hours per month{activeMonth ? ` — ${visibleMonthData.find(d => d.monthIndex === activeMonth)?.month ?? ''} highlighted` : ''}
  </Text>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={280}>
  <BarChart data={visibleMonthData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -188,12 +189,14 @@ export default function PodCapacityPage() {
  )}
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
 
  <ChartCard title={`Utilization % — ${activePod}`} minHeight={300}>
  <ExportableChart title={`Utilization - ${activePod}`}>
  <Text size="xs" c="dimmed" mb="sm">Demand / capacity per month</Text>
+ <div role="img" aria-label="Line chart">
  <ResponsiveContainer width="100%" height={280}>
  <LineChart data={visibleMonthData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
  <CartesianGrid strokeDasharray="3 3" />
@@ -223,6 +226,7 @@ export default function PodCapacityPage() {
  />
  </LineChart>
  </ResponsiveContainer>
+ </div>
  </ExportableChart>
  </ChartCard>
  </SimpleGrid>
@@ -251,8 +255,7 @@ export default function PodCapacityPage() {
  style={{
  cursor: 'pointer',
  outline: isSpotlit ? '2px solid #0C2340' : undefined,
- ...(d.monthIndex < currentMonthIndex && !isSpotlit ? { opacity: 0.5 } : {}),
- }}
+ ...(d.monthIndex < currentMonthIndex && !isSpotlit ? { opacity: 0.5 } : {})}}
  onClick={() => setMonthFilter(prev => prev === String(d.monthIndex) ? null : String(d.monthIndex))}
  >
  <Table.Td fw={isSpotlit ? 700 : 500}>

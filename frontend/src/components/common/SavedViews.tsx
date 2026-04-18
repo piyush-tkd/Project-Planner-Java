@@ -3,7 +3,7 @@ import {
   Menu, Button, ActionIcon, Popover, TextInput, Group, Stack, Text, Badge, UnstyledButton,
   Tooltip,
 } from '@mantine/core';
-import { IconBookmark, IconX, IconPlus, IconStar, IconStarFilled } from '@tabler/icons-react';
+import { IconBookmark, IconX, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { AQUA, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
 
 export interface SavedView {
@@ -140,7 +140,6 @@ export default function SavedViews({
             borderRadius: 20,
             fontSize: 12,
             fontWeight: 500,
-            fontFamily: FONT_FAMILY,
             background: activeViewId === null ? AQUA : 'transparent',
             color: activeViewId === null ? '#fff' : 'var(--mantine-color-dimmed)',
             border: `1px solid ${activeViewId === null ? AQUA : 'var(--mantine-color-default-border)'}`,
@@ -163,7 +162,6 @@ export default function SavedViews({
                   borderRadius: 20,
                   fontSize: 12,
                   fontWeight: 500,
-                  fontFamily: FONT_FAMILY,
                   background: isActive ? AQUA : 'transparent',
                   color: isActive ? '#fff' : 'inherit',
                   border: `1px solid ${isActive ? AQUA : 'var(--mantine-color-default-border)'}`,
@@ -222,6 +220,7 @@ export default function SavedViews({
                   <ActionIcon
                     size="xs" color="red" variant="subtle"
                     onClick={e => handleDeleteView(view.id, e)}
+                    aria-label="Close"
                   >
                     <IconX size={14} />
                   </ActionIcon>

@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
 import {
  Title, Text, Paper, Group, Stack, Badge, Button, TextInput,
- NumberInput, Switch, Select, Divider, Alert, Loader, SimpleGrid,
- ThemeIcon, ActionIcon, Tooltip, PasswordInput, rem,
+ NumberInput, Switch, Select, Alert, SimpleGrid,
+ ThemeIcon, ActionIcon, PasswordInput,
 } from '@mantine/core';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
- IconBrain, IconRefresh, IconCheck, IconX, IconAlertCircle,
- IconGripVertical, IconPlus, IconTrash, IconTestPipe, IconSettings,
+ IconBrain, IconCheck, IconX, IconAlertCircle,
+ IconTrash, IconTestPipe, IconSettings,
  IconCloud, IconServer, IconRobot,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
  useNlpConfig, useUpdateNlpConfig, useTestNlpConnection,
- NlpConfigResponse, NlpConfigRequest,
+ NlpConfigRequest,
 } from '../../api/nlp';
-import { FONT_FAMILY } from '../../brandTokens';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -87,7 +86,7 @@ export default function NlpSettingsPage() {
  maxTimeoutMs,
  };
  updateConfig.mutate(req, {
- onSuccess: (res) => {
+ onSuccess: (_res) => {
  notifications.show({ title: 'Saved', message: 'NLP configuration updated.', color: 'green' });
  setDirty(false);
  refetch();
@@ -100,7 +99,7 @@ export default function NlpSettingsPage() {
 
  const handleTestConnection = () => {
  testConnection.mutate(undefined, {
- onSuccess: (res) => {
+ onSuccess: (_res) => {
  refetch();
  notifications.show({ title: 'Test complete', message: 'Strategy statuses refreshed.', color: 'blue' });
  },
@@ -144,7 +143,7 @@ export default function NlpSettingsPage() {
  <IconBrain size={22} />
  </ThemeIcon>
  <div>
- <Title order={3} style={{ fontFamily: FONT_FAMILY }}>NLP Settings</Title>
+ <Title order={3}>NLP Settings</Title>
  <Text size="xs" c="dimmed">Configure the strategy chain, LLM providers, and caching</Text>
  </div>
  </Group>
@@ -174,7 +173,7 @@ export default function NlpSettingsPage() {
  <Paper p="md" radius="md" withBorder>
  <Group justify="space-between" mb="sm">
  <div>
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Strategy Chain</Text>
+ <Text fw={600} size="sm">Strategy Chain</Text>
  <Text size="xs" c="dimmed">
  Strategies are tried in order. The first to return confidence ≥ threshold wins.
  </Text>
@@ -200,10 +199,14 @@ export default function NlpSettingsPage() {
  <Group justify="space-between" wrap="nowrap">
  <Group gap="sm" wrap="nowrap">
  <Group gap={2}>
- <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 'up')} disabled={idx === 0}>
+ <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 'up')} disabled={idx === 0}
+      aria-label="Action"
+    >
  <Text size="xs">↑</Text>
  </ActionIcon>
- <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 'down')} disabled={idx === chain.length - 1}>
+ <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 'down')} disabled={idx === chain.length - 1}
+      aria-label="Action"
+    >
  <Text size="xs">↓</Text>
  </ActionIcon>
  </Group>
@@ -227,7 +230,9 @@ export default function NlpSettingsPage() {
  {status.message ?? (status.available ? 'Connected' : 'Unavailable')}
  </Badge>
  )}
- <ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeStrategy(idx)} disabled={chain.length <= 1}>
+ <ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeStrategy(idx)} disabled={chain.length <= 1}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Group>
@@ -254,7 +259,7 @@ export default function NlpSettingsPage() {
  <Paper p="md" radius="md" withBorder>
  <Group gap="xs" mb="sm">
  <IconServer size={18} />
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Local LLM (Ollama)</Text>
+ <Text fw={600} size="sm">Local LLM (Ollama)</Text>
  </Group>
  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
  <TextInput
@@ -291,7 +296,7 @@ export default function NlpSettingsPage() {
  <Paper p="md" radius="md" withBorder>
  <Group gap="xs" mb="xs">
  <IconCloud size={18} />
- <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Cloud LLM — Org-Level Key</Text>
+ <Text fw={600} size="sm">Cloud LLM — Org-Level Key</Text>
  <Badge size="xs" color="teal" variant="light">Shared with all users</Badge>
  </Group>
  <Text size="xs" c="dimmed" mb="sm">
@@ -332,7 +337,7 @@ export default function NlpSettingsPage() {
 
  {/* ── Cache & Logging ── */}
  <Paper p="md" radius="md" withBorder>
- <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY }}>Cache & Logging</Text>
+ <Text fw={600} size="sm" mb="sm">Cache & Logging</Text>
  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
  <Switch
  label="Enable response cache"

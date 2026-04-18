@@ -266,7 +266,8 @@ export default function SidebarOrderPage() {
  size="sm"
  disabled={gi === 0}
  onClick={(e) => { e.stopPropagation(); handleMoveGroup(gi, -1); }}
- >
+ aria-label="Move up"
+>
  <IconArrowUp size={14} />
  </ActionIcon>
  </Tooltip>
@@ -276,7 +277,8 @@ export default function SidebarOrderPage() {
  size="sm"
  disabled={gi === groups.length - 1}
  onClick={(e) => { e.stopPropagation(); handleMoveGroup(gi, 1); }}
- >
+ aria-label="Move down"
+>
  <IconArrowDown size={14} />
  </ActionIcon>
  </Tooltip>
@@ -308,7 +310,8 @@ export default function SidebarOrderPage() {
  size="xs"
  disabled={ii === 0}
  onClick={() => handleMoveItem(group.label, ii, -1)}
- >
+ aria-label="Move up"
+>
  <IconArrowUp size={12} />
  </ActionIcon>
  </Tooltip>
@@ -318,7 +321,8 @@ export default function SidebarOrderPage() {
  size="xs"
  disabled={ii === group.items.length - 1}
  onClick={() => handleMoveItem(group.label, ii, 1)}
- >
+ aria-label="Move down"
+>
  <IconArrowDown size={12} />
  </ActionIcon>
  </Tooltip>

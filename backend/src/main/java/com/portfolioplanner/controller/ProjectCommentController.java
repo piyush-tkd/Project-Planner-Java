@@ -1,17 +1,14 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.domain.model.ProjectComment;
-import com.portfolioplanner.domain.repository.ProjectCommentRepository;
 import com.portfolioplanner.dto.ProjectCommentDto;
+import com.portfolioplanner.service.ProjectCommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
@@ -28,16 +25,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("isAuthenticated()")
 public class ProjectCommentController {
 
-    private final ProjectCommentRepository repo;
+    private final ProjectCommentService projectCommentService;
 
     // ── GET list ──────────────────────────────────────────────────────────────
 
     @GetMapping
     public List<ProjectCommentDto> list(@PathVariable Long projectId) {
-        List<ProjectComment> roots = repo.findByProjectIdAndParentIdIsNullOrderByCreatedAtDesc(projectId);
-        return roots.stream()
-                .map(c -> toDto(c, true))
-                .collect(Collectors.toList());
+        return projectCommentService.listForProject(projectId);
     }
 
     // ── POST create ───────────────────────────────────────────────────────────
@@ -47,16 +41,8 @@ public class ProjectCommentController {
             @PathVariable Long projectId,
             @RequestBody ProjectCommentDto.Request req,
             Authentication auth) {
-
-        String author = auth != null ? auth.getName() : "anonymous";
-
-        ProjectComment comment = new ProjectComment();
-        comment.setProjectId(projectId);
-        comment.setParentId(req.getParentId());
-        comment.setAuthor(author);
-        comment.setBody(req.getBody() == null ? "" : req.getBody().trim());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(repo.save(comment), false));
+        ProjectCommentDto dto = projectCommentService.create(projectId, req, auth != null ? auth.getName() : "anonymous");
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     // ── PUT edit ──────────────────────────────────────────────────────────────
@@ -67,17 +53,7 @@ public class ProjectCommentController {
             @PathVariable Long id,
             @RequestBody ProjectCommentDto.Request req,
             Authentication auth) {
-
-        ProjectComment comment = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
-
-        if (!comment.getProjectId().equals(projectId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment does not belong to this project");
-        }
-
-        comment.setBody(req.getBody() == null ? "" : req.getBody().trim());
-        // @PreUpdate on entity sets edited=true and updatedAt automatically
-        return toDto(repo.save(comment), false);
+        return projectCommentService.edit(projectId, id, req);
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────────
@@ -86,38 +62,8 @@ public class ProjectCommentController {
     public ResponseEntity<Void> delete(
             @PathVariable Long projectId,
             @PathVariable Long id) {
-
-        ProjectComment comment = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
-
-        if (!comment.getProjectId().equals(projectId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment does not belong to this project");
-        }
-
-        repo.delete(comment);
+        projectCommentService.delete(projectId, id);
         return ResponseEntity.noContent().build();
     }
 
-    // ── Mapping ───────────────────────────────────────────────────────────────
-
-    private ProjectCommentDto toDto(ProjectComment c, boolean includeReplies) {
-        List<ProjectCommentDto> replies = null;
-        if (includeReplies && c.getParentId() == null) {
-            replies = repo.findByParentIdOrderByCreatedAtAsc(c.getId())
-                    .stream()
-                    .map(r -> toDto(r, false))
-                    .collect(Collectors.toList());
-        }
-        return new ProjectCommentDto(
-                c.getId(),
-                c.getProjectId(),
-                c.getParentId(),
-                c.getAuthor(),
-                c.getBody(),
-                c.isEdited(),
-                c.getCreatedAt(),
-                c.getUpdatedAt(),
-                replies
-        );
-    }
 }

@@ -1,5 +1,5 @@
 import { Center, Stack, Text } from '@mantine/core';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { AQUA, AQUA_TINTS, DEEP_BLUE, GRAY_100 } from '../../brandTokens';
 
 /* ── Inject keyframes once via <style> ─────────────────────────────── */
 const STYLE_ID = 'bg-loader-keyframes';
@@ -46,7 +46,7 @@ function DotLoader({ size = 10 }: { size?: number }) {
             borderRadius: '50%',
             backgroundColor: color,
             animation: 'bg-pulse 1.4s ease-in-out infinite',
-            animationDelay: `${i * 0.16}s`,
+            animationDelay: `${i * 0.16}s`
           }}
         />
       ))}
@@ -65,7 +65,7 @@ function RingLoader({ size = 40 }: { size?: number }) {
         border: `3px solid ${AQUA_LIGHT}`,
         borderTopColor: AQUA,
         borderRightColor: DEEP_BLUE,
-        animation: 'bg-rotate 0.9s linear infinite',
+        animation: 'bg-rotate 0.9s linear infinite'
       }}
     />
   );
@@ -81,7 +81,7 @@ function SkeletonBar({ width = '100%', height = 14 }: { width?: string | number;
         borderRadius: 6,
         background: `linear-gradient(90deg, ${AQUA_LIGHT} 25%, #f0fafa 50%, ${AQUA_LIGHT} 75%)`,
         backgroundSize: '200% 100%',
-        animation: 'bg-shimmer 1.6s ease-in-out infinite',
+        animation: 'bg-shimmer 1.6s ease-in-out infinite'
       }}
     />
   );
@@ -122,7 +122,7 @@ function CardsSkeleton({ count = 4 }: { count?: number }) {
             padding: 16,
             display: 'flex',
             flexDirection: 'column',
-            gap: 10,
+            gap: 10
           }}
         >
           <SkeletonBar width="50%" height={10} />
@@ -247,7 +247,7 @@ export default function LoadingSpinner({ variant = 'default', message, inline }:
         <RingLoader size={44} />
         <DotLoader />
         {message && (
-          <Text size="sm" c="dimmed" ta="center" style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="sm" c="dimmed" ta="center">
             {message}
           </Text>
         )}

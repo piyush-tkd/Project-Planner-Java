@@ -11,7 +11,7 @@ import MonthHeader from '../../components/common/MonthHeader';
 import SortableHeader from '../../components/common/SortableHeader';
 import { useTableSort } from '../../hooks/useTableSort';
 import { formatRole } from '../../types';
-import { DEEP_BLUE, FONT_FAMILY, SURFACE_SUBTLE } from '../../brandTokens';
+import { DEEP_BLUE, SURFACE_SUBTLE } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 
@@ -100,7 +100,7 @@ export default function ResourceAllocationPage() {
  return (
  <Stack className="page-enter stagger-children">
  <Group className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Resource Allocation</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Resource Allocation</Title>
  </Group>
 
  <Group gap="sm" align="flex-end" wrap="wrap" className="stagger-children">
@@ -190,8 +190,7 @@ export default function ResourceAllocationPage() {
  textAlign: 'center',
  ...(m < currentMonthIndex
  ? { opacity: 0.5, backgroundColor: pastBg }
- : { backgroundColor: util > 0 ? getUtilizationBgColor(util, dark) : undefined }),
- }}
+ : { backgroundColor: util > 0 ? getUtilizationBgColor(util, dark) : undefined })}}
  >
  <Text size="xs">{util > 0 ? formatPercent(util) : '-'}</Text>
  </Table.Td>

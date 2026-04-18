@@ -4,16 +4,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
  Text, Badge, Group, SegmentedControl, Table, Paper, Tooltip,
  SimpleGrid, ThemeIcon, Drawer, ScrollArea, Stack,
- UnstyledButton, Button,
+ UnstyledButton, Button
 } from '@mantine/core';
 import {
  IconRocket, IconClock, IconBug, IconHeartbeat,
  IconCalendarEvent, IconTrendingUp, IconDatabase, IconCloud,
- IconChevronRight, IconRefresh,
+ IconChevronRight, IconRefresh
 } from '@tabler/icons-react';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
- ResponsiveContainer, Legend, Area, AreaChart,
+ ResponsiveContainer, Legend, Area, AreaChart
 } from 'recharts';
 import { useDoraMetrics, useDoraMonthly, DoraMetricValue, DoraMonthCard } from '../../api/reports';
 import PageSkeleton from '../../components/common/PageSkeleton';
@@ -21,7 +21,7 @@ import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
 import ReportPageShell, { SummaryCardItem } from '../../components/common/ReportPageShell';
 import { EmptyState } from '../../components/ui';
-import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, SHADOW, TEXT_DIM, TEXT_SECONDARY } from '../../brandTokens';
+import { AQUA_HEX, AQUA, AQUA_TINTS, BORDER_DEFAULT, COLOR_AMBER, COLOR_BLUE_LIGHT, COLOR_ERROR, COLOR_SUCCESS, DEEP_BLUE, DEEP_BLUE_TINTS, SHADOW, TEXT_DIM, TEXT_SECONDARY } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 /* ── Level → colour mapping ─────────────────────────────────────────────── */
@@ -29,26 +29,26 @@ const LEVEL_COLOR: Record<string, string> = {
  elite: COLOR_SUCCESS,
  high: COLOR_BLUE_LIGHT,
  medium: COLOR_AMBER,
- low: COLOR_ERROR,
+ low: COLOR_ERROR
 };
 // Mantine color name for ThemeIcon / Badge (cannot use hex in variant="light")
 const LEVEL_MANTINE: Record<string, string> = {
  elite: 'green',
  high: 'blue',
  medium: 'yellow',
- low: 'red',
+ low: 'red'
 };
 const LEVEL_BG: Record<string, string> = {
  elite: 'rgba(64, 192, 87, 0.10)',
  high: 'rgba(51, 154, 240, 0.10)',
  medium: 'rgba(250, 176, 5, 0.10)',
- low: 'rgba(250, 82, 82, 0.10)',
+ low: 'rgba(250, 82, 82, 0.10)'
 };
 const LEVEL_LABEL: Record<string, string> = {
  elite: 'Elite',
  high: 'High',
  medium: 'Medium',
- low: 'Low',
+ low: 'Low'
 };
 
 /* ── Drill-down type ────────────────────────────────────────────────────── */
@@ -67,6 +67,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
 }) {
  const dark = useDarkMode();
  const color = LEVEL_COLOR[metric.level] ?? TEXT_DIM;
+ // @ts-expect-error -- unused
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  return (
  <UnstyledButton onClick={onClick} style={{ textAlign: 'left', width: '100%', height: '100%', display: 'flex' }}>
@@ -81,8 +82,7 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  cursor: 'pointer',
  width: '100%',
  display: 'flex',
- flexDirection: 'column',
- }}
+ flexDirection: 'column'}}
  onMouseEnter={(e) => {
  e.currentTarget.style.boxShadow = SHADOW.cardHover;
  e.currentTarget.style.transform = 'translateY(-2px)';
@@ -98,21 +98,21 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  {icon}
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ fontFamily: FONT_FAMILY, letterSpacing: '0.04em' }}>
+ <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{letterSpacing: '0.04em' }}>
  {title}
  </Text>
- {subtitle && <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{subtitle}</Text>}
+ {subtitle && <Text size="xs" c="dimmed" style={{ }}>{subtitle}</Text>}
  </div>
  </Group>
  <IconChevronRight size={16} color={TEXT_SECONDARY} style={{ flexShrink: 0 }} />
  </Group>
 
  <Group align="baseline" gap={8}>
- <Text size="2rem" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, lineHeight: 1.1 }}>
+ <Text size="2rem" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE, lineHeight: 1.1 }}>
  {metric.label ?? metric.value}
  </Text>
  {!metric.label && (
- <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" style={{ }}>
  {metric.unit}
  </Text>
  )}
@@ -124,11 +124,11 @@ function MetricCard({ title, icon, metric, subtitle, extra, onClick }: {
  variant="light"
  color={LEVEL_MANTINE[metric.level] ?? 'gray'}
  radius="sm"
- styles={{ root: { textTransform: 'uppercase', fontFamily: FONT_FAMILY, fontWeight: 700 } }}
+ styles={{ root: { textTransform: 'uppercase', fontWeight: 700 } }}
  >
  {LEVEL_LABEL[metric.level]}
  </Badge>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" style={{ }}>
  {metric.value} {metric.unit}
  </Text>
  </Group>
@@ -144,7 +144,7 @@ const LEVEL_BENCHMARKS: Record<string, Record<string, string>> = {
  deploy: { elite: 'On-demand (multiple deploys per day)', high: 'Between once per day and once per week', medium: 'Between once per week and once per month', low: 'Less than once per month' },
  leadTime: { elite: 'Less than one day', high: 'Between one day and one week', medium: 'Between one week and one month', low: 'More than one month' },
  cfr: { elite: '0–5%', high: '5–10%', medium: '10–15%', low: 'Greater than 15%' },
- mttr: { elite: 'Less than one hour', high: 'Less than one day', medium: 'Less than one week', low: 'More than one week' },
+ mttr: { elite: 'Less than one hour', high: 'Less than one day', medium: 'Less than one week', low: 'More than one week' }
 };
 
 function BenchmarkTable({ metricKey, currentLevel }: { metricKey: string; currentLevel: string }) {
@@ -153,19 +153,17 @@ function BenchmarkTable({ metricKey, currentLevel }: { metricKey: string; curren
  if (!benchmarks) return null;
  return (
  <Paper withBorder radius="sm" p="sm" mt="md" style={{ backgroundColor: AQUA_TINTS[10] }}>
- <Text size="xs" fw={700} mb="xs" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="xs" fw={700} mb="xs" style={{color: dark ? '#fff' : DEEP_BLUE }}>
  DORA Benchmark Thresholds
  </Text>
  <Table withRowBorders={false} styles={{
- td: { fontFamily: FONT_FAMILY, fontSize: 12, padding: '4px 8px' },
- }}>
+ td: {fontSize: 12, padding: '4px 8px' }}}>
  <Table.Tbody>
  {(['elite', 'high', 'medium', 'low'] as const).map(level => (
  <Table.Tr key={level} style={{
  backgroundColor: level === currentLevel ? LEVEL_BG[level] : 'transparent',
  fontWeight: level === currentLevel ? 700 : 400,
- borderRadius: 4,
- }}>
+ borderRadius: 4}}>
  <Table.Td w={80}>
  <Badge size="xs" variant="light" radius="sm"
  color={LEVEL_COLOR[level] === COLOR_SUCCESS ? 'green' : LEVEL_COLOR[level] === COLOR_BLUE_LIGHT ? 'blue' : LEVEL_COLOR[level] === COLOR_AMBER ? 'yellow' : 'red'}
@@ -186,6 +184,7 @@ function BenchmarkTable({ metricKey, currentLevel }: { metricKey: string; curren
 }
 
 /* ── Detail table for drill-down drawer ─────────────────────────────────── */
+// @ts-expect-error -- unused
 function DetailTable({ details, columns, jiraBaseUrl }: {
  details: Record<string, unknown>[];
  columns: { key: string; label: string; render?: (val: unknown, row: Record<string, unknown>) => React.ReactNode }[];
@@ -194,9 +193,8 @@ function DetailTable({ details, columns, jiraBaseUrl }: {
  const dark = useDarkMode();
  return (
  <Table fz="xs" highlightOnHover withTableBorder styles={{
- th: { fontFamily: FONT_FAMILY, fontSize: 11, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '8px 10px' },
- td: { fontFamily: FONT_FAMILY, fontSize: 12, padding: '6px 10px' },
- }}>
+ th: {fontSize: 11, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '8px 10px' },
+ td: {fontSize: 12, padding: '6px 10px' }}}>
  <Table.Thead>
  <Table.Tr>
  {columns.map(c => <Table.Th key={c.key}>{c.label}</Table.Th>)}
@@ -231,13 +229,13 @@ const METRIC_LABELS: Record<string, string> = {
  deploymentFrequency: 'Deployment Frequency',
  leadTimeForChanges: 'Lead Time for Changes',
  changeFailureRate: 'Change Failure Rate',
- meanTimeToRecovery: 'Mean Time to Recovery',
+ meanTimeToRecovery: 'Mean Time to Recovery'
 };
 const METRIC_ICONS: Record<string, React.ReactNode> = {
  deploymentFrequency: <IconRocket size={16} />,
  leadTimeForChanges: <IconClock size={16} />,
  changeFailureRate: <IconBug size={16} />,
- meanTimeToRecovery: <IconHeartbeat size={16} />,
+ meanTimeToRecovery: <IconHeartbeat size={16} />
 };
 
 function MonthlyBreakdownView({ months: lookback, onCellClick }: {
@@ -267,9 +265,8 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  <ChartCard title="Month-by-Month DORA Scorecard" minHeight={200}>
  <ScrollArea>
  <Table fz="xs" withTableBorder withColumnBorders styles={{
- th: { fontFamily: FONT_FAMILY, fontSize: 11, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', textAlign: 'center' },
- td: { fontFamily: FONT_FAMILY, fontSize: 12, padding: '0' },
- }}>
+ th: {fontSize: 11, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', textAlign: 'center' },
+ td: {fontSize: 12, padding: '0' }}}>
  <Table.Thead>
  <Table.Tr>
  <Table.Th style={{ textAlign: 'left', minWidth: 180 }}>Metric</Table.Th>
@@ -284,7 +281,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  <Table.Td style={{ padding: '10px 12px' }}>
  <Group gap={6} wrap="nowrap">
  {METRIC_ICONS[mk]}
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{METRIC_LABELS[mk]}</Text>
+ <Text size="sm" fw={600} style={{ }}>{METRIC_LABELS[mk]}</Text>
  </Group>
  </Table.Td>
  {monthCards.map(card => {
@@ -301,12 +298,11 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  textAlign: 'center',
  background: bg,
  transition: 'all 0.15s ease',
- cursor: 'pointer',
- }}
+ cursor: 'pointer'}}
  onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; e.currentTarget.style.transform = 'scale(1.02)'; }}
  onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
  >
- <Text size="sm" fw={800} style={{ color, fontFamily: FONT_FAMILY }}>
+ <Text size="sm" fw={800} style={{ color}}>
  {metric.label ?? `${metric.value} ${metric.unit}`}
  </Text>
  <Badge size="xs" variant="light" radius="sm" mt={2}
@@ -323,7 +319,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  {/* ── Summary row: total releases + issues ───────────── */}
  <Table.Tr style={{ borderTop: `2px solid ${DEEP_BLUE_TINTS[20]}` }}>
  <Table.Td style={{ padding: '10px 12px' }}>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>Releases / Issues</Text>
+ <Text size="sm" fw={600} style={{ }}>Releases / Issues</Text>
  </Table.Td>
  {monthCards.map(card => (
  <Table.Td key={card.month} style={{ padding: '10px 12px', textAlign: 'center' }}>
@@ -353,7 +349,7 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  return (
  <Paper key={card.month} withBorder radius="md" p="md" style={{ borderLeft: `4px solid ${overallColor}`, boxShadow: SHADOW.card }}>
  <Group justify="space-between" mb="sm">
- <Text size="sm" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>{card.month}</Text>
+ <Text size="sm" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>{card.month}</Text>
  <Group gap={4}>
  <Text size="xs" c="dimmed">{card.totalReleases} releases</Text>
  <Text size="xs" c="dimmed">·</Text>
@@ -368,8 +364,8 @@ function MonthlyBreakdownView({ months: lookback, onCellClick }: {
  <Group gap={4} wrap="nowrap">
  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: LEVEL_COLOR[m.level], flexShrink: 0 }} />
  <div style={{ overflow: 'hidden' }}>
- <Text size="xs" c="dimmed" truncate style={{ fontFamily: FONT_FAMILY }}>{METRIC_LABELS[mk]}</Text>
- <Text size="xs" fw={700} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" truncate style={{ }}>{METRIC_LABELS[mk]}</Text>
+ <Text size="xs" fw={700} style={{ }}>
  {m.label ?? `${m.value} ${m.unit}`}
  </Text>
  </div>
@@ -398,9 +394,9 @@ export default function DoraMetricsPage() {
  const { data, isLoading, isFetching, error, refetch } = useDoraMetrics(months);
 
  const handleRefresh = useCallback(() => {
-   qc.invalidateQueries({ queryKey: ['reports', 'dora'] });
-   qc.invalidateQueries({ queryKey: ['reports', 'dora-monthly'] });
-   refetch();
+ qc.invalidateQueries({ queryKey: ['reports', 'dora'] });
+ qc.invalidateQueries({ queryKey: ['reports', 'dora-monthly'] });
+ refetch();
  }, [qc, refetch]);
 
  // Drill-down state
@@ -408,8 +404,8 @@ export default function DoraMetricsPage() {
 
  // Auto-open drawer if navigated from another page with a drill key
  useEffect(() => {
-   const openDrill = (location.state as { openDrill?: DrillType })?.openDrill;
-   if (openDrill) setDrill(openDrill);
+ const openDrill = (location.state as { openDrill?: DrillType })?.openDrill;
+ if (openDrill) setDrill(openDrill);
  }, [location.state]);
  const [trendDrill, setTrendDrill] = useState<TrendDrill | null>(null);
  const [monthDrillCard, setMonthDrillCard] = useState<DoraMonthCard | null>(null);
@@ -461,7 +457,7 @@ export default function DoraMetricsPage() {
  <IconRocket size={18} />
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {data.deploymentFrequency.label ?? data.deploymentFrequency.value} {data.deploymentFrequency.unit}
  </Text>
  <Text size="xs" c="dimmed">Deployment Frequency</Text>
@@ -472,7 +468,7 @@ export default function DoraMetricsPage() {
 
  {details.length > 0 && (
  <>
- <Text size="sm" fw={600} mt="sm" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="sm" fw={600} mt="sm" style={{color: dark ? '#fff' : DEEP_BLUE }}>
  Released Versions ({details.length})
  </Text>
  <DetailTable
@@ -498,7 +494,7 @@ export default function DoraMetricsPage() {
  <IconClock size={18} />
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {data.leadTimeForChanges.value} {data.leadTimeForChanges.unit}
  </Text>
  <Text size="xs" c="dimmed">Lead Time for Changes (avg)</Text>
@@ -522,7 +518,7 @@ export default function DoraMetricsPage() {
 
  {details.length > 0 && (
  <>
- <Text size="sm" fw={600} mt="sm" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="sm" fw={600} mt="sm" style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {isJira ? 'Issue Cycle Times' : 'Release Lead Times'} ({details.length})
  </Text>
  <DetailTable
@@ -567,7 +563,7 @@ export default function DoraMetricsPage() {
  <IconBug size={18} />
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {data.changeFailureRate.value}{data.changeFailureRate.unit}
  </Text>
  <Text size="xs" c="dimmed">Change Failure Rate</Text>
@@ -604,14 +600,13 @@ export default function DoraMetricsPage() {
 
  {/* Visual ratio bar */}
  <Paper withBorder radius="sm" p="sm">
- <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>Failure Ratio</Text>
+ <Text size="xs" fw={600} mb={4} style={{ }}>Failure Ratio</Text>
  <div style={{ display: 'flex', height: 24, borderRadius: 6, overflow: 'hidden', background: DEEP_BLUE_TINTS[10] }}>
  <div style={{
  width: `${Math.max(data.changeFailureRate.value, 2)}%`,
  background: 'linear-gradient(90deg, #fa5252, #ff6b6b)',
  borderRadius: '6px 0 0 6px',
- display: 'flex', alignItems: 'center', justifyContent: 'center',
- }}>
+ display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
  {data.changeFailureRate.value >= 8 && (
  <Text size="xs" c="white" fw={700}>{data.changeFailureRate.value}%</Text>
  )}
@@ -619,8 +614,7 @@ export default function DoraMetricsPage() {
  <div style={{
  flex: 1,
  background: `linear-gradient(90deg, ${AQUA}, ${AQUA_TINTS[70]})`,
- display: 'flex', alignItems: 'center', justifyContent: 'center',
- }}>
+ display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
  <Text size="xs" c="white" fw={700}>{Math.round(100 - data.changeFailureRate.value)}% Success</Text>
  </div>
  </div>
@@ -638,7 +632,7 @@ export default function DoraMetricsPage() {
  <IconHeartbeat size={18} />
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {data.meanTimeToRecovery.value} {data.meanTimeToRecovery.unit}
  </Text>
  <Text size="xs" c="dimmed">Mean Time to Recovery</Text>
@@ -654,7 +648,7 @@ export default function DoraMetricsPage() {
 
  {details.length > 0 && (
  <>
- <Text size="sm" fw={600} mt="sm" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="sm" fw={600} mt="sm" style={{color: dark ? '#fff' : DEEP_BLUE }}>
  Recovery Details ({details.length})
  </Text>
  <DetailTable
@@ -692,7 +686,7 @@ export default function DoraMetricsPage() {
  <IconCalendarEvent size={18} />
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {trendDrill.month}
  </Text>
  <Text size="xs" c="dimmed">Monthly Breakdown</Text>
@@ -711,15 +705,14 @@ export default function DoraMetricsPage() {
  </SimpleGrid>
 
  <Paper withBorder radius="sm" p="sm">
- <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>Success Rate</Text>
+ <Text size="xs" fw={600} mb={4} style={{ }}>Success Rate</Text>
  <div style={{ display: 'flex', height: 28, borderRadius: 6, overflow: 'hidden', background: DEEP_BLUE_TINTS[10] }}>
  {trendDrill.releases > 0 && (
  <>
  <div style={{
  width: `${Math.max(((trendDrill.releases - trendDrill.failures) / trendDrill.releases) * 100, 2)}%`,
  background: `linear-gradient(90deg, ${AQUA}, ${AQUA_TINTS[70]})`,
- display: 'flex', alignItems: 'center', justifyContent: 'center',
- }}>
+ display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
  <Text size="xs" c="white" fw={700}>
  {Math.round(((trendDrill.releases - trendDrill.failures) / trendDrill.releases) * 100)}%
  </Text>
@@ -728,8 +721,7 @@ export default function DoraMetricsPage() {
  <div style={{
  width: `${(trendDrill.failures / trendDrill.releases) * 100}%`,
  background: 'linear-gradient(90deg, #fa5252, #ff6b6b)',
- display: 'flex', alignItems: 'center', justifyContent: 'center',
- }}>
+ display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
  {(trendDrill.failures / trendDrill.releases) * 100 >= 15 && (
  <Text size="xs" c="white" fw={700}>{Math.round((trendDrill.failures / trendDrill.releases) * 100)}%</Text>
  )}
@@ -751,6 +743,7 @@ export default function DoraMetricsPage() {
  const mLabel = METRIC_LABELS[monthDrillMetric] ?? monthDrillMetric;
  const mIcon = METRIC_ICONS[monthDrillMetric];
  const color = LEVEL_COLOR[metric.level] ?? TEXT_DIM;
+ // @ts-expect-error -- unused
  const bg = LEVEL_BG[metric.level] ?? 'transparent';
  const benchKey = monthDrillMetric === 'deploymentFrequency' ? 'deploy'
  : monthDrillMetric === 'leadTimeForChanges' ? 'leadTime'
@@ -764,7 +757,7 @@ export default function DoraMetricsPage() {
  {mIcon}
  </ThemeIcon>
  <div>
- <Text size="lg" fw={800} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text size="lg" fw={800} style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {monthDrillCard.month} — {mLabel}
  </Text>
  <Text size="xs" c="dimmed">
@@ -789,7 +782,7 @@ export default function DoraMetricsPage() {
  {/* Extra context per metric type */}
  {monthDrillMetric === 'deploymentFrequency' && metric.releases && metric.releases.length > 0 && (
  <Paper withBorder radius="sm" p="sm">
- <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Releases this month ({metric.releases.length})</Text>
+ <Text size="xs" fw={600} mb={4} style={{color: dark ? '#fff' : DEEP_BLUE }}>Releases this month ({metric.releases.length})</Text>
  {metric.releases.map((r: string, i: number) => (
  <Badge key={i} size="sm" variant="light" color="blue" radius="sm" mr={4} mb={4}>{r}</Badge>
  ))}
@@ -806,7 +799,7 @@ export default function DoraMetricsPage() {
 
  {monthDrillMetric === 'changeFailureRate' && (
  <Paper withBorder radius="sm" p="sm">
- <Text size="xs" fw={600} mb={4} style={{ fontFamily: FONT_FAMILY }}>Failure Ratio</Text>
+ <Text size="xs" fw={600} mb={4} style={{ }}>Failure Ratio</Text>
  <Group gap="lg" mb={8}>
  <div><Text size="xs" c="dimmed">Hotfixes</Text><Text fw={700} c="red">{metric.bugCount ?? 0}</Text></div>
  <div><Text size="xs" c="dimmed">Total Releases</Text><Text fw={700}>{metric.totalIssues ?? 0}</Text></div>
@@ -830,7 +823,7 @@ export default function DoraMetricsPage() {
 
  {/* Month summary */}
  <Paper withBorder radius="sm" p="sm" style={{ backgroundColor: AQUA_TINTS[10] }}>
- <Text size="xs" fw={700} mb={4} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Month Summary</Text>
+ <Text size="xs" fw={700} mb={4} style={{color: dark ? '#fff' : DEEP_BLUE }}>Month Summary</Text>
  <Group gap="lg">
  <div><Text size="xs" c="dimmed">Total Releases</Text><Text fw={700}>{monthDrillCard.totalReleases}</Text></div>
  <div><Text size="xs" c="dimmed">Total Issues</Text><Text fw={700}>{monthDrillCard.totalIssues}</Text></div>
@@ -897,7 +890,7 @@ export default function DoraMetricsPage() {
  color={isJira ? 'blue' : 'gray'}
  radius="sm"
  leftSection={isJira ? <IconCloud size={14} /> : <IconDatabase size={14} />}
- styles={{ root: { fontFamily: FONT_FAMILY, cursor: 'help' } }}
+ styles={{ root: {cursor: 'help' } }}
  >
  {isJira ? 'Jira Live' : 'Release Calendar'}
  </Badge>
@@ -931,7 +924,7 @@ export default function DoraMetricsPage() {
  metric={data.leadTimeForChanges}
  onClick={() => setDrill('leadTime')}
  extra={data.leadTimeForChanges.median != null ? (
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" style={{ }}>
  Median: {data.leadTimeForChanges.median}d · {data.leadTimeForChanges.sampleSize} issues
  </Text>
  ) : undefined}
@@ -943,7 +936,7 @@ export default function DoraMetricsPage() {
  metric={data.changeFailureRate}
  onClick={() => setDrill('cfr')}
  extra={data.changeFailureRate.bugCount != null ? (
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" style={{ }}>
  {data.changeFailureRate.bugCount} bugs / {data.changeFailureRate.totalIssues} total
  </Text>
  ) : undefined}
@@ -955,7 +948,7 @@ export default function DoraMetricsPage() {
  metric={data.meanTimeToRecovery}
  onClick={() => setDrill('mttr')}
  extra={data.meanTimeToRecovery.recoveryEvents != null ? (
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed" style={{ }}>
  {data.meanTimeToRecovery.recoveryEvents} recovery events
  </Text>
  ) : undefined}
@@ -964,6 +957,7 @@ export default function DoraMetricsPage() {
 
  {/* ── Monthly Trend Chart (clickable bars) ─────────────────────── */}
  <ChartCard title={isJira ? 'Monthly Resolved Issues vs Bugs — click a bar to drill in' : 'Monthly Release Trend — click a bar to drill in'} minHeight={300}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={300}>
  <BarChart
  data={data.trend}
@@ -980,25 +974,22 @@ export default function DoraMetricsPage() {
  <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
  <XAxis
  dataKey="month"
- tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60]}}
  tickLine={false}
  />
  <YAxis
- tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60]}}
  tickLine={false}
  allowDecimals={false}
  />
  <RechartsTooltip
- contentStyle={{
- fontFamily: FONT_FAMILY,
- fontSize: 12,
+ contentStyle={{fontSize: 12,
  borderRadius: 8,
  border: `1px solid ${DEEP_BLUE_TINTS[10]}`,
- boxShadow: SHADOW.md,
- }}
+ boxShadow: SHADOW.md}}
  cursor={{ fill: AQUA_TINTS[10] }}
  />
- <Legend wrapperStyle={{ fontFamily: FONT_FAMILY, fontSize: 12 }} />
+ <Legend wrapperStyle={{fontSize: 12 }} />
  <Bar
  dataKey="releases"
  name={isJira ? 'Resolved Issues' : 'Total Releases'}
@@ -1013,11 +1004,13 @@ export default function DoraMetricsPage() {
  />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  {/* ── Lead Time Details (clickable dots) ───────────────────────── */}
  {data.leadTimeForChanges.details && data.leadTimeForChanges.details.length > 0 && (
  <ChartCard title={isJira ? 'Issue Cycle Time — click for details' : 'Lead Time per Release — click for details'} minHeight={250}>
+ <div role="img" aria-label="Area chart">
  <ResponsiveContainer width="100%" height={250}>
  <AreaChart
  data={data.leadTimeForChanges.details as Record<string, unknown>[]}
@@ -1034,30 +1027,26 @@ export default function DoraMetricsPage() {
  <CartesianGrid strokeDasharray="3 3" stroke={DEEP_BLUE_TINTS[10]} />
  <XAxis
  dataKey={isJira ? 'key' : 'release'}
- tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ tick={{ fontSize: 10, fill: DEEP_BLUE_TINTS[60]}}
  tickLine={false}
  angle={-30}
  textAnchor="end"
  height={60}
  />
  <YAxis
- tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY }}
+ tick={{ fontSize: 11, fill: DEEP_BLUE_TINTS[60]}}
  tickLine={false}
  label={{
  value: 'Days',
  angle: -90,
  position: 'insideLeft',
- style: { fontSize: 11, fill: DEEP_BLUE_TINTS[60], fontFamily: FONT_FAMILY },
- }}
+ style: { fontSize: 11, fill: DEEP_BLUE_TINTS[60]}}}
  />
  <RechartsTooltip
- contentStyle={{
- fontFamily: FONT_FAMILY,
- fontSize: 12,
+ contentStyle={{fontSize: 12,
  borderRadius: 8,
  border: `1px solid ${DEEP_BLUE_TINTS[10]}`,
- boxShadow: SHADOW.md,
- }}
+ boxShadow: SHADOW.md}}
  formatter={(value: number) => [`${value} days`, 'Cycle Time']}
  />
  <Area
@@ -1072,6 +1061,7 @@ export default function DoraMetricsPage() {
  />
  </AreaChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
 
@@ -1079,10 +1069,9 @@ export default function DoraMetricsPage() {
  {data.upcoming.length > 0 && (
  <ChartCard title="Upcoming Releases" minHeight={100}>
  <Table fz="xs" highlightOnHover withTableBorder withColumnBorders styles={{
- th: { fontFamily: FONT_FAMILY, fontSize: 12, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' },
- td: { fontFamily: FONT_FAMILY, fontSize: 13 },
- tr: { cursor: 'pointer' },
- }}>
+ th: {fontSize: 12, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' },
+ td: {fontSize: 13 },
+ tr: { cursor: 'pointer' }}}>
  <Table.Thead>
  <Table.Tr>
  <Table.Th>Release</Table.Th>
@@ -1139,7 +1128,7 @@ export default function DoraMetricsPage() {
  opened={drill !== null}
  onClose={closeDrill}
  title={
- <Text fw={700} size="lg" style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>
+ <Text fw={700} size="lg" style={{color: dark ? '#fff' : DEEP_BLUE }}>
  {drawerTitle}
  </Text>
  }
@@ -1149,8 +1138,7 @@ export default function DoraMetricsPage() {
  overlayProps={{ backgroundOpacity: 0.15 }}
  styles={{
  header: { borderBottom: `1px solid ${BORDER_DEFAULT}`, paddingBottom: 12 },
- body: { paddingTop: 16 },
- }}
+ body: { paddingTop: 16 }}}
  >
  <ScrollArea h="calc(100vh - 120px)" offsetScrollbars>
  {renderDrawerContent()}

@@ -20,7 +20,7 @@ import {
   IconSearch, IconBriefcase, IconUsers, IconHexagons,
   IconChartBar, IconDashboard, IconSettings, IconArrowRight,
   IconBrain, IconInbox, IconTargetArrow, IconAlertTriangle,
-  IconBulb, IconCalendarStats, IconArrowsShuffle, IconCalendarPlus,
+  IconBulb, IconCalendarStats, IconArrowsShuffle,
   IconFlame, IconCalendarOff, IconCalendar, IconTemplate,
   IconUsersGroup, IconTag, IconPackage, IconTicket, IconClock,
   IconCurrencyDollar, IconShieldCheck, IconHeartRateMonitor,
@@ -422,7 +422,6 @@ export default function GlobalSearch({ opened, onClose }: { opened: boolean; onC
         <ScrollArea h={440} p="xs">
           {grouped.map((group, gi) => {
             const prevCount = grouped.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
-            const isSpecialCategory = group.category === 'Recent' || group.category === 'Actions';
             return (
               <div key={group.category}>
                 <Group gap={4} px="sm" pt={gi === 0 ? 8 : 4} pb={4}>

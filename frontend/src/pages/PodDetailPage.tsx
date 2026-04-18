@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Title, Text, Stack, Group, Card, Table, Badge, SimpleGrid,
   Tooltip, ScrollArea, Avatar, Button, Modal, TextInput, Alert,
-  ActionIcon,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { PPPageLayout } from '../components/pp';
@@ -21,18 +20,16 @@ import { useMonthLabels } from '../hooks/useMonthLabels';
 import { useTableSort } from '../hooks/useTableSort';
 import { formatRole } from '../types';
 import { deriveTshirtSize } from '../types/project';
-import { COLOR_BLUE_LIGHT, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_LIGHT, DEEP_BLUE, FONT_FAMILY } from '../brandTokens';
+import { COLOR_BLUE_LIGHT, COLOR_ORANGE, COLOR_SUCCESS, COLOR_VIOLET_LIGHT } from '../brandTokens';
 import SortableHeader from '../components/common/SortableHeader';
 import SummaryCard from '../components/charts/SummaryCard';
 import StatusBadge from '../components/common/StatusBadge';
 import PriorityBadge from '../components/common/PriorityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { useDarkMode } from '../hooks/useDarkMode';
 
 const FULL_TIME_HOURS = [176, 176, 168, 176, 176, 184, 168, 176, 176, 168, 184, 168];
 
 export default function PodDetailPage() {
-  const isDark = useDarkMode();
   const { id } = useParams<{ id: string }>();
   const podId = Number(id);
   const navigate = useNavigate();

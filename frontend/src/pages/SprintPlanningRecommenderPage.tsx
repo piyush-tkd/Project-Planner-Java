@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { notifications } from '@mantine/notifications';
 import {
- Title, Stack, Group, Select, Text, Badge, Box, SimpleGrid, Alert,
- Progress, ThemeIcon, Center, Loader, Paper, Tooltip,
+ Stack, Group, Select, Text, Badge, Box, SimpleGrid, Alert,
+ Progress, ThemeIcon, Center, Paper, Tooltip,
  Table, Anchor, Divider, Button, SegmentedControl, TextInput,
  NumberInput, Slider, Collapse, ActionIcon,
 } from '@mantine/core';
@@ -13,8 +13,8 @@ import {
  IconBrain, IconAlertTriangle, IconCheck, IconInfoCircle,
  IconChevronDown, IconChevronUp, IconExternalLink, IconTrendingUp,
  IconTrendingDown, IconEqual, IconRocket, IconBulb, IconTarget,
- IconArrowRight, IconSearch, IconSortAscending, IconSortDescending,
- IconFilter, IconSubtask, IconAdjustments, IconChartBar, IconDownload,
+ IconSearch,
+ IconFilter, IconAdjustments, IconChartBar, IconDownload,
 } from '@tabler/icons-react';
 
 // ── Scope Recommender types ───────────────────────────────────────────────────
@@ -38,9 +38,8 @@ import { useCapacityGap } from '../api/reports';
 import { useProjectPodMatrix } from '../api/projects';
 import { useTimeline } from '../api/timeline';
 import { useBauAssumptions } from '../api/pods';
-import { COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, FONT_FAMILY, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
-import type { SprintResponse } from '../types/project';
-import type { PodMonthGap, BauAssumptionResponse } from '../types';
+import { COLOR_BLUE, COLOR_BLUE_STRONG, COLOR_ERROR_DARK, COLOR_ERROR_STRONG, COLOR_GREEN, COLOR_ORANGE_ALT, COLOR_ORANGE_DEEP, COLOR_VIOLET, COLOR_WARNING, DEEP_BLUE, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_ERROR_LIGHT, SURFACE_FAINT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_VIOLET, TEXT_GRAY, TEXT_SUBTLE} from '../brandTokens';
+import type { PodMonthGap } from '../types';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { PPPageLayout } from '../components/pp';
 
@@ -128,7 +127,6 @@ function groupIssuesWithSubtasks(issues: IssueRow[]): Array<IssueRow & { _isSubt
  // Separate parents (stories/tasks/bugs) from subtasks
  const parentIssues: IssueRow[] = [];
  const subtasksByParent = new Map<string, IssueRow[]>();
- const orphanSubtasks: IssueRow[] = [];
 
  for (const issue of issues) {
  if (SUBTASK_TYPES.has(issue.issueType) && issue.parentKey) {
@@ -373,7 +371,7 @@ function PodRecommenderCard({
  return (
  <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} mb="md">
  {/* Total resource hours (before BAU) */}
- <Box style={{ textAlign: 'center' }}>
+ <Box ta="center">
  <Tooltip
  label={`Total resource hours: ${Math.round(rawSprintHours)} hrs → BAU (${Math.round(avgBauPct)}%): −${Math.round(bauSprintHours)} hrs → Project available: ${Math.round(sprintCapacity)} hrs`}
  withArrow position="top" multiline w={300}
@@ -392,7 +390,7 @@ function PodRecommenderCard({
  )}
  </Box>
  {/* Sprint demand (planning matrix) */}
- <Box style={{ textAlign: 'center' }}>
+ <Box ta="center">
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>Plan Demand</Text>
  <Text fw={800} size="xl" style={{ color: utilization > 1.0 ? COLOR_ERROR_STRONG : (isDark ? '#fff' : DEEP_BLUE) }}>
  {monthGap ? `${Math.round(sprintDemand)} hrs` : '—'}
@@ -400,7 +398,7 @@ function PodRecommenderCard({
  <Text size="xs" c="dimmed">{sortedProjects.length} project(s)</Text>
  </Box>
  {/* Jira sprint load */}
- <Box style={{ textAlign: 'center' }}>
+ <Box ta="center">
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>Jira Sprint Load</Text>
  <Text fw={800} size="xl" style={{ color: isDark ? '#fff' : DEEP_BLUE }}>
  {totalSP > 0 ? `${doneSP}/${totalSP} SP` : `${issues.length} issues`}
@@ -411,7 +409,7 @@ function PodRecommenderCard({
  </Text>
  </Box>
  {/* Available bandwidth */}
- <Box style={{ textAlign: 'center' }}>
+ <Box ta="center">
  <Tooltip
  label="Project bandwidth minus planned demand. Represents hours not yet allocated to projects."
  withArrow position="top" multiline w={260}
@@ -484,7 +482,7 @@ function PodRecommenderCard({
  <Table.Th>Project</Table.Th>
  <Table.Th>Priority</Table.Th>
  <Table.Th>Status</Table.Th>
- <Table.Th style={{ textAlign: 'right' }}>Sprint Hrs (est.)</Table.Th>
+ <Table.Th ta="right">Sprint Hrs (est.)</Table.Th>
  <Table.Th>Target Release</Table.Th>
  </Table.Tr>
  </Table.Thead>
@@ -554,12 +552,12 @@ function PodRecommenderCard({
  <Table fz="xs" withColumnBorders highlightOnHover>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ minWidth: 90 }}>Key</Table.Th>
- <Table.Th style={{ minWidth: 70 }}>Type</Table.Th>
- <Table.Th style={{ minWidth: 280 }}>Summary</Table.Th>
- <Table.Th style={{ minWidth: 80 }}>Status</Table.Th>
- <Table.Th style={{ minWidth: 110 }}>Assignee</Table.Th>
- <Table.Th style={{ minWidth: 40, textAlign: 'right' }}>SP</Table.Th>
+ <Table.Th miw={90}>Key</Table.Th>
+ <Table.Th miw={70}>Type</Table.Th>
+ <Table.Th miw={280}>Summary</Table.Th>
+ <Table.Th miw={80}>Status</Table.Th>
+ <Table.Th miw={110}>Assignee</Table.Th>
+ <Table.Th miw={40} ta="right">SP</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -1023,7 +1021,9 @@ export default function SprintPlanningRecommenderPage() {
          <Text size="xs" c="dimmed">Get an AI-assisted story-point target based on velocity, backlog, and team capacity</Text>
        </Box>
      </Group>
-     <ActionIcon variant="subtle" color="dimmed" size="sm">
+     <ActionIcon variant="subtle" color="dimmed" size="sm"
+      aria-label="Expand"
+    >
        {recOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
      </ActionIcon>
    </Group>

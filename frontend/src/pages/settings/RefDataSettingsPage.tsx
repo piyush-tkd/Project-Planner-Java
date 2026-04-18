@@ -18,12 +18,12 @@ import {
  useCostRates, useCreateCostRate, useUpdateCostRate, useDeleteCostRate,
 } from '../../api/resources';
 import type { CostRateRequest } from '../../api/resources';
-import { usePods, useUpdatePod } from '../../api/pods';
+import { usePods } from '../../api/pods';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CsvToolbar from '../../components/common/CsvToolbar';
 import { tshirtSizeColumns, effortPatternColumns } from '../../utils/csvColumns';
-import { AQUA, COLOR_BLUE_LIGHT, COLOR_ERROR_DEEP, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { AQUA, COLOR_BLUE_LIGHT, COLOR_ERROR_DEEP, COLOR_ERROR_LIGHT, COLOR_GREEN_LIGHT, COLOR_VIOLET_LIGHT, DEEP_BLUE } from '../../brandTokens';
 
 const ROLES = ['DEVELOPER', 'QA', 'BSA', 'TECH_LEAD'];
 const LOCATIONS = ['US', 'INDIA'];
@@ -38,9 +38,8 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  const dark = useDarkMode();
  const { data: patterns, isLoading: pLoading } = useEffortPatterns();
  const { data: sizes, isLoading: sLoading } = useTshirtSizes();
- const { data: pods, isLoading: podLoading } = usePods();
+ const { data: _pods, isLoading: podLoading } = usePods();
  const { data: costRates, isLoading: crLoading } = useCostRates();
- const updatePod = useUpdatePod();
 
  const createPattern = useCreateEffortPattern();
  const updatePattern = useUpdateEffortPattern();
@@ -202,10 +201,10 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  {!embedded && (
  <Group justify="space-between" align="flex-start" mb="lg" className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{ color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Reference Data
  </Title>
- <Text size="sm" c="dimmed" mt={4} style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="sm" c="dimmed" mt={4}>
  Manage T-shirt sizes, effort distribution patterns, and cost rates
  </Text>
  </div>
@@ -220,8 +219,8 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <IconRuler size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>T-shirt Sizes</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>{sizes?.length ?? 0}</Text>
+ <Text size="xs" c="dimmed">T-shirt Sizes</Text>
+ <Text size="xl" fw={700} style={{ color: dark ? '#fff' : DEEP_BLUE }}>{sizes?.length ?? 0}</Text>
  </div>
  </Group>
  </Paper>
@@ -231,8 +230,8 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <IconChartBar size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Effort Patterns</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: AQUA }}>{patterns?.length ?? 0}</Text>
+ <Text size="xs" c="dimmed">Effort Patterns</Text>
+ <Text size="xl" fw={700} style={{ color: AQUA }}>{patterns?.length ?? 0}</Text>
  </div>
  </Group>
  </Paper>
@@ -242,8 +241,8 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <IconCurrencyDollar size={18} />
  </ThemeIcon>
  <div>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>Cost Rates</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, color: '#2b8a3e' }}>{costRates?.length ?? 0}</Text>
+ <Text size="xs" c="dimmed">Cost Rates</Text>
+ <Text size="xl" fw={700} style={{ color: '#2b8a3e' }}>{costRates?.length ?? 0}</Text>
  </div>
  </Group>
  </Paper>
@@ -251,13 +250,13 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
 
  <Tabs defaultValue="sizes" variant="outline" radius="md" keepMounted={false}>
  <Tabs.List mb="md">
- <Tabs.Tab value="sizes" leftSection={<IconRuler size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="sizes" leftSection={<IconRuler size={14} />}>
  T-shirt Sizes ({sizes?.length ?? 0})
  </Tabs.Tab>
- <Tabs.Tab value="patterns" leftSection={<IconChartBar size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="patterns" leftSection={<IconChartBar size={14} />}>
  Effort Patterns ({patterns?.length ?? 0})
  </Tabs.Tab>
- <Tabs.Tab value="costRates" leftSection={<IconCurrencyDollar size={14} />} style={{ fontFamily: FONT_FAMILY }}>
+ <Tabs.Tab value="costRates" leftSection={<IconCurrencyDollar size={14} />}>
  Cost Rates ({costRates?.length ?? 0})
  </Tabs.Tab>
  </Tabs.List>
@@ -277,7 +276,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  }}
  />
  <Button leftSection={<IconPlus size={14} />} size="xs" onClick={openCreateSize}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  Add Size
  </Button>
  </Group>
@@ -285,29 +284,33 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Size</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Base Hours</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Display Order</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, width: 80 }}>Actions</Table.Th>
+ <Table.Th>Size</Table.Th>
+ <Table.Th>Base Hours</Table.Th>
+ <Table.Th>Display Order</Table.Th>
+ <Table.Th style={{ width: 80 }}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {(sizes ?? []).map(s => (
  <Table.Tr key={s.id}>
  <Table.Td>
- <Badge size="sm" variant="light" color={DEEP_BLUE} style={{ fontFamily: FONT_FAMILY }}>{s.name}</Badge>
+ <Badge size="sm" variant="light" color={DEEP_BLUE}>{s.name}</Badge>
  </Table.Td>
- <Table.Td><Text size="sm" style={{ fontFamily: FONT_FAMILY }}>{s.baseHours}</Text></Table.Td>
- <Table.Td><Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{s.displayOrder}</Text></Table.Td>
+ <Table.Td><Text size="sm">{s.baseHours}</Text></Table.Td>
+ <Table.Td><Text size="sm" c="dimmed">{s.displayOrder}</Text></Table.Td>
  <Table.Td>
  <Group gap={4}>
  <Tooltip label="Edit">
- <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditSize(s)}>
+ <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditSize(s)}
+      aria-label="Edit"
+    >
  <IconEdit size={14} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Delete">
- <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteSizeId(s.id)}>
+ <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteSizeId(s.id)}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -319,7 +322,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table.Tr>
  <Table.Td colSpan={4}>
  <Box p="xl" ta="center">
- <Text c="dimmed" size="sm" style={{ fontFamily: FONT_FAMILY }}>No T-shirt sizes configured yet.</Text>
+ <Text c="dimmed" size="sm">No T-shirt sizes configured yet.</Text>
  </Box>
  </Table.Td>
  </Table.Tr>
@@ -347,7 +350,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  }}
  />
  <Button leftSection={<IconPlus size={14} />} size="xs" onClick={openCreatePattern}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  Add Pattern
  </Button>
  </Group>
@@ -355,25 +358,25 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Pattern Name</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Description</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Monthly Weights</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, width: 80 }}>Actions</Table.Th>
+ <Table.Th>Pattern Name</Table.Th>
+ <Table.Th>Description</Table.Th>
+ <Table.Th>Monthly Weights</Table.Th>
+ <Table.Th style={{ width: 80 }}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
  {(patterns ?? []).map(p => (
  <Table.Tr key={p.id}>
  <Table.Td>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{p.name}</Text>
+ <Text size="sm" fw={600}>{p.name}</Text>
  </Table.Td>
  <Table.Td>
- <Text size="xs" c="dimmed" lineClamp={2} style={{ fontFamily: FONT_FAMILY }}>{p.description}</Text>
+ <Text size="xs" c="dimmed" lineClamp={2}>{p.description}</Text>
  </Table.Td>
  <Table.Td>
  <Group gap={4} wrap="wrap">
  {Object.entries(p.weights).map(([k, v]) => (
- <Badge key={k} size="xs" variant="outline" color="gray" style={{ fontFamily: FONT_FAMILY }}>
+ <Badge key={k} size="xs" variant="outline" color="gray">
  {k}: {v}
  </Badge>
  ))}
@@ -382,12 +385,16 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table.Td>
  <Group gap={4}>
  <Tooltip label="Edit">
- <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditPattern(p)}>
+ <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditPattern(p)}
+      aria-label="Edit"
+    >
  <IconEdit size={14} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Delete">
- <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeletePatternId(p.id)}>
+ <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeletePatternId(p.id)}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -399,7 +406,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table.Tr>
  <Table.Td colSpan={4}>
  <Box p="xl" ta="center">
- <Text c="dimmed" size="sm" style={{ fontFamily: FONT_FAMILY }}>No effort patterns configured yet.</Text>
+ <Text c="dimmed" size="sm">No effort patterns configured yet.</Text>
  </Box>
  </Table.Td>
  </Table.Tr>
@@ -414,11 +421,11 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Tabs.Panel value="costRates">
  <Paper shadow="xs" radius="md" withBorder>
  <Group justify="space-between" p="sm" style={{ borderBottom: '1px solid #e9ecef' }}>
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+ <Text size="xs" c="dimmed">
  Hourly rate per role and location — used by Budget &amp; Cost Tracker for planned spend.
  </Text>
  <Button leftSection={<IconPlus size={14} />} size="xs" onClick={openCreateCostRate}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  Add Rate
  </Button>
  </Group>
@@ -426,10 +433,10 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table fz="xs" highlightOnHover withTableBorder>
  <Table.Thead>
  <Table.Tr>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Role</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY }}>Location</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, textAlign: 'right' }}>Hourly Rate (USD)</Table.Th>
- <Table.Th style={{ fontFamily: FONT_FAMILY, width: 80 }}>Actions</Table.Th>
+ <Table.Th>Role</Table.Th>
+ <Table.Th>Location</Table.Th>
+ <Table.Th style={{ textAlign: 'right' }}>Hourly Rate (USD)</Table.Th>
+ <Table.Th style={{ width: 80 }}>Actions</Table.Th>
  </Table.Tr>
  </Table.Thead>
  <Table.Tbody>
@@ -439,29 +446,33 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  .map(r => (
  <Table.Tr key={r.id}>
  <Table.Td>
- <Badge variant="light" color="blue" size="sm" style={{ fontFamily: FONT_FAMILY }}>
+ <Badge variant="light" color="blue" size="sm">
  {r.role.replace(/_/g, ' ')}
  </Badge>
  </Table.Td>
  <Table.Td>
- <Badge variant="light" color={r.location === 'US' ? 'green' : 'orange'} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+ <Badge variant="light" color={r.location === 'US' ? 'green' : 'orange'} size="sm">
  {LOCATION_LABELS[r.location] ?? r.location}
  </Badge>
  </Table.Td>
  <Table.Td style={{ textAlign: 'right' }}>
- <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
+ <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
  ${Number(r.hourlyRate).toFixed(2)}/hr
  </Text>
  </Table.Td>
  <Table.Td>
  <Group gap={4}>
  <Tooltip label="Edit">
- <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditCostRate(r)}>
+ <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => openEditCostRate(r)}
+      aria-label="Edit"
+    >
  <IconEdit size={14} />
  </ActionIcon>
  </Tooltip>
  <Tooltip label="Delete">
- <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteCostRateId(r.id)}>
+ <ActionIcon variant="subtle" color="red" size="xs" onClick={() => setDeleteCostRateId(r.id)}
+      aria-label="Delete"
+    >
  <IconTrash size={14} />
  </ActionIcon>
  </Tooltip>
@@ -473,7 +484,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  <Table.Tr>
  <Table.Td colSpan={4}>
  <Box p="xl" ta="center">
- <Text c="dimmed" size="sm" style={{ fontFamily: FONT_FAMILY }}>
+ <Text c="dimmed" size="sm">
  No cost rates yet — add a rate for each role + location combination.
  </Text>
  </Box>
@@ -490,21 +501,21 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  {/* ── Modals ───────────────────────────────────────────────────────────────── */}
 
  <Modal opened={sizeModal} onClose={() => setSizeModal(false)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{sizeEditId ? 'Edit T-shirt Size' : 'Add T-shirt Size'}</Text>}>
+ title={<Text fw={600} style={{ color: DEEP_BLUE }}>{sizeEditId ? 'Edit T-shirt Size' : 'Add T-shirt Size'}</Text>}>
  <Stack gap="sm">
  <TextInput label="Name" required value={sizeForm.name} placeholder="e.g. XXL"
  onChange={e => setSizeForm(f => ({ ...f, name: e.target.value }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }} />
+ styles={{ label: { }, input: { } }} />
  <NumberInput label="Base Hours" required value={sizeForm.baseHours} min={0}
  onChange={v => setSizeForm(f => ({ ...f, baseHours: Number(v) }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }} />
+ styles={{ label: { }, input: { } }} />
  <NumberInput label="Display Order" required value={sizeForm.displayOrder} min={0}
  onChange={v => setSizeForm(f => ({ ...f, displayOrder: Number(v) }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }} />
+ styles={{ label: { }, input: { } }} />
  <Group justify="flex-end" mt="xs">
- <Button variant="subtle" onClick={() => setSizeModal(false)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
+ <Button variant="subtle" onClick={() => setSizeModal(false)}>Cancel</Button>
  <Button onClick={handleSizeSubmit} loading={createSize.isPending || updateSize.isPending}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  {sizeEditId ? 'Update' : 'Create'}
  </Button>
  </Group>
@@ -512,14 +523,14 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  </Modal>
 
  <Modal opened={patternModal} onClose={() => setPatternModal(false)} size="lg" centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{patternEditId ? 'Edit Effort Pattern' : 'Add Effort Pattern'}</Text>}>
+ title={<Text fw={600} style={{ color: DEEP_BLUE }}>{patternEditId ? 'Edit Effort Pattern' : 'Add Effort Pattern'}</Text>}>
  <Stack gap="sm">
  <TextInput label="Name" required value={patternForm.name}
  onChange={e => setPatternForm(f => ({ ...f, name: e.target.value }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }} />
+ styles={{ label: { }, input: { } }} />
  <TextInput label="Description" value={patternForm.description}
  onChange={e => setPatternForm(f => ({ ...f, description: e.target.value }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }} />
+ styles={{ label: { }, input: { } }} />
  <NumberInput
  label="Number of months"
  description="How many months this effort pattern spans"
@@ -533,11 +544,11 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  return next;
  });
  }}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
  <div>
- <Text size="sm" fw={500} mb={6} style={{ fontFamily: FONT_FAMILY }}>Monthly Weights</Text>
- <Text size="xs" c="dimmed" mb={8} style={{ fontFamily: FONT_FAMILY }}>Enter the relative effort weight per month.</Text>
+ <Text size="sm" fw={500} mb={6}>Monthly Weights</Text>
+ <Text size="xs" c="dimmed" mb={8}>Enter the relative effort weight per month.</Text>
  <SimpleGrid cols={6} spacing="xs">
  {Array.from({ length: monthCount }, (_, i) => `M${i + 1}`).map(key => (
  <NumberInput
@@ -548,7 +559,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  min={0}
  decimalScale={1}
  onChange={v => setMonthWeights(prev => ({ ...prev, [key]: Number(v) || 0 }))}
- styles={{ label: { fontFamily: FONT_FAMILY, fontSize: 11 }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { fontSize: 11 }, input: { } }}
  />
  ))}
  </SimpleGrid>
@@ -561,12 +572,12 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  if (total === 0) return null;
  return (
  <div>
- <Text size="xs" c="dimmed" mb={4} style={{ fontFamily: FONT_FAMILY }}>Weight distribution</Text>
+ <Text size="xs" c="dimmed" mb={4}>Weight distribution</Text>
  <Progress.Root size={20} radius="sm">
  {entries.map(([key, val], i) => (
  <Tooltip key={key} label={`${key}: ${val} (${((val / total) * 100).toFixed(0)}%)`}>
  <Progress.Section value={(val / total) * 100} color={BAR_COLORS[i % BAR_COLORS.length]}>
- <Progress.Label style={{ fontSize: 10, fontFamily: FONT_FAMILY }}>{key}</Progress.Label>
+ <Progress.Label style={{ fontSize: 10 }}>{key}</Progress.Label>
  </Progress.Section>
  </Tooltip>
  ))}
@@ -575,9 +586,9 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  );
  })()}
  <Group justify="flex-end" mt="xs">
- <Button variant="subtle" onClick={() => setPatternModal(false)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
+ <Button variant="subtle" onClick={() => setPatternModal(false)}>Cancel</Button>
  <Button onClick={handlePatternSubmit} loading={createPattern.isPending || updatePattern.isPending}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  {patternEditId ? 'Update' : 'Create'}
  </Button>
  </Group>
@@ -585,7 +596,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  </Modal>
 
  <Modal opened={costRateModal} onClose={() => setCostRateModal(false)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: DEEP_BLUE }}>{costRateEditId ? 'Edit Cost Rate' : 'Add Cost Rate'}</Text>}>
+ title={<Text fw={600} style={{ color: DEEP_BLUE }}>{costRateEditId ? 'Edit Cost Rate' : 'Add Cost Rate'}</Text>}>
  <Stack gap="sm">
  <Select
  label="Role" required
@@ -593,7 +604,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  value={costRateForm.role}
  disabled={!!costRateEditId}
  onChange={v => v && setCostRateForm(f => ({ ...f, role: v }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
  <Select
  label="Location" required
@@ -601,7 +612,7 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  value={costRateForm.location}
  disabled={!!costRateEditId}
  onChange={v => v && setCostRateForm(f => ({ ...f, location: v }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
  <NumberInput
  label="Hourly Rate (USD)" required
@@ -609,15 +620,15 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
  min={0} step={5} decimalScale={2} prefix="$"
  placeholder="e.g. 150.00"
  onChange={v => setCostRateForm(f => ({ ...f, hourlyRate: Number(v) }))}
- styles={{ label: { fontFamily: FONT_FAMILY }, input: { fontFamily: FONT_FAMILY } }}
+ styles={{ label: { }, input: { } }}
  />
  {!costRateEditId && (
- <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>One rate per role + location. Each combination can only appear once.</Text>
+ <Text size="xs" c="dimmed">One rate per role + location. Each combination can only appear once.</Text>
  )}
  <Group justify="flex-end" mt="xs">
- <Button variant="subtle" onClick={() => setCostRateModal(false)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
+ <Button variant="subtle" onClick={() => setCostRateModal(false)}>Cancel</Button>
  <Button onClick={handleCostRateSubmit} loading={createCostRate.isPending || updateCostRate.isPending}
- style={{ backgroundColor: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+ style={{ backgroundColor: DEEP_BLUE }}>
  {costRateEditId ? 'Update Rate' : 'Add Rate'}
  </Button>
  </Group>
@@ -626,32 +637,29 @@ export default function RefDataSettingsPage({ embedded = false }: { embedded?: b
 
  {/* Delete confirmations */}
  <Modal opened={deleteSizeId !== null} onClose={() => setDeleteSizeId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete T-shirt Size</Text>} size="sm">
- <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this T-shirt size?</Text>
+ title={<Text fw={600} style={{ color: COLOR_ERROR_DEEP }}>Delete T-shirt Size</Text>} size="sm">
+ <Text size="sm">Are you sure you want to delete this T-shirt size?</Text>
  <Group justify="flex-end" mt="md">
- <Button variant="subtle" onClick={() => setDeleteSizeId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
- <Button color="red" loading={deleteSizeMut.isPending} onClick={() => deleteSizeId && handleDeleteSize(deleteSizeId)}
- style={{ fontFamily: FONT_FAMILY }}>Delete</Button>
+ <Button variant="subtle" onClick={() => setDeleteSizeId(null)}>Cancel</Button>
+ <Button color="red" loading={deleteSizeMut.isPending} onClick={() => deleteSizeId && handleDeleteSize(deleteSizeId)}>Delete</Button>
  </Group>
  </Modal>
 
  <Modal opened={deletePatternId !== null} onClose={() => setDeletePatternId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete Effort Pattern</Text>} size="sm">
- <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this effort pattern?</Text>
+ title={<Text fw={600} style={{ color: COLOR_ERROR_DEEP }}>Delete Effort Pattern</Text>} size="sm">
+ <Text size="sm">Are you sure you want to delete this effort pattern?</Text>
  <Group justify="flex-end" mt="md">
- <Button variant="subtle" onClick={() => setDeletePatternId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
- <Button color="red" loading={deletePattern.isPending} onClick={() => deletePatternId && handleDeletePattern(deletePatternId)}
- style={{ fontFamily: FONT_FAMILY }}>Delete</Button>
+ <Button variant="subtle" onClick={() => setDeletePatternId(null)}>Cancel</Button>
+ <Button color="red" loading={deletePattern.isPending} onClick={() => deletePatternId && handleDeletePattern(deletePatternId)}>Delete</Button>
  </Group>
  </Modal>
 
  <Modal opened={deleteCostRateId !== null} onClose={() => setDeleteCostRateId(null)} centered
- title={<Text fw={600} style={{ fontFamily: FONT_FAMILY, color: COLOR_ERROR_DEEP }}>Delete Cost Rate</Text>} size="sm">
- <Text size="sm" style={{ fontFamily: FONT_FAMILY }}>Are you sure you want to delete this cost rate?</Text>
+ title={<Text fw={600} style={{ color: COLOR_ERROR_DEEP }}>Delete Cost Rate</Text>} size="sm">
+ <Text size="sm">Are you sure you want to delete this cost rate?</Text>
  <Group justify="flex-end" mt="md">
- <Button variant="subtle" onClick={() => setDeleteCostRateId(null)} style={{ fontFamily: FONT_FAMILY }}>Cancel</Button>
- <Button color="red" loading={deleteCostRate.isPending} onClick={() => deleteCostRateId && handleDeleteCostRate(deleteCostRateId)}
- style={{ fontFamily: FONT_FAMILY }}>Delete</Button>
+ <Button variant="subtle" onClick={() => setDeleteCostRateId(null)}>Cancel</Button>
+ <Button color="red" loading={deleteCostRate.isPending} onClick={() => deleteCostRateId && handleDeleteCostRate(deleteCostRateId)}>Delete</Button>
  </Group>
  </Modal>
  </Container>

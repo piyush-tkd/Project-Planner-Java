@@ -4,7 +4,7 @@ import {
  Tooltip, Card, Pagination, ScrollArea} from '@mantine/core';
 import { IconSearch, IconClock, IconUser } from '@tabler/icons-react';
 import { useAuditLog } from '../../api/audit';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CsvToolbar from '../../components/common/CsvToolbar';
 import type { CsvColumnDef } from '../../utils/csv';
@@ -94,7 +94,7 @@ export default function AuditLogPage() {
  return (
  <Stack className="page-enter stagger-children">
  <Group justify="space-between" align="flex-end" className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: isDark ? '#fff' : DEEP_BLUE }}>Audit Trail</Title>
+ <Title order={2} c={isDark ? '#fff' : DEEP_BLUE}>Audit Trail</Title>
  <CsvToolbar
  data={filtered as unknown as Record<string, unknown>[]}
  columns={CSV_COLUMNS as unknown as CsvColumnDef<Record<string, unknown>>[]}
@@ -198,7 +198,7 @@ export default function AuditLogPage() {
  </Tooltip>
  </Table.Td>
  <Table.Td>
- <Text size="xs" c="dimmed" truncate style={{ maxWidth: 300 }}>
+ <Text size="xs" c="dimmed" truncate maw={300}>
  {entry.details ?? '—'}
  </Text>
  </Table.Td>

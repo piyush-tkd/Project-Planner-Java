@@ -1,22 +1,22 @@
 import { useState, useMemo } from 'react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
- Box, Title, Text, Group, Stack, Badge, Button, Select, Table,
- Tabs, Alert, Loader, Tooltip, ActionIcon, Modal, NumberInput, Skeleton,
- SegmentedControl, Progress, Paper, Divider, ThemeIcon, SimpleGrid,
+ Box, Text, Group, Stack, Badge, Button, Select, Table,
+ Tabs, Alert, Tooltip, ActionIcon, Modal, Skeleton,
+ SegmentedControl, Progress, Paper, SimpleGrid,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/ui';
 import {
- IconTicket, IconLink, IconLinkOff, IconRefresh, IconCheck,
+ IconLink, IconRefresh, IconCheck,
  IconAlertTriangle, IconPlus, IconTrash, IconChartBar, IconSettings,
  IconCircleCheck, IconCircleX, IconInfoCircle, IconDownload, IconChevronDown,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
- Legend, ResponsiveContainer, ReferenceLine, LineChart, Line,
+ ResponsiveContainer, LineChart, Line,
 } from 'recharts';
 import ChartCard from '../components/common/ChartCard';
 import {
@@ -27,7 +27,7 @@ import {
 } from '../api/jira';
 import { useProjects } from '../api/projects';
 import { ProjectResponse } from '../types/project';
-import { AQUA_HEX, AQUA, AQUA_TINTS, DEEP_BLUE, FONT_FAMILY, SURFACE_GRAY } from '../brandTokens';
+import { AQUA_HEX, AQUA, DEEP_BLUE, FONT_FAMILY, SURFACE_GRAY } from '../brandTokens';
 import {
  InlineTextCell, InlineNumberCell, InlineSelectCell,
 } from '../components/common/InlineCell';
@@ -75,7 +75,6 @@ function exportCsv(actuals: ActualsRow[]) {
 }
 
 export default function JiraActualsPage() {
- const isDark = useDarkMode();
  const [activeTab, setActiveTab] = useState<string | null>('actuals');
  const [unit, setUnit] = useState<'hours' | 'sp'>('hours');
 
@@ -247,7 +246,7 @@ export default function JiraActualsPage() {
 
 function ActualsView({
  actuals,
- projects,
+ projects: _projects,
  unit,
 }: {
  actuals: ActualsRow[];
@@ -375,6 +374,7 @@ function ActualsView({
  {/* Chart */}
  {chartData.length > 0 && (
  <ChartCard title={`${unit === 'hours' ? 'Actual Hours' : 'Story Points'} by Month`} minHeight={220}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={220}>
  <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={SURFACE_GRAY} />
@@ -387,6 +387,7 @@ function ActualsView({
  <Bar animationDuration={600} dataKey="actual" fill={AQUA_HEX} radius={[3, 3, 0, 0]} name="Actual" />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  )}
 
@@ -396,6 +397,7 @@ function ActualsView({
  <Text size="sm" fw={600} mb="sm" style={{ fontFamily: FONT_FAMILY }}>
  Sprint Velocity Trend
  </Text>
+ <div role="img" aria-label="Line chart">
  <ResponsiveContainer width="100%" height={180}>
  <LineChart data={sprintVelocityData}>
  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2a2a3a' : '#f0f0f0'} />
@@ -405,6 +407,7 @@ function ActualsView({
  <Line type="monotone" dataKey="hours" stroke={AQUA_HEX} strokeWidth={2} dot={{ fill: AQUA, r: 3 }} />
  </LineChart>
  </ResponsiveContainer>
+ </div>
  </Paper>
  )}
 
@@ -461,7 +464,8 @@ function ActualsView({
  transition: 'transform 0.2s',
  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
  }}
- >
+ aria-label="Expand"
+>
  <IconChevronDown size={14} />
  </ActionIcon>
  {row.ppProjectName}
@@ -477,8 +481,8 @@ function ActualsView({
  </Badge>
  </Tooltip>
  </Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>{row.issueCount ?? 0}</Table.Td>
- <Table.Td style={{ textAlign: 'right' }}>{row.totalStoryPoints ?? 0}</Table.Td>
+ <Table.Td ta="right">{row.issueCount ?? 0}</Table.Td>
+ <Table.Td ta="right">{row.totalStoryPoints ?? 0}</Table.Td>
  <Table.Td style={{ textAlign: 'right', fontWeight: 600 }}>
  {Math.round(totalHrs).toLocaleString()} h
  </Table.Td>
@@ -488,7 +492,7 @@ function ActualsView({
  <Table.Td style={{ textAlign: 'right', color: variance > 0 ? '#d32f2f' : '#2e7d32', fontWeight: 600 }}>
  {planned > 0 ? `${variance >= 0 ? '+' : ''}${Math.round(variance).toLocaleString()} h` : '—'}
  </Table.Td>
- <Table.Td style={{ minWidth: 100 }}>
+ <Table.Td miw={100}>
  {planned > 0 ? (
  <Tooltip label={`${burnPct}% of planned budget used`}>
  <div>
@@ -513,7 +517,7 @@ function ActualsView({
  </Table.Tr>
  {isExpanded && (
  <Table.Tr style={{ backgroundColor: isDark ? '#1f1f2e' : '#f9f9f9' }}>
- <Table.Td colSpan={11} style={{ padding: '16px' }}>
+ <Table.Td colSpan={11} p="16px">
  <OverrideForm
  row={row}
  overrides={rowOverrides}
@@ -627,7 +631,7 @@ function OverrideForm({
  overrides: RowOverrides;
  onUpdate: (field: string, value: any) => void;
 }) {
- const { editingCell, startEdit, stopEdit, isEditing } = useInlineEdit();
+ const { startEdit, stopEdit, isEditing } = useInlineEdit();
 
  const statusOptions = [
  { value: 'TODO', label: 'To Do' },
@@ -726,7 +730,7 @@ function MapperView({
  watchConfig,
  onSave,
  onDelete,
- onBulkSave,
+ onBulkSave: _onBulkSave,
  onRefreshJira,
 }: {
  jiraProjects: JiraProjectInfo[];
@@ -835,7 +839,8 @@ function MapperView({
  loading={jiraLoading}
  onClick={onRefreshJira}
  title="Refresh Jira projects & epics"
- >
+ aria-label="Refresh"
+>
  <IconRefresh size={15} />
  </ActionIcon>
  <Button
@@ -886,7 +891,9 @@ function MapperView({
  <Text size="xs" c="dimmed" truncate maw={220}>{m.matchValue}</Text>
  </Table.Td>
  <Table.Td>
- <ActionIcon color="red" variant="subtle" size="xs" onClick={() => onDelete(m.id)}>
+ <ActionIcon color="red" variant="subtle" size="xs" onClick={() => onDelete(m.id)}
+      aria-label="Delete"
+    >
  <IconTrash size={13} />
  </ActionIcon>
  </Table.Td>

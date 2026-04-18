@@ -11,7 +11,7 @@
  */
 import React from 'react';
 import { Stack, Text, Box, Group } from '@mantine/core';
-import { AQUA, AQUA_HEX, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
+import { AQUA_HEX, AQUA_TINTS, DEEP_BLUE_TINTS, FONT_FAMILY } from '../../brandTokens';
 import { useThemeTokens } from '../../hooks/useThemeTokens';
 
 export type PPEmptyStateVariant =
@@ -112,7 +112,7 @@ function IconNoAccess({ size, color }: { size: number; color: string }) {
   );
 }
 
-function IconComingSoon({ size, color }: { size: number; color: string }) {
+function IconComingSoon({ size }: { size: number; color: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
       <circle cx="32" cy="32" r="22" stroke={AQUA_HEX} strokeWidth="2" opacity="0.3" />

@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Pre-push hook — default gate (build + unit tests)
+# Runs before every git push. Blocks push if red.
+# To bypass in an emergency: git push --no-verify (team convention: don't)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$REPO_ROOT/scripts/verify.sh"

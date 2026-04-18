@@ -24,12 +24,9 @@ const AvailabilityPage              = lazy(() => import('./pages/AvailabilityPag
 const OverridesPage                 = lazy(() => import('./pages/OverridesPage'));
 const UtilizationCenterPage         = lazy(() => import('./pages/reports/UtilizationCenterPage'));
 const HiringForecastPage            = lazy(() => import('./pages/reports/HiringForecastPage'));
-const DeadlineGapPage               = lazy(() => import('./pages/reports/DeadlineGapPage'));
-const BudgetPage                    = lazy(() => import('./pages/reports/BudgetPage'));
 const CapacityDemandPage            = lazy(() => import('./pages/reports/CapacityDemandPage'));
 const CapacityForecastPage          = lazy(() => import('./pages/reports/CapacityForecastPage'));
 const SprintRetroPage               = lazy(() => import('./pages/reports/SprintRetroPage'));
-const SprintQualityPage             = lazy(() => import('./pages/reports/SprintQualityPage'));
 const ResourceSkillsMatrixPage      = lazy(() => import('./pages/reports/ResourceSkillsMatrixPage'));
 const RiskHeatmapPage               = lazy(() => import('./pages/reports/RiskHeatmapPage'));
 const ExecSummaryPage               = lazy(() => import('./pages/reports/ExecSummaryPage'));
@@ -38,7 +35,6 @@ const TeamPulsePage                 = lazy(() => import('./pages/reports/TeamPul
 const ChangelogAdminPage            = lazy(() => import('./pages/settings/ChangelogAdminPage'));
 const CustomFieldsAdminPage         = lazy(() => import('./pages/settings/CustomFieldsAdminPage'));
 const PodResourceSummaryPage        = lazy(() => import('./pages/reports/PodResourceSummaryPage'));
-const PodSplitsPage                 = lazy(() => import('./pages/reports/PodSplitsPage'));
 const PodDetailPage                 = lazy(() => import('./pages/PodDetailPage'));
 const ProjectPodMatrixPage          = lazy(() => import('./pages/reports/ProjectPodMatrixPage'));
 const PodCapacityPage               = lazy(() => import('./pages/reports/PodCapacityPage'));
@@ -61,7 +57,6 @@ const UserManagementPage            = lazy(() => import('./pages/settings/UserMa
 const AuditLogPage                  = lazy(() => import('./pages/settings/AuditLogPage'));
 const TablesPage                    = lazy(() => import('./pages/settings/TablesPage'));
 const TeamCalendarPage              = lazy(() => import('./pages/TeamCalendarPage'));
-const OwnerDemandPage               = lazy(() => import('./pages/reports/OwnerDemandPage'));
 const ProjectHealthPage             = lazy(() => import('./pages/reports/ProjectHealthPage'));
 const ResourcePerformancePage       = lazy(() => import('./pages/reports/ResourcePerformancePage'));
 const SprintCalendarPage            = lazy(() => import('./pages/SprintCalendarPage'));
@@ -79,19 +74,15 @@ const ErrorLogPage                  = lazy(() => import('./pages/settings/ErrorL
 const DoraMetricsPage               = lazy(() => import('./pages/reports/DoraMetricsPage'));
 const JiraAnalyticsPage             = lazy(() => import('./pages/reports/JiraAnalyticsPage'));
 const JiraDashboardBuilderPage      = lazy(() => import('./pages/reports/JiraDashboardBuilderPage'));
-const EngineeringProductivityPage   = lazy(() => import('./pages/reports/EngineeringProductivityPage'));
 const EngineeringIntelligencePage   = lazy(() => import('./pages/reports/EngineeringIntelligencePage'));
 const EngineeringAnalyticsPage      = lazy(() => import('./pages/reports/EngineeringAnalyticsPage'));
 const PowerDashboardPage            = lazy(() => import('./pages/reports/PowerDashboardPage'));
 const SidebarOrderPage              = lazy(() => import('./pages/settings/SidebarOrderPage'));
 const SitemapPage                   = lazy(() => import('./pages/settings/SitemapPage'));
-const HolidayCalendarPage           = lazy(() => import('./pages/settings/HolidayCalendarPage'));
-const LeaveManagementPage           = lazy(() => import('./pages/settings/LeaveManagementPage'));
 const JiraResourceMappingPage       = lazy(() => import('./pages/settings/JiraResourceMappingPage'));
 const JiraReleaseMappingPage        = lazy(() => import('./pages/settings/JiraReleaseMappingPage'));
 const PortfolioHealthDashboardPage  = lazy(() => import('./pages/reports/PortfolioHealthDashboardPage'));
 const JiraPortfolioSyncPage         = lazy(() => import('./pages/reports/JiraPortfolioSyncPage'));
-const FinancialIntelligencePage     = lazy(() => import('./pages/reports/FinancialIntelligencePage'));
 const DeliveryPredictabilityPage    = lazy(() => import('./pages/reports/DeliveryPredictabilityPage'));
 const SmartNotificationsPage        = lazy(() => import('./pages/reports/SmartNotificationsPage'));
 const PodHoursPage                  = lazy(() => import('./pages/reports/PodHoursPage'));
@@ -138,8 +129,9 @@ const PortfolioTimelineTabs= lazy(() => import('./pages/tabs/PortfolioTimelineTa
 const ResourcesTabs        = lazy(() => import('./pages/tabs/ResourcesTabs'));
 const CapacityTabs         = lazy(() => import('./pages/tabs/CapacityTabs'));
 const PerformanceTabs      = lazy(() => import('./pages/tabs/PerformanceTabs'));
-const ReleasesTabs         = lazy(() => import('./pages/tabs/ReleasesTabs'));
-const JiraDashboardTabs    = lazy(() => import('./pages/tabs/JiraDashboardTabs'));
+const ReleasesTabs              = lazy(() => import('./pages/tabs/ReleasesTabs'));
+const JiraDashboardTabs         = lazy(() => import('./pages/tabs/JiraDashboardTabs'));
+const SprintCommandCenterPage   = lazy(() => import('./pages/SprintCommandCenterPage'));
 const EngineeringHubTabs   = lazy(() => import('./pages/tabs/EngineeringHubTabs'));
 const ScenarioToolsTabs    = lazy(() => import('./pages/tabs/ScenarioToolsTabs'));
 
@@ -275,9 +267,6 @@ export default function App() {
 
           <Route element={<ProtectedRoute pageKey="sprint_retro" />}>
             <Route path="/reports/sprint-retro" element={<SprintRetroPage />} />
-          </Route>
-          <Route element={<ProtectedRoute pageKey="sprint_quality" />}>
-            <Route path="/reports/sprint-quality" element={<SprintQualityPage />} />
           </Route>
           <Route element={<ProtectedRoute pageKey="quality_config" />}>
             <Route path="/settings/quality-config" element={<QualityConfigPage />} />
@@ -661,6 +650,10 @@ export default function App() {
           {/* Performance → tabs: Resource Performance | Resource Intelligence    */}
           <Route element={<ProtectedRoute pageKey="resource_performance" />}>
             <Route path="/people/performance" element={<PerformanceTabs />} />
+          </Route>
+          {/* Sprint / Release Command Center                                      */}
+          <Route element={<ProtectedRoute pageKey="sprint_command_center" />}>
+            <Route path="/delivery/sprint-command-center" element={<SprintCommandCenterPage />} />
           </Route>
           {/* Releases → tabs: Releases | Release Notes                           */}
           <Route element={<ProtectedRoute pageKey="jira_releases" />}>

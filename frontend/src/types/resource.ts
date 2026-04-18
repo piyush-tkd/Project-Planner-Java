@@ -1,4 +1,3 @@
-import { Role, Location } from './common';
 
 export interface ResourcePodAssignmentInfo {
   podId: number;

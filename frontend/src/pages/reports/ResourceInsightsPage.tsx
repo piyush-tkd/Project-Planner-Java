@@ -1,261 +1,267 @@
 import { useMemo } from 'react';
 import {
-  Title, Text, Paper, Stack, SimpleGrid, Badge, ThemeIcon,
-  Group, Box, RingProgress, Center, Loader,
+ Title, Text, Paper, Stack, SimpleGrid, Badge, ThemeIcon,
+ Group, Box, Center
 } from '@mantine/core';
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  Treemap, ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis,
-  CartesianGrid, Tooltip as RechartTooltip, Legend, Cell,
+ RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+ Treemap, ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis,
+ CartesianGrid, Tooltip as RechartTooltip, Cell
 } from 'recharts';
 import {
-  IconAlertTriangle, IconUsers, IconTrendingDown, IconTargetArrow,
+ IconAlertTriangle, IconUsers, IconTrendingDown, IconTargetArrow
 } from '@tabler/icons-react';
 import { useResources } from '../../api/resources';
 import { useLeaveEntries } from '../../api/leave';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
 import ChartCard from '../../components/common/ChartCard';
-import { AQUA_HEX, AQUA, AQUA_TINTS, COLOR_AMBER, COLOR_ERROR, COLOR_GREEN, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { AQUA_HEX, AQUA, COLOR_AMBER, COLOR_ERROR } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 const CHART_COLORS = [AQUA, '#34d399', '#818cf8', COLOR_AMBER, '#f59e0b', COLOR_ERROR];
 
 export default function ResourceInsightsPage() {
-  const dark = useDarkMode();
-  const { data: resources = [], isLoading, error } = useResources();
-  const currentYear = new Date().getFullYear();
-  const { data: leaveData = [] } = useLeaveEntries(currentYear);
+ const dark = useDarkMode();
+ const { data: resources = [], isLoading, error } = useResources();
+ const currentYear = new Date().getFullYear();
+ const { data: leaveData = [] } = useLeaveEntries(currentYear);
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <PageError context="Loading resource insights" />;
+ if (isLoading) return <LoadingSpinner />;
+ if (error) return <PageError context="Loading resource insights" />;
 
-  // ── 1. Skills matrix radar chart (top 6 skills) ──
-  const skillsRadarData = useMemo(() => {
-    const skillCounts: Record<string, number> = {};
-    for (const r of resources) {
-      if (r.skills) {
-        const skills = r.skills.split(',').map(s => s.trim()).filter(Boolean);
-        for (const skill of skills) {
-          skillCounts[skill] = (skillCounts[skill] ?? 0) + 1;
-        }
-      }
-    }
-    const sorted = Object.entries(skillCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 6);
-    return sorted.map(([skill, count]) => ({
-      skill,
-      count,
-      maxValue: resources.length,
-    }));
-  }, [resources]);
+ // ── 1. Skills matrix radar chart (top 6 skills) ──
+ const skillsRadarData = useMemo(() => {
+ const skillCounts: Record<string, number> = {};
+ for (const r of resources) {
+ if (r.skills) {
+ const skills = r.skills.split(',').map(s => s.trim()).filter(Boolean);
+ for (const skill of skills) {
+ skillCounts[skill] = (skillCounts[skill] ?? 0) + 1;
+ }
+ }
+ }
+ const sorted = Object.entries(skillCounts)
+ .sort(([, a], [, b]) => b - a)
+ .slice(0, 6);
+ return sorted.map(([skill, count]) => ({
+ skill,
+ count,
+ maxValue: resources.length
+ }));
+ }, [resources]);
 
-  // ── 2. FTE distribution treemap (by role) ──
-  const fteTreemapData = useMemo(() => {
-    const roleMap: Record<string, { fte: number; count: number }> = {};
-    for (const r of resources) {
-      const role = r.role || 'UNKNOWN';
-      if (!roleMap[role]) roleMap[role] = { fte: 0, count: 0 };
-      roleMap[role].fte += r.podAssignment?.capacityFte || 0;
-      roleMap[role].count += 1;
-    }
-    return Object.entries(roleMap).map(([role, { fte, count }], i) => ({
-      name: role.replace(/_/g, ' '),
-      value: Math.round(fte * 100) / 100,
-      count,
-      fill: CHART_COLORS[i % CHART_COLORS.length],
-    }));
-  }, [resources]);
+ // ── 2. FTE distribution treemap (by role) ──
+ const fteTreemapData = useMemo(() => {
+ const roleMap: Record<string, { fte: number; count: number }> = {};
+ for (const r of resources) {
+ const role = r.role || 'UNKNOWN';
+ if (!roleMap[role]) roleMap[role] = { fte: 0, count: 0 };
+ roleMap[role].fte += r.podAssignment?.capacityFte || 0;
+ roleMap[role].count += 1;
+ }
+ return Object.entries(roleMap).map(([role, { fte, count }], i) => ({
+ name: role.replace(/_/g, ' '),
+ value: Math.round(fte * 100) / 100,
+ count,
+ fill: CHART_COLORS[i % CHART_COLORS.length]
+ }));
+ }, [resources]);
 
-  // ── 3. Utilization scatter (FTE vs project count proxy) ──
-  const utilizationScatterData = useMemo(() => {
-    return resources
-      .filter(r => r.podAssignment && r.podAssignment.capacityFte > 0)
-      .map(r => ({
-        name: r.name,
-        fte: r.podAssignment?.capacityFte || 0,
-        billableRate: r.actualRate || 0,
-        id: r.id,
-        active: r.active ? 1 : 0,
-      }))
-      .slice(0, 50); // Limit for chart clarity
-  }, [resources]);
+ // ── 3. Utilization scatter (FTE vs project count proxy) ──
+ const utilizationScatterData = useMemo(() => {
+ return resources
+ .filter(r => r.podAssignment && r.podAssignment.capacityFte > 0)
+ .map(r => ({
+ name: r.name,
+ fte: r.podAssignment?.capacityFte || 0,
+ billableRate: r.actualRate || 0,
+ id: r.id,
+ active: r.active ? 1 : 0
+ }))
+ .slice(0, 50); // Limit for chart clarity
+ }, [resources]);
 
-  // ── 4. Attrition risk indicators ──
-  const attritionRisks = useMemo(() => {
-    const risks: Array<{
-      id: number;
-      name: string;
-      risk: 'active_inactive' | 'no_assignment' | 'on_leave';
-    }> = [];
+ // ── 4. Attrition risk indicators ──
+ const attritionRisks = useMemo(() => {
+ const risks: Array<{
+ id: number;
+ name: string;
+ risk: 'active_inactive' | 'no_assignment' | 'on_leave';
+ }> = [];
 
-    const leaveMap = new Set(leaveData.map(l => l.resourceId));
+ const leaveMap = new Set(leaveData.map(l => l.resourceId));
 
-    for (const r of resources) {
-      if (!r.active) {
-        risks.push({ id: r.id, name: r.name, risk: 'active_inactive' });
-      } else if (!r.podAssignment || r.podAssignment.capacityFte === 0) {
-        risks.push({ id: r.id, name: r.name, risk: 'no_assignment' });
-      } else if (leaveMap.has(r.id)) {
-        risks.push({ id: r.id, name: r.name, risk: 'on_leave' });
-      }
-    }
-    return risks;
-  }, [resources, leaveData]);
+ for (const r of resources) {
+ if (!r.active) {
+ risks.push({ id: r.id, name: r.name, risk: 'active_inactive' });
+ } else if (!r.podAssignment || r.podAssignment.capacityFte === 0) {
+ risks.push({ id: r.id, name: r.name, risk: 'no_assignment' });
+ } else if (leaveMap.has(r.id)) {
+ risks.push({ id: r.id, name: r.name, risk: 'on_leave' });
+ }
+ }
+ return risks;
+ }, [resources, leaveData]);
 
-  const activeInactiveCount = attritionRisks.filter(r => r.risk === 'active_inactive').length;
-  const unassignedCount = attritionRisks.filter(r => r.risk === 'no_assignment').length;
-  const onLeaveCount = attritionRisks.filter(r => r.risk === 'on_leave').length;
+ const activeInactiveCount = attritionRisks.filter(r => r.risk === 'active_inactive').length;
+ const unassignedCount = attritionRisks.filter(r => r.risk === 'no_assignment').length;
+ const onLeaveCount = attritionRisks.filter(r => r.risk === 'on_leave').length;
 
-  return (
-    <Stack gap="lg">
-      <Box>
-        <Title order={3} style={{ fontFamily: FONT_FAMILY }}>Resource Intelligence Charts</Title>
-        <Text size="sm" c="dimmed">Skills matrix, FTE distribution, utilization, and attrition risks</Text>
-      </Box>
+ return (
+ <Stack gap="lg">
+ <Box>
+ <Title order={3} style={{ }}>Resource Intelligence Charts</Title>
+ <Text size="sm" c="dimmed">Skills matrix, FTE distribution, utilization, and attrition risks</Text>
+ </Box>
 
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-        {/* Skills Radar Chart */}
-        <ChartCard
-          title="Top 6 Skills Matrix"
-          subtitle="Resource count by skill"
-          icon={<IconTargetArrow size={16} />}
-        >
-          {skillsRadarData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={skillsRadarData}>
-                <PolarGrid stroke={dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'} />
-                <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
-                <PolarRadiusAxis angle={90} domain={[0, 'dataMax']} tick={{ fontSize: 10, fill: dark ? '#aaa' : '#666' }} />
-                <Radar name="Resources" dataKey="count" stroke={AQUA_HEX} fill={AQUA_HEX} fillOpacity={0.6} />
-                <RechartTooltip formatter={(val) => `${val} people`} />
-              </RadarChart>
-            </ResponsiveContainer>
-          ) : (
-            <Center h={300}>
-              <Text size="sm" c="dimmed">No skills data available</Text>
-            </Center>
-          )}
-        </ChartCard>
+ <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+ {/* Skills Radar Chart */}
+ <ChartCard
+ title="Top 6 Skills Matrix"
+ subtitle="Resource count by skill"
+ icon={<IconTargetArrow size={16} />}
+ >
+ {skillsRadarData.length > 0 ? (
+ <div role="img" aria-label="Radar chart">
+ <ResponsiveContainer width="100%" height={300}>
+ <RadarChart data={skillsRadarData}>
+ <PolarGrid stroke={dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'} />
+ <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
+ <PolarRadiusAxis angle={90} domain={[0, 'dataMax']} tick={{ fontSize: 10, fill: dark ? '#aaa' : '#666' }} />
+ <Radar name="Resources" dataKey="count" stroke={AQUA_HEX} fill={AQUA_HEX} fillOpacity={0.6} />
+ <RechartTooltip formatter={(val) => `${val} people`} />
+ </RadarChart>
+ </ResponsiveContainer>
+ </div>
+ ) : (
+ <Center h={300}>
+ <Text size="sm" c="dimmed">No skills data available</Text>
+ </Center>
+ )}
+ </ChartCard>
 
-        {/* FTE Distribution Treemap */}
-        <ChartCard
-          title="FTE Distribution by Role"
-          subtitle="Box size = total FTE per role"
-          icon={<IconUsers size={16} />}
-        >
-          {fteTreemapData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <Treemap data={fteTreemapData} dataKey="value" stroke={dark ? '#333' : '#ddd'} fill={AQUA_HEX}>
-                {fteTreemapData.map((entry, idx) => (
-                  <Cell key={`cell-${idx}`} fill={entry.fill} />
-                ))}
-                <RechartTooltip formatter={(val) => [`${val} FTE`, 'Total']} />
-              </Treemap>
-            </ResponsiveContainer>
-          ) : (
-            <Center h={300}>
-              <Text size="sm" c="dimmed">No FTE data available</Text>
-            </Center>
-          )}
-        </ChartCard>
+ {/* FTE Distribution Treemap */}
+ <ChartCard
+ title="FTE Distribution by Role"
+ subtitle="Box size = total FTE per role"
+ icon={<IconUsers size={16} />}
+ >
+ {fteTreemapData.length > 0 ? (
+ <div role="img" aria-label="Treemap chart">
+ <ResponsiveContainer width="100%" height={300}>
+ <Treemap data={fteTreemapData} dataKey="value" stroke={dark ? '#333' : '#ddd'} fill={AQUA_HEX}>
+ {fteTreemapData.map((entry, idx) => (
+ <Cell key={`cell-${idx}`} fill={entry.fill} />
+ ))}
+ <RechartTooltip formatter={(val) => [`${val} FTE`, 'Total']} />
+ </Treemap>
+ </ResponsiveContainer>
+ </div>
+ ) : (
+ <Center h={300}>
+ <Text size="sm" c="dimmed">No FTE data available</Text>
+ </Center>
+ )}
+ </ChartCard>
 
-        {/* Utilization Scatter Chart */}
-        <ChartCard
-          title="Resource Utilization Scatter"
-          subtitle="X=FTE, Y=Billable Rate, Opacity=Active Status"
-          icon={<IconTrendingDown size={16} />}
-          colspan={2}
-        >
-          {utilizationScatterData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'} />
-                <XAxis type="number" dataKey="fte" name="FTE Capacity" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
-                <YAxis type="number" dataKey="billableRate" name="Billable Rate ($/hr)" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
-                <RechartTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(val) => (val as number).toFixed(2)} />
-                <Scatter name="Resources" data={utilizationScatterData} fill={AQUA_HEX} fillOpacity={0.6} />
-              </ScatterChart>
-            </ResponsiveContainer>
-          ) : (
-            <Center h={300}>
-              <Text size="sm" c="dimmed">No utilization data available</Text>
-            </Center>
-          )}
-        </ChartCard>
-      </SimpleGrid>
+ {/* Utilization Scatter Chart */}
+ <ChartCard
+ title="Resource Utilization Scatter"
+ subtitle="X=FTE, Y=Billable Rate, Opacity=Active Status"
+ icon={<IconTrendingDown size={16} />}
+ colspan={2}
+ >
+ {utilizationScatterData.length > 0 ? (
+ <div role="img" aria-label="Scatter chart">
+ <ResponsiveContainer width="100%" height={300}>
+ <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+ <CartesianGrid strokeDasharray="3 3" stroke={dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'} />
+ <XAxis type="number" dataKey="fte" name="FTE Capacity" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
+ <YAxis type="number" dataKey="billableRate" name="Billable Rate ($/hr)" tick={{ fontSize: 11, fill: dark ? '#aaa' : '#666' }} />
+ <RechartTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(val) => (val as number).toFixed(2)} />
+ <Scatter name="Resources" data={utilizationScatterData} fill={AQUA_HEX} fillOpacity={0.6} />
+ </ScatterChart>
+ </ResponsiveContainer>
+ </div>
+ ) : (
+ <Center h={300}>
+ <Text size="sm" c="dimmed">No utilization data available</Text>
+ </Center>
+ )}
+ </ChartCard>
+ </SimpleGrid>
 
-      {/* Attrition Risk Indicators */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-        <Paper withBorder p="md" radius="md">
-          <Group gap="sm" mb="md">
-            <ThemeIcon size={32} radius="md" color="red" variant="light">
-              <IconAlertTriangle size={16} />
-            </ThemeIcon>
-            <Box>
-              <Text size="xs" c="dimmed" fw={600} tt="uppercase">Inactive Resources</Text>
-              <Text size="sm" fw={700}>{activeInactiveCount}</Text>
-            </Box>
-          </Group>
-          <Text size="xs" c="dimmed">
-            {activeInactiveCount > 0 ? `${activeInactiveCount} resource${activeInactiveCount !== 1 ? 's' : ''} marked inactive` : 'All resources active'}
-          </Text>
-        </Paper>
+ {/* Attrition Risk Indicators */}
+ <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+ <Paper withBorder p="md" radius="md">
+ <Group gap="sm" mb="md">
+ <ThemeIcon size={32} radius="md" color="red" variant="light">
+ <IconAlertTriangle size={16} />
+ </ThemeIcon>
+ <Box>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">Inactive Resources</Text>
+ <Text size="sm" fw={700}>{activeInactiveCount}</Text>
+ </Box>
+ </Group>
+ <Text size="xs" c="dimmed">
+ {activeInactiveCount > 0 ? `${activeInactiveCount} resource${activeInactiveCount !== 1 ? 's' : ''} marked inactive` : 'All resources active'}
+ </Text>
+ </Paper>
 
-        <Paper withBorder p="md" radius="md">
-          <Group gap="sm" mb="md">
-            <ThemeIcon size={32} radius="md" color="orange" variant="light">
-              <IconUsers size={16} />
-            </ThemeIcon>
-            <Box>
-              <Text size="xs" c="dimmed" fw={600} tt="uppercase">Unassigned</Text>
-              <Text size="sm" fw={700}>{unassignedCount}</Text>
-            </Box>
-          </Group>
-          <Text size="xs" c="dimmed">
-            {unassignedCount > 0 ? `${unassignedCount} resource${unassignedCount !== 1 ? 's' : ''} with no POD assignment` : 'All resources assigned'}
-          </Text>
-        </Paper>
+ <Paper withBorder p="md" radius="md">
+ <Group gap="sm" mb="md">
+ <ThemeIcon size={32} radius="md" color="orange" variant="light">
+ <IconUsers size={16} />
+ </ThemeIcon>
+ <Box>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">Unassigned</Text>
+ <Text size="sm" fw={700}>{unassignedCount}</Text>
+ </Box>
+ </Group>
+ <Text size="xs" c="dimmed">
+ {unassignedCount > 0 ? `${unassignedCount} resource${unassignedCount !== 1 ? 's' : ''} with no POD assignment` : 'All resources assigned'}
+ </Text>
+ </Paper>
 
-        <Paper withBorder p="md" radius="md">
-          <Group gap="sm" mb="md">
-            <ThemeIcon size={32} radius="md" color="yellow" variant="light">
-              <IconTrendingDown size={16} />
-            </ThemeIcon>
-            <Box>
-              <Text size="xs" c="dimmed" fw={600} tt="uppercase">On Leave</Text>
-              <Text size="sm" fw={700}>{onLeaveCount}</Text>
-            </Box>
-          </Group>
-          <Text size="xs" c="dimmed">
-            {onLeaveCount > 0 ? `${onLeaveCount} resource${onLeaveCount !== 1 ? 's' : ''} currently on leave` : 'No leave records'}
-          </Text>
-        </Paper>
-      </SimpleGrid>
+ <Paper withBorder p="md" radius="md">
+ <Group gap="sm" mb="md">
+ <ThemeIcon size={32} radius="md" color="yellow" variant="light">
+ <IconTrendingDown size={16} />
+ </ThemeIcon>
+ <Box>
+ <Text size="xs" c="dimmed" fw={600} tt="uppercase">On Leave</Text>
+ <Text size="sm" fw={700}>{onLeaveCount}</Text>
+ </Box>
+ </Group>
+ <Text size="xs" c="dimmed">
+ {onLeaveCount > 0 ? `${onLeaveCount} resource${onLeaveCount !== 1 ? 's' : ''} currently on leave` : 'No leave records'}
+ </Text>
+ </Paper>
+ </SimpleGrid>
 
-      {/* Attrition Risk Detail List */}
-      {attritionRisks.length > 0 && (
-        <Paper withBorder p="md" radius="md">
-          <Text fw={600} size="sm" mb="md" style={{ fontFamily: FONT_FAMILY }}>
-            Resources at Risk ({attritionRisks.length})
-          </Text>
-          <Stack gap="xs">
-            {attritionRisks.map(risk => (
-              <Group key={risk.id} justify="space-between" p="xs" style={{ background: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: 6 }}>
-                <Text size="sm">{risk.name}</Text>
-                <Badge
-                  size="xs"
-                  color={risk.risk === 'active_inactive' ? 'red' : risk.risk === 'no_assignment' ? 'orange' : 'yellow'}
-                  variant="light"
-                >
-                  {risk.risk.replace(/_/g, ' ').toUpperCase()}
-                </Badge>
-              </Group>
-            ))}
-          </Stack>
-        </Paper>
-      )}
-    </Stack>
-  );
+ {/* Attrition Risk Detail List */}
+ {attritionRisks.length > 0 && (
+ <Paper withBorder p="md" radius="md">
+ <Text fw={600} size="sm" mb="md" style={{ }}>
+ Resources at Risk ({attritionRisks.length})
+ </Text>
+ <Stack gap="xs">
+ {attritionRisks.map(risk => (
+ <Group key={risk.id} justify="space-between" p="xs" style={{ background: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: 6 }}>
+ <Text size="sm">{risk.name}</Text>
+ <Badge
+ size="xs"
+ color={risk.risk === 'active_inactive' ? 'red' : risk.risk === 'no_assignment' ? 'orange' : 'yellow'}
+ variant="light"
+ >
+ {risk.risk.replace(/_/g, ' ').toUpperCase()}
+ </Badge>
+ </Group>
+ ))}
+ </Stack>
+ </Paper>
+ )}
+ </Stack>
+ );
 }

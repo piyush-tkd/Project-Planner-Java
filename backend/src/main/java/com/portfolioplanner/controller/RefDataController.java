@@ -28,16 +28,19 @@ public class RefDataController {
         return ResponseEntity.ok(refDataService.getTshirtSizes());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/tshirt-sizes")
     public ResponseEntity<TshirtSizeResponse> createTshirtSize(@Valid @RequestBody TshirtSizeRequest request) {
         return ResponseEntity.ok(refDataService.createTshirtSize(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/tshirt-sizes/{id}")
     public ResponseEntity<TshirtSizeResponse> updateTshirtSize(@PathVariable Long id, @Valid @RequestBody TshirtSizeRequest request) {
         return ResponseEntity.ok(refDataService.updateTshirtSize(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/tshirt-sizes/{id}")
     public ResponseEntity<Void> deleteTshirtSize(@PathVariable Long id) {
         refDataService.deleteTshirtSize(id);
@@ -49,16 +52,19 @@ public class RefDataController {
         return ResponseEntity.ok(refDataService.getEffortPatterns());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/effort-patterns")
     public ResponseEntity<EffortPatternResponse> createEffortPattern(@Valid @RequestBody EffortPatternRequest request) {
         return ResponseEntity.ok(refDataService.createEffortPattern(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/effort-patterns/{id}")
     public ResponseEntity<EffortPatternResponse> updateEffortPattern(@PathVariable Long id, @Valid @RequestBody EffortPatternRequest request) {
         return ResponseEntity.ok(refDataService.updateEffortPattern(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/effort-patterns/{id}")
     public ResponseEntity<Void> deleteEffortPattern(@PathVariable Long id) {
         refDataService.deleteEffortPattern(id);
@@ -70,11 +76,13 @@ public class RefDataController {
         return ResponseEntity.ok(refDataService.getRoleMix());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/role-mix")
     public ResponseEntity<RoleEffortMixResponse> createOrUpdateRoleMix(@Valid @RequestBody RoleEffortMixRequest request) {
         return ResponseEntity.ok(refDataService.createOrUpdateRoleMix(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/role-mix/{role}")
     public ResponseEntity<Void> deleteRoleMix(@PathVariable String role) {
         refDataService.deleteRoleMix(role);

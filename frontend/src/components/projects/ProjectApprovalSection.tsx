@@ -11,17 +11,16 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCheck, IconX, IconTarget, IconClock, IconUser,
-  IconHistory, IconPlus, IconAlertCircle,
+  IconCheck, IconX, IconTarget, IconClock,
+  IconPlus,
 } from '@tabler/icons-react';
-import { AQUA, FONT_FAMILY, GRAY_100 } from '../../brandTokens';
+import { FONT_FAMILY, GRAY_100 } from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import {
   useProjectApprovals,
   useSubmitApproval,
   useWithdrawApproval,
   describeProposedChange,
-  ProjectApproval,
 } from '../../api/projectApprovals';
 
 const STATUS_COLOR: Record<string, string> = {

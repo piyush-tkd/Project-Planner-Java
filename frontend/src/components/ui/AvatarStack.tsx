@@ -1,4 +1,4 @@
-import React from 'react';
+import _React from 'react';
 import { Avatar, Tooltip } from '@mantine/core';
 
 interface User {

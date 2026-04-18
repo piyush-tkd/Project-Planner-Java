@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import org.springframework.http.ResponseEntity;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,6 +59,30 @@ public class ApprovalNotificationService {
         ctx.put("requestNote",       "This is a test email sent from Admin → Settings → Notifications. If you received it, your SMTP configuration and org branding are working correctly.");
         ctx.put("projectUrl",        "#");
         emailService.sendAlert(recipientEmail, subject, ctx, "approval-pending.html");
+    }
+
+    /**
+     * Looks up the admin's email by username, sends a test email, and returns a
+     * {@code ResponseEntity<Map<String, Object>>} suitable for a REST response.
+     */
+    public ResponseEntity<Map<String, Object>> sendTestEmailWithResponse(String username) {
+        try {
+            String recipientEmail = appUserRepository.findByUsername(username)
+                    .map(u -> u.getEmail())
+                    .filter(e -> e != null && !e.isBlank())
+                    .orElse(username); // fall back to username if no email on record
+            sendTestEmail(recipientEmail, username);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Test email sent to " + recipientEmail
+            ));
+        } catch (Exception e) {
+            log.error("Test email failed", e);
+            return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", e.getMessage() != null ? e.getMessage() : "Failed to send test email"
+            ));
+        }
     }
 
     // ── org branding helper ────────────────────────────────────────────────

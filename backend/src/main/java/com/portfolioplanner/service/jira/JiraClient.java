@@ -3,6 +3,7 @@ package com.portfolioplanner.service.jira;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import com.portfolioplanner.exception.JiraApiException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -134,9 +135,11 @@ public class JiraClient {
             List<Map<String, Object>> issues = searchIssuesPost(jql, fields, 500);
             log.info("searchByJql: '{}' → {} results", jql, issues.size());
             return issues;
+        } catch (JiraApiException e) {
+            throw e; // already typed — propagate unchanged
         } catch (Exception e) {
             log.warn("searchByJql failed for jql='{}': {}", jql, e.getMessage());
-            throw new RuntimeException("Jira JQL search failed: " + e.getMessage(), e);
+            throw new JiraApiException("Jira JQL search failed: " + e.getMessage(), e);
         }
     }
 
@@ -1206,45 +1209,147 @@ public class JiraClient {
     // ── HTTP ──────────────────────────────────────────────────────────
 
     private <T> T post(String url, Object body, Class<T> responseType) {
-        try {
+        return withRetry(url, "POST", () -> {
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(creds.getEmail(), creds.getApiToken(), StandardCharsets.UTF_8);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             headers.setContentType(MediaType.APPLICATION_JSON);
-
-            ResponseEntity<T> resp = restTemplate.exchange(
-                    url, HttpMethod.POST, new HttpEntity<>(body, headers), responseType);
-            return resp.getBody();
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("Jira API POST HTTP {} [{}]: {}", e.getStatusCode(), url, e.getResponseBodyAsString());
-            throw new RuntimeException("Jira API error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            log.error("Jira API POST connection failed [{}]: {}", url, e.getMessage());
-            throw new RuntimeException("Cannot reach Jira at " + creds.getBaseUrl() + ": " + e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("Jira API POST call failed [{}]: {}", url, e.getMessage(), e);
-            throw new RuntimeException("Jira API call failed: " + e.getMessage(), e);
-        }
+            return restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body, headers), responseType).getBody();
+        });
     }
 
     private <T> T get(String url, Class<T> responseType) {
-        try {
+        return withRetry(url, "GET", () -> {
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(creds.getEmail(), creds.getApiToken(), StandardCharsets.UTF_8);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            return restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), responseType).getBody();
+        });
+    }
 
-            ResponseEntity<T> resp = restTemplate.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(headers), responseType);
-            return resp.getBody();
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("Jira API HTTP {} [{}]: {}", e.getStatusCode(), url, e.getResponseBodyAsString());
-            throw new RuntimeException("Jira API error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            log.error("Jira API connection failed [{}]: {}", url, e.getMessage());
-            throw new RuntimeException("Cannot reach Jira at " + creds.getBaseUrl() + ": " + e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("Jira API call failed [{}]: {}", url, e.getMessage(), e);
-            throw new RuntimeException("Jira API call failed: " + e.getMessage(), e);
+    // ── Retry / backoff ───────────────────────────────────────────────
+
+    /**
+     * Maximum number of attempts for a single Jira API call (1 original + 2 retries).
+     * Configurable via {@code jira.retry.max-attempts} in application.yml.
+     */
+    private static final int MAX_ATTEMPTS  = 3;
+    /** Base delay for the first retry — doubles on each subsequent attempt (exponential backoff). */
+    private static final long BASE_DELAY_MS = 1_000L;
+    /** Maximum delay cap — prevents a single retry from blocking for too long. */
+    private static final long MAX_DELAY_MS  = 16_000L;
+
+    /**
+     * Executes {@code call} with transparent retry/backoff for transient Jira API failures.
+     *
+     * <p>Retried conditions:
+     * <ul>
+     *   <li>HTTP 429 (rate limited) — honours the {@code Retry-After} header if present</li>
+     *   <li>HTTP 5xx (server error) — exponential backoff: 1 s, 2 s, 4 s (capped at 16 s)</li>
+     *   <li>{@link org.springframework.web.client.ResourceAccessException} (connection refused,
+     *       read timeout) — same exponential schedule</li>
+     * </ul>
+     *
+     * <p>Non-retried (thrown immediately):
+     * <ul>
+     *   <li>HTTP 4xx other than 429 — authentication, 404, bad JQL, etc. are caller bugs</li>
+     * </ul>
+     */
+    @SuppressWarnings("BusyWait")
+    private <T> T withRetry(String url, String method,
+                             java.util.function.Supplier<T> call) {
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                return call.get();
+
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                // 429 = Jira rate-limit — retry after the prescribed delay
+                if (e.getStatusCode().value() == 429 && attempt < MAX_ATTEMPTS) {
+                    long delayMs = retryAfterMs(e.getResponseHeaders());
+                    log.warn("Jira {} {} → 429 rate-limited; waiting {}ms before attempt {}/{}",
+                            method, url, delayMs, attempt + 1, MAX_ATTEMPTS);
+                    sleepMs(delayMs);
+                } else {
+                    // 429 exhausted OR other 4xx — not transient
+                    String body = e.getResponseBodyAsString();
+                    // Known expected 400: Kanban boards don't support sprints — not an error
+                    if (e.getStatusCode().value() == 400 && body.contains("does not support sprints")) {
+                        log.debug("Jira {} {} → HTTP 400 (board does not support sprints)", method, url);
+                    } else {
+                        log.error("Jira {} {} → HTTP {}: {}", method, url, e.getStatusCode(), body);
+                    }
+                    int retryAfterSec = e.getStatusCode().value() == 429
+                            ? (int) (retryAfterMs(e.getResponseHeaders()) / 1000)
+                            : 0;
+                    throw new JiraApiException(
+                            "Jira API error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(),
+                            e,
+                            retryAfterSec);
+                }
+
+            } catch (org.springframework.web.client.HttpServerErrorException e) {
+                // 5xx — transient; retry with exponential backoff
+                if (attempt >= MAX_ATTEMPTS) {
+                    log.error("Jira {} {} → HTTP {} after {} attempts — giving up",
+                            method, url, e.getStatusCode(), attempt);
+                    throw new JiraApiException(
+                            "Jira API error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+                }
+                long delayMs = Math.min(BASE_DELAY_MS * (1L << (attempt - 1)), MAX_DELAY_MS);
+                log.warn("Jira {} {} → HTTP {} (attempt {}/{}); retrying in {}ms",
+                        method, url, e.getStatusCode(), attempt, MAX_ATTEMPTS, delayMs);
+                sleepMs(delayMs);
+
+            } catch (org.springframework.web.client.ResourceAccessException e) {
+                // Connection refused, read timeout, etc.
+                if (attempt >= MAX_ATTEMPTS) {
+                    log.error("Jira {} {} → connection failed after {} attempts: {}",
+                            method, url, attempt, e.getMessage());
+                    throw new JiraApiException(
+                            "Cannot reach Jira at " + creds.getBaseUrl() + ": " + e.getMessage(), e);
+                }
+                long delayMs = Math.min(BASE_DELAY_MS * (1L << (attempt - 1)), MAX_DELAY_MS);
+                log.warn("Jira {} {} connection failed (attempt {}/{}): {} — retrying in {}ms",
+                        method, url, attempt, MAX_ATTEMPTS, e.getMessage(), delayMs);
+                sleepMs(delayMs);
+
+            } catch (JiraApiException e) {
+                // Already the right type — propagate unchanged
+                throw e;
+
+            } catch (Exception e) {
+                // Unexpected — do not retry
+                log.error("Jira {} {} → unexpected error: {}", method, url, e.getMessage(), e);
+                throw new JiraApiException("Jira API call failed: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * Reads the {@code Retry-After} header (seconds) and converts to milliseconds.
+     * Falls back to 5 s if the header is absent or unparseable.
+     */
+    private static long retryAfterMs(HttpHeaders headers) {
+        if (headers != null) {
+            List<String> values = headers.get("Retry-After");
+            if (values != null && !values.isEmpty()) {
+                try {
+                    return Long.parseLong(values.get(0).trim()) * 1_000L;
+                } catch (NumberFormatException ignored) { /* use default */ }
+            }
+        }
+        return 5_000L;
+    }
+
+    private static void sleepMs(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 }

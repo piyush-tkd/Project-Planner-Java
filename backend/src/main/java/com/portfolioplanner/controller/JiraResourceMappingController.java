@@ -31,18 +31,21 @@ public class JiraResourceMappingController {
     }
 
     /** Scan Jira for all unique display names */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/scan")
     public ResponseEntity<List<JiraNameInfo>> scan() {
         return ResponseEntity.ok(mappingService.scanJiraNames());
     }
 
     /** Run auto-match: scan + fuzzy match + persist suggestions */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/auto-match")
     public ResponseEntity<List<ResourceMappingResponse>> autoMatch() {
         return ResponseEntity.ok(mappingService.scanAndAutoMatch());
     }
 
     /** Save or update a single mapping */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{jiraDisplayName}")
     public ResponseEntity<Map<String, Object>> saveMapping(
             @PathVariable String jiraDisplayName,
@@ -54,6 +57,7 @@ public class JiraResourceMappingController {
     }
 
     /** Delete a mapping */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMapping(@PathVariable Long id) {
         mappingService.deleteMapping(id);
@@ -61,6 +65,7 @@ public class JiraResourceMappingController {
     }
 
     /** Clear mapping for a resource (unmap it) */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/by-resource/{resourceId}")
     public ResponseEntity<Map<String, Object>> clearResourceMapping(@PathVariable Long resourceId) {
         int cleared = mappingService.clearResourceMapping(resourceId);
@@ -68,12 +73,14 @@ public class JiraResourceMappingController {
     }
 
     /** Get resources from Resource tab that have no Jira user mapped */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/unmapped-resources")
     public ResponseEntity<List<UnmappedResource>> getUnmappedResources() {
         return ResponseEntity.ok(mappingService.getUnmappedResources());
     }
 
     /** Bulk accept all auto-matched mappings above a confidence threshold */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/bulk-accept")
     public ResponseEntity<Map<String, Object>> bulkAccept(@RequestBody Map<String, Double> body) {
         double minConfidence = body.getOrDefault("minConfidence", 0.85);
@@ -82,6 +89,7 @@ public class JiraResourceMappingController {
     }
 
     /** Backfill Jira avatar URLs for all confirmed mappings that don't have one yet */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/sync-avatars")
     public ResponseEntity<Map<String, Object>> syncAvatars() {
         int synced = mappingService.syncAllAvatars();

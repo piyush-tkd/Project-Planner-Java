@@ -34,6 +34,7 @@ public class JiraSupportController {
         return svc.getHistory(Math.min(days, 90));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/snapshot/capture")
     public ResponseEntity<Void> captureNow() {
         svc.captureNow();
@@ -47,6 +48,7 @@ public class JiraSupportController {
         return svc.listBoards();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/boards")
     public ResponseEntity<JiraSupportBoard> createBoard(@RequestBody BoardRequest req) {
         JiraSupportBoard board = new JiraSupportBoard();
@@ -62,6 +64,7 @@ public class JiraSupportController {
         return ResponseEntity.status(HttpStatus.CREATED).body(svc.saveBoard(board));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/boards/{id}")
     public JiraSupportBoard updateBoard(@PathVariable Long id, @RequestBody BoardRequest req) {
         JiraSupportBoard board = svc.listBoards().stream()
@@ -80,6 +83,7 @@ public class JiraSupportController {
         return svc.saveBoard(board);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/boards/{id}")
     public ResponseEntity<Void> deleteBoard(@PathVariable Long id) {
         svc.deleteBoard(id);

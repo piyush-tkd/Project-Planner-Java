@@ -3,9 +3,7 @@ package com.portfolioplanner.controller;
 import com.portfolioplanner.domain.model.ObjectiveProjectLink;
 import com.portfolioplanner.domain.model.Project;
 import com.portfolioplanner.domain.model.StrategicObjective;
-import com.portfolioplanner.domain.repository.ObjectiveProjectLinkRepository;
-import com.portfolioplanner.domain.repository.ProjectRepository;
-import com.portfolioplanner.domain.repository.StrategicObjectiveRepository;
+import com.portfolioplanner.service.ObjectivesService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -17,9 +15,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -28,9 +27,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ObjectivesController {
 
-    private final StrategicObjectiveRepository repo;
-    private final ObjectiveProjectLinkRepository linkRepo;
-    private final ProjectRepository projectRepo;
+    private final ObjectivesService service;
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
 
@@ -91,16 +88,6 @@ public class ObjectivesController {
         );
     }
 
-    private void applyRequest(StrategicObjective obj, ObjectiveRequest req) {
-        obj.setTitle(req.title());
-        if (req.description() != null) obj.setDescription(req.description());
-        if (req.owner()       != null) obj.setOwner(req.owner());
-        if (req.status()      != null) obj.setStatus(req.status());
-        if (req.progress()    != null) obj.setProgress(req.progress());
-        if (req.targetDate()  != null && !req.targetDate().isBlank())
-            obj.setTargetDate(LocalDate.parse(req.targetDate()));
-        if (req.quarter()     != null) obj.setQuarter(req.quarter());
-    }
 
     // ── Endpoints ────────────────────────────────────────────────────────────
 
@@ -108,23 +95,15 @@ public class ObjectivesController {
     public List<ObjectiveResponse> getAll(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String quarter) {
-        if (quarter != null && !quarter.isBlank())
-            return repo.findByQuarterOrderByCreatedAtDesc(quarter)
-                       .stream().map(this::toDto).toList();
-        if (status != null && !status.isBlank())
-            return repo.findByStatusOrderByCreatedAtDesc(status)
-                       .stream().map(this::toDto).toList();
-        return repo.findAllByOrderByCreatedAtDesc()
-                   .stream().map(this::toDto).toList();
+        return service.getAll(status, quarter).stream().map(this::toDto).toList();
     }
 
     @GetMapping("/summary")
     public SummaryResponse getSummary() {
-        List<StrategicObjective> all = repo.findAll();
-        Map<String, Long> counts = all.stream()
-            .collect(Collectors.groupingBy(StrategicObjective::getStatus, Collectors.counting()));
+        Map<String, Long> counts = service.getSummary();
+        long total = counts.values().stream().mapToLong(Long::longValue).sum();
         return new SummaryResponse(
-            all.size(),
+            total,
             counts.getOrDefault("ON_TRACK",    0L),
             counts.getOrDefault("AT_RISK",     0L),
             counts.getOrDefault("COMPLETED",   0L),
@@ -134,45 +113,41 @@ public class ObjectivesController {
 
     @GetMapping("/{id}")
     public ObjectiveResponse getById(@PathVariable Long id) {
-        return repo.findById(id).map(this::toDto)
+        return service.getById(id).map(this::toDto)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found"));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<ObjectiveResponse> create(@Valid @RequestBody ObjectiveRequest req) {
-        StrategicObjective obj = new StrategicObjective();
-        obj.setStatus("NOT_STARTED");
-        obj.setProgress(0);
-        applyRequest(obj, req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(repo.save(obj)));
+        StrategicObjective obj = service.create(
+                req.title(), req.description(), req.owner(),
+                req.status(), req.progress(), req.targetDate(), req.quarter());
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(obj));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ObjectiveResponse update(@PathVariable Long id, @Valid @RequestBody ObjectiveRequest req) {
-        StrategicObjective obj = repo.findById(id)
+        return service.update(id, req.title(), req.description(), req.owner(),
+                req.status(), req.progress(), req.targetDate(), req.quarter())
+            .map(this::toDto)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found"));
-        applyRequest(obj, req);
-        return toDto(repo.save(obj));
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ObjectiveResponse updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest req) {
-        StrategicObjective obj = repo.findById(id)
+        return service.updateStatus(id, req.status(), req.progress())
+            .map(this::toDto)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found"));
-        obj.setStatus(req.status());
-        if (req.progress() != null) obj.setProgress(req.progress());
-        return toDto(repo.save(obj));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!repo.existsById(id))
+        if (!service.delete(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
-        repo.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -180,13 +155,10 @@ public class ObjectivesController {
 
     @GetMapping("/{id}/links")
     public List<LinkedProjectResponse> getLinks(@PathVariable Long id) {
-        if (!repo.existsById(id))
+        if (!service.getById(id).isPresent())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
-        return linkRepo.findByObjectiveId(id).stream()
-            .map(link -> projectRepo.findById(link.getProjectId())
-                .map(p -> new LinkedProjectResponse(p.getId(), p.getName(), p.getStatus(), deriveProgress(p)))
-                .orElse(null))
-            .filter(r -> r != null)
+        return service.getLinkedProjects(id).stream()
+            .map(this::deriveLinkedResponse)
             .toList();
     }
 
@@ -194,40 +166,33 @@ public class ObjectivesController {
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<LinkedProjectResponse> addLink(@PathVariable Long id,
                                                           @RequestBody LinkRequest req) {
-        if (!repo.existsById(id))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective not found");
-        Project project = projectRepo.findById(req.projectId())
+        Optional<ObjectiveProjectLink> linkResult = service.addLink(id, req.projectId());
+        if (!linkResult.isPresent())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Objective or Project not found");
+        Project project = service.getLinkedProjects(id).stream()
+            .filter(p -> p.getId().equals(req.projectId()))
+            .findFirst()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
-        if (!linkRepo.existsByObjectiveIdAndProjectId(id, req.projectId())) {
-            ObjectiveProjectLink link = new ObjectiveProjectLink();
-            link.setObjectiveId(id);
-            link.setProjectId(req.projectId());
-            linkRepo.save(link);
-            // Auto-update objective progress from linked projects
-            recomputeProgress(id);
-        }
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(new LinkedProjectResponse(project.getId(), project.getName(),
-                                             project.getStatus(), deriveProgress(project)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(deriveLinkedResponse(project));
     }
 
     @DeleteMapping("/{id}/links/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN','READ_WRITE')")
     public ResponseEntity<Void> removeLink(@PathVariable Long id, @PathVariable Long projectId) {
-        linkRepo.deleteByObjectiveIdAndProjectId(id, projectId);
-        recomputeProgress(id);
+        service.removeLink(id, projectId);
         return ResponseEntity.noContent().build();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    private LinkedProjectResponse deriveLinkedResponse(Project p) {
+        int progress = deriveProgress(p);
+        return new LinkedProjectResponse(p.getId(), p.getName(), p.getStatus(), progress);
+    }
 
-    /** Derive 0–100 progress from project status and timeline. */
     private int deriveProgress(Project p) {
         String s = p.getStatus() == null ? "" : p.getStatus().toUpperCase();
         if (s.equals("COMPLETED"))   return 100;
         if (s.equals("CANCELLED"))   return 0;
         if (s.equals("NOT_STARTED")) return 0;
-        // Time-based estimate for ACTIVE / ON_HOLD / IN_DISCOVERY
         LocalDate start  = p.getStartDate();
         LocalDate target = p.getTargetDate();
         if (start != null && target != null && !target.isBefore(start)) {
@@ -238,22 +203,6 @@ public class ObjectivesController {
                 return pct;
             }
         }
-        return 10; // minimal progress when no dates
-    }
-
-    /** Recompute objective's progress as average of linked project progress values. */
-    private void recomputeProgress(Long objectiveId) {
-        List<ObjectiveProjectLink> links = linkRepo.findByObjectiveId(objectiveId);
-        if (links.isEmpty()) return;
-        double avg = links.stream()
-            .map(link -> projectRepo.findById(link.getProjectId()).orElse(null))
-            .filter(p -> p != null)
-            .mapToInt(this::deriveProgress)
-            .average()
-            .orElse(0);
-        repo.findById(objectiveId).ifPresent(obj -> {
-            obj.setProgress((int) Math.round(avg));
-            repo.save(obj);
-        });
+        return 10;
     }
 }

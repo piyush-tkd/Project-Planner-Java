@@ -6,7 +6,7 @@ import {
   Divider, SegmentedControl, ThemeIcon, TextInput, Avatar,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
-import { DEEP_BLUE, FONT_FAMILY, GRAY_300, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUBTLE, COLOR_BLUE_LIGHT, COLOR_ORANGE_ALT, COLOR_ORANGE} from '../brandTokens';
+import { GRAY_300, SURFACE_BLUE, SURFACE_BLUE_LIGHT, SURFACE_LIGHT, SURFACE_ORANGE, SURFACE_SUBTLE, COLOR_BLUE_LIGHT, COLOR_ORANGE_ALT, COLOR_ORANGE} from '../brandTokens';
 import { notifications } from '@mantine/notifications';
 import {
   IconCopy, IconChecks, IconTemplate, IconAlertTriangle,
@@ -447,7 +447,9 @@ export default function AvailabilityPage() {
               />
               <Tooltip label={selected.size === 0 ? 'Select target resources first' : `Paste to ${selected.size} selected`}>
                 <ActionIcon variant="light" color="blue" onClick={copyToSelected}
-                  disabled={sourceResourceId === null || selected.size === 0} size="lg">
+                  disabled={sourceResourceId === null || selected.size === 0} size="lg"
+      aria-label="Copy"
+    >
                   <IconCopy size={18} />
                 </ActionIcon>
               </Tooltip>
@@ -460,7 +462,9 @@ export default function AvailabilityPage() {
               <NumberInput value={uniformValue} onChange={v => setUniformValue(Number(v))}
                 min={0} max={300} size="xs" w={80} />
               <Tooltip label={selected.size > 0 ? `Set for ${selected.size} selected` : 'Set for all resources'}>
-                <ActionIcon variant="light" color="teal" onClick={applyUniform} size="lg">
+                <ActionIcon variant="light" color="teal" onClick={applyUniform} size="lg"
+      aria-label="Confirm"
+    >
                   <IconChecks size={18} />
                 </ActionIcon>
               </Tooltip>
@@ -472,7 +476,9 @@ export default function AvailabilityPage() {
             <Menu shadow="md" width={220}>
               <Menu.Target>
                 <Tooltip label={selected.size > 0 ? `Apply to ${selected.size} selected` : 'Apply to all resources'}>
-                  <ActionIcon variant="light" color="grape" size="lg">
+                  <ActionIcon variant="light" color="grape" size="lg"
+      aria-label="Template"
+    >
                     <IconTemplate size={18} />
                   </ActionIcon>
                 </Tooltip>
@@ -513,13 +519,13 @@ export default function AvailabilityPage() {
 
       {/* ── Table ───────────────────────────────── */}
       <ScrollArea>
-        <Table fz="xs" withTableBorder withColumnBorders style={{ minWidth: 1100 }}>
+        <Table fz="xs" withTableBorder withColumnBorders miw={1100}>
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 36, textAlign: 'center' }}>
                 <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} size="xs" />
               </Table.Th>
-              <Table.Th style={{ minWidth: 190 }}>
+              <Table.Th miw={190}>
                 <UnstyledButton onClick={() => toggleSort('name')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Text fw={600} size="xs">Resource</Text>
                   <SortIcon field="name" />
@@ -567,7 +573,6 @@ export default function AvailabilityPage() {
               const isPartTime = row.capacityFte < 1;
               const location   = row.location ?? undefined;
               const yearNet    = getYearNet(row.resourceId, location);
-              const yearGross  = months.reduce((s, m) => s + getHours(row.resourceId, m), 0);
               const hasAnyLeave = Object.keys(leaveMap[row.resourceId] ?? {}).length > 0;
 
               return (
@@ -588,7 +593,7 @@ export default function AvailabilityPage() {
                   </Table.Td>
 
                   {/* Resource Name */}
-                  <Table.Td style={{ padding: '4px 8px' }}>
+                  <Table.Td p="4px 8px">
                     <Stack gap={2}>
                       <Group gap={4} wrap="nowrap">
                         {(() => {
@@ -726,7 +731,7 @@ export default function AvailabilityPage() {
           {/* ── Totals footer ───────────────────── */}
           <Table.Tfoot>
             <Table.Tr style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : SURFACE_LIGHT }}>
-              <Table.Td colSpan={3} style={{ padding: '6px 8px' }}>
+              <Table.Td colSpan={3} p="6px 8px">
                 <Text size="xs" fw={700} c="dimmed">
                   TOTALS ({sortedList.length} resources)
                 </Text>

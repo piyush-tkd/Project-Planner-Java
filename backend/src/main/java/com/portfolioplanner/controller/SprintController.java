@@ -36,6 +36,7 @@ public class SprintController {
         return ResponseEntity.ok(sprintService.update(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         sprintService.delete(id);

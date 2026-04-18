@@ -165,7 +165,9 @@ export default function AdvancedFilterPanel({ fields, value, onChange }: Advance
             <Text size="sm" fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
               Advanced Filters
             </Text>
-            <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => setOpen(false)}>
+            <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => setOpen(false)}
+      aria-label="Close"
+    >
               <IconX size={14} />
             </ActionIcon>
           </Group>
@@ -278,6 +280,7 @@ export default function AdvancedFilterPanel({ fields, value, onChange }: Advance
                   variant="subtle"
                   onClick={() => removeCondition(cond.id)}
                   style={{ flexShrink: 0, marginBottom: 2 }}
+                  aria-label="Delete"
                 >
                   <IconTrash size={13} />
                 </ActionIcon>

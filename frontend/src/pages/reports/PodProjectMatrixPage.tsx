@@ -1,9 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
- Box,
  Button,
  Group,
- Loader,
  MultiSelect,
  Popover,
  ScrollArea,
@@ -13,12 +11,12 @@ import {
  Title,
  Badge,
  Tooltip,
- Paper,
+ Paper
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { AQUA, AQUA_TINTS, COLOR_GREEN_DARK, COLOR_ORANGE_DARK, DARK_SURFACE, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_200, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM} from '../../brandTokens';
+import { COLOR_GREEN_DARK, COLOR_ORANGE_DARK, DARK_SURFACE, DEEP_BLUE, GRAY_200, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING, TEXT_DIM} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
 interface ProjectPodMatrixResponse {
@@ -44,14 +42,14 @@ const STATUS_COLORS: Record<string, string> = {
  ACTIVE: SURFACE_SUCCESS,
  ON_HOLD: SURFACE_WARNING,
  COMPLETED: '#d0ebff',
- CANCELLED: '#f1f3f5',
+ CANCELLED: '#f1f3f5'
 };
 
 const STATUS_TEXT_COLORS: Record<string, string> = {
  ACTIVE: COLOR_GREEN_DARK,
  ON_HOLD: COLOR_ORANGE_DARK,
  COMPLETED: '#1971c2',
- CANCELLED: TEXT_DIM,
+ CANCELLED: TEXT_DIM
 };
 
 const TSHIRT_BADGE_COLORS: Record<string, string> = {
@@ -59,7 +57,7 @@ const TSHIRT_BADGE_COLORS: Record<string, string> = {
  S: 'blue',
  M: 'cyan',
  L: 'orange',
- XL: 'red',
+ XL: 'red'
 };
 
 export default function PodProjectMatrixPage() {
@@ -98,7 +96,7 @@ export default function PodProjectMatrixPage() {
  priority: p.priority,
  status: p.status,
  owner: p.owner,
- startMonth: p.projectStartMonth,
+ startMonth: p.projectStartMonth
  }));
 
  return { pods: podList, projects: projectList };
@@ -155,7 +153,7 @@ export default function PodProjectMatrixPage() {
  <Stack gap="md" p="md" className="page-enter stagger-children">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ color: headingColor, fontFamily: FONT_FAMILY, fontWeight: 700 }}>POD-Project Matrix</Title>
+ <Title order={2} style={{ color: headingColor, fontWeight: 700 }}>POD-Project Matrix</Title>
  <Text size="sm" c="dimmed">
  Assign PODs to projects and track allocation by timeline
  </Text>
@@ -198,10 +196,8 @@ export default function PodProjectMatrixPage() {
  <table
  style={{
  borderCollapse: 'collapse',
- fontFamily: FONT_FAMILY,
  fontSize: '14px',
- minWidth: '100%',
- }}
+ minWidth: '100%'}}
  >
  <thead>
  <tr>
@@ -215,8 +211,7 @@ export default function PodProjectMatrixPage() {
  minWidth: 120,
  position: 'sticky',
  left: 0,
- zIndex: 2,
- }}
+ zIndex: 2}}
  >
  POD
  </th>
@@ -229,8 +224,7 @@ export default function PodProjectMatrixPage() {
  padding: '12px',
  textAlign: 'center',
  fontWeight: 600,
- minWidth: 100,
- }}
+ minWidth: 100}}
  >
  <Tooltip label={project.name} position="top">
  <span>{truncateText(project.name, 12)}</span>
@@ -250,8 +244,7 @@ export default function PodProjectMatrixPage() {
  fontWeight: 600,
  position: 'sticky',
  left: 0,
- zIndex: 1,
- }}
+ zIndex: 1}}
  >
  {pod.name}
  </td>
@@ -268,8 +261,7 @@ export default function PodProjectMatrixPage() {
  padding: '12px',
  textAlign: 'center',
  color: '#999',
- borderBottom: '1px solid #e9ecef',
- }}
+ borderBottom: '1px solid #e9ecef'}}
  >
  —
  </td>
@@ -303,8 +295,7 @@ export default function PodProjectMatrixPage() {
  textAlign: 'center',
  borderBottom: '1px solid #e9ecef',
  cursor: 'pointer',
- transition: 'opacity 0.2s',
- }}
+ transition: 'opacity 0.2s'}}
  onMouseEnter={(e) => {
  e.currentTarget.style.opacity = '0.8';
  }}

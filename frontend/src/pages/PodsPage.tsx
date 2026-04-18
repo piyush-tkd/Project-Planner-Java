@@ -22,6 +22,7 @@ import TablePagination from '../components/common/TablePagination';
 import { podColumns, bauColumns } from '../utils/csvColumns';
 import { usePagination } from '../hooks/usePagination';
 
+// @ts-expect-error -- unused
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -288,8 +289,8 @@ export default function PodsPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 40 }}>#</Table.Th>
-              <Table.Th style={{ minWidth: 160 }}>POD Name</Table.Th>
-              <Table.Th style={{ minWidth: 140 }}>Description</Table.Th>
+              <Table.Th miw={160}>POD Name</Table.Th>
+              <Table.Th miw={140}>Description</Table.Th>
               <Table.Th style={{ textAlign: 'center', width: 90 }}>
                 <Group gap={4} justify="center"><IconUsers size={12} /><span>Resources</span></Group>
               </Table.Th>
@@ -301,7 +302,7 @@ export default function PodsPage() {
               <Table.Th style={{ textAlign: 'center', width: 110 }}>
                 <Group gap={4} justify="center"><IconClock size={12} /><span>Hours</span></Group>
               </Table.Th>
-              <Table.Th style={{ minWidth: 120 }}>Activity</Table.Th>
+              <Table.Th miw={120}>Activity</Table.Th>
               <Table.Th style={{ width: 160 }}>Complexity ×</Table.Th>
               <Table.Th style={{ width: 70 }}>Save</Table.Th>
               <Table.Th style={{ width: 100 }}>Actions</Table.Th>
@@ -347,12 +348,16 @@ export default function PodsPage() {
                         <Tooltip label="Save name">
                           <ActionIcon size="xs" color="green" variant="filled"
                             loading={updatePod.isPending}
-                            onClick={e => commitRename(pod.id, e)}>
+                            onClick={e => commitRename(pod.id, e)}
+      aria-label="Confirm"
+    >
                             <IconCheck size={11} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label="Cancel">
-                          <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelRename}>
+                          <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelRename}
+      aria-label="Close"
+    >
                             <IconX size={11} />
                           </ActionIcon>
                         </Tooltip>
@@ -381,28 +386,28 @@ export default function PodsPage() {
                   </Table.Td>
 
                   {/* Resources */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td ta="center">
                     <Badge size="sm" variant="light" color={s?.memberCount ? 'blue' : 'gray'}>
                       {s?.memberCount ?? 0}
                     </Badge>
                   </Table.Td>
 
                   {/* Total Projects */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td ta="center">
                     <Badge size="sm" variant="light" color={s?.projectCount ? 'violet' : 'gray'}>
                       {s?.projectCount ?? 0}
                     </Badge>
                   </Table.Td>
 
                   {/* Active Projects */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td ta="center">
                     {s?.activeProjectCount ? (
                       <Badge size="sm" variant="light" color="green">{s.activeProjectCount}</Badge>
                     ) : <Text size="xs" c="dimmed">—</Text>}
                   </Table.Td>
 
                   {/* Pod Status (Active) — inline toggle */}
-                  <Table.Td style={{ textAlign: 'center' }} onClick={e => { e.stopPropagation(); startEdit(pod.id, 'active', pod.active); }}>
+                  <Table.Td ta="center" onClick={e => { e.stopPropagation(); startEdit(pod.id, 'active', pod.active); }}>
                     {editingCell?.id === pod.id && editingCell.field === 'active' ? (
                       <Switch
                         size="xs"
@@ -419,7 +424,7 @@ export default function PodsPage() {
                   </Table.Td>
 
                   {/* Allocated Hours */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td ta="center">
                     {s?.totalHours ? (
                       <Text size="xs" fw={500} style={{ color: 'var(--pp-text)' }}>
                         {s.totalHours.toLocaleString(undefined, { maximumFractionDigits: 0 })}h
@@ -462,19 +467,25 @@ export default function PodsPage() {
                     <Group gap={4} wrap="nowrap">
                       <Tooltip label="View details">
                         <ActionIcon size="sm" color="teal" variant="subtle"
-                          onClick={() => navigate(`/pods/${pod.id}`)}>
+                          onClick={() => navigate(`/pods/${pod.id}`)}
+      aria-label="View"
+    >
                           <IconEye size={13} />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Rename POD">
                         <ActionIcon size="sm" color="blue" variant="subtle"
-                          onClick={e => startRename(pod.id, pod.name, e)}>
+                          onClick={e => startRename(pod.id, pod.name, e)}
+      aria-label="Edit"
+    >
                           <IconPencil size={13} />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Delete POD">
                         <ActionIcon size="sm" color="red" variant="subtle"
-                          onClick={() => setDeleteTargetId(pod.id)}>
+                          onClick={() => setDeleteTargetId(pod.id)}
+      aria-label="Delete"
+    >
                           <IconTrash size={13} />
                         </ActionIcon>
                       </Tooltip>
@@ -538,7 +549,7 @@ export default function PodsPage() {
                 {roles.map(role => {
                   const key = `${pod.id}-${role}`;
                   return (
-                    <Table.Td key={role} style={{ padding: 4 }}>
+                    <Table.Td key={role} p={4}>
                       <NumberInput
                         value={getBauValue(pod.id, role)}
                         onChange={v => setBauEdits(prev => ({ ...prev, [key]: Number(v) }))}
@@ -546,7 +557,7 @@ export default function PodsPage() {
                         max={100}
                         suffix="%"
                         size="xs"
-                        style={{ minWidth: 70 }}
+                        miw={70}
                       />
                     </Table.Td>
                   );

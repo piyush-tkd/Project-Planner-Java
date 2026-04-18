@@ -29,3 +29,6 @@ backend/target/site/
 # Logs
 *.log
 .claude/
+
+# Verify pipeline
+.verify-last-run.json

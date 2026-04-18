@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
  Container,
  Title,
@@ -13,8 +13,7 @@ import {
  Box,
  SimpleGrid,
  Paper,
- ThemeIcon,
- RingProgress,
+ ThemeIcon
 } from '@mantine/core';
 import { IconBriefcase, IconUsers, IconFlame, IconChartBar } from '@tabler/icons-react';
 import { useProjectPodMatrix } from '../../api/projects';
@@ -22,7 +21,7 @@ import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { AQUA, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_300, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, GRAY_300, SURFACE_SUBTLE, SURFACE_SUCCESS, SURFACE_WARNING } from '../../brandTokens';
 
 interface ProjectPodMatrixResponse {
  planningId: number;
@@ -102,7 +101,7 @@ export default function OwnerDemandPage() {
 
  return {
  ownerDemandMatrix: matrix,
- owners: Array.from(ownerSet).sort(),
+ owners: Array.from(ownerSet).sort()
  };
  }, [projectPodMatrix]);
 
@@ -171,8 +170,7 @@ export default function OwnerDemandPage() {
  backgroundColor: isCurrentMonth ? AQUA : getColorForCount(count),
  textAlign: 'center',
  cursor: count > 0 ? 'pointer' : 'default',
- minWidth: '70px',
- }}
+ minWidth: '70px'}}
  onClick={() => {
  if (count > 0) {
  setSelectedCell({ owner, monthIndex, projects });
@@ -184,8 +182,7 @@ export default function OwnerDemandPage() {
  fw={700}
  size="lg"
  style={{
- color: isCurrentMonth ? 'white' : count === 0 ? GRAY_300 : dark ? '#1a1a1a' : '#212529',
- }}
+ color: isCurrentMonth ? 'white' : count === 0 ? GRAY_300 : dark ? '#1a1a1a' : '#212529'}}
  >
  {count}
  </Text>
@@ -200,7 +197,7 @@ export default function OwnerDemandPage() {
  <Stack gap="lg">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE, fontWeight: 700 }}>
  Owner Demand
  </Title>
  <Text c="dimmed" size="sm">
@@ -218,7 +215,7 @@ export default function OwnerDemandPage() {
  </ThemeIcon>
  <div>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Owners</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{owners.length}</Text>
+ <Text size="xl" fw={700} style={{lineHeight: 1.1 }}>{owners.length}</Text>
  </div>
  </Group>
  </Paper>
@@ -230,7 +227,7 @@ export default function OwnerDemandPage() {
  </ThemeIcon>
  <div>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Total Projects</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{totalUniqueProjects}</Text>
+ <Text size="xl" fw={700} style={{lineHeight: 1.1 }}>{totalUniqueProjects}</Text>
  </div>
  </Group>
  </Paper>
@@ -252,7 +249,7 @@ export default function OwnerDemandPage() {
  </ThemeIcon>
  <div>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Busiest Owner</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>
+ <Text size="xl" fw={700} style={{lineHeight: 1.1 }}>
  {busiestOwner ? `${busiestOwner.owner} (${busiestOwner.count})` : '–'}
  </Text>
  </div>
@@ -266,7 +263,7 @@ export default function OwnerDemandPage() {
  </ThemeIcon>
  <div>
  <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: '0.04em' }}>Avg per Owner</Text>
- <Text size="xl" fw={700} style={{ fontFamily: FONT_FAMILY, lineHeight: 1.1 }}>{avgProjects}</Text>
+ <Text size="xl" fw={700} style={{lineHeight: 1.1 }}>{avgProjects}</Text>
  </div>
  </Group>
  </Paper>
@@ -289,7 +286,7 @@ export default function OwnerDemandPage() {
  size="lg"
  variant="light"
  color={count > avgProjects ? 'orange' : 'teal'}
- style={{ textTransform: 'none', fontFamily: FONT_FAMILY, cursor: 'pointer' }}
+ style={{ textTransform: 'none', cursor: 'pointer' }}
  >
  {owner}: {count}
  </Badge>
@@ -327,8 +324,7 @@ export default function OwnerDemandPage() {
  backgroundColor: isCurrentMonth ? currentMonthBg : tableHeaderBg,
  color: tableHeaderColor,
  textAlign: 'center',
- minWidth: '70px',
- }}
+ minWidth: '70px'}}
  >
  {monthLabels[monthIdx]}
  </Table.Th>

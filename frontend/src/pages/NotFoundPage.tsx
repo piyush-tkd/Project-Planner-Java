@@ -13,7 +13,6 @@ export default function NotFoundPage() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        fontFamily: FONT_FAMILY,
         background: 'var(--mantine-color-body)',
       }}
     >
@@ -28,7 +27,6 @@ export default function NotFoundPage() {
               lineHeight: 1,
               color: AQUA,
               opacity: 0.15,
-              fontFamily: FONT_FAMILY,
               userSelect: 'none',
             }}
           >
@@ -84,7 +82,7 @@ export default function NotFoundPage() {
           </Button>
         </Group>
 
-        <Text size="xs" c="dimmed" style={{ marginTop: 8 }}>
+        <Text size="xs" c="dimmed" mt={8}>
           If you believe this is a bug, use ⌘K to search for the page you're looking for.
         </Text>
       </Stack>

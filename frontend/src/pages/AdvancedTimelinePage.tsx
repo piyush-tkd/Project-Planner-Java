@@ -6,25 +6,25 @@
  *  2. Baselines — per-project baseline vs. actual comparison table
  *  3. Milestones — milestone projects with snap-baseline controls
  */
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Text, Stack, Group, Button, Paper, Badge, Select, Tabs,
   Table, ScrollArea, ThemeIcon, Tooltip, ActionIcon, Modal, TextInput,
-  Skeleton, Divider, SimpleGrid, Progress, Alert,
+  Skeleton, Divider, SimpleGrid, Alert,
 } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import { notifications } from '@mantine/notifications';
 import {
   IconLayoutBoard, IconFlag, IconHistory, IconCheck, IconPlus,
   IconTrash, IconAlertTriangle, IconZoomIn, IconZoomOut,
-  IconCalendarEvent, IconTarget, IconLock, IconArrowRight,
+  IconTarget, IconLock,
 } from '@tabler/icons-react';
 import { useProjects } from '../api/projects';
 import {
   useProjectBaselines, useSnapBaseline, useDeleteBaseline,
   ProjectBaseline,
 } from '../api/projectBaselines';
-import { AQUA, COLOR_ERROR, COLOR_ORANGE_DARK, COLOR_SUCCESS, DEEP_BLUE, FONT_FAMILY, GRAY_100, GRAY_BORDER, TEXT_DIM} from '../brandTokens';
+import { AQUA, COLOR_ERROR, COLOR_ORANGE_DARK, COLOR_SUCCESS, FONT_FAMILY, GRAY_100, GRAY_BORDER, TEXT_DIM} from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import type { ProjectResponse } from '../types/project';
 
@@ -47,6 +47,7 @@ function daysBetween(a: Date, b: Date) {
   return Math.max(0, Math.floor((b.getTime() - a.getTime()) / 86_400_000));
 }
 
+// @ts-expect-error -- unused
 function addDays(d: Date, n: number) {
   const r = new Date(d); r.setDate(r.getDate() + n); return r;
 }
@@ -259,11 +260,15 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
           </Badge>
         </Group>
         <Group gap={4}>
-          <ActionIcon size="sm" variant="light" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>
+          <ActionIcon size="sm" variant="light" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
+      aria-label="Zoom"
+    >
             <IconZoomOut size={14} />
           </ActionIcon>
           <Text size="xs" c="dimmed">{Math.round(zoom * 100)}%</Text>
-          <ActionIcon size="sm" variant="light" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>
+          <ActionIcon size="sm" variant="light" onClick={() => setZoom(z => Math.min(3, z + 0.25))}
+      aria-label="Zoom"
+    >
             <IconZoomIn size={14} />
           </ActionIcon>
         </Group>
@@ -292,7 +297,7 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
         <div style={{ display: 'flex' }}>
           {/* Labels column */}
           <div style={{ width: LABEL_W, flexShrink: 0, paddingTop: 32 }}>
-            {filtered.map((p, i) => (
+            {filtered.map((p) => (
               <div
                 key={p.id}
                 style={{
@@ -325,7 +330,6 @@ function TimelineTab({ projects, isDark }: { projects: ProjectResponse[]; isDark
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     color: criticalSet.has(p.id) ? '#f59f00' : undefined,
-                    fontFamily: FONT_FAMILY,
                   }}
                 >
                   {p.name}
@@ -533,6 +537,7 @@ function BaselinesTab({ projects, isDark }: { projects: ProjectResponse[]; isDar
                       variant="subtle"
                       onClick={() => handleDelete(b.id)}
                       loading={deleteMutation.isPending}
+                      aria-label="Delete"
                     >
                       <IconTrash size={13} />
                     </ActionIcon>

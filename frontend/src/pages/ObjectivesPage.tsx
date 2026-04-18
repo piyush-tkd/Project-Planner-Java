@@ -21,12 +21,10 @@ import {
   ThemeIcon,
   Divider,
   ScrollArea,
-  Popover,
   Alert,
 } from '@mantine/core';
 import {
   IconTargetArrow,
-  IconEdit,
   IconTrash,
   IconDots,
   IconLink,
@@ -248,6 +246,7 @@ export default function ObjectivesPage() {
     setModalOpen(true);
   };
 
+  // @ts-expect-error -- unused
   const openEditModal = (objective: Objective) => {
     setFormData({
       title: objective.title,
@@ -346,13 +345,16 @@ export default function ObjectivesPage() {
                   color="blue"
                   size="sm"
                   onClick={() => setLinkModalObjectiveId(objective.id)}
+                  aria-label="Copy link"
                 >
                   <IconLink size={14} />
                 </ActionIcon>
               </Tooltip>
               <Menu shadow="md">
                 <Menu.Target>
-                  <ActionIcon variant="subtle" color="gray" size="sm">
+                  <ActionIcon variant="subtle" color="gray" size="sm"
+      aria-label="More options"
+    >
                     <IconDots size={16} />
                   </ActionIcon>
                 </Menu.Target>
@@ -715,6 +717,7 @@ export default function ObjectivesPage() {
                         size="sm"
                         loading={removeLinkMutation.isPending}
                         onClick={() => removeLinkMutation.mutate(lp.projectId)}
+                        aria-label="Unlink"
                       >
                         <IconUnlink size={13} />
                       </ActionIcon>

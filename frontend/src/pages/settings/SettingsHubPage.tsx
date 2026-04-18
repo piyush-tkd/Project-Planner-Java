@@ -6,7 +6,6 @@ import {
   Title,
   Group,
   ThemeIcon,
-  Stack,
   Container,
   Box,
   UnstyledButton,
@@ -26,7 +25,7 @@ import {
   IconDatabase,
   IconArrowRight,
 } from '@tabler/icons-react';
-import { AQUA, DEEP_BLUE, FONT_FAMILY, DEEP_BLUE_TINTS, BORDER_DEFAULT } from '../../brandTokens';
+import { AQUA, DEEP_BLUE, DEEP_BLUE_TINTS, BORDER_DEFAULT } from '../../brandTokens';
 
 interface SettingCategory {
   title: string;
@@ -157,7 +156,7 @@ function SettingCard({ category }: { category: SettingCategory }) {
           <IconArrowRight size={18} style={{ color: DEEP_BLUE_TINTS[50], opacity: 0.5 }} />
         </Group>
 
-        <Title order={4} size="h5" mb="xs" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+        <Title order={4} size="h5" mb="xs" c={DEEP_BLUE}>
           {category.title}
         </Title>
         <Text size="sm" style={{ color: DEEP_BLUE_TINTS[60], lineHeight: 1.4 }}>
@@ -174,7 +173,7 @@ export default function SettingsHubPage() {
       {/* Hero Section */}
       <Box mb="xl">
         <Group mb="xs">
-          <Title order={1} size="h2" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+          <Title order={1} size="h2" c={DEEP_BLUE}>
             Settings
           </Title>
         </Group>

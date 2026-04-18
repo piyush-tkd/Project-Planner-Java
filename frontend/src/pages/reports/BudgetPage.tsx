@@ -4,7 +4,7 @@ import {
  SegmentedControl, Tooltip, Button, ScrollArea} from '@mantine/core';
 import {
  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
- Legend, ResponsiveContainer, LineChart, Line,
+ ResponsiveContainer, LineChart, Line
 } from 'recharts';
 import { IconCurrencyDollar, IconTrendingUp, IconAlertTriangle, IconBuilding } from '@tabler/icons-react';
 import { useResourceAllocation } from '../../api/reports';
@@ -12,7 +12,7 @@ import { useResources } from '../../api/resources';
 import { useCostRates } from '../../api/resources';
 import { useMonthLabels } from '../../hooks/useMonthLabels';
 import { useDarkMode } from '../../hooks/useDarkMode';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CsvToolbar from '../../components/common/CsvToolbar';
 import ChartCard from '../../components/common/ChartCard';
@@ -127,7 +127,7 @@ export default function BudgetPage() {
  month: monthLabels[a.monthIndex] ?? `M${a.monthIndex}`,
  hours: a.allocatedHours,
  rate,
- spend: a.allocatedHours * rate,
+ spend: a.allocatedHours * rate
  };
  });
  }, [allocations, locationMap, rateMap, monthLabels]);
@@ -190,7 +190,7 @@ export default function BudgetPage() {
  podAnnualSpend.map(p => ({
  pod: p.podName.length > 12 ? p.podName.slice(0, 12) + '…' : p.podName,
  fullName: p.podName,
- spend: Math.round(p.totalSpend),
+ spend: Math.round(p.totalSpend)
  })),
  [podAnnualSpend]);
 
@@ -218,7 +218,7 @@ export default function BudgetPage() {
  return (
  <Stack className="page-enter stagger-children">
  <Group justify="space-between" align="flex-end" className="slide-in-left">
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: dark ? '#fff' : DEEP_BLUE }}>Budget &amp; Cost Tracker</Title>
+ <Title order={2} style={{color: dark ? '#fff' : DEEP_BLUE }}>Budget &amp; Cost Tracker</Title>
  <Group gap="sm">
  <Select
  placeholder="All PODs"
@@ -311,6 +311,7 @@ export default function BudgetPage() {
  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
  {/* POD spend bar chart */}
  <ChartCard title="Annual Spend by POD" minHeight={280}>
+ <div role="img" aria-label="Bar chart">
  <ResponsiveContainer width="100%" height={280}>
  <BarChart data={podBarData} margin={{ top: 4, right: 16, left: 8, bottom: 40 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? '#333' : '#eee'} />
@@ -324,6 +325,7 @@ export default function BudgetPage() {
  <Bar animationDuration={600} dataKey="spend" fill="var(--mantine-color-blue-6)" radius={[3, 3, 0, 0]} />
  </BarChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
 
  {/* Monthly trend */}
@@ -339,6 +341,7 @@ export default function BudgetPage() {
  />
  }
  >
+ <div role="img" aria-label="Line chart">
  <ResponsiveContainer width="100%" height={280}>
  <LineChart data={cumulativeTotals} margin={{ top: 4, right: 16, left: 8, bottom: 40 }}>
  <CartesianGrid strokeDasharray="3 3" stroke={dark ? '#333' : '#eee'} />
@@ -352,6 +355,7 @@ export default function BudgetPage() {
  )}
  </LineChart>
  </ResponsiveContainer>
+ </div>
  </ChartCard>
  </SimpleGrid>
 

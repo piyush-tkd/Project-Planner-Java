@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Title, Text, Stack, Group, Button, TextInput, Paper, Tabs,
   ColorInput, SimpleGrid, Box, Switch, Badge, Select, Divider,
-  FileButton, Center, ThemeIcon, Tooltip, NumberInput,
+  FileButton, ThemeIcon, Tooltip, NumberInput,
   PasswordInput, UnstyledButton, Skeleton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -15,7 +15,7 @@ import {
   IconClock, IconCloudDownload, IconCircleCheck, IconCircleX, IconChevronRight,
   IconShield, IconLink, IconCopy, IconListCheck, IconPercentage, IconArrowRight,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, FONT_FAMILY } from '../../brandTokens';
+import { DEEP_BLUE } from '../../brandTokens';
 import apiClient from '../../api/client';
 import { useOrgSettings, OrgConfig } from '../../context/OrgSettingsContext';
 import { useNavigate as useNav, useSearchParams } from 'react-router-dom';
@@ -63,8 +63,8 @@ function NavGridItem({ item, color }: { item: NavItem; color: string }) {
             {item.icon}
           </ThemeIcon>
           <Box style={{ minWidth: 0, flex: 1 }}>
-            <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>{item.label}</Text>
-            <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }} lineClamp={1}>{item.desc}</Text>
+            <Text fw={600} size="sm">{item.label}</Text>
+            <Text size="xs" c="dimmed"lineClamp={1}>{item.desc}</Text>
           </Box>
           <IconChevronRight size={13} style={{
             flexShrink: 0, transition: 'opacity 120ms',
@@ -130,7 +130,7 @@ function JiraEpicSyncPanel({ schedule, setSchedule, scheduleSaving, handleSchedu
           <ThemeIcon variant="light" color="teal" size={26} radius="md">
             <IconCloudDownload size={14} />
           </ThemeIcon>
-          <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Project Sync — Jira Epics → PP</Text>
+          <Text fw={600} size="sm">Project Sync — Jira Epics → PP</Text>
           <Badge size="xs" color={schedule.jiraSyncEnabled ? 'teal' : 'gray'} variant="light">
             {schedule.jiraSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
           </Badge>
@@ -174,7 +174,7 @@ function JiraEpicSyncPanel({ schedule, setSchedule, scheduleSaving, handleSchedu
         const validBoards = boardStatus.filter((b: any) => b.boardId && b.boardName);
         if (statusLoading) return <Stack gap="xs" py="xs">{[1,2].map(i => <Skeleton key={i} height={28} radius="sm" />)}</Stack>;
         if (validBoards.length === 0) return (
-          <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          <Text size="xs" c="dimmed">
             No boards found. Configure Jira credentials first.
           </Text>
         );
@@ -191,12 +191,12 @@ function JiraEpicSyncPanel({ schedule, setSchedule, scheduleSaving, handleSchedu
                   <ThemeIcon size={18} radius="xl" color={b.hasError ? 'red' : 'teal'} variant="light">
                     {b.hasError ? <IconCircleX size={11} /> : <IconCircleCheck size={11} />}
                   </ThemeIcon>
-                  <Text size="xs" fw={600} style={{ fontFamily: FONT_FAMILY }}>{b.boardName}</Text>
+                  <Text size="xs" fw={600}>{b.boardName}</Text>
                   <Badge size="xs" variant="light" color={b.epicCount > 0 ? 'teal' : 'gray'}>
                     {b.epicCount} project{b.epicCount !== 1 ? 's' : ''}
                   </Badge>
                 </Group>
-                <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                <Text size="xs" c="dimmed">
                   {b.lastSync ? `Last sync: ${new Date(b.lastSync).toLocaleDateString()}` : 'Never synced'}
                 </Text>
               </Group>
@@ -536,8 +536,8 @@ export default function OrgSettingsPage() {
       {/* Page header */}
       <Group justify="space-between" align="center">
         <div>
-          <Title order={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Admin Settings</Title>
-          <Text size="sm" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+          <Title order={2} c={DEEP_BLUE}>Admin Settings</Title>
+          <Text size="sm" c="dimmed">
             Branding, users, integrations, and system preferences
           </Text>
         </div>
@@ -573,13 +573,13 @@ export default function OrgSettingsPage() {
             {/* LEFT: Branding ──────────────────────────── */}
             <Stack gap="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                style={{ letterSpacing: '0.08em' }}>
                 Branding
               </Text>
 
               {/* Org Identity */}
               <Paper withBorder p="md" radius="md">
-                <Text fw={600} size="sm" mb="md" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm" mb="md" c={DEEP_BLUE}>
                   Organization Identity
                 </Text>
                 <Group gap="md" align="flex-start" wrap="nowrap">
@@ -598,7 +598,7 @@ export default function OrgSettingsPage() {
                     }}>
                       {draft.logoUrl
                         ? <img src={draft.logoUrl} alt="logo" style={{ width: 46, height: 46, objectFit: 'contain', borderRadius: 8 }} />
-                        : <Text style={{ color: '#fff', fontFamily: FONT_FAMILY, fontSize: 26, fontWeight: 800, lineHeight: 1 }}>
+                        : <Text style={{ color: '#fff', fontSize: 26, fontWeight: 800, lineHeight: 1 }}>
                             {(draft.orgName || 'A').charAt(0).toUpperCase()}
                           </Text>
                       }
@@ -621,7 +621,7 @@ export default function OrgSettingsPage() {
                       onChange={e => handleChange('orgName', e.target.value)}
                       placeholder="e.g. Acme Corp Engineering"
                       size="sm"
-                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+                      styles={{ label: { fontWeight: 600 } }}
                     />
                     <TextInput
                       label="Org Slug"
@@ -631,11 +631,11 @@ export default function OrgSettingsPage() {
                       size="sm"
                       leftSectionWidth={68}
                       leftSection={
-                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY, whiteSpace: 'nowrap' }}>
+                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                           epp.app/
                         </Text>
                       }
-                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 } }}
+                      styles={{ label: { fontWeight: 600 } }}
                     />
                   </Stack>
                 </Group>
@@ -643,7 +643,7 @@ export default function OrgSettingsPage() {
 
               {/* Logo URL */}
               <Paper withBorder p="md" radius="md">
-                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm" mb="sm" c={DEEP_BLUE}>
                   Logo
                 </Text>
                 <TextInput
@@ -653,11 +653,11 @@ export default function OrgSettingsPage() {
                   placeholder="https://example.com/logo.png"
                   size="sm"
                   description="Full URL to your organization logo image"
-                  styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                  styles={{ label: { fontWeight: 600 }, description: { } }}
                 />
                 {draft.logoUrl && (
                   <Box mt="sm">
-                    <Text size="xs" fw={500} mb="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                    <Text size="xs" fw={500} mb="xs" c="dimmed">
                       Preview:
                     </Text>
                     <Box style={{
@@ -681,7 +681,7 @@ export default function OrgSettingsPage() {
 
               {/* Accent Colors */}
               <Paper withBorder p="md" radius="md">
-                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm" mb="sm" c={DEEP_BLUE}>
                   Accent Colors
                 </Text>
                 <SimpleGrid cols={2} spacing="sm" mb="md">
@@ -692,7 +692,7 @@ export default function OrgSettingsPage() {
                     format="hex"
                     size="sm"
                     description="Buttons, active states"
-                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                    styles={{ label: { fontWeight: 600 }, description: { } }}
                   />
                   <ColorInput
                     label="Secondary"
@@ -701,7 +701,7 @@ export default function OrgSettingsPage() {
                     format="hex"
                     size="sm"
                     description="Sidebar background"
-                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                    styles={{ label: { fontWeight: 600 }, description: { } }}
                   />
                 </SimpleGrid>
 
@@ -719,11 +719,11 @@ export default function OrgSettingsPage() {
                     <Box style={{ padding: '0 8px 8px', borderBottom: `1px solid rgba(255,255,255,0.08)`, marginBottom: 4 }}>
                       <Group gap={5}>
                         <Box style={{ width: 20, height: 20, borderRadius: 4, background: draft.primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ color: draft.secondaryColor, fontWeight: 800, fontSize: 10, fontFamily: FONT_FAMILY }}>
+                          <Text style={{ color: draft.secondaryColor, fontWeight: 800, fontSize: 10 }}>
                             {(draft.orgName || 'A').charAt(0).toUpperCase()}
                           </Text>
                         </Box>
-                        <Text size="10px" fw={700} style={{ color: '#fff', fontFamily: FONT_FAMILY, opacity: 0.9 }} truncate>
+                        <Text size="10px" fw={700} style={{ color: '#fff', opacity: 0.9 }} truncate>
                           {draft.orgName || 'Your Org'}
                         </Text>
                       </Group>
@@ -735,20 +735,19 @@ export default function OrgSettingsPage() {
                         borderLeft: i === 0 ? `2px solid ${draft.primaryColor}` : '2px solid transparent',
                       }}>
                         <Text size="9px" style={{
-                          color: i === 0 ? draft.primaryColor : 'rgba(255,255,255,0.5)',
-                          fontFamily: FONT_FAMILY, fontWeight: i === 0 ? 700 : 400,
+                          color: i === 0 ? draft.primaryColor : 'rgba(255,255,255,0.5)', fontWeight: i === 0 ? 700 : 400,
                         }}>{item}</Text>
                       </Box>
                     ))}
                     <Box style={{ marginTop: 'auto', padding: '6px 8px' }}>
-                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.2)', fontFamily: FONT_FAMILY }}>v30.1</Text>
+                      <Text size="9px" style={{ color: 'rgba(255,255,255,0.2)' }}>v30.1</Text>
                     </Box>
                   </Box>
                   {/* Main area */}
                   <Box style={{ flex: 1, background: 'var(--mantine-color-default)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <Group justify="space-between" align="center">
-                      <Text size="xs" fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Dashboard</Text>
-                      <Badge size="xs" style={{ background: draft.primaryColor, color: '#fff', fontFamily: FONT_FAMILY }}>Preview</Badge>
+                      <Text size="xs" fw={700} c={DEEP_BLUE}>Dashboard</Text>
+                      <Badge size="xs" style={{ background: draft.primaryColor, color: '#fff' }}>Preview</Badge>
                     </Group>
                     <Box style={{ height: 1, background: 'var(--mantine-color-default-border)' }} />
                     <SimpleGrid cols={3} spacing={6}>
@@ -758,14 +757,14 @@ export default function OrgSettingsPage() {
                           padding: '6px 8px', border: '1px solid var(--mantine-color-default-border)',
                           borderTop: `2px solid ${draft.primaryColor}`,
                         }}>
-                          <Text size="9px" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{card}</Text>
-                          <Text size="10px" fw={700} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>—</Text>
+                          <Text size="9px" c="dimmed">{card}</Text>
+                          <Text size="10px" fw={700} c={DEEP_BLUE}>—</Text>
                         </Box>
                       ))}
                     </SimpleGrid>
                   </Box>
                 </Box>
-                <Text size="xs" c="dimmed" mt="xs" style={{ fontFamily: FONT_FAMILY }}>
+                <Text size="xs" c="dimmed" mt="xs">
                   Live preview — changes apply after saving.
                 </Text>
               </Paper>
@@ -774,33 +773,33 @@ export default function OrgSettingsPage() {
             {/* RIGHT: Workspace ────────────────────────── */}
             <Stack gap="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                style={{ letterSpacing: '0.08em' }}>
                 Workspace
               </Text>
 
               {/* Regional */}
               <Paper withBorder p="md" radius="md">
-                <Text fw={600} size="sm" mb="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm" mb="sm" c={DEEP_BLUE}>
                   Regional Settings
                 </Text>
                 <SimpleGrid cols={2} spacing="sm">
                   <Select label="Timezone" data={TIMEZONES} value={draft.timezone}
                     onChange={val => handleChange('timezone', val)} searchable size="sm"
-                    styles={{ label: { fontFamily: FONT_FAMILY } }} />
+                    styles={{ label: { } }} />
                   <Select label="Fiscal Year Start" data={MONTHS} value={draft.fiscalYearStart}
                     onChange={val => handleChange('fiscalYearStart', val)} size="sm"
-                    styles={{ label: { fontFamily: FONT_FAMILY } }} />
+                    styles={{ label: { } }} />
                 </SimpleGrid>
               </Paper>
 
               {/* Feature Flags */}
               <Paper withBorder p="md" radius="md">
-                <Text fw={600} size="sm" mb={2} style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Feature Flags</Text>
-                <Text size="xs" c="dimmed" mb="sm" style={{ fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm" mb={2} c={DEEP_BLUE}>Feature Flags</Text>
+                <Text size="xs" c="dimmed" mb="sm">
                   Disabled features are hidden from the sidebar for all users.
                 </Text>
                 <Stack gap={0}>
-                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: '0.06em', fontFamily: FONT_FAMILY }}>Modules</Text>
+                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: '0.06em' }}>Modules</Text>
                   {[
                     { key: 'jira',            label: 'Jira Integration',       desc: 'POD Dashboard, Releases, Actuals, Support Queue' },
                     { key: 'engineering',     label: 'Engineering Analytics',  desc: 'DORA, Git Intelligence, Sprint Retro' },
@@ -811,15 +810,15 @@ export default function OrgSettingsPage() {
                     <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
                       style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
                       <div>
-                        <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
-                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
+                        <Text size="sm" fw={500}>{flag.label}</Text>
+                        <Text size="xs" c="dimmed">{flag.desc}</Text>
                       </div>
                       <Switch checked={draft.features?.[flag.key] ?? true}
                         onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
                         color="teal" size="sm" />
                     </Group>
                   ))}
-                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mt="sm" mb="xs" style={{ letterSpacing: '0.06em', fontFamily: FONT_FAMILY }}>Features</Text>
+                  <Text size="xs" fw={700} tt="uppercase" c="dimmed" mt="sm" mb="xs" style={{ letterSpacing: '0.06em' }}>Features</Text>
                   {[
                     { key: 'ai',    label: 'AI Features',   desc: 'Ask AI, Smart Notifications — requires API key' },
                     { key: 'okr',   label: 'OKR Tracking',  desc: 'Objectives & Key Results management' },
@@ -829,8 +828,8 @@ export default function OrgSettingsPage() {
                     <Group key={flag.key} justify="space-between" wrap="nowrap" py="xs"
                       style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
                       <div>
-                        <Text size="sm" fw={500} style={{ fontFamily: FONT_FAMILY }}>{flag.label}</Text>
-                        <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>{flag.desc}</Text>
+                        <Text size="sm" fw={500}>{flag.label}</Text>
+                        <Text size="xs" c="dimmed">{flag.desc}</Text>
                       </div>
                       <Switch checked={draft.features?.[flag.key] ?? true}
                         onChange={e => handleFeatureToggle(flag.key, e.currentTarget.checked)}
@@ -861,7 +860,7 @@ export default function OrgSettingsPage() {
                 <ThemeIcon variant="light" color="teal" size={24} radius="md">
                   <IconTicket size={13} />
                 </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Jira</Text>
+                <Text fw={700} size="sm" c={DEEP_BLUE}>Jira</Text>
               </Group>
               <NavGrid items={jiraLinks} color="teal" cols={3} />
             </Stack>
@@ -882,7 +881,7 @@ export default function OrgSettingsPage() {
                 <ThemeIcon variant="light" color="blue" size={24} radius="md">
                   <IconBrandAzure size={13} />
                 </ThemeIcon>
-                <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>Azure DevOps</Text>
+                <Text fw={700} size="sm" c={DEEP_BLUE}>Azure DevOps</Text>
               </Group>
               <NavGrid items={azureLinks} color="blue" cols={1} />
             </Stack>
@@ -897,7 +896,7 @@ export default function OrgSettingsPage() {
                     <ThemeIcon variant="light" color="violet" size={24} radius="md">
                       <IconShield size={13} />
                     </ThemeIcon>
-                    <Text fw={700} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                    <Text fw={700} size="sm" c={DEEP_BLUE}>
                       SSO / OIDC
                     </Text>
                     <Badge size="xs" color={sso.enabled ? 'violet' : 'gray'} variant="light">
@@ -1007,8 +1006,8 @@ export default function OrgSettingsPage() {
                     <IconShield size={14} />
                   </ThemeIcon>
                   <Box>
-                    <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>SSO / OIDC — Enterprise Auth</Text>
-                    <Text size="xs" c="dimmed" style={{ fontFamily: FONT_FAMILY }}>
+                    <Text size="sm" fw={600}>SSO / OIDC — Enterprise Auth</Text>
+                    <Text size="xs" c="dimmed">
                       Enable the <strong>sso</strong> feature flag in General → Features to configure
                       Google Workspace, Microsoft Entra, Okta, or Custom OIDC single sign-on.
                     </Text>
@@ -1027,7 +1026,7 @@ export default function OrgSettingsPage() {
             {/* LEFT: Notification info + SMTP ───── */}
             <Stack gap="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                style={{ letterSpacing: '0.08em' }}>
                 Notifications
               </Text>
 
@@ -1037,12 +1036,12 @@ export default function OrgSettingsPage() {
                   <ThemeIcon variant="light" color="orange" size={28} radius="md">
                     <IconBell size={14} />
                   </ThemeIcon>
-                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  <Text fw={600} size="sm" c={DEEP_BLUE}>
                     In-App Notification Bell
                   </Text>
                   <Badge size="xs" color="teal" variant="light">Live</Badge>
                 </Group>
-                <Text size="xs" c="dimmed" mb="sm" style={{ fontFamily: FONT_FAMILY }}>
+                <Text size="xs" c="dimmed" mb="sm">
                   Shows real-time alerts for <strong>Blocker</strong> and <strong>Critical</strong> Jira
                   tickets from your linked support boards. Requires Jira credentials under{' '}
                   <strong>Integrations → Jira Credentials</strong>.
@@ -1060,7 +1059,7 @@ export default function OrgSettingsPage() {
                   <ThemeIcon variant="light" color={smtp.enabled ? 'teal' : 'gray'} size={28} radius="md">
                     <IconMail size={14} />
                   </ThemeIcon>
-                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  <Text fw={600} size="sm" c={DEEP_BLUE}>
                     Email Alert Delivery
                   </Text>
                   <Badge size="xs" color={smtp.enabled ? 'teal' : 'gray'} variant="light">
@@ -1078,7 +1077,7 @@ export default function OrgSettingsPage() {
                   ].map(item => (
                     <Group key={item} justify="space-between" wrap="nowrap"
                            style={{ opacity: smtp.enabled ? 1 : 0.45 }}>
-                      <Text size="xs" style={{ fontFamily: FONT_FAMILY }}>{item}</Text>
+                      <Text size="xs">{item}</Text>
                       <Tooltip label={smtp.enabled ? 'Active' : 'Requires SMTP'} position="left" withArrow>
                         <Switch disabled color="teal" size="xs" />
                       </Tooltip>
@@ -1093,7 +1092,7 @@ export default function OrgSettingsPage() {
                   <ThemeIcon variant="light" color="orange" size={28} radius="md">
                     <IconClock size={14} />
                   </ThemeIcon>
-                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  <Text fw={600} size="sm" c={DEEP_BLUE}>
                     Notification Schedule
                   </Text>
                 </Group>
@@ -1105,7 +1104,7 @@ export default function OrgSettingsPage() {
                     value={schedule.recipients}
                     onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, recipients: e.target.value }))}
                     size="sm"
-                    styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }}
+                    styles={{ label: { fontWeight: 600 }, description: { } }}
                   />
                   <Divider label="Weekly Portfolio Digest" labelPosition="left" />
                   <Group gap="sm" align="flex-start">
@@ -1118,7 +1117,7 @@ export default function OrgSettingsPage() {
                       onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, digestCron: e.target.value }))}
                       description="sec min hr day month weekday"
                       size="sm" style={{ flex: 1 }}
-                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }} />
+                      styles={{ label: { fontWeight: 600 }, description: { } }} />
                   </Group>
                   <Divider label="Support Staleness Alert" labelPosition="left" />
                   <Group gap="sm" align="flex-start">
@@ -1131,7 +1130,7 @@ export default function OrgSettingsPage() {
                       onChange={e => setSchedule((p: ScheduleDraft) => ({ ...p, stalenessCron: e.target.value }))}
                       description="sec min hr day month weekday"
                       size="sm" style={{ flex: 1 }}
-                      styles={{ label: { fontFamily: FONT_FAMILY, fontWeight: 600 }, description: { fontFamily: FONT_FAMILY } }} />
+                      styles={{ label: { fontWeight: 600 }, description: { } }} />
                   </Group>
                 </Stack>
                 <Button mt="sm" size="xs" color="teal" leftSection={<IconCheck size={12} />}
@@ -1144,7 +1143,7 @@ export default function OrgSettingsPage() {
             {/* RIGHT: SMTP + AI ────────────────────── */}
             <Stack gap="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                style={{ letterSpacing: '0.08em' }}>
                 Email / SMTP
               </Text>
 
@@ -1153,7 +1152,7 @@ export default function OrgSettingsPage() {
                   <ThemeIcon variant="light" color="teal" size={28} radius="md">
                     <IconMail size={14} />
                   </ThemeIcon>
-                  <Text fw={600} size="sm" style={{ color: DEEP_BLUE, fontFamily: FONT_FAMILY }}>
+                  <Text fw={600} size="sm" c={DEEP_BLUE}>
                     SMTP Server
                   </Text>
                   <Switch label="Enable" size="sm" color="teal"
@@ -1199,7 +1198,7 @@ export default function OrgSettingsPage() {
                   </Button>
                 </Group>
 
-                <Text size="xs" c="dimmed" mt="sm" style={{ fontFamily: FONT_FAMILY }}>
+                <Text size="xs" c="dimmed" mt="sm">
                   <strong>Gmail tip:</strong> Use <code>smtp.gmail.com</code> port <code>587</code>,
                   STARTTLS on. Password must be an <em>App Password</em> (Google Account → Security).
                 </Text>
@@ -1217,7 +1216,7 @@ export default function OrgSettingsPage() {
               </Button>
 
               <Divider label={
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em' }}>
                   AI &amp; NLP
                 </Text>
               } labelPosition="left" />
@@ -1232,14 +1231,14 @@ export default function OrgSettingsPage() {
           <Stack gap="lg">
             <Stack gap="xs">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+                style={{ letterSpacing: '0.08em' }}>
                 System Tools
               </Text>
               <NavGrid items={systemLinks} color="blue" cols={3} />
             </Stack>
 
             <Divider label={
-              <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY }}>
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.08em' }}>
                 Reference Data
               </Text>
             } labelPosition="left" />
@@ -1257,7 +1256,7 @@ export default function OrgSettingsPage() {
             {/* Header + link to queue */}
             <Group justify="space-between" align="flex-start">
               <Box>
-                <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>
+                <Text fw={600} size="sm">
                   Approval Workflow Configuration
                 </Text>
                 <Text size="xs" c="dimmed" mt={2}>
@@ -1278,7 +1277,7 @@ export default function OrgSettingsPage() {
             {/* Section: Approval triggers */}
             <Paper withBorder radius="md" p="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, marginBottom: 12 }}>
+                style={{ letterSpacing: '0.08em', marginBottom: 12 }}>
                 Approval Required When…
               </Text>
               <Stack gap="xs">
@@ -1312,7 +1311,7 @@ export default function OrgSettingsPage() {
             {/* Section: Auto-approve rules */}
             <Paper withBorder radius="md" p="md">
               <Text size="xs" fw={700} tt="uppercase" c="dimmed"
-                style={{ letterSpacing: '0.08em', fontFamily: FONT_FAMILY, marginBottom: 12 }}>
+                style={{ letterSpacing: '0.08em', marginBottom: 12 }}>
                 Auto-Approve Rules
               </Text>
               <Stack gap="sm">

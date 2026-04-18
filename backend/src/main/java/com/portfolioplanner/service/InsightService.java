@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class InsightService {
 
     // ── Detector type constants ───────────────────────────────────────────────
@@ -68,7 +69,7 @@ public class InsightService {
      * Runs all 5 detectors, persists fresh insights, and returns the full
      * unacknowledged list ordered by severity.
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public List<InsightDto> runDetectors() {
         log.info("InsightService: running all detectors…");
         detectDeadlineRisk();
@@ -98,7 +99,7 @@ public class InsightService {
     }
 
     /** Acknowledges a single insight. */
-    @Transactional
+    @Transactional(readOnly = false)
     public InsightDto acknowledge(Long id) {
         Insight insight = insightRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Insight not found: " + id));

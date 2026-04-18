@@ -6,7 +6,7 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   datasource:
-    url: jdbc:postgresql://localhost:5432/portfolio_planner
+    url: jdbc:postgresql://localhost:5432/portfolio_planner_1
     username: ${DB_USERNAME:piyushbaheti}
     password: ${DB_PASSWORD:}
   jpa:
@@ -16,16 +16,12 @@ spring:
     properties:
       hibernate:
         default_schema: public
-
-# ── AI microservice (portfolio-planner-ai on :8081)
-ai:
-  service:
-    url: ${AI_SERVICE_URL:http://localhost:8081}
   flyway:
     enabled: true
     locations: classpath:db/migration
     validate-on-migrate: false
     out-of-order: true
+    repair-on-migrate: true
   cache:
     type: caffeine
     caffeine:
@@ -41,6 +37,11 @@ ai:
         smtp:
           auth:            true
           starttls.enable: true
+
+# ── AI microservice (portfolio-planner-ai on :8081)
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:8081}
 
 server:
   port: 8080
@@ -63,13 +64,25 @@ jira:
 
 app:
   org-id: ${APP_ORG_ID:1}
+  jwt:
+    # ⚠ REQUIRED IN PRODUCTION — app refuses to start without a real value in prod/production/railway profile.
+    # Must be ≥ 32 characters. Generate: openssl rand -hex 32
+    secret: ${JWT_SECRET:}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24 hours (capped to 15 min when refresh-token-enabled=true)
+  auth:
+    # Rotating refresh-token flow (Phase 2.1).  Set to false to revert to 24h JWTs.
+    refresh-token-enabled: ${REFRESH_TOKEN_ENABLED:true}
+    # How long a refresh token is valid before the user must log in again.
+    refresh-token-ttl-days: ${REFRESH_TOKEN_TTL_DAYS:30}
   # Base URL of the frontend — used in email CTAs. Override via APP_FRONTEND_URL env var in production.
   frontend-base-url: ${APP_FRONTEND_URL:http://localhost:5173}
   smtp:
     # AES-256-GCM key used to encrypt the SMTP password at rest.
     # Override via SMTP_ENCRYPTION_KEY environment variable in production.
     # Changing this key requires re-saving the SMTP password in Admin → Settings → Notifications.
-    encryption-key: ${SMTP_ENCRYPTION_KEY:changeme-replace-this-in-production}
+    # ⚠ REQUIRED IN PRODUCTION — app refuses to start without a real value in prod/production/railway profile.
+    # Generate: openssl rand -hex 32
+    encryption-key: ${SMTP_ENCRYPTION_KEY:}
   digest:
     enabled:    ${DIGEST_ENABLED:false}      # set true to activate weekly emails
     recipients: ${DIGEST_RECIPIENTS:}        # comma-separated list, e.g. pm@example.com
@@ -83,6 +96,29 @@ app:
     learner:
       interval-ms:      ${NLP_LEARNER_INTERVAL_MS:21600000}    # 6 hours default
       initial-delay-ms: ${NLP_LEARNER_INITIAL_DELAY_MS:60000}  # 1 min after boot
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+        liveness:
+          include: livenessState
+  info:
+    env:
+      enabled: true
+  metrics:
+    tags:
+      application: portfolio-planner
+      environment: ${spring.profiles.active:default}
 
 logging:
   level:

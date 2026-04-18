@@ -19,7 +19,6 @@ import {
   NlpConfigRequest,
 } from '../../api/nlp';
 import apiClient from '../../api/client';
-import { FONT_FAMILY } from '../../brandTokens';
 
 const CLOUD_PROVIDERS = [
   { value: 'ANTHROPIC', label: 'Anthropic (Claude)' },
@@ -220,7 +219,7 @@ export default function UserAiSettingsPage() {
           <IconBrain size={22} />
         </ThemeIcon>
         <div>
-          <Title order={3} style={{ fontFamily: FONT_FAMILY }}>AI Settings</Title>
+          <Title order={3}>AI Settings</Title>
           <Text size="xs" c="dimmed">Configure your AI providers and the Ask AI engine strategy</Text>
         </div>
       </Group>
@@ -235,7 +234,7 @@ export default function UserAiSettingsPage() {
         <Tabs.Panel value="key">
           <Stack gap="md">
             <Paper p="md" radius="md" withBorder>
-              <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY }}>Active AI Key</Text>
+              <Text fw={600} size="sm" mb="sm">Active AI Key</Text>
               {orgActive ? (
                 <Alert icon={<IconBuilding size={16} />} color="teal" variant="light" title="Org AI key is active">
                   <Text size="sm">Your organisation has configured a shared AI key — all AI features use it automatically.</Text>
@@ -258,7 +257,7 @@ export default function UserAiSettingsPage() {
             <Paper p="md" radius="md" withBorder>
               <Group gap="xs" mb="sm">
                 <IconCloud size={18} />
-                <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Personal AI Key</Text>
+                <Text fw={600} size="sm">Personal AI Key</Text>
                 {orgActive && <Badge size="xs" color="gray" variant="light" leftSection={<IconLock size={10} />}>Not used (org key active)</Badge>}
               </Group>
               <Stack gap="sm">
@@ -319,11 +318,13 @@ export default function UserAiSettingsPage() {
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="xs">
                 <div>
-                  <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Strategy Chain</Text>
+                  <Text fw={600} size="sm">Strategy Chain</Text>
                   <Text size="xs" c="dimmed">Ask AI tries strategies in order. First to exceed the confidence threshold wins.</Text>
                 </div>
                 <Tooltip label="Reload from server">
-                  <ActionIcon variant="subtle" onClick={() => refetchNlp()} size="sm"><IconRefresh size={14} /></ActionIcon>
+                  <ActionIcon variant="subtle" onClick={() => refetchNlp()} size="sm"
+      aria-label="Refresh"
+    ><IconRefresh size={14} /></ActionIcon>
                 </Tooltip>
               </Group>
               <Stack gap="xs">
@@ -338,7 +339,7 @@ export default function UserAiSettingsPage() {
                           {opt?.icon}
                           <div>
                             <Group gap={4}>
-                              <Text size="sm" fw={600} style={{ fontFamily: FONT_FAMILY }}>{opt?.label ?? s}</Text>
+                              <Text size="sm" fw={600}>{opt?.label ?? s}</Text>
                               {idx === 0 && <Badge size="xs" color="teal" variant="light">Primary</Badge>}
                               {idx === chain.length - 1 && chain.length > 1 && <Badge size="xs" color="gray" variant="light">Fallback</Badge>}
                             </Group>
@@ -351,9 +352,15 @@ export default function UserAiSettingsPage() {
                               {stratStatus ? '● Online' : '● Offline'}
                             </Badge>
                           )}
-                          <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, -1)} disabled={idx === 0}><IconArrowUp size={12} /></ActionIcon>
-                          <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 1)} disabled={idx === chain.length - 1}><IconArrowDown size={12} /></ActionIcon>
-                          <ActionIcon size="xs" variant="subtle" color="red" onClick={() => removeStrategy(s)}><IconX size={12} /></ActionIcon>
+                          <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, -1)} disabled={idx === 0}
+      aria-label="Move up"
+    ><IconArrowUp size={12} /></ActionIcon>
+                          <ActionIcon size="xs" variant="subtle" onClick={() => moveStrategy(idx, 1)} disabled={idx === chain.length - 1}
+      aria-label="Move down"
+    ><IconArrowDown size={12} /></ActionIcon>
+                          <ActionIcon size="xs" variant="subtle" color="red" onClick={() => removeStrategy(s)}
+      aria-label="Close"
+    ><IconX size={12} /></ActionIcon>
                         </Group>
                       </Group>
                     </Paper>
@@ -375,13 +382,13 @@ export default function UserAiSettingsPage() {
 
             {/* Confidence threshold */}
             <Paper p="md" radius="md" withBorder>
-              <Text fw={600} size="sm" mb={4} style={{ fontFamily: FONT_FAMILY }}>Confidence Threshold</Text>
+              <Text fw={600} size="sm" mb={4}>Confidence Threshold</Text>
               <Text size="xs" c="dimmed" mb="sm">Minimum score (0–1) before accepting a result. Lower = more permissive.</Text>
               <NumberInput
                 value={threshold}
                 onChange={(val) => { setThreshold(Number(val)); setNlpDirty(true); }}
                 min={0.3} max={0.99} step={0.05} decimalScale={2}
-                size="sm" style={{ maxWidth: 140 }}
+                size="sm" maw={140}
               />
             </Paper>
 
@@ -390,7 +397,7 @@ export default function UserAiSettingsPage() {
               <Paper p="md" radius="md" withBorder style={{ borderLeft: `3px solid var(--mantine-color-violet-5)` }}>
                 <Group gap="xs" mb="sm">
                   <IconServer size={16} />
-                  <Text fw={600} size="sm" style={{ fontFamily: FONT_FAMILY }}>Local LLM (Ollama)</Text>
+                  <Text fw={600} size="sm">Local LLM (Ollama)</Text>
                   <StatusDot status={ollamaStatus} />
                   {ollamaStatus === 'ok'   && <Text size="xs" c="green">Connected</Text>}
                   {ollamaStatus === 'fail' && <Text size="xs" c="red">Unreachable — check Ollama is running</Text>}
@@ -420,7 +427,7 @@ export default function UserAiSettingsPage() {
                   value={localTimeoutMs}
                   onChange={(val) => { setLocalTimeoutMs(Number(val)); setNlpDirty(true); }}
                   min={5000} max={120000} step={5000}
-                  size="sm" mt="sm" style={{ maxWidth: 180 }}
+                  size="sm" mt="sm" maw={180}
                   description="How long to wait before falling back"
                 />
               </Paper>
@@ -428,7 +435,7 @@ export default function UserAiSettingsPage() {
 
             {/* Cache + logging */}
             <Paper p="md" radius="md" withBorder>
-              <Text fw={600} size="sm" mb="sm" style={{ fontFamily: FONT_FAMILY }}>Performance & Logging</Text>
+              <Text fw={600} size="sm" mb="sm">Performance & Logging</Text>
               <Stack gap="xs">
                 <Switch label="Enable query cache" description="Cache identical queries to avoid repeat LLM calls" checked={cacheEnabled} onChange={(e) => { setCacheEnabled(e.currentTarget.checked); setNlpDirty(true); }} size="sm" />
                 <Switch label="Log all queries" description="Store query history for the NLP Optimizer" checked={logQueries} onChange={(e) => { setLogQueries(e.currentTarget.checked); setNlpDirty(true); }} size="sm" />

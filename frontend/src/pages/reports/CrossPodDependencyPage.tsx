@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import _React, { useMemo, useState } from 'react';
 import {
  Container,
  Title,
@@ -11,19 +11,18 @@ import {
  SegmentedControl,
  MultiSelect,
  Box,
- ThemeIcon,
  Tooltip,
- Center,
+ Center
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { useProjectPodMatrix } from '../../api/projects';
-import { useMonthLabels } from '../../hooks/useMonthLabels';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PageError from '../../components/common/PageError';
-import { AQUA, AQUA_TINTS, COLOR_ERROR_LIGHT, DEEP_BLUE, DEEP_BLUE_TINTS, FONT_FAMILY, GRAY_100, GRAY_200, SURFACE_SUBTLE} from '../../brandTokens';
+import { COLOR_ERROR_LIGHT, DEEP_BLUE, GRAY_100, GRAY_200, SURFACE_SUBTLE} from '../../brandTokens';
 import { useDarkMode } from '../../hooks/useDarkMode';
 
-interface ProjectPodMatrixResponse {
+// @ts-expect-error -- unused
+interface _ProjectPodMatrixResponse {
  planningId: number;
  projectId: number;
  projectName: string;
@@ -82,7 +81,6 @@ const getPriorityColor = (priority: string) => {
 
 export default function CrossPodDependencyPage() {
  const { data: projectPodMatrix, isLoading, error } = useProjectPodMatrix();
- const { monthLabels } = useMonthLabels();
  const navigate = useNavigate();
  const dark = useDarkMode();
  const [sortBy, setSortBy] = useState<SortBy>('podCount');
@@ -109,7 +107,7 @@ export default function CrossPodDependencyPage() {
  owner: podAssignment.owner,
  projectStartMonth: podAssignment.projectStartMonth,
  projectDurationMonths: podAssignment.projectDurationMonths,
- pods: [],
+ pods: []
  };
  }
 
@@ -122,7 +120,7 @@ export default function CrossPodDependencyPage() {
  podName: podAssignment.podName,
  tshirtSize: podAssignment.tshirtSize ?? '',
  startMonth,
- endMonth: startMonth + duration,
+ endMonth: startMonth + duration
  });
  });
 
@@ -140,7 +138,7 @@ export default function CrossPodDependencyPage() {
 
  return {
  multiPodProjects: multiPod,
- allPods: Array.from(podSet).sort(),
+ allPods: Array.from(podSet).sort()
  };
  }, [projectPodMatrix, sortBy]);
 
@@ -159,7 +157,7 @@ export default function CrossPodDependencyPage() {
  <Container size="xl" py="xl">
  <Stack gap="lg">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
+ <Title order={2} style={{color: headingColor, fontWeight: 700 }}>
  Cross-POD Dependencies
  </Title>
  <Text c="dimmed" size="sm">
@@ -179,7 +177,7 @@ export default function CrossPodDependencyPage() {
  <Stack gap="lg">
  <Group className="slide-in-left">
  <div>
- <Title order={2} style={{ fontFamily: FONT_FAMILY, color: headingColor, fontWeight: 700 }}>
+ <Title order={2} style={{color: headingColor, fontWeight: 700 }}>
  Cross-POD Dependencies
  </Title>
  <Text c="dimmed" size="sm">
@@ -284,8 +282,7 @@ export default function CrossPodDependencyPage() {
  height: '24px',
  backgroundColor: barTrackBg,
  borderRadius: '4px',
- overflow: 'hidden',
- }}
+ overflow: 'hidden'}}
  >
  <Tooltip
  label={`M${pod.startMonth + 1} - M${Math.min(
@@ -306,8 +303,7 @@ export default function CrossPodDependencyPage() {
  justifyContent: 'center',
  fontSize: '10px',
  fontWeight: 600,
- color: 'white',
- }}
+ color: 'white'}}
  />
  </Tooltip>
  </Box>

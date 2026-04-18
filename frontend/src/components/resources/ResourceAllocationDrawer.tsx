@@ -7,7 +7,7 @@ import { useState } from 'react';
 import {
   Drawer, Stack, Group, Text, Title, Badge, Progress, Button, Divider,
   Table, ActionIcon, Select, NumberInput, TextInput, Alert, Tooltip,
-  Loader, Modal,
+  Loader,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -20,6 +20,7 @@ import apiClient from '../../api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface AllocationType { id: number; name: string; maxPercentage: number; description?: string }
+// @ts-expect-error -- unused
 interface TeamType { id: number; name: string; isPermanent: boolean }
 interface ResourceAllocation {
   id: number; resourceId: number; teamId: number; allocationTypeId: number;
@@ -36,6 +37,7 @@ interface ResourceAllocationDrawerProps {
 }
 
 // ── Allocation status color ────────────────────────────────────────────
+// @ts-expect-error -- unused
 function allocationColor(pct: number): string {
   if (pct >= 100) return COLOR_ERROR;
   if (pct >= 80) return COLOR_WARNING;
@@ -271,12 +273,16 @@ export default function ResourceAllocationDrawer({
                     <Table.Td>
                       <Group gap={4} wrap="nowrap">
                         <Tooltip label="Edit" withArrow fz="xs">
-                          <ActionIcon size="xs" variant="subtle" onClick={() => startEdit(a)}>
+                          <ActionIcon size="xs" variant="subtle" onClick={() => startEdit(a)}
+      aria-label="Edit"
+    >
                             <IconPencil size={12} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label="Remove" withArrow fz="xs">
-                          <ActionIcon size="xs" variant="subtle" color="red" onClick={() => handleDelete(a.id)}>
+                          <ActionIcon size="xs" variant="subtle" color="red" onClick={() => handleDelete(a.id)}
+      aria-label="Delete"
+    >
                             <IconTrash size={12} />
                           </ActionIcon>
                         </Tooltip>

@@ -3,7 +3,7 @@
  * No more "View Full Report" button — content loads directly in the tab panel.
  */
 import { useState } from 'react';
-import { Text, Stack, Tabs } from '@mantine/core';
+import { Tabs } from '@mantine/core';
 import { PPPageLayout } from '../components/pp';
 import {
   IconFlame,
@@ -15,8 +15,6 @@ import {
   IconChartBar,
   IconRadar,
 } from '@tabler/icons-react';
-import { DEEP_BLUE, AQUA, FONT_FAMILY } from '../brandTokens';
-import { useDarkMode } from '../hooks/useDarkMode';
 
 // Inline sub-page imports — render content directly, no navigation needed
 import UtilizationCenterPage    from './reports/UtilizationCenterPage';
@@ -40,7 +38,6 @@ const TABS = [
 ];
 
 export default function CapacityHubPage() {
-  const isDark = useDarkMode();
   const [activeTab, setActiveTab] = useState<string | null>('utilization');
 
   return (

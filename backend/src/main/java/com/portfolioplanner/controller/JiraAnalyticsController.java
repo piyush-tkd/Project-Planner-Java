@@ -1,7 +1,6 @@
 package com.portfolioplanner.controller;
 
-import com.portfolioplanner.domain.model.JiraPod;
-import com.portfolioplanner.domain.repository.JiraPodRepository;
+import com.portfolioplanner.service.JiraAnalyticsHelperService;
 import com.portfolioplanner.service.jira.JiraAnalyticsService;
 import com.portfolioplanner.service.jira.JiraCredentialsService;
 import com.portfolioplanner.service.jira.JiraCustomQueryService;
@@ -30,7 +29,7 @@ public class JiraAnalyticsController {
     private final JiraAnalyticsService analyticsService;
     private final JiraCredentialsService creds;
     private final JiraCustomQueryService customQueryService;
-    private final JiraPodRepository podRepo;
+    private final JiraAnalyticsHelperService helperService;
 
     /**
      * GET /api/jira/analytics
@@ -172,27 +171,7 @@ public class JiraAnalyticsController {
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
-    /** Resolve a comma-separated list of POD ID strings to Jira project keys. */
     private List<String> resolveProjectKeys(String pods) {
-        List<JiraPod> allPods = podRepo.findByEnabledTrueOrderBySortOrderAscPodDisplayNameAsc();
-        if (pods != null && !pods.isBlank()) {
-            try {
-                List<Long> ids = Arrays.stream(pods.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .map(Long::parseLong)
-                        .collect(Collectors.toList());
-                allPods = allPods.stream()
-                        .filter(p -> ids.contains(p.getId()))
-                        .collect(Collectors.toList());
-            } catch (NumberFormatException ignored) { /* return all pods */ }
-        }
-        return allPods.stream()
-                .flatMap(p -> p.getBoards().stream())
-                .map(b -> b.getJiraProjectKey())
-                .distinct()
-                .collect(Collectors.toList());
+        return helperService.resolveProjectKeys(pods);
     }
 }

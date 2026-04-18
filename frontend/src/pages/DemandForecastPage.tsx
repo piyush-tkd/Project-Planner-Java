@@ -1,14 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Container, Title, Grid, Card, Slider, NumberInput, Table, Badge,
-  Stack, Text, Group, Select, Paper, Skeleton, Alert,
+  Stack, Text, Group, Paper, Skeleton, Alert,
 } from '@mantine/core';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { DEEP_BLUE_HEX, AQUA_HEX, FONT_FAMILY } from '../brandTokens';
 import { useDarkMode } from '../hooks/useDarkMode';
 import apiClient from '../api/client';
@@ -99,7 +99,7 @@ export default function DemandForecastPage() {
       </Title>
 
       {isError && (
-        <Alert icon={<IconAlertCircle size={14} />} color="red" mb="md">
+        <Alert icon={<IconAlertTriangle size={14} />} color="yellow" mb="md">
           Failed to load gap analysis data — showing estimated baseline
         </Alert>
       )}
@@ -128,6 +128,7 @@ export default function DemandForecastPage() {
               {isLoading ? (
                 <Skeleton height={350} radius="md" />
               ) : (
+                <div role="img" aria-label="Composed chart">
                 <ResponsiveContainer width="100%" height={350}>
                   <ComposedChart data={adjustedForecast} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -140,6 +141,7 @@ export default function DemandForecastPage() {
                     <Line type="monotone" dataKey="projectedDemand" stroke={CHART_AQUA} strokeWidth={3} name="Projected Demand" dot={{ fill: CHART_AQUA, r: 5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
+                </div>
               )}
             </Stack>
           </Card>

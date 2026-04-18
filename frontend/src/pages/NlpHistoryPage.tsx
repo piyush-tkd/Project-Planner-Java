@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container, Title, Text, Paper, Group, Stack, Badge, ActionIcon,
-  TextInput, Loader, Box, Tooltip, Divider, ScrollArea, Collapse, Skeleton,
-  Button, Alert, ThemeIcon, Modal, SimpleGrid, Avatar,
+  Container, Text, Paper, Group, Stack, Badge, ActionIcon,
+  TextInput, Box, Tooltip, Divider, ScrollArea, Collapse, Skeleton,
+  Button, Alert, ThemeIcon, Modal, SimpleGrid,
 } from '@mantine/core';
 import { useComputedColorScheme } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
@@ -21,8 +21,8 @@ import {
 } from '../api/nlp';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AQUA, AQUA_HEX, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_HEX, DEEP_BLUE_TINTS, FONT_FAMILY,
-  BORDER_DEFAULT, TEXT_SECONDARY, TEXT_MUTED,
+  AQUA, AQUA_HEX, AQUA_TINTS, DEEP_BLUE, DEEP_BLUE_HEX, FONT_FAMILY,
+  BORDER_DEFAULT, TEXT_SECONDARY,
 } from '../brandTokens';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -181,7 +181,6 @@ export default function NlpHistoryPage() {
                 background: surfaceBg,
                 border: `1px solid ${borderColor}`,
                 color: textPrimary,
-                fontFamily: FONT_FAMILY,
                 fontSize: 14,
               },
             }}
@@ -408,7 +407,6 @@ function ConversationCard({
             fw={600}
             lineClamp={1}
             style={{
-              fontFamily: FONT_FAMILY,
               fontSize: 14,
               color: textPrimary,
               marginBottom: 4,
@@ -456,6 +454,7 @@ function ConversationCard({
               size="sm"
               onClick={onTogglePin}
               style={{ color: conv.pinned ? '#fab005' : textSecond }}
+              aria-label="Pin"
             >
               {conv.pinned ? <IconPinFilled size={14} /> : <IconPin size={14} />}
             </ActionIcon>
@@ -466,6 +465,7 @@ function ConversationCard({
               size="sm"
               onClick={handleResume}
               style={{ color: AQUA }}
+              aria-label="Go forward"
             >
               <IconArrowRight size={14} />
             </ActionIcon>
@@ -476,11 +476,14 @@ function ConversationCard({
               size="sm"
               onClick={onDelete}
               color="red"
+              aria-label="Delete"
             >
               <IconTrash size={14} />
             </ActionIcon>
           </Tooltip>
-          <ActionIcon variant="subtle" size="sm" style={{ color: textSecond }}>
+          <ActionIcon variant="subtle" size="sm" style={{ color: textSecond }}
+      aria-label="Expand"
+    >
             {isExpanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
         </Group>
@@ -556,7 +559,6 @@ function ConversationCard({
                           <Text
                             size="sm"
                             style={{
-                              fontFamily: FONT_FAMILY,
                               color: isUser ? 'rgba(255,255,255,0.95)' : textPrimary,
                               lineHeight: 1.55,
                               whiteSpace: 'pre-wrap',
@@ -571,7 +573,6 @@ function ConversationCard({
                             mt={3}
                             style={{
                               color: textSecond,
-                              fontFamily: FONT_FAMILY,
                               textAlign: isUser ? 'right' : 'left',
                               paddingLeft: isUser ? 0 : 4,
                               paddingRight: isUser ? 4 : 0,

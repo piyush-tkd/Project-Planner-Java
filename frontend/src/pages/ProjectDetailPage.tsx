@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconCircleCheck, IconCircleX, IconMessageReport, IconTicket, IconExternalLink, IconLock, IconMessageCircle, IconTarget, IconRefresh } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconEdit, IconCopy, IconCalendarEvent, IconCurrencyDollar, IconUsers, IconHeartRateMonitor, IconTrendingUp, IconAlertTriangle, IconCheck, IconChartBar, IconMessageReport, IconTicket, IconExternalLink, IconLock, IconMessageCircle, IconTarget, IconRefresh } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/client';
 import NlpBreadcrumb from '../components/common/NlpBreadcrumb';
@@ -778,10 +778,14 @@ export default function ProjectDetailPage() {
  <Table.Td>{p.targetReleaseName ?? '-'}</Table.Td>
  <Table.Td>
  <Group gap="xs">
- <ActionIcon variant="subtle" onClick={() => openEditPlan(p.podId)}>
+ <ActionIcon variant="subtle" onClick={() => openEditPlan(p.podId)}
+      aria-label="Edit"
+    >
  <IconEdit size={14} />
  </ActionIcon>
- <ActionIcon color="red" variant="subtle" onClick={() => handleRemovePod(p.podId)}>
+ <ActionIcon color="red" variant="subtle" onClick={() => handleRemovePod(p.podId)}
+      aria-label="Delete"
+    >
  <IconTrash size={16} />
  </ActionIcon>
  </Group>
@@ -1021,7 +1025,9 @@ export default function ProjectDetailPage() {
              ))}
              <Table.Td>
                <ActionIcon size="xs" color="red" variant="subtle"
-                 onClick={() => setRaciRows(prev => prev.filter((_, i) => i !== idx))}>
+                 onClick={() => setRaciRows(prev => prev.filter((_, i) => i !== idx))}
+      aria-label="Delete"
+    >
                  <IconTrash size={12} />
                </ActionIcon>
              </Table.Td>
@@ -1068,7 +1074,7 @@ export default function ProjectDetailPage() {
          { label: 'Scope Risk', score: 65, color: COLOR_WARNING, icon: <IconAlertTriangle size={18} /> },
          { label: 'Team Health', score: 91, color: COLOR_TEAL, icon: <IconUsers size={18} /> },
        ].map(item => (
-         <Paper key={item.label} withBorder p="md" radius="md" style={{ textAlign: 'center' }}>
+         <Paper key={item.label} withBorder p="md" radius="md" ta="center">
            <RingProgress
              size={90}
              roundCaps
@@ -1404,7 +1410,9 @@ function StatusUpdatesTab({ projectId }: { projectId: number }) {
                   </div>
                 </Group>
                 <ActionIcon variant="subtle" color="red" size="xs"
-                  onClick={() => deleteMutation.mutate(u.id)}>
+                  onClick={() => deleteMutation.mutate(u.id)}
+      aria-label="Delete"
+    >
                   <IconTrash size={12} />
                 </ActionIcon>
               </Group>

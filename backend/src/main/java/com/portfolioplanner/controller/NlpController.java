@@ -101,6 +101,7 @@ public class NlpController {
     }
 
     /** Execute a tool directly (used by insight cards to bypass NLP pipeline). */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/direct-tool")
     public ResponseEntity<NlpQueryResponse> directTool(@RequestBody Map<String, Object> body) {
         String toolName = (String) body.get("toolName");
@@ -117,12 +118,14 @@ public class NlpController {
     }
 
     /** Get NLP configuration (admin). */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/config")
     public ResponseEntity<NlpConfigResponse> getConfig() {
         return ResponseEntity.ok(configService.getConfig());
     }
 
     /** Update NLP configuration (admin). */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/config")
     public ResponseEntity<NlpConfigResponse> updateConfig(@RequestBody NlpConfigRequest request) {
         return ResponseEntity.ok(configService.updateConfig(request));
@@ -141,6 +144,7 @@ public class NlpController {
     }
 
     /** Test a specific strategy's availability. */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/test-connection")
     public ResponseEntity<NlpConfigResponse> testConnection() {
         return ResponseEntity.ok(configService.getConfig());
@@ -205,36 +209,42 @@ public class NlpController {
     // ── Learner / Optimizer ────────────────────────────────────────────────
 
     /** Run the NLP learner analysis (admin). */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/learner/run")
     public ResponseEntity<NlpLearnerService.LearnerStats> runLearner() {
         return ResponseEntity.ok(learnerService.runLearner());
     }
 
     /** Get low-confidence query logs for admin review. */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/learner/low-confidence")
     public ResponseEntity<List<NlpQueryLog>> getLowConfidenceLogs() {
         return ResponseEntity.ok(learnerService.getLowConfidenceLogs());
     }
 
     /** Get negatively-rated query logs for admin review. */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/learner/negative-rated")
     public ResponseEntity<List<NlpQueryLog>> getNegativelyRatedLogs() {
         return ResponseEntity.ok(learnerService.getNegativelyRatedLogs());
     }
 
     /** Get all learned patterns. */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/learner/patterns")
     public ResponseEntity<List<NlpLearnedPattern>> getAllPatterns() {
         return ResponseEntity.ok(learnerService.getAllPatterns());
     }
 
     /** Toggle a learned pattern's active state. */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/learner/patterns/{id}/toggle")
     public ResponseEntity<NlpLearnedPattern> togglePattern(@PathVariable Long id) {
         return ResponseEntity.ok(learnerService.togglePattern(id));
     }
 
     /** Delete a learned pattern. */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/learner/patterns/{id}")
     public ResponseEntity<Void> deletePattern(@PathVariable Long id) {
         learnerService.deletePattern(id);
@@ -242,6 +252,7 @@ public class NlpController {
     }
 
     /** Get learner run history for trend analysis. */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/learner/history")
     public ResponseEntity<List<NlpLearnerRun>> getRunHistory() {
         return ResponseEntity.ok(learnerService.getRunHistory());
@@ -250,6 +261,7 @@ public class NlpController {
     // ── Embeddings / Vector Search ────────────────────────────────────────
 
     /** Trigger embedding sync (admin). */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/embeddings/sync")
     public ResponseEntity<Map<String, Object>> syncEmbeddings() {
         embeddingSyncService.syncNow();
@@ -260,6 +272,7 @@ public class NlpController {
     }
 
     /** Get embedding statistics (admin). */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/embeddings/stats")
     public ResponseEntity<Map<String, Long>> getEmbeddingStats() {
         return ResponseEntity.ok(vectorSearchService.getEmbeddingStats());
